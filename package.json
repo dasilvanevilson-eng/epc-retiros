@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node localServer.js",
     "dev": "node localServer.js",
     "seed:demo": "node scripts/seed-demo-data.js"
   }
