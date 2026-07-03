@@ -1,4 +1,4 @@
-const { stores } = require('./appConfig');
+const { stores } = require('./storeConfig');
 const { authStatus, clearSessionCookie, createSession, readSession, sessionCookie, validateLogin } = require('./auth');
 const { getRecord, importDatabase, listRecords, readDatabase, saveRecord, deleteRecord, hasSupabase } = require('./databaseAdapter');
 

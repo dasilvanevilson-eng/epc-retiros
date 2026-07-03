@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { stores } = require('./appConfig');
+const { stores } = require('./storeConfig');
 
 const root = __dirname;
 const databaseDir = path.join(root, 'database');
