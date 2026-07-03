@@ -94,6 +94,79 @@ function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 }
 
+async function publicApi(path, options = {}) {
+  const response = await fetch(`/api${path}`, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new Error(details.error || 'Nao foi possivel acessar a area restrita.');
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function openRestrictedLogin() {
+  document.querySelector('.public-login-overlay')?.remove();
+  const overlay = document.createElement('section');
+  overlay.className = 'public-login-overlay';
+  overlay.innerHTML = `
+    <div class="public-login-dialog" role="dialog" aria-modal="true" aria-label="Login da area restrita">
+      <button type="button" class="public-login-close" aria-label="Fechar">×</button>
+      <a class="public-login-brand" href="index.html"><span>EPC</span><strong><small>Familia</small>EPC</strong></a>
+      <div class="public-login-heading">
+        <p class="detail-kicker">Area restrita</p>
+        <h2>Acesse sua conta</h2>
+        <p>Informe o login e a senha da equipe para continuar.</p>
+      </div>
+      <form id="public-login-form">
+        <label><span>Login</span><input name="username" autocomplete="username" required></label>
+        <label><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <p class="public-login-message" aria-live="polite"></p>
+        <button type="submit">Entrar <span>→</span></button>
+      </form>
+    </div>`;
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+  overlay.querySelector('.public-login-close').addEventListener('click', close);
+  overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+  overlay.querySelector('#public-login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button');
+    const message = form.querySelector('.public-login-message');
+    button.disabled = true;
+    message.textContent = 'Validando acesso...';
+    try {
+      await publicApi('/auth/login', { method: 'POST', body: JSON.stringify({ username: form.elements.username.value.trim(), password: form.elements.password.value }) });
+      location.href = 'epc-retiros.html#inicio';
+    } catch (error) {
+      message.textContent = error.message || 'Login ou senha invalidos.';
+      button.disabled = false;
+    }
+  });
+  document.body.append(overlay);
+  overlay.querySelector('input[name="username"]').focus();
+}
+
+function setupRestrictedAccessLinks() {
+  document.querySelectorAll('a[href^="epc-retiros.html"]').forEach((link) => {
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      try {
+        const session = await publicApi('/auth/session');
+        if (session.authenticated) {
+          location.href = 'epc-retiros.html#inicio';
+          return;
+        }
+      } catch {}
+      openRestrictedLogin();
+    });
+  });
+}
+
 function renderMovementPage() {
   const mount = document.querySelector('#movement-page');
   if (!mount) return;
@@ -140,3 +213,4 @@ function renderMovementPage() {
 
 renderMovementPage();
 markMissingImages();
+setupRestrictedAccessLinks();

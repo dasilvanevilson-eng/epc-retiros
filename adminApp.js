@@ -319,8 +319,7 @@ function layout(content, active = 'inicio') {
     await dataService.logout().catch(() => null);
     currentUser = null;
     authChecked = false;
-    location.hash = '#login';
-    route();
+    location.href = 'index.html';
   });
   app.querySelectorAll('.statistics-grid span').forEach((label) => { if (label.textContent === 'Idade média') label.textContent = 'Idade média geral'; });
   if (active === 'cursista') app.querySelector('#student-message')?.insertAdjacentHTML('beforebegin', '<section class="form-section student-registration-value"><div class="section-heading"><span>06</span><div><h2>Inscrição</h2><p>Informe os valores financeiros do cursista.</p></div></div><div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricao" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPago" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagar" type="text" readonly placeholder="R$ 0,00"></label></div></section>');
