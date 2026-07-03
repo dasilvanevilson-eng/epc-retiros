@@ -883,12 +883,36 @@ async function renderValidacaoInscricoes() {
       ? `Dados pessoais alterados desde a última inscrição: ${changed.join(', ')}`
       : 'Sem alteração nos dados pessoais desde a última inscrição';
   };
-  const pendingCount = retreatEntries.filter((entry) => !isEnrolmentValidated(entry)).length;
-  const validatedCount = retreatEntries.length - pendingCount;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>${escapeHtml(retreat.nome)} · Confira os cadastros recebidos antes de liberar nas estat\u00edsticas.</p></div></section><section class="receiver-summary validation-summary"><article><span>Pendentes</span><strong>${pendingCount}</strong><small>inscri\u00e7\u00e3o(\u00f5es)</small></article><article><span>Validadas</span><strong>${validatedCount}</strong><small>inscri\u00e7\u00e3o(\u00f5es)</small></article><article><span>Total recebido</span><strong>${retreatEntries.length}</strong><small>inscri\u00e7\u00e3o(\u00f5es)</small></article></section><section class="panel validation-list">${retreatEntries.length ? retreatEntries.map((entry) => { const person = peopleById.get(entry.pessoaId); const validated = isEnrolmentValidated(entry); const cpf = normalizeCpf(person?.cpf || entry.pessoaId); return `<article><div><strong>${escapeHtml(entry.nome || person?.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml((entry.setores || []).join(', ') || 'Sem setor')}</span><small class="personal-history-notice">${escapeHtml(personalHistoryNotice(entry))}</small></div><span class="validation-status ${validated ? 'is-valid' : 'is-pending'}">${validated ? 'Validada' : 'Pendente'}</span><div class="registration-actions"><a href="#pessoas/${entry.pessoaId}/${entry.retiroId}/validacao-inscricoes">Consultar</a><button type="button" data-validate-entry="${entry.id}" ${validated ? 'disabled' : ''}>Validar</button></div></article>`; }).join('') : '<p class="empty-state">Nenhuma inscrição da equipe foi recebida para este retiro.</p>'}</section>`, 'validacao-inscricoes');
+  const validationGroups = [];
+  const groupedCouples = new Set();
+  retreatEntries.forEach((entry) => {
+    if (entry.casalId) {
+      const key = `${entry.retiroId}:${entry.casalId}`;
+      if (groupedCouples.has(key)) return;
+      groupedCouples.add(key);
+      validationGroups.push(allRetreatEntries.filter((item) => item.casalId === entry.casalId).sort(byName));
+      return;
+    }
+    validationGroups.push([entry]);
+  });
+  const groupValidated = (group) => group.every(isEnrolmentValidated);
+  const pendingCount = validationGroups.filter((group) => !groupValidated(group)).length;
+  const validatedCount = validationGroups.length - pendingCount;
+  const validationGroupHtml = (group) => {
+    const representative = group[0];
+    const validated = groupValidated(group);
+    const label = group.length > 1 ? 'Casal' : 'Individual';
+    const peopleHtml = group.map((entry) => {
+      const person = peopleById.get(entry.pessoaId);
+      const cpf = normalizeCpf(person?.cpf || entry.pessoaId);
+      return `<div class="validation-person"><div><strong>${escapeHtml(entry.nome || person?.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF n\u00e3o informado'} · ${escapeHtml((entry.setores || []).join(', ') || 'Sem setor')}</span><small class="personal-history-notice">${escapeHtml(personalHistoryNotice(entry))}</small></div><a href="#pessoas/${entry.pessoaId}/${entry.retiroId}/validacao-inscricoes">Consultar</a></div>`;
+    }).join('');
+    return `<article class="${group.length > 1 ? 'is-couple-validation' : ''}"><div class="validation-people"><small class="validation-group-label">${label}</small>${peopleHtml}</div><span class="validation-status ${validated ? 'is-valid' : 'is-pending'}">${validated ? 'Validada' : 'Pendente'}</span><div class="registration-actions"><button type="button" data-validate-entry="${representative.id}" ${validated ? 'disabled' : ''}>Validar</button></div></article>`;
+  };
+  layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>${escapeHtml(retreat.nome)} · Confira os cadastros recebidos antes de liberar nas estat\u00edsticas.</p></div></section><section class="receiver-summary validation-summary"><article><span>Pendentes</span><strong>${pendingCount}</strong><small>ficha(s)</small></article><article><span>Validadas</span><strong>${validatedCount}</strong><small>ficha(s)</small></article><article><span>Total recebido</span><strong>${validationGroups.length}</strong><small>ficha(s)</small></article></section><section class="panel validation-list">${validationGroups.length ? validationGroups.map(validationGroupHtml).join('') : '<p class="empty-state">Nenhuma inscrição da equipe foi recebida para este retiro.</p>'}</section>`, 'validacao-inscricoes');
   app.querySelectorAll('[data-validate-entry]').forEach((button) => button.addEventListener('click', async () => {
     const entry = enrolments.find((item) => item.id === button.dataset.validateEntry);
-    if (!entry || isEnrolmentValidated(entry)) return;
+    if (!entry) return;
     const validatedAt = new Date().toISOString();
     const entriesToValidate = entry.casalId
       ? enrolments.filter((item) => item.retiroId === entry.retiroId && item.casalId === entry.casalId)
