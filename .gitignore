@@ -1,0 +1,6 @@
+node_modules/
+.env
+.vercel/
+database/*.tmp
+database/db.backup-*.json
+database/db.corrupt-*.json

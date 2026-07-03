@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/epc-retiros", "destination": "/epc-retiros.html" },
+    { "source": "/movimento", "destination": "/movimento.html" }
+  ]
+}
