@@ -1,6 +1,6 @@
 const { stores } = require('./storeConfig');
 const { authStatus, clearSessionCookie, createSession, readSession, sessionCookie, validateLogin } = require('./auth');
-const { getRecord, importDatabase, listRecords, readDatabase, saveRecord, deleteRecord, hasSupabase } = require('./databaseAdapter');
+const { checkDatabaseConnection, getRecord, importDatabase, listRecords, readDatabase, saveRecord, deleteRecord } = require('./databaseAdapter');
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -36,7 +36,10 @@ async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action] = parts;
 
-  if (resource === 'health') return sendJson(res, 200, { ok: true, database: hasSupabase() ? 'supabase' : 'file', auth: authStatus(req).configured });
+  if (resource === 'health') {
+    const connection = await checkDatabaseConnection();
+    return sendJson(res, 200, { ok: connection.ok, database: connection.database, auth: authStatus(req).configured });
+  }
   if (resource === 'auth' && id === 'session' && req.method === 'GET') return sendJson(res, 200, authStatus(req));
   if (resource === 'auth' && id === 'login' && req.method === 'POST') {
     const { username, password } = await readBody(req);

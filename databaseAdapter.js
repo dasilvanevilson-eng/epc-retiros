@@ -167,7 +167,14 @@ async function deleteRecord(storeName, id) {
   await deleteSupabase(storeName, id);
 }
 
+async function checkDatabaseConnection() {
+  if (!hasSupabase()) return { database: 'file', ok: true };
+  await supabaseRequest('epc_store?select=store,id&limit=1');
+  return { database: 'supabase', ok: true };
+}
+
 module.exports = {
+  checkDatabaseConnection,
   emptyDatabase,
   hasSupabase,
   importDatabase,

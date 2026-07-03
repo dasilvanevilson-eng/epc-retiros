@@ -657,7 +657,7 @@ async function renderNewRetreat() {
       console.error(error);
       const message = document.createElement('p');
       message.className = 'form-message';
-      message.textContent = 'Não foi possível salvar o retiro neste navegador. Atualize a página e tente novamente.';
+      message.textContent = `Nao foi possivel salvar o retiro. ${error.message || 'Atualize a pagina e tente novamente.'}`;
       form.querySelector('.form-actions').before(message);
       submitButton.disabled = false;
       submitButton.innerHTML = 'Criar retiro <span>→</span>';
