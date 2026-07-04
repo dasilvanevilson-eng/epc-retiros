@@ -64,6 +64,11 @@ loadLocalEnv().then(async () => {
         const { sendPublicRegistrationPage } = require('./publicRegistrationPage');
         await sendPublicRegistrationPage(req, res, pathname.replace(/^\/adesao\/?/, ''));
       }
+      else if (pathname.startsWith('/setor/')) {
+        const { sendPublicSectorPage } = require('./publicSectorPage');
+        const [, retreatId, token] = pathname.match(/^\/setor\/([^/]+)\/([^/]+)/) || [];
+        await sendPublicSectorPage(req, res, retreatId, token);
+      }
       else await handleStatic(req, res, pathname);
     } catch (error) {
       sendError(res, 500, error.message || 'Erro interno.');

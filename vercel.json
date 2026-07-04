@@ -6,6 +6,7 @@
   ],
   "routes": [
     { "src": "/adesao/(.*)", "dest": "/api/adesao.js?id=$1" },
+    { "src": "/setor/([^/]+)/([^/]+)", "dest": "/api/setor.js?retiro=$1&token=$2" },
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/epc-retiros", "dest": "/epc-retiros.html" },

@@ -37,6 +37,27 @@ const ensureViewPermission = (section) => {
   return false;
 };
 const renderDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para executar esta acao.</p></div></section>', firstAllowedSection());
+const sectorToken = () => {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 18);
+};
+const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
+  const existing = new Map((retreat.linksSetores || retreat.setorLinks || []).map((item) => [normalizeText(item.setor || item.sector), item]));
+  return sortSectors(sectors).map((setor) => {
+    const current = existing.get(normalizeText(setor));
+    return { setor, token: current?.token || sectorToken() };
+  });
+};
+const ensureSectorLinks = async (retreat) => {
+  const nextLinks = syncSectorLinks(retreat);
+  const current = JSON.stringify(retreat.linksSetores || []);
+  const next = JSON.stringify(nextLinks);
+  if (current === next) return nextLinks;
+  retreat.linksSetores = nextLinks;
+  await dataService.saveRetiro(retreat);
+  return nextLinks;
+};
 
 const sortCommunitiesByPosition = (communities = []) => communities
   .map((community, index) => ({ community, index }))
@@ -672,7 +693,8 @@ async function renderNewRetreat() {
       if (!selectedSectors.length) { alert('Selecione ao menos um setor de trabalho.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
-      const retreat = { id: crypto.randomUUID(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortSectors(selectedSectors), setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], status: 'preparacao', createdAt: new Date().toISOString() };
+      const sortedSectors = sortSectors(selectedSectors);
+      const retreat = { id: crypto.randomUUID(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (values.get('origem') && values.get('origem') !== 'vazio') await copyBadgeProfilesToRetreat(values.get('origem'), retreat.id);
       await loadData();
@@ -696,6 +718,8 @@ async function renderRetreat(id) {
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
   const publicUrl = `${location.origin}/adesao/${encodeURIComponent(id)}`;
+  const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
+  const sectorLinks = storedSectorLinks.length || !canAccess('retiros.editar') ? storedSectorLinks : await ensureSectorLinks(retreat);
   const serviceDays = retreatServiceDays(retreat);
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
@@ -730,6 +754,15 @@ async function renderRetreat(id) {
     deleteButton.textContent = 'Excluir retiro';
     app.querySelector('.detail-actions')?.append(deleteButton);
   }
+  if (sectorLinks.length) {
+    const sectorLinksPanel = document.createElement('article');
+    sectorLinksPanel.className = 'panel sector-links-panel';
+    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Envie ao coordenador do setor para acompanhar os nomes inscritos naquela equipe.</p><div class="sector-link-list">${sectorLinks.map((link) => {
+      const url = `${location.origin}/setor/${encodeURIComponent(id)}/${encodeURIComponent(link.token)}`;
+      return `<div class="sector-link-row"><strong>${escapeHtml(link.setor)}</strong><div class="copy-field"><input readonly value="${escapeHtml(url)}"><button type="button" data-copy-sector-link="${escapeHtml(url)}">Copiar</button></div></div>`;
+    }).join('')}</div>`;
+    app.querySelector('.detail-grid')?.append(sectorLinksPanel);
+  }
   if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
   if (!canAccess('retiros.publicar')) app.querySelector('#publish-retreat')?.remove();
   app.querySelector('#publish-retreat')?.addEventListener('click', async () => { if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); } });
@@ -756,6 +789,10 @@ async function renderRetreat(id) {
     }
   });
   app.querySelector('#copy-link').addEventListener('click', async () => { await navigator.clipboard.writeText(publicUrl); app.querySelector('#copy-link').textContent = 'Copiado!'; });
+  app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(button.dataset.copySectorLink);
+    button.textContent = 'Copiado!';
+  }));
   app.querySelector('#toggle-participants').addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
   app.querySelectorAll('[data-participant-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.participantSort; participantSort = { key, direction: participantSort.key === key && participantSort.direction === 'asc' ? 'desc' : 'asc' }; renderRetreat(id); }));
   app.querySelector('#view-space-kids').addEventListener('click', () => { const overlay = document.createElement('section'); overlay.className = 'sector-participants-overlay'; overlay.innerHTML = `<div class="sector-participants-dialog"><div class="panel-heading"><div><p class="eyebrow">Espaço Kids</p><h2>Crianças cadastradas</h2><p>${spaceKids.length} criança(s) informada(s) para este retiro.</p></div></div><div class="kids-participants-list">${spaceKids.length ? spaceKids.map((kid) => `<div><strong>${escapeHtml(kid.nome)}</strong><span>${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span><small>Cadastrada por: ${escapeHtml(kid.volunteer)}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'} · Setor: ${escapeHtml(kid.sectors?.join(', ') || 'Não informado')}</small></div>`).join('') : '<p>Nenhuma criança cadastrada.</p>'}</div><button type="button" class="close-sector-view">Fechar visualização</button></div>`; overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove()); app.append(overlay); });
@@ -792,7 +829,8 @@ async function renderEditRetreat(id) {
     if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); return; }
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
     delete retreat.descontoParentesco;
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortSectors(selectedSectors), setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), updatedAt: new Date().toISOString() });
+    const sortedSectors = sortSectors(selectedSectors);
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, sortedSectors), updatedAt: new Date().toISOString() });
     const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
     for (const [from, to] of renames) {
       const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
