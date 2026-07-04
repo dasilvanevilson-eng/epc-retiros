@@ -14,6 +14,29 @@ let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
 
+const viewPermissions = {
+  inicio: 'inicio.ver',
+  retiros: 'retiros.ver',
+  pessoas: 'pessoas.ver',
+  'validacao-inscricoes': 'validacao-inscricoes.ver',
+  cursista: 'cursista.ver',
+  comunidades: 'comunidades.ver',
+  crachas: 'crachas.ver',
+  quadrante: 'quadrante.ver',
+  recebedor: 'recebedor.ver',
+  usuarios: 'usuarios.ver',
+};
+
+const canAccess = (permission) => !permission || currentUser?.role === 'admin' || currentUser?.perfilCodigo === 'admin' || (currentUser?.permissions || []).includes(permission);
+const canView = (section) => canAccess(viewPermissions[section]);
+const firstAllowedSection = () => Object.keys(viewPermissions).find((section) => canView(section)) || 'inicio';
+const ensureViewPermission = (section) => {
+  if (canView(section)) return true;
+  layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para acessar esta area.</p></div></section>', firstAllowedSection());
+  return false;
+};
+const renderDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para executar esta acao.</p></div></section>', firstAllowedSection());
+
 const sortCommunitiesByPosition = (communities = []) => communities
   .map((community, index) => ({ community, index }))
   .sort((first, second) => {
@@ -288,7 +311,8 @@ function layout(content, active = 'inicio') {
     ['crachas', 'Crach&aacute;s', '▣'],
     ['quadrante', 'Quadrante', '✣'],
     ['recebedor', 'Recebedor', '▱'],
-  ];
+    ['usuarios', 'Usuarios e permissoes', 'UP'],
+  ].filter(([id]) => canView(id));
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
       <aside class="admin-sidebar" aria-label="Identidade EPC">
@@ -667,7 +691,7 @@ async function renderNewRetreat() {
 async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
-  const canDeleteRetreat = currentUser?.role === 'admin';
+  const canDeleteRetreat = canAccess('retiros.excluir');
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
   const publicUrl = `${location.origin}${location.pathname}?adesao=${id}`;
@@ -705,7 +729,9 @@ async function renderRetreat(id) {
     deleteButton.textContent = 'Excluir retiro';
     app.querySelector('.detail-actions')?.append(deleteButton);
   }
-  app.querySelector('#publish-retreat').addEventListener('click', async () => { if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); } });
+  if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
+  if (!canAccess('retiros.publicar')) app.querySelector('#publish-retreat')?.remove();
+  app.querySelector('#publish-retreat')?.addEventListener('click', async () => { if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); } });
   app.querySelector('#delete-retreat')?.addEventListener('click', async () => {
     const totalEnrolments = enrolments.filter((entry) => entry.retiroId === id).length;
     if (!confirm(`Excluir o retiro "${retreat.nome}"?\n\nEsta acao remove a estrutura deste retiro e ${totalEnrolments} adesao(oes). Os cadastros dos voluntarios serao preservados.`)) return;
@@ -2611,6 +2637,109 @@ async function renderPublicForm(id, embedded = false) {
   });
 }
 
+async function renderUsuarios() {
+  if (!ensureViewPermission('usuarios')) return;
+  const [accessData, allRetreats] = await Promise.all([dataService.getAccessData(), dataService.listRetiros().catch(() => [])]);
+  const { usuarios = [], perfis = [], permissoes = [], perfilPermissoes = [], usuarioPermissoes = [], usuarioRetiros = [] } = accessData;
+  const profileById = new Map(perfis.map((profile) => [profile.id, profile]));
+  const groupedPermissions = permissoes.reduce((groups, permission) => {
+    const moduleName = permission.modulo || 'Sistema';
+    groups[moduleName] = groups[moduleName] || [];
+    groups[moduleName].push(permission);
+    return groups;
+  }, {});
+  Object.values(groupedPermissions).forEach((items) => items.sort((first, second) => first.id.localeCompare(second.id)));
+  const effectivePermissions = (user = {}) => {
+    const profileAllowed = new Set(perfilPermissoes.filter((item) => item.perfilId === user.perfilId && item.permitido !== false).map((item) => item.permissaoId));
+    usuarioPermissoes.filter((item) => item.usuarioId === user.id).forEach((item) => {
+      if (item.permitido === false) profileAllowed.delete(item.permissaoId);
+      else profileAllowed.add(item.permissaoId);
+    });
+    if (profileById.get(user.perfilId)?.codigo === 'admin') permissoes.forEach((permission) => profileAllowed.add(permission.id));
+    return profileAllowed;
+  };
+  const userRows = usuarios.sort((first, second) => String(first.nome || first.login).localeCompare(String(second.nome || second.login), 'pt-BR')).map((user) => {
+    const profile = profileById.get(user.perfilId);
+    const retreatCount = usuarioRetiros.filter((item) => item.usuarioId === user.id).length;
+    return `<article class="access-user-row" data-user-row="${escapeHtml(user.id)}"><div><strong>${escapeHtml(user.nome || user.login)}</strong><span>${escapeHtml(user.login)} · ${escapeHtml(profile?.nome || 'Sem perfil')} · ${user.ativo === false ? 'Inativo' : 'Ativo'}${retreatCount ? ` · ${retreatCount} retiro(s)` : ''}</span></div><div class="registration-actions"><button type="button" data-edit-user="${escapeHtml(user.id)}">Editar</button>${canAccess('usuarios.excluir') ? `<button type="button" data-delete-user="${escapeHtml(user.id)}">Excluir</button>` : ''}</div></article>`;
+  }).join('');
+  const profileOptions = perfis.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.nome)}</option>`).join('');
+  const retreatChecks = allRetreats.map((retreat) => `<label class="access-check"><input type="checkbox" name="retiroIds" value="${escapeHtml(retreat.id)}"><span>${escapeHtml(retreat.nome)}</span></label>`).join('');
+  const permissionGroups = Object.entries(groupedPermissions).map(([moduleName, items]) => `<section class="access-permission-group"><h3>${escapeHtml(moduleName)}</h3>${items.map((permission) => `<label class="access-check"><input type="checkbox" name="permission" value="${escapeHtml(permission.id)}"><span><strong>${escapeHtml(permission.id)}</strong><small>${escapeHtml(permission.descricao || '')}</small></span></label>`).join('')}</section>`).join('');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Seguranca</p><h1>Usuarios e permissoes</h1><p>Gerencie perfis, acessos por tela e acoes permitidas para cada usuario.</p></div></section>
+  <section class="access-layout">
+    <article class="panel access-list-panel"><div class="panel-heading"><div><h2>Usuarios</h2><p>${usuarios.length} usuario(s) cadastrado(s) no banco.</p></div><button type="button" id="new-access-user" ${canAccess('usuarios.criar') ? '' : 'disabled'}>Novo usuario</button></div><div class="access-user-list">${userRows || '<p class="empty-state">Nenhum usuario cadastrado no banco.</p>'}</div></article>
+    <form id="access-user-form" class="panel access-user-form"><div class="panel-heading"><div><p class="eyebrow">Cadastro</p><h2 id="access-form-title">Novo usuario</h2><p>Senhas sao armazenadas com hash no servidor.</p></div></div><input type="hidden" name="id"><div class="fields two-columns"><label class="field"><span>Nome <b>*</b></span><input name="nome" required></label><label class="field"><span>Login <b>*</b></span><input name="login" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" placeholder="Obrigatoria para novo usuario"></label><label class="field"><span>Perfil <b>*</b></span><select name="perfilId" required>${profileOptions}</select></label><label class="access-active-option"><input type="checkbox" name="ativo" checked> Usuario ativo</label></div><section class="access-retreats"><h3>Retiros vinculados</h3><p class="hint">Use para Coordenador do retiro. Admin e Coordenador Geral podem ficar sem restricao.</p><div class="access-check-grid">${retreatChecks || '<p class="empty-state">Nenhum retiro cadastrado.</p>'}</div></section><section class="access-permissions"><div class="panel-heading compact-heading"><div><h3>Permissoes do usuario</h3><p>Marque exatamente o que este usuario pode acessar e executar.</p></div><button type="button" id="apply-profile-permissions">Aplicar perfil</button></div><div class="access-permission-grid">${permissionGroups}</div></section><p id="access-message" class="form-message"></p><div class="form-actions"><p>As permissoes sao aplicadas no menu e validadas na API.</p><button type="submit" ${canAccess('usuarios.criar') || canAccess('usuarios.editar') ? '' : 'disabled'}>Salvar usuario <span>→</span></button></div></form>
+  </section>`, 'usuarios');
+  const form = app.querySelector('#access-user-form');
+  const message = app.querySelector('#access-message');
+  const applyPermissions = (permissionIds = []) => {
+    const selected = new Set(permissionIds);
+    form.querySelectorAll('input[name="permission"]').forEach((input) => { input.checked = selected.has(input.value); });
+  };
+  const profilePermissionIds = (profileId) => perfilPermissoes.filter((item) => item.perfilId === profileId && item.permitido !== false).map((item) => item.permissaoId);
+  const clearForm = () => {
+    form.reset();
+    form.elements.id.value = '';
+    form.elements.ativo.checked = true;
+    form.elements.password.required = true;
+    app.querySelector('#access-form-title').textContent = 'Novo usuario';
+    applyPermissions(profilePermissionIds(form.elements.perfilId.value));
+    message.textContent = '';
+  };
+  const loadUser = (user) => {
+    form.reset();
+    form.elements.id.value = user.id;
+    form.elements.nome.value = user.nome || '';
+    form.elements.login.value = user.login || '';
+    form.elements.password.value = '';
+    form.elements.password.required = false;
+    form.elements.perfilId.value = user.perfilId || perfis[0]?.id || '';
+    form.elements.ativo.checked = user.ativo !== false;
+    const linkedRetreats = new Set(usuarioRetiros.filter((item) => item.usuarioId === user.id).map((item) => item.retiroId));
+    form.querySelectorAll('input[name="retiroIds"]').forEach((input) => { input.checked = linkedRetreats.has(input.value); });
+    applyPermissions([...effectivePermissions(user)]);
+    app.querySelector('#access-form-title').textContent = `Editando ${user.nome || user.login}`;
+    message.textContent = 'Revise o perfil, retiros vinculados e permissoes.';
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  clearForm();
+  app.querySelector('#new-access-user')?.addEventListener('click', clearForm);
+  app.querySelector('#apply-profile-permissions')?.addEventListener('click', () => applyPermissions(profilePermissionIds(form.elements.perfilId.value)));
+  form.elements.perfilId.addEventListener('change', () => applyPermissions(profilePermissionIds(form.elements.perfilId.value)));
+  app.querySelectorAll('[data-edit-user]').forEach((button) => button.addEventListener('click', () => {
+    const user = usuarios.find((item) => item.id === button.dataset.editUser);
+    if (user) loadUser(user);
+  }));
+  app.querySelectorAll('[data-delete-user]').forEach((button) => button.addEventListener('click', async () => {
+    const user = usuarios.find((item) => item.id === button.dataset.deleteUser);
+    if (!user || !confirm(`Excluir o usuario ${user.nome || user.login}?`)) return;
+    await dataService.deleteAccessUser(user.id);
+    await renderUsuarios();
+  }));
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    const permissions = permissoes.map((permission) => ({ permissaoId: permission.id, permitido: data.getAll('permission').includes(permission.id) }));
+    try {
+      await dataService.saveAccessUser({
+        id: data.get('id') || undefined,
+        nome: data.get('nome'),
+        login: data.get('login'),
+        password: data.get('password'),
+        perfilId: data.get('perfilId'),
+        ativo: data.get('ativo') === 'on',
+        retiroIds: data.getAll('retiroIds'),
+        permissions,
+      });
+      await renderUsuarios();
+    } catch (error) {
+      message.textContent = error.message || 'Nao foi possivel salvar o usuario.';
+    }
+  });
+}
+
 async function ensureAuthenticated() {
   if (publicRetreatId) return true;
   if (authChecked) return Boolean(currentUser);
@@ -2664,8 +2793,12 @@ function renderLogin(message = '') {
 async function route() {
   if (publicRetreatId) return renderPublicForm(publicRetreatId);
   if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
-  await loadData(); const target = location.hash.slice(1) || 'inicio';
-  if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return renderNewRetreat(); if (target.endsWith('/editar')) return renderEditRetreat(target.split('/')[1]); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
+  const target = location.hash.slice(1) || firstAllowedSection();
+  if (target === 'usuarios') return renderUsuarios();
+  const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
+  if (!ensureViewPermission(section)) return;
+  await loadData();
+  if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
   if (target === 'cursista') {
     await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;

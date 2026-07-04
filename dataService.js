@@ -1,6 +1,6 @@
 const DATABASE = 'epc-retiros';
 const VERSION = 4;
-const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas'];
+const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -56,7 +56,7 @@ async function ensureBackend() {
   try {
     await api('/health');
     backend = 'file';
-    await migrateIndexedDbToFile();
+    await migrateIndexedDbToFile().catch(() => null);
   } catch {
     backend = 'indexeddb';
   }
@@ -111,6 +111,9 @@ export const dataService = {
   getSession: () => api('/auth/session'),
   login: (username, password) => api('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => api('/auth/logout', { method: 'POST' }),
+  getAccessData: () => api('/access'),
+  saveAccessUser: (user) => api('/access/users', { method: 'POST', body: JSON.stringify(user) }),
+  deleteAccessUser: (id) => api(`/access/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),
