@@ -2005,7 +2005,7 @@ async function renderPublicForm(id, embedded = false) {
   const contributionOptions = ['R$ 60,00 se o voluntário for o único da família', 'R$ 55,00 se o voluntário tiver mais pessoas da mesma família trabalhando no retiro'];
   const kidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="kidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="kidNascimento${index + 1}" type="date"></label></div>`).join('');
   const sectorsForRegistration = embedded ? retreat.setores : (retreat.setoresPublicos ?? retreat.setores);
-  const publicHeading = embedded ? String(retreat.nome || '') : `Cadastro de equipe de trabalho para o retiro ${retreat.nome || ''}`;
+  const publicHeading = embedded ? String(retreat.nome || '') : `Cadastro da equipe de trabalho para: ${retreat.nome || ''}`;
   const publicLead = embedded ? 'Preencha os dados para organizar a participacao da equipe neste retiro.' : 'Este e o formulario oficial da equipe de organizacao. Confira o nome do retiro antes de informar seus dados.';
   const serviceDays = retreatServiceDays(retreat);
   const includeSubmitText = embedded ? 'Salvar inclusão' : 'Confirmar Inscrição';
@@ -2024,6 +2024,7 @@ async function renderPublicForm(id, embedded = false) {
     <p id="form-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">${includeSubmitText} <span>→</span></button></div></form></main>`;
   mount.querySelector('.hero h1').textContent = publicHeading;
   mount.querySelector('.hero-copy').textContent = publicLead;
+  if (!embedded) document.title = publicHeading;
   const form = mount.querySelector('#public-form');
   wireStateFields(form);
   wireCepLookup(form);
