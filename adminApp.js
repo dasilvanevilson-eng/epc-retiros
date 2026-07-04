@@ -2104,6 +2104,17 @@ async function renderPublicForm(id, embedded = false) {
     app.append(overlay);
   };
   const linkedSpouseForPerson = (personId) => {
+    const person = people.find((item) => item.id === personId || normalizeCpf(item.cpf || item.id) === normalizeCpf(personId));
+    const linkedSpouseId = person?.conjugeId || person?.spouseId || person?.casalPessoaId;
+    if (linkedSpouseId) {
+      const spouse = people.find((item) => item.id === linkedSpouseId || normalizeCpf(item.cpf || item.id) === normalizeCpf(linkedSpouseId));
+      if (spouse) {
+        const spouseEntry = enrolments
+          .filter((entry) => entry.pessoaId === spouse.id || normalizeCpf(entry.pessoaId) === normalizeCpf(spouse.id))
+          .sort((first, second) => String(second.atualizadoEm || second.enviadoEm || '').localeCompare(String(first.atualizadoEm || first.enviadoEm || '')))[0] || {};
+        return { spouse, spouseEntry };
+      }
+    }
     const entries = enrolments
       .filter((entry) => entry.pessoaId === personId && entry.casalId)
       .sort((first, second) => String(second.atualizadoEm || second.enviadoEm || '').localeCompare(String(first.atualizadoEm || first.enviadoEm || '')));
@@ -2114,10 +2125,18 @@ async function renderPublicForm(id, embedded = false) {
     }
     return null;
   };
+  const linkCouplePeople = async (first, second, casalId) => {
+    const firstPerson = { ...first, casalId, conjugeId: second.id, updatedAt: new Date().toISOString() };
+    const secondPerson = { ...second, casalId, conjugeId: first.id, updatedAt: new Date().toISOString() };
+    await Promise.all([dataService.savePessoa(firstPerson), dataService.savePessoa(secondPerson)]);
+    people = people.map((person) => person.id === first.id ? firstPerson : person.id === second.id ? secondPerson : person);
+  };
   const loadLinkedSpouse = async (person) => {
     if (!isCouple() || !person) return false;
     const linked = linkedSpouseForPerson(person.id);
     if (!linked) return false;
+    const currentSpouseEntry = enrolments.find((entry) => entry.retiroId === id && entryMatchesCpf(entry, normalizeCpf(linked.spouse.cpf || linked.spouse.id)));
+    if (currentSpouseEntry) editingSpouseEntry = currentSpouseEntry;
     const spouseCpf = normalizeCpf(linked.spouse.cpf || linked.spouse.id);
     form.elements.spouseCpf.value = isValidCpf(spouseCpf) ? formatCpf(spouseCpf) : '';
     form.elements.spouseNome.value = linked.spouse.nome || '';
@@ -2125,8 +2144,8 @@ async function renderPublicForm(id, embedded = false) {
     form.elements.spouseTelefone.value = linked.spouse.telefone || '';
     form.elements.spouseTelefone.dispatchEvent(new Event('input'));
     setChoices('spouseGenero', linked.spouse.genero);
-    setChoices('spouseRetiros', linked.spouseEntry.retirosAnteriores || []);
-    setChoices('spouseDias', linked.spouseEntry.dias || []);
+    setChoices('spouseRetiros', (currentSpouseEntry || linked.spouseEntry).retirosAnteriores || []);
+    setChoices('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
     form.elements.spouseCpf.dispatchEvent(new Event('change'));
     if (form.querySelector('#form-message').textContent !== duplicatePublicCpfMessage) {
       form.querySelector('#form-message').textContent = 'Encontramos o cônjuge vinculado a este CPF. Revise os dados antes de enviar.';
@@ -2576,7 +2595,8 @@ async function renderPublicForm(id, embedded = false) {
     if (isCouple()) {
       const casalId = editingEntry?.casalId || crypto.randomUUID();
       const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
-      await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
+      const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
+      await linkCouplePeople(first, second, casalId);
       await finishSave(first.nome);
       return;
     }
@@ -2584,8 +2604,6 @@ async function renderPublicForm(id, embedded = false) {
       const spouseEntry = editingSpouseEntry || enrolments.find((item) => item.casalId === editingEntry.casalId && item.retiroId === editingEntry.retiroId && item.pessoaId !== editingEntry.pessoaId);
       if (spouseEntry) {
         await dataService.deleteAdesao(spouseEntry.id);
-        const remaining = (await dataService.listAdesoes()).filter((item) => item.pessoaId === spouseEntry.pessoaId);
-        if (!remaining.length) await dataService.deletePessoa(spouseEntry.pessoaId);
       }
     }
     const person = await saveForm(form, null, null, editingEntry);
