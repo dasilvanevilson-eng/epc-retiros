@@ -667,6 +667,7 @@ async function renderNewRetreat() {
 async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
+  const canDeleteRetreat = currentUser?.role === 'admin';
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
   const publicUrl = `${location.origin}${location.pathname}?adesao=${id}`;
@@ -696,7 +697,37 @@ async function renderRetreat(id) {
     <section class="detail-grid"><article class="panel"><h2>Estrutura</h2><p class="hint">${retreat.setores.length} setores configurados; nenhum voluntário é trazido de outro retiro.</p><div class="structure-summary"><div><strong>Equipe escondida</strong><div class="sector-tags">${sortSectors(retreat.setores.filter((sector) => sectorArea(sector) === 'escondida')).map((sector) => sectorCount(sector) ? `<button type="button" data-sector-participants="${escapeHtml(sector)}">${escapeHtml(sector)} <b>${sectorCount(sector)}</b></button>` : `<span>${escapeHtml(sector)} <b>0</b></span>`).join('') || '<em>Nenhum setor</em>'}<button type="button" id="view-space-kids">Crianças Espaço Kids <b>${spaceKids.length}</b></button></div></div><div><strong>Equipe Sala</strong><div class="sector-tags">${sortSectors(retreat.setores.filter((sector) => sectorArea(sector) === 'sala')).map((sector) => sectorCount(sector) ? `<button type="button" data-sector-participants="${escapeHtml(sector)}">${escapeHtml(sector)} <b>${sectorCount(sector)}</b></button>` : `<span>${escapeHtml(sector)} <b>0</b></span>`).join('') || '<em>Nenhum setor</em>'}</div></div></div></article><article class="panel"><h2>Link de cadastro</h2><p class="hint">Envie este link somente após publicar o retiro.</p><div class="copy-field"><input readonly value="${publicUrl}"><button id="copy-link" type="button">Copiar</button></div></article></section>
     <section class="participants-panel panel"><button class="participants-toggle" id="toggle-participants" type="button">${participantsVisible ? 'Fechar visualização dos participantes' : 'Visualizar participantes'}</button>${participantsVisible ? `<div class="participants-content"><h3 class="participants-heading">Participantes</h3><div class="participants-column-heading"><button type="button" data-participant-sort="nome">Nome <span>${sortIndicator('nome')}</span></button><button type="button" data-participant-sort="setor">Setor de trabalho <span>${sortIndicator('setor')}</span></button></div><div class="participants-scroll">${retreatEnrolments.length ? sortedParticipants.map((entry) => `<a href="#pessoas/${entry.pessoaId}/${id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></a>`).join('') : '<p>Nenhum voluntário registrado.</p>'}</div></div>` : ''}</section>
     `, 'retiros');
+  if (canDeleteRetreat) {
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'delete-retreat';
+    deleteButton.id = 'delete-retreat';
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Excluir retiro';
+    app.querySelector('.detail-actions')?.append(deleteButton);
+  }
   app.querySelector('#publish-retreat').addEventListener('click', async () => { if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); } });
+  app.querySelector('#delete-retreat')?.addEventListener('click', async () => {
+    const totalEnrolments = enrolments.filter((entry) => entry.retiroId === id).length;
+    if (!confirm(`Excluir o retiro "${retreat.nome}"?\n\nEsta acao remove a estrutura deste retiro e ${totalEnrolments} adesao(oes). Os cadastros dos voluntarios serao preservados.`)) return;
+    const button = app.querySelector('#delete-retreat');
+    button.disabled = true;
+    button.textContent = 'Excluindo...';
+    try {
+      const [allCommunities, allBadges] = await Promise.all([dataService.listComunidades(), dataService.listCrachas()]);
+      await Promise.all([
+        ...enrolments.filter((entry) => entry.retiroId === id).map((entry) => dataService.deleteAdesao(entry.id)),
+        ...allCommunities.filter((community) => community.retiroId === id).map((community) => dataService.deleteComunidade(community.id)),
+        ...allBadges.filter((badge) => badge.retiroId === id).map((badge) => dataService.deleteCracha(badge.id)),
+      ]);
+      await dataService.deleteRetiro(id);
+      await loadData();
+      location.hash = '#retiros';
+    } catch (error) {
+      alert(`Nao foi possivel excluir o retiro. ${error.message || 'Atualize a pagina e tente novamente.'}`);
+      button.disabled = false;
+      button.textContent = 'Excluir retiro';
+    }
+  });
   app.querySelector('#copy-link').addEventListener('click', async () => { await navigator.clipboard.writeText(publicUrl); app.querySelector('#copy-link').textContent = 'Copiado!'; });
   app.querySelector('#toggle-participants').addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
   app.querySelectorAll('[data-participant-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.participantSort; participantSort = { key, direction: participantSort.key === key && participantSort.direction === 'asc' ? 'desc' : 'asc' }; renderRetreat(id); }));

@@ -50,7 +50,8 @@ async function handleApi(req, res, pathname) {
   if (resource === 'auth' && id === 'logout' && req.method === 'POST') return sendNoContent(res, { 'Set-Cookie': clearSessionCookie() });
 
   const publicRegistrationRequest = isPublicRegistrationRequest(resource, id, req);
-  if (!publicRegistrationRequest && !readSession(req)) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
+  const session = readSession(req);
+  if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
 
   if (resource === 'database' && req.method === 'GET') return sendJson(res, 200, await readDatabase());
   if (resource === 'database' && id === 'import' && req.method === 'POST') {
@@ -68,6 +69,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === 'DELETE' && id) {
+    if (resource === 'retiros' && session?.role !== 'admin') return sendError(res, 403, 'Somente administradores podem excluir retiros.');
     await deleteRecord(resource, decodeURIComponent(id));
     return sendNoContent(res);
   }

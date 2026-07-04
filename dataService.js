@@ -114,6 +114,7 @@ export const dataService = {
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),
+  deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: () => list('adesoes'),
   saveAdesao: (enrolment) => save('adesoes', enrolment),
   deleteAdesao: (id) => remove('adesoes', id),
