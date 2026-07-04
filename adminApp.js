@@ -1,7 +1,8 @@
 import { dataService, retreatDefaults } from './dataService.js';
 
 const app = document.querySelector('#app');
-const publicRetreatId = new URLSearchParams(location.search).get('adesao');
+const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
+const publicRetreatId = new URLSearchParams(location.search).get('adesao') || (publicPathRetreatId ? decodeURIComponent(publicPathRetreatId) : '');
 let retreats = [];
 let enrolments = [];
 let people = [];
@@ -694,7 +695,7 @@ async function renderRetreat(id) {
   const canDeleteRetreat = canAccess('retiros.excluir');
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
-  const publicUrl = `${location.origin}${location.pathname}?adesao=${id}`;
+  const publicUrl = `${location.origin}/adesao/${encodeURIComponent(id)}`;
   const serviceDays = retreatServiceDays(retreat);
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);

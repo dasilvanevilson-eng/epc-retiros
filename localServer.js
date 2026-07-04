@@ -60,6 +60,10 @@ loadLocalEnv().then(async () => {
     try {
       const { pathname } = new URL(req.url, `http://${req.headers.host}`);
       if (pathname.startsWith('/api/')) await handleApi(req, res, pathname);
+      else if (pathname.startsWith('/adesao/')) {
+        const { sendPublicRegistrationPage } = require('./publicRegistrationPage');
+        await sendPublicRegistrationPage(req, res, pathname.replace(/^\/adesao\/?/, ''));
+      }
       else await handleStatic(req, res, pathname);
     } catch (error) {
       sendError(res, 500, error.message || 'Erro interno.');
