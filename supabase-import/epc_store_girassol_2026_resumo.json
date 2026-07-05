@@ -1,0 +1,12 @@
+{
+  "arquivo": "epc_store_girassol_2026.csv",
+  "retiro": "Girassol 2026",
+  "retiroId": "girassol-2026-teste",
+  "pessoasEquipe": 180,
+  "adesoesEquipe": 180,
+  "equipeValidada": 144,
+  "equipeAValidar": 36,
+  "cursistas": 50,
+  "totalLinhasImportacao": 411,
+  "simulation": "simulacao_girassol_2026_csv"
+}

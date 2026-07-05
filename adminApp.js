@@ -142,6 +142,21 @@ const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || en
 const isCoupleMateValidated = (entry = {}, items = enrolments) => Boolean(entry.casalId && items.some((item) => item.id !== entry.id && item.retiroId === entry.retiroId && item.casalId === entry.casalId && isEnrolmentValidated(item)));
 const isEnrolmentEffectivelyValidated = (entry = {}, items = enrolments) => isEnrolmentValidated(entry) || isCoupleMateValidated(entry, items);
 const validatedEnrolments = (items = enrolments) => items.filter((entry) => isEnrolmentEffectivelyValidated(entry, items));
+const enrolmentValidationGroups = (items = []) => {
+  const groupedCouples = new Set();
+  return items.reduce((groups, entry) => {
+    if (entry.casalId) {
+      const key = `${entry.retiroId}:${entry.casalId}`;
+      if (groupedCouples.has(key)) return groups;
+      groupedCouples.add(key);
+      groups.push(items.filter((item) => item.retiroId === entry.retiroId && item.casalId === entry.casalId));
+      return groups;
+    }
+    groups.push([entry]);
+    return groups;
+  }, []);
+};
+const isEnrolmentGroupValidated = (group = []) => group.every(isEnrolmentValidated);
 const personalDataFields = [
   ['nome', 'nome', normalizeText],
   ['nascimento', 'data de nascimento', (value) => String(value || '').trim()],
@@ -432,7 +447,7 @@ async function renderHome() {
   const activeStudents = active ? allStudents.filter((student) => student.retiroId === active.id) : [];
   const activeEnrolments = active ? validatedEnrolments(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
-  const pendingEntries = activeEntries.filter((entry) => !isEnrolmentEffectivelyValidated(entry, activeEntries));
+  const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeEnrolments.flatMap((entry) => entry.setores || [])]))
     .map((sector) => [sector, activeEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
@@ -483,7 +498,7 @@ async function renderHome() {
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s) validada(s)</small></article>
-      <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingEntries.length}</strong><small>ficha(s)</small></article>
+      <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section>
     <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
       <article class="student-health-card"><div><span>Cursistas com Intolerância a alimentos</span><strong>${intoleranceStudents.length}</strong></div><button type="button" data-home-health="intolerance">Visualizar</button></article>
@@ -997,19 +1012,8 @@ async function renderValidacaoInscricoes() {
       ? `Dados pessoais alterados desde a última inscrição: ${changed.join(', ')}`
       : 'Sem alteração nos dados pessoais desde a última inscrição';
   };
-  const validationGroups = [];
-  const groupedCouples = new Set();
-  retreatEntries.forEach((entry) => {
-    if (entry.casalId) {
-      const key = `${entry.retiroId}:${entry.casalId}`;
-      if (groupedCouples.has(key)) return;
-      groupedCouples.add(key);
-      validationGroups.push(allRetreatEntries.filter((item) => item.casalId === entry.casalId).sort(byName));
-      return;
-    }
-    validationGroups.push([entry]);
-  });
-  const groupValidated = (group) => group.every(isEnrolmentValidated);
+  const validationGroups = enrolmentValidationGroups(retreatEntries).map((group) => [...group].sort(byName));
+  const groupValidated = isEnrolmentGroupValidated;
   const pendingCount = validationGroups.filter((group) => !groupValidated(group)).length;
   const validatedCount = validationGroups.length - pendingCount;
   const validationGroupHtml = (group) => {

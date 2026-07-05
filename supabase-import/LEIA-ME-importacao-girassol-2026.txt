@@ -1,0 +1,9 @@
+Importacao no Supabase
+
+1. Abra o Supabase > Table Editor > epc_store.
+2. Use Import data from CSV.
+3. Selecione epc_store_girassol_2026.csv.
+4. Confira as colunas: store, id, data.
+5. Importe. created_at e updated_at serao preenchidos pelo banco.
+
+Observacao: se houver conflito com registros existentes de mesmo store/id, apague esses registros de teste antes ou use upsert/import equivalente.
