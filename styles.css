@@ -2647,9 +2647,13 @@ select:focus {
 
   .receiver-row {
     display:grid;
-    grid-template-columns:1fr;
+    grid-template-columns:minmax(0, 1fr) minmax(122px, .58fr);
+    grid-template-areas:
+      "name paid"
+      "sector paid"
+      "suggested check";
     min-width:0;
-    gap:8px;
+    gap:7px 12px;
     margin-bottom:10px;
     padding:14px;
     border:1px solid var(--ui-line);
@@ -2658,7 +2662,20 @@ select:focus {
   }
 
   .receiver-row strong {
+    grid-area:name;
     font-size:15px;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+
+  .receiver-row>span:first-of-type {
+    grid-area:sector;
+  }
+
+  .receiver-row>span:nth-of-type(2) {
+    grid-area:suggested;
+    color:var(--ui-green);
+    font-weight:800;
   }
 
   .receiver-row>span {
@@ -2666,10 +2683,16 @@ select:focus {
   }
 
   .receiver-row input[data-paid-entry] {
+    grid-area:paid;
+    align-self:start;
     width:100%;
+    min-width:0;
+    text-align:right;
+    font-weight:800;
   }
 
   .payment-check {
+    grid-area:check;
     justify-content:space-between;
     min-height:44px;
     padding:10px 12px;
@@ -2802,6 +2825,20 @@ select:focus {
 
   .dashboard-metrics {
     grid-template-columns:1fr;
+  }
+
+  .receiver-row {
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "name"
+      "sector"
+      "suggested"
+      "paid"
+      "check";
+  }
+
+  .receiver-row input[data-paid-entry] {
+    text-align:left;
   }
 
   .public-shell .section-heading>span,
