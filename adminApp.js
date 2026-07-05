@@ -856,23 +856,25 @@ async function renderRecebedor() {
   };
   const saveFinancialEntry = async (entry) => { if (entry.tipoFinanceiro === 'cursista') await dataService.saveCursista(entry); else await dataService.saveAdesao(entry); };
   const peopleById = new Map(people.map((person) => [person.id, person]));
+  const entryGender = (entry) => normalizeText(peopleById.get(entry.pessoaId)?.genero || entry.dadosPessoais?.genero || entry.genero);
   const orderedCoupleEntries = (items) => [...items].sort((first, second) => {
-    const firstMale = normalizeText(peopleById.get(first.pessoaId)?.genero) === 'masculino';
-    const secondMale = normalizeText(peopleById.get(second.pessoaId)?.genero) === 'masculino';
+    const firstMale = entryGender(first) === 'masculino';
+    const secondMale = entryGender(second) === 'masculino';
     if (firstMale !== secondMale) return firstMale ? -1 : 1;
     return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
   });
+  const isVolunteerCoupleRow = (row) => row.entries.some((entry) => entry.tipoFinanceiro === 'voluntario' && entry.casalId);
   const receiverRows = [];
   const usedCouples = new Set();
   entries.forEach((entry) => {
-    if (!entry.casalId || entry.tipoFinanceiro === 'cursista') { receiverRows.push({ id: entry.id, entries: [entry], nome: entry.nome, setores: entry.setores || [] }); return; }
+    if (!entry.casalId || entry.tipoFinanceiro === 'cursista') { receiverRows.push({ id: entry.id, entries: [entry], nome: entry.nome, sortName: entry.nome, setores: entry.setores || [] }); return; }
     if (usedCouples.has(entry.casalId)) return;
     const couple = orderedCoupleEntries(entries.filter((item) => item.tipoFinanceiro === entry.tipoFinanceiro && item.casalId === entry.casalId));
     usedCouples.add(entry.casalId);
-    receiverRows.push({ id: `casal-${entry.casalId}`, entries: couple, nome: couple.map((item) => item.nome).filter(Boolean).join(' e '), setores: uniqueSectors(couple.flatMap((item) => item.setores || [])) });
+    receiverRows.push({ id: `casal-${entry.casalId}`, entries: couple, nome: couple.map((item) => item.nome).filter(Boolean).join(' e '), sortName: couple[0]?.nome || '', setores: uniqueSectors(couple.flatMap((item) => item.setores || [])), isCouple: true });
   });
   const rowSuggested = (row) => {
-    const isCoupleRow = row.entries.some((entry) => entry.tipoFinanceiro === 'voluntario' && entry.casalId);
+    const isCoupleRow = isVolunteerCoupleRow(row);
     if (isCoupleRow) {
       const values = row.entries.map(effectiveSuggested).filter((value) => value > 0);
       const configuredTotal = (Number(retreat.valorInscricaoVoluntario) || 0) * 2;
@@ -882,23 +884,28 @@ async function renderRecebedor() {
     }
     return row.entries.reduce((sum, entry) => sum + effectiveSuggested(entry), 0);
   };
-  const rowPaid = (row) => row.entries.reduce((sum, entry) => sum + (Number(entry.valorPago) || 0), 0);
+  const rowPaid = (row) => {
+    const values = row.entries.map((entry) => Number(entry.valorPago) || 0);
+    const sum = values.reduce((total, value) => total + value, 0);
+    if (!isVolunteerCoupleRow(row) || values.length < 2) return sum;
+    const suggested = rowSuggested(row);
+    const max = Math.max(...values);
+    const duplicatedCoupleTotal = suggested > 0 && values.filter(Boolean).length > 1 && values.every((value) => !value || Math.abs(value - max) < 0.01) && Math.abs(max - suggested) < 0.01;
+    return duplicatedCoupleTotal ? max : sum;
+  };
   const rowPaidStatus = (row) => row.entries.every((entry) => entry.taxaPaga);
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
-  const values = (row, key) => ({ nome: row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
+  const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
   const paidCount = receiverRows.filter(rowPaidStatus).length;
   const totalPaid = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowPaid(row) : 0), 0);
-  const paidSuggested = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowSuggested(row) : 0), 0);
-  const balance = totalPaid - paidSuggested;
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
   const rows = [...receiverRows].sort((first, second) => { const result = String(values(first, receiverSort.key)).localeCompare(String(values(second, receiverSort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' }); return receiverSort.direction === 'asc' ? result : -result; });
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
-  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidCount}</strong><small>registro(s)</small></article><article><span>Falta contribuir</span><strong>${receiverRows.length - paidCount}</strong><small>registro(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article><article><span>Saldo</span><strong>${currency(balance)}</strong></article></section><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row"><strong>${escapeHtml(row.nome)}</strong><span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''}><span>Pago</span></label></div>`).join('') : '<p class="empty-state">Nenhum voluntário para este retiro.</p>'}</div></section>`, 'recebedor');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidCount}</strong><small>registro(s)</small></article><article><span>Falta contribuir</span><strong>${receiverRows.length - paidCount}</strong><small>registro(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}"><strong>${escapeHtml(row.nome)}</strong><span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''}><span>Pago</span></label></div>`).join('') : '<p class="empty-state">Nenhum voluntário para este retiro.</p>'}</div></section>`, 'recebedor');
   const viewOptions = document.createElement('div');
   viewOptions.className = 'receiver-view-options';
   viewOptions.innerHTML = '<button type="button" id="receiver-by-sector">Buscar setor</button>';
   app.querySelector('.receiver-summary').insertAdjacentElement('afterend', viewOptions);
-  if (balance < 0) app.querySelector('.receiver-summary article:last-child').classList.add('is-negative');
   if (receiverFocusSector) { const firstIndex = rows.findIndex((row) => rowHasSector(row, receiverFocusSector)); const row = app.querySelectorAll('.receiver-row')[firstIndex]; if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' }); receiverFocusSector = null; }
   app.querySelector('#receiver-by-sector').addEventListener('click', () => {
     const sectors = [...new Set(receiverRows.flatMap((row) => row.setores))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
@@ -908,8 +915,20 @@ async function renderRecebedor() {
     renderSectorList(); app.append(overlay);
   });
   app.querySelectorAll('[data-receiver-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.receiverSort; receiverSort = { key, direction: receiverSort.key === key && receiverSort.direction === 'asc' ? 'desc' : 'asc' }; renderRecebedor(); }));
-  app.querySelectorAll('[data-paid-entry]').forEach((input) => { input.addEventListener('focus', () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); input.value = row ? rowPaid(row) || '' : ''; }); input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); const total = parseCurrency(input.value); const suggestedTotal = rowSuggested(row); await Promise.all((row?.entries || []).map((entry) => { const suggested = effectiveSuggested(entry); entry.valorPago = suggestedTotal ? total * (suggested / suggestedTotal) : total / row.entries.length; return saveFinancialEntry(entry); })); input.value = currency(total); await loadData(); }); });
-  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.feeEntry); await Promise.all((row?.entries || []).map((entry) => { entry.taxaPaga = input.checked; if (input.checked && !entry.valorPago) entry.valorPago = effectiveSuggested(entry); if (!input.checked) entry.valorPago = 0; return saveFinancialEntry(entry); })); await loadData(); renderRecebedor(); }));
+  const distributePaidValue = (row, total) => {
+    if (!row?.entries?.length) return [];
+    if (isVolunteerCoupleRow(row)) {
+      const share = total / row.entries.length;
+      return row.entries.map((entry) => ({ entry, value: share }));
+    }
+    const suggestedTotal = rowSuggested(row);
+    return row.entries.map((entry) => {
+      const suggested = effectiveSuggested(entry);
+      return { entry, value: suggestedTotal ? total * (suggested / suggestedTotal) : total / row.entries.length };
+    });
+  };
+  app.querySelectorAll('[data-paid-entry]').forEach((input) => { input.addEventListener('focus', () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); input.value = row ? rowPaid(row) || '' : ''; }); input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); const total = parseCurrency(input.value); await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.valorPago = value; return saveFinancialEntry(entry); })); input.value = currency(total); await loadData(); }); });
+  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.feeEntry); if (!row) return; const total = input.checked ? rowSuggested(row) : 0; await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.taxaPaga = input.checked; entry.valorPago = value; return saveFinancialEntry(entry); })); await loadData(); renderRecebedor(); }));
 }
 async function renderPessoas() { layout(`<section class="page-heading"><div><p class="eyebrow">Histórico reutilizável</p><h1>Pessoas</h1><p>Dados pessoais são reaproveitados; a participação é sempre nova em cada retiro.</p></div></section><section class="panel">${people.length ? `<div class="simple-list">${people.map((person) => `<div><strong>${escapeHtml(person.nome)}</strong><span>Nascimento: ${date(person.nascimento)} · ${escapeHtml(person.telefone || 'Sem telefone')}</span><small>${enrolments.filter((entry) => entry.pessoaId === person.id).length} retiro(s)</small></div>`).join('')}</div>` : '<div class="empty-state">O histórico de pessoas será formado quando chegarem os primeiros cadastros.</div>'}</section>`, 'pessoas'); }
 
