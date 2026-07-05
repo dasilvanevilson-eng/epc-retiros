@@ -178,6 +178,9 @@ function renderMovementPage() {
       <nav class="detail-nav">
         <a href="index.html">Voltar</a>
       </nav>
+      <aside class="construction-warning" role="note">
+        Esse sistema está em construção e os dados constantes nesta página são fictícios.
+      </aside>
       <header class="detail-hero">
         <span class="detail-logo">
           <img class="detail-logo-image" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" />

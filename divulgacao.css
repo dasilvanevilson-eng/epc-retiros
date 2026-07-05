@@ -473,6 +473,20 @@ a { color: inherit; }
   margin-bottom: 24px;
 }
 
+.construction-warning {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 2px solid #d15032;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff1df, #ffe0d7);
+  color: #7f2c1b;
+  box-shadow: 0 16px 34px rgba(151, 54, 28, .18);
+  font-size: clamp(15px, 2vw, 18px);
+  font-weight: 900;
+  line-height: 1.35;
+  text-align: center;
+}
+
 .detail-hero {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
