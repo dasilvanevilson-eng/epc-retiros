@@ -206,9 +206,6 @@ function standardSectors() {
   return uniqueSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
 }
 const saveStandardSectors = (sectors) => localStorage.setItem(standardSectorsKey, JSON.stringify(uniqueSectors(sectors)));
-const addStandardSector = (sector) => saveStandardSectors([...standardSectors(), sector]);
-const renameStandardSector = (from, to) => saveStandardSectors(standardSectors().map((sector) => normalizeText(sector) === normalizeText(from) ? to : sector));
-const deleteStandardSector = (sectorToDelete) => saveStandardSectors(standardSectors().filter((sector) => normalizeText(sector) !== normalizeText(sectorToDelete)));
 const stateDatalist = () => `<datalist id="state-options">${brazilianStates.map(([uf, name]) => `<option value="${uf}">${name}</option>`).join('')}</datalist>`;
 function wireStateFields(root) {
   root.querySelectorAll('[name="estado"]').forEach((input) => {
@@ -606,75 +603,6 @@ function setupQuadranteOrderEditor(form, initialOrder = []) {
   form.addEventListener('change', (event) => { if (event.target.name === 'setores') render(); });
   form.addEventListener('sectors:updated', (event) => { if (event.detail?.order) currentOrder = [...event.detail.order]; render(); });
   render();
-}
-
-function setupSectorManagement(form, retreatId = null) {
-  form._sectorRenames = new Map();
-  const sectorIsUsed = (sector) => retreatId && enrolments.some((entry) => entry.retiroId === retreatId && entryHasSector(entry, sector));
-  const refreshQuadranteOrder = () => form.querySelector('input[name="setores"]')?.dispatchEvent(new Event('change', { bubbles: true }));
-  const renameSectorInOrder = (oldName, newName) => {
-    form.querySelectorAll('input[name="ordemQuadrante"]').forEach((input) => { if (input.value === oldName) input.value = newName; });
-    form.querySelectorAll('.quadrante-order-row').forEach((row) => {
-      if (row.dataset.sector !== oldName) return;
-      row.dataset.sector = newName;
-      row.querySelector('span:last-child').textContent = newName;
-    });
-  };
-  form.addEventListener('click', (event) => {
-    const row = event.target.closest('.sector-option');
-    if (!row) return;
-    const sectorInput = row.querySelector('input[name="setores"]');
-    const publicInput = row.querySelector('input[name="setoresPublicos"]');
-    const currentName = sectorInput.value;
-    if (event.target.closest('[data-edit-sector]')) {
-      const nextName = prompt('Novo nome do setor:', currentName)?.trim();
-      if (!nextName || nextName === currentName) return;
-      const exists = [...form.querySelectorAll('input[name="setores"]')].some((input) => input !== sectorInput && normalizeText(input.value) === normalizeText(nextName));
-      if (exists) { alert('Já existe um setor com esse nome.'); return; }
-      const originalName = [...form._sectorRenames.entries()].find(([, value]) => value === currentName)?.[0] || currentName;
-      form._sectorRenames.set(originalName, nextName);
-      renameStandardSector(currentName, nextName);
-      sectorInput.value = nextName;
-      publicInput.value = nextName;
-      row.dataset.sectorOption = nextName;
-      row.querySelector('[data-sector-name]').textContent = nextName;
-      renameSectorInOrder(currentName, nextName);
-      refreshQuadranteOrder();
-    }
-    if (event.target.closest('[data-delete-sector]')) {
-      if (sectorIsUsed(currentName)) { alert('Este setor possui pessoas cadastradas neste retiro. Remova ou transfira essas pessoas antes de excluir o setor.'); return; }
-      if (!confirm(`Excluir o setor "${currentName}" desta lista?`)) return;
-      deleteStandardSector(currentName);
-      row.remove();
-      form.querySelectorAll('input[name="ordemQuadrante"]').forEach((input) => { if (input.value === currentName) input.closest('.quadrante-order-row')?.remove(); });
-      refreshQuadranteOrder();
-    }
-  });
-}
-
-function setupCustomSector(form) {
-  const input = form.querySelector('[data-new-sector]');
-  const button = form.querySelector('[data-add-sector]');
-  const addSector = () => {
-    const list = form.querySelector('.sector-checks[data-area="sala"]');
-    const sector = input.value.trim();
-    if (!sector) { input.focus(); return; }
-    const normalized = sector.toLocaleLowerCase('pt-BR');
-    const exists = [...list.querySelectorAll('input[name="setores"]')].some((item) => item.value.toLocaleLowerCase('pt-BR') === normalized);
-    if (exists) { input.setCustomValidity('Este setor já está na lista.'); input.reportValidity(); input.setCustomValidity(''); return; }
-    list.insertAdjacentHTML('beforeend', sectorOptionHtml(sector, true, true));
-    addStandardSector(sector);
-    const checkbox = list.querySelector(`.sector-option:last-child input[name="setores"]`);
-    [...list.querySelectorAll('.sector-option')]
-      .sort((first, second) => first.querySelector('input[name="setores"]').value.localeCompare(second.querySelector('input[name="setores"]').value, 'pt-BR', { sensitivity: 'base' }))
-      .forEach((item) => list.append(item));
-    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-    form.dispatchEvent(new CustomEvent('sectors:updated', { bubbles: true }));
-    input.value = '';
-    input.focus();
-  };
-  button.addEventListener('click', addSector);
-  input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addSector(); } });
 }
 
 async function renderNewRetreat() {
