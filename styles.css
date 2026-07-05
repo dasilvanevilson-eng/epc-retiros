@@ -2647,13 +2647,13 @@ select:focus {
 
   .receiver-row {
     display:grid;
-    grid-template-columns:minmax(0, 1fr) minmax(122px, .58fr);
+    grid-template-columns:minmax(0, 1.25fr) minmax(70px, .5fr) minmax(96px, .68fr) minmax(76px, .48fr);
     grid-template-areas:
-      "name paid"
-      "sector paid"
-      "suggested check";
+      "name name name name"
+      "sector suggested paid check";
     min-width:0;
-    gap:7px 12px;
+    gap:8px 8px;
+    align-items:center;
     margin-bottom:10px;
     padding:14px;
     border:1px solid var(--ui-line);
@@ -2663,42 +2663,53 @@ select:focus {
 
   .receiver-row strong {
     grid-area:name;
-    font-size:15px;
+    font-size:15.5px;
     line-height:1.25;
     overflow-wrap:anywhere;
   }
 
   .receiver-row>span:first-of-type {
     grid-area:sector;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
   }
 
   .receiver-row>span:nth-of-type(2) {
     grid-area:suggested;
     color:var(--ui-green);
     font-weight:800;
+    white-space:nowrap;
   }
 
   .receiver-row>span {
-    font-size:13px;
+    font-size:12px;
+    line-height:1.25;
   }
 
   .receiver-row input[data-paid-entry] {
     grid-area:paid;
-    align-self:start;
+    align-self:center;
     width:100%;
     min-width:0;
+    min-height:40px;
+    padding:8px;
     text-align:right;
     font-weight:800;
+    font-size:13px;
   }
 
   .payment-check {
     grid-area:check;
-    justify-content:space-between;
-    min-height:44px;
-    padding:10px 12px;
+    justify-content:center;
+    min-height:40px;
+    padding:8px;
     border:1px solid #d9d1c3;
     border-radius:8px;
     background:#fbfaf5;
+    font-size:12px;
+    white-space:nowrap;
   }
 
   .validation-list article {
@@ -2828,17 +2839,22 @@ select:focus {
   }
 
   .receiver-row {
-    grid-template-columns:1fr;
+    grid-template-columns:minmax(0, 1fr) minmax(64px, auto) minmax(88px, .8fr) minmax(66px, auto);
     grid-template-areas:
-      "name"
-      "sector"
-      "suggested"
-      "paid"
-      "check";
+      "name name name name"
+      "sector suggested paid check";
+    gap:7px 6px;
   }
 
   .receiver-row input[data-paid-entry] {
-    text-align:left;
+    padding:7px 6px;
+    text-align:right;
+    font-size:12px;
+  }
+
+  .payment-check {
+    padding:7px 6px;
+    font-size:11px;
   }
 
   .public-shell .section-heading>span,
@@ -2851,5 +2867,15 @@ select:focus {
 
   .badge-preview .badge-card {
     transform:scale(.72);
+  }
+}
+
+@media(max-width:360px) {
+  .receiver-row {
+    grid-template-columns:minmax(0, 1fr) minmax(88px, .85fr) minmax(66px, auto);
+    grid-template-areas:
+      "name name name"
+      "sector paid check"
+      "suggested paid check";
   }
 }
