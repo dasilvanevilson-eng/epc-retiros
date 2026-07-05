@@ -177,7 +177,6 @@ function renderMovementPage() {
     <section class="movement-detail">
       <nav class="detail-nav">
         <a href="index.html">Voltar</a>
-        <a href="epc-retiros.html#inicio">Área Restrita</a>
       </nav>
       <header class="detail-hero">
         <span class="detail-logo">

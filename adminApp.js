@@ -1842,14 +1842,65 @@ async function renderCrachas() {
     openBadgePanel('logo');
     renderBadges();
   };
+  const badgePrintDocument = (content, title) => `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="${escapeHtml(`${location.origin}/`)}">
+  <title>${escapeHtml(title || 'Crachás')}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <style>
+    @page { size:A4; margin:0; }
+    * { box-sizing:border-box; }
+    html, body { width:210mm; min-height:297mm; margin:0; background:#fff; }
+    body { color:#1f2c3f; font-family:'DM Sans',sans-serif; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .badge-print-sheet { display:grid; grid-template-columns:repeat(2,95mm); grid-template-rows:repeat(4,65mm); align-content:start; justify-content:start; gap:2mm; width:210mm; height:297mm; padding:6mm; margin:0; overflow:hidden; background:#fff; break-after:page; page-break-after:always; }
+    .badge-print-sheet:last-child { break-after:auto; page-break-after:auto; }
+    .badge-card { position:relative; isolation:isolate; display:grid; grid-template-rows:1fr auto; width:95mm; height:65mm; overflow:hidden; padding:5mm 6mm 4mm; border:var(--badge-border-width) solid var(--badge-border); border-radius:var(--badge-corner); background:var(--badge-bg); color:var(--badge-text); font-family:'DM Sans',sans-serif; box-shadow:none; break-inside:avoid; page-break-inside:avoid; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .badge-wallpaper { position:absolute; z-index:0; inset:0; background-position:center; background-size:cover; background-repeat:no-repeat; pointer-events:none; }
+    .badge-wallpaper::after { content:''; position:absolute; inset:0; background:var(--badge-accent); opacity:.08; mix-blend-mode:multiply; }
+    .badge-watermark { position:absolute; z-index:1; left:var(--badge-watermark-x); top:var(--badge-watermark-y); width:var(--badge-watermark-size); height:var(--badge-watermark-size); object-fit:contain; opacity:var(--badge-watermark-opacity); transform:translate(-50%,-50%); }
+    .badge-logo { position:absolute; z-index:3; left:var(--badge-logo-x); top:var(--badge-logo-y); width:var(--badge-logo); height:var(--badge-logo); object-fit:contain; transform:translate(-50%,-50%); }
+    .badge-main { position:relative; z-index:2; display:grid; align-content:center; min-width:0; padding:12mm 0 5mm; }
+    .badge-main strong { display:block; justify-self:var(--badge-name-justify); max-width:100%; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:var(--badge-name); line-height:.96; font-weight:900; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
+    .badge-main span { display:block; justify-self:var(--badge-sector-justify); max-width:100%; margin-top:2.2mm; color:var(--badge-muted); font-family:var(--badge-sector-font),'DM Sans',sans-serif; font-size:var(--badge-sector); line-height:1.12; font-weight:800; text-align:var(--badge-sector-align); text-transform:uppercase; overflow-wrap:anywhere; }
+    .badge-card footer { position:relative; z-index:2; align-self:end; justify-self:var(--badge-slogan-justify); max-width:100%; min-height:6mm; color:var(--badge-slogan-color); font-family:var(--badge-slogan-font),'DM Sans',sans-serif; font-size:var(--badge-slogan); line-height:1.15; font-weight:800; text-align:var(--badge-slogan-align); overflow-wrap:anywhere; }
+  </style>
+</head>
+<body>${content}</body>
+</html>`;
   const printBadges = (pdf = false) => {
     const profile = badgeProfiles.find((item) => item.id === configSelect?.value);
     if (!profile) { alert('Selecione o modelo do crach\u00e1 que ser\u00e1 usado na impress\u00e3o.'); configSelect?.focus(); return; }
     setActiveProfile(profile);
     if (!badgePrintEntries.length) { alert('Nenhum crach\u00e1 selecionado para gerar.'); return; }
-    document.title = badgePrintTitle || 'Crach\u00e1s';
+    const printContent = printArea.innerHTML.trim();
+    if (!printContent) { alert('Nenhuma p\u00e1gina de crach\u00e1 foi montada para impress\u00e3o.'); return; }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('O navegador bloqueou a janela de impress\u00e3o. Permita pop-ups para este site e tente novamente.'); return; }
+    const title = badgePrintTitle || 'Crach\u00e1s';
+    printWindow.document.open();
+    printWindow.document.write(badgePrintDocument(printContent, title));
+    printWindow.document.close();
     if (pdf) app.querySelector('#badge-print-summary').textContent = 'Na janela de impress\u00e3o, escolha "Salvar como PDF".';
-    window.print();
+    const triggerPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+    printWindow.addEventListener('load', () => {
+      const images = [...printWindow.document.images];
+      if (!images.length) {
+        setTimeout(triggerPrint, 150);
+        return;
+      }
+      Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', resolve, { once: true });
+      }))).then(() => setTimeout(triggerPrint, 150));
+    }, { once: true });
   };
   form.elements.textTarget?.addEventListener('change', () => {
     syncTextTargetControls(settings);
