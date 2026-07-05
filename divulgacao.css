@@ -730,6 +730,41 @@ a { color: inherit; }
   box-shadow: 0 0 0 3px rgba(71, 114, 78, .18);
 }
 
+#public-login-form .password-field {
+  position: relative;
+}
+
+#public-login-form .password-field input {
+  padding-right: 48px;
+}
+
+#public-login-form .password-field .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #47724e;
+  cursor: pointer;
+  box-shadow: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
+#public-login-form .password-field .password-toggle:hover,
+#public-login-form .password-field .password-toggle.is-visible {
+  background: #edf5e9;
+  color: #285130;
+}
+
 .public-login-message {
   min-height: 18px;
   margin: 0;

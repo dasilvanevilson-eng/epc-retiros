@@ -123,7 +123,7 @@ function openRestrictedLogin() {
       </div>
       <form id="public-login-form">
         <label><span>Login</span><input name="username" autocomplete="username" required></label>
-        <label><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <label><span>Senha</span><div class="password-field"><input name="password" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">👁</button></div></label>
         <p class="public-login-message" aria-live="polite"></p>
         <button type="submit">Entrar <span>→</span></button>
       </form>
@@ -132,10 +132,22 @@ function openRestrictedLogin() {
   overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
   overlay.querySelector('.public-login-close').addEventListener('click', close);
   overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+  overlay.querySelector('[data-password-toggle]').addEventListener('click', (event) => {
+    const button = event.currentTarget;
+    const input = button.closest('.password-field')?.querySelector('input');
+    if (!input) return;
+    const showPassword = input.type === 'password';
+    input.type = showPassword ? 'text' : 'password';
+    button.classList.toggle('is-visible', showPassword);
+    const label = showPassword ? 'Ocultar senha' : 'Mostrar senha';
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+    input.focus();
+  });
   overlay.querySelector('#public-login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const button = form.querySelector('button');
+    const button = form.querySelector('button[type="submit"]');
     const message = form.querySelector('.public-login-message');
     button.disabled = true;
     message.textContent = 'Validando acesso...';

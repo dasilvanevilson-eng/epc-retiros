@@ -76,6 +76,25 @@ const sortCommunitiesByPosition = (communities = []) => communities
   .map(({ community }, index) => ({ ...community, ordem: Number(community.ordem) || index + 1 }));
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+const passwordToggleHtml = '<button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">👁</button>';
+const passwordFieldHtml = (inputAttributes) => `<div class="password-field"><input name="password" type="password" ${inputAttributes}>${passwordToggleHtml}</div>`;
+function wirePasswordToggles(root = document) {
+  root.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    if (button.dataset.passwordToggleReady) return;
+    button.dataset.passwordToggleReady = 'true';
+    button.addEventListener('click', () => {
+      const input = button.closest('.password-field')?.querySelector('input');
+      if (!input) return;
+      const showPassword = input.type === 'password';
+      input.type = showPassword ? 'text' : 'password';
+      button.classList.toggle('is-visible', showPassword);
+      const label = showPassword ? 'Ocultar senha' : 'Mostrar senha';
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+      input.focus();
+    });
+  });
+}
 const date = (value) => value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T12:00:00`)) : 'A definir';
 const dateRange = (start, end) => start && end && end !== start ? `${date(start)} a ${date(end)}` : date(start);
 const birthday = (value) => value ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(`${value}T12:00:00`)) : 'A definir';
@@ -2806,16 +2825,17 @@ function renderLogin(message = '') {
       </div>
       <form id="login-form">
         <label class="field"><span>Login</span><input name="username" autocomplete="username" required autofocus></label>
-        <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <label class="field"><span>Senha</span>${passwordFieldHtml('autocomplete="current-password" required')}</label>
         <p id="login-message" class="form-message">${escapeHtml(message)}</p>
         <button type="submit" class="primary-button">Entrar <span>→</span></button>
       </form>
     </section>
   </main>`;
   const form = app.querySelector('#login-form');
+  wirePasswordToggles(form);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const button = form.querySelector('button');
+    const button = form.querySelector('button[type="submit"]');
     const messageBox = form.querySelector('#login-message');
     button.disabled = true;
     messageBox.textContent = 'Validando acesso...';

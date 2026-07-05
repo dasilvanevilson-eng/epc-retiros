@@ -214,6 +214,40 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
   margin-top:10px;
 }
 
+.password-field {
+  position:relative;
+}
+
+.password-field input {
+  padding-right:48px;
+}
+
+.password-field .password-toggle {
+  position:absolute;
+  top:50%;
+  right:7px;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:var(--leaf);
+  box-shadow:none;
+  font-size:16px;
+  line-height:1;
+}
+
+.password-field .password-toggle:hover,
+.password-field .password-toggle.is-visible {
+  background:#edf5e9;
+  color:#285130;
+}
+
 .session-user {
   margin-top:18px;
   padding:12px;
