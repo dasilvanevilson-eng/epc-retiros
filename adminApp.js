@@ -719,7 +719,9 @@ async function renderRetreat(id) {
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
   const publicUrl = `${location.origin}/adesao/${encodeURIComponent(id)}`;
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
-  const sectorLinks = storedSectorLinks.length || !canAccess('retiros.editar') ? storedSectorLinks : await ensureSectorLinks(retreat);
+  const sectorLinks = canAccess('retiros.editar')
+    ? await ensureSectorLinks(retreat)
+    : syncSectorLinks({ linksSetores: storedSectorLinks }, retreat.setores || []).filter((link) => storedSectorLinks.some((stored) => stored.token === link.token));
   const serviceDays = retreatServiceDays(retreat);
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
@@ -757,9 +759,9 @@ async function renderRetreat(id) {
   if (sectorLinks.length) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
-    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Envie ao coordenador do setor para acompanhar os nomes inscritos naquela equipe.</p><div class="sector-link-list">${sectorLinks.map((link) => {
+    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Busque o setor e envie o link ao coordenador para acompanhar os nomes inscritos naquela equipe.</p><label class="field sector-link-search"><span>Buscar setor</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${sectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor.</div><div class="sector-link-list" id="sector-link-list">${sectorLinks.map((link) => {
       const url = `${location.origin}/setor/${encodeURIComponent(id)}/${encodeURIComponent(link.token)}`;
-      return `<div class="sector-link-row"><strong>${escapeHtml(link.setor)}</strong><div class="copy-field"><input readonly value="${escapeHtml(url)}"><button type="button" data-copy-sector-link="${escapeHtml(url)}">Copiar</button></div></div>`;
+      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="copy-field"><input readonly value="${escapeHtml(url)}"><button type="button" data-copy-sector-link="${escapeHtml(url)}">Copiar</button></div></div>`;
     }).join('')}</div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
@@ -793,6 +795,23 @@ async function renderRetreat(id) {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);
     button.textContent = 'Copiado!';
   }));
+  const sectorLinkSearch = app.querySelector('#sector-link-search');
+  if (sectorLinkSearch) {
+    const rows = [...app.querySelectorAll('[data-sector-link-row]')];
+    const feedback = app.querySelector('#sector-link-feedback');
+    const filterSectorLinks = () => {
+      const query = normalizeText(sectorLinkSearch.value);
+      let visible = 0;
+      rows.forEach((row) => {
+        const matches = query && normalizeText(row.dataset.sectorLinkRow).includes(query);
+        row.hidden = !matches;
+        if (matches) visible += 1;
+      });
+      feedback.textContent = query ? (visible ? `${visible} setor(es) encontrado(s).` : 'Nenhum setor encontrado.') : 'Digite para localizar um setor.';
+    };
+    sectorLinkSearch.addEventListener('input', filterSectorLinks);
+    filterSectorLinks();
+  }
   app.querySelector('#toggle-participants').addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
   app.querySelectorAll('[data-participant-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.participantSort; participantSort = { key, direction: participantSort.key === key && participantSort.direction === 'asc' ? 'desc' : 'asc' }; renderRetreat(id); }));
   app.querySelector('#view-space-kids').addEventListener('click', () => { const overlay = document.createElement('section'); overlay.className = 'sector-participants-overlay'; overlay.innerHTML = `<div class="sector-participants-dialog"><div class="panel-heading"><div><p class="eyebrow">Espaço Kids</p><h2>Crianças cadastradas</h2><p>${spaceKids.length} criança(s) informada(s) para este retiro.</p></div></div><div class="kids-participants-list">${spaceKids.length ? spaceKids.map((kid) => `<div><strong>${escapeHtml(kid.nome)}</strong><span>${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span><small>Cadastrada por: ${escapeHtml(kid.volunteer)}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'} · Setor: ${escapeHtml(kid.sectors?.join(', ') || 'Não informado')}</small></div>`).join('') : '<p>Nenhuma criança cadastrada.</p>'}</div><button type="button" class="close-sector-view">Fechar visualização</button></div>`; overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove()); app.append(overlay); });
