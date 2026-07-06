@@ -115,17 +115,11 @@ function openRestrictedLogin() {
   overlay.innerHTML = `
     <div class="public-login-dialog" role="dialog" aria-modal="true" aria-label="Login da area restrita">
       <button type="button" class="public-login-close" aria-label="Fechar">×</button>
-      <a class="public-login-brand" href="index.html"><span>EPC</span><strong><small>Familia</small>EPC</strong></a>
-      <div class="public-login-heading">
-        <p class="detail-kicker">Area restrita</p>
-        <h2>Acesse sua conta</h2>
-        <p>Informe o login e a senha da equipe para continuar.</p>
-      </div>
       <form id="public-login-form">
         <label><span>Login</span><input name="username" autocomplete="username" required></label>
         <label><span>Senha</span><div class="password-field"><input name="password" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">👁</button></div></label>
         <p class="public-login-message" aria-live="polite"></p>
-        <button type="submit">Entrar <span>→</span></button>
+        <button type="submit">Entrar</button>
       </form>
     </div>`;
   const close = () => overlay.remove();
