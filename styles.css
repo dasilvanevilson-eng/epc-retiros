@@ -4276,3 +4276,84 @@ body:has(.login-shell) {
 .hidden-team-alert-dialog.is-room-team .hidden-team-alert-close:hover {
   background:#365e3e;
 }
+
+.volunteer-term-topic {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:0 0 18px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fbfcf8;
+}
+
+.volunteer-term-topic h3 {
+  margin:0;
+  color:var(--ink);
+  font-size:16px;
+}
+
+.volunteer-term-topic button {
+  flex:0 0 auto;
+  min-height:40px;
+  padding:10px 15px;
+  box-shadow:none;
+}
+
+.volunteer-term-dialog {
+  width:min(780px, 100%);
+  max-height:calc(100vh - 40px);
+  overflow:auto;
+  border-color:var(--leaf);
+}
+
+.volunteer-term-dialog h2 {
+  color:#285130;
+  text-transform:uppercase;
+}
+
+.volunteer-term-dialog .eyebrow {
+  color:var(--leaf);
+}
+
+.volunteer-term-body {
+  display:grid;
+  gap:12px;
+}
+
+.volunteer-term-dialog p:not(.eyebrow),
+.volunteer-term-dialog li {
+  color:#2f3f35;
+  font-size:15px;
+  font-weight:500;
+  line-height:1.58;
+}
+
+.volunteer-term-marker {
+  margin:0;
+  color:#b94137 !important;
+  font-size:20px !important;
+  font-weight:900 !important;
+}
+
+.volunteer-term-body ol {
+  margin:0;
+  padding-left:22px;
+}
+
+.volunteer-term-body li + li {
+  margin-top:12px;
+}
+
+@media(max-width:560px) {
+  .volunteer-term-topic {
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .volunteer-term-topic button {
+    width:100%;
+  }
+}
