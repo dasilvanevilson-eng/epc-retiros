@@ -513,7 +513,13 @@ async function renderHome() {
       volunteer: entry.nome || responsible.nome || 'Não informado',
       contact: responsible.telefone || entry.dadosPessoais?.telefone || '',
     }));
-  }).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
+  }).sort((first, second) => {
+    const firstBirth = Date.parse(`${first.nascimento || ''}T12:00:00`);
+    const secondBirth = Date.parse(`${second.nascimento || ''}T12:00:00`);
+    if (Number.isFinite(firstBirth) && Number.isFinite(secondBirth) && firstBirth !== secondBirth) return secondBirth - firstBirth;
+    if (Number.isFinite(firstBirth) !== Number.isFinite(secondBirth)) return Number.isFinite(firstBirth) ? -1 : 1;
+    return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+  });
   const cityStats = new Map();
   const addCityCount = (city, type) => {
     const label = String(city || '').trim();
