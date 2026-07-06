@@ -1657,6 +1657,31 @@ button:hover,
   line-height:1.4;
 }
 
+.city-health-list>div {
+  grid-template-columns:minmax(0, 1fr) minmax(92px, .35fr) minmax(132px, .45fr);
+  gap:12px;
+  align-items:center;
+}
+
+.city-health-list span {
+  display:grid;
+  gap:2px;
+  justify-items:end;
+  color:#5e6874;
+}
+
+.city-health-list span b {
+  color:#1f2c3f;
+  font-size:18px;
+  line-height:1;
+}
+
+.city-health-list span small {
+  font-size:11px;
+  line-height:1.2;
+  text-align:right;
+}
+
 .presence-stat-panel,
 .shirt-stat-panel {
   min-height:100%;

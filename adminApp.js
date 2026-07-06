@@ -505,20 +505,37 @@ async function renderHome() {
   };
   const quadranteRows = groupedPreferenceRows(activeEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(activeEnrolments, 'foto');
+  const peopleById = new Map(people.map((person) => [person.id, person]));
   const spaceKidsRows = activeEnrolments.flatMap((entry) => {
-    const responsible = people.find((person) => person.id === entry.pessoaId) || entry.dadosPessoais || {};
+    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
     return (entry.espacoKids || []).map((kid) => ({
       ...kid,
       volunteer: entry.nome || responsible.nome || 'Não informado',
       contact: responsible.telefone || entry.dadosPessoais?.telefone || '',
     }));
   }).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
+  const cityStats = new Map();
+  const addCityCount = (city, type) => {
+    const label = String(city || '').trim();
+    if (!label) return;
+    const key = normalizeText(label);
+    const row = cityStats.get(key) || { city: label, students: 0, team: 0 };
+    row[type] += 1;
+    cityStats.set(key, row);
+  };
+  activeStudents.forEach((student) => addCityCount(student.cidade, 'students'));
+  activeEnrolments.forEach((entry) => {
+    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
+    addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
+  });
+  const cityRows = [...cityStats.values()].sort((first, second) => first.city.localeCompare(second.city, 'pt-BR', { sensitivity: 'base' }));
   const sectorRows = sectorCounts.length ? sectorCounts.map(([sector, count]) => `<div><span>${escapeHtml(sector)}</span><strong>${count}</strong></div>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const cityRowsHtml = (rows) => rows.length ? `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
   layout(`<section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
@@ -531,6 +548,7 @@ async function renderHome() {
       <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
       <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
     </section>
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
@@ -545,6 +563,7 @@ async function renderHome() {
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {
     button.addEventListener('click', () => {
