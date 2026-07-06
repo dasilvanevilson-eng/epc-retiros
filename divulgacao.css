@@ -1189,3 +1189,164 @@ a { color: inherit; }
     opacity: 1;
   }
 }
+
+@media (max-width: 620px) and (max-height: 760px) {
+  .welcome-orbit {
+    padding: 56px 12px 18px;
+  }
+
+  .welcome-heading {
+    margin-bottom: 8px;
+  }
+
+  .title-stack {
+    gap: 3px;
+  }
+
+  .welcome-heading h1 {
+    font-size: clamp(26px, 8vw, 32px);
+  }
+
+  .title-stack p {
+    font-size: clamp(18px, 5.8vw, 23px);
+  }
+
+  .title-stack .parish-line {
+    font-size: clamp(15px, 4.8vw, 19px);
+  }
+
+  .orbit-map {
+    height: clamp(500px, 142vw, 550px);
+  }
+
+  .orbit-map::before {
+    top: 18px;
+    width: min(278px, 80vw);
+    height: calc(100% - 40px);
+  }
+
+  .orbit-map::after {
+    inset: 100px 62px 96px;
+  }
+
+  .gold-line {
+    width: 84px;
+  }
+
+  .line-left-top { top: 96px; left: 100px; }
+  .line-right-top { top: 96px; right: 100px; }
+  .line-left-middle { top: 254px; left: 56px; width: 104px; }
+  .line-right-middle { top: 254px; right: 56px; width: 104px; }
+  .line-left-bottom { top: 426px; left: 98px; }
+  .line-right-bottom { top: 426px; right: 98px; }
+
+  .main-devotion {
+    top: clamp(96px, 29vw, 116px);
+    width: clamp(170px, 53vw, 204px);
+    height: clamp(262px, 78vw, 308px);
+  }
+
+  .movement-button {
+    width: clamp(76px, 23vw, 92px);
+  }
+
+  .movement-pastor,
+  .movement-epc {
+    top: 18px;
+  }
+
+  .movement-girassol,
+  .movement-eja {
+    top: 178px;
+  }
+
+  .movement-onda,
+  .movement-eju {
+    bottom: 18px;
+  }
+}
+
+@media (max-width: 620px) and (max-height: 680px) {
+  .welcome-orbit {
+    padding-top: 50px;
+    padding-bottom: 12px;
+  }
+
+  .welcome-heading {
+    margin-bottom: 6px;
+  }
+
+  .welcome-heading h1 {
+    font-size: clamp(24px, 7.5vw, 30px);
+  }
+
+  .title-stack p {
+    font-size: clamp(17px, 5.4vw, 21px);
+  }
+
+  .title-stack .parish-line {
+    font-size: clamp(14px, 4.4vw, 17px);
+  }
+
+  .restricted-link {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .orbit-map {
+    height: clamp(462px, 136vw, 505px);
+  }
+
+  .orbit-map::before {
+    top: 16px;
+    width: min(252px, 78vw);
+    height: calc(100% - 34px);
+  }
+
+  .orbit-map::after {
+    inset: 88px 58px 86px;
+  }
+
+  .gold-line {
+    width: 72px;
+  }
+
+  .line-left-top { top: 82px; left: 92px; }
+  .line-right-top { top: 82px; right: 92px; }
+  .line-left-middle { top: 226px; left: 52px; width: 88px; }
+  .line-right-middle { top: 226px; right: 52px; width: 88px; }
+  .line-left-bottom { top: 386px; left: 88px; }
+  .line-right-bottom { top: 386px; right: 88px; }
+
+  .main-devotion {
+    top: clamp(84px, 27vw, 102px);
+    width: clamp(152px, 49vw, 188px);
+    height: clamp(238px, 73vw, 282px);
+  }
+
+  .movement-button {
+    width: clamp(68px, 21vw, 82px);
+    padding: 3px;
+  }
+
+  .movement-pastor,
+  .movement-epc {
+    top: 14px;
+  }
+
+  .movement-girassol,
+  .movement-eja {
+    top: 160px;
+  }
+
+  .movement-onda,
+  .movement-eju {
+    bottom: 14px;
+  }
+
+  .heart {
+    width: 15px;
+    height: 15px;
+  }
+}
