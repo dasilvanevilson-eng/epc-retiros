@@ -1391,6 +1391,10 @@ async function renderCursista() {
     form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>';
     form.querySelector('.delete-student')?.setAttribute('hidden', '');
     app.querySelector('.student-heading-actions')?.setAttribute('hidden', '');
+    form.querySelectorAll('input, select, textarea').forEach((control) => {
+      if (control.type !== 'hidden') control.disabled = true;
+    });
+    form.querySelector('button[type="submit"]').disabled = true;
     app.querySelector('#student-message').textContent = 'Cadastro do cursista salvo com sucesso.';
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -3131,8 +3135,8 @@ async function route() {
       });
       form.querySelector('button[type="submit"]').disabled = locked;
     };
-    const clearStudentForm = () => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = ''; recalculateBalance(); form.elements.cpf.focus(); };
-    const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm(); form.querySelector('#student-message').textContent = 'Cursista excluído com sucesso.'; };
+    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
+    const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
     const nameField = form.nome.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
     const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
     const renderCascade = () => { const term = form.nome.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
@@ -3168,7 +3172,9 @@ async function route() {
         }
       }));
     };
-    app.querySelector('#new-student').addEventListener('click', clearStudentForm);
+    setStudentFormLocked(true);
+    form.querySelector('#student-message').textContent = 'Clique em Incluir novo para iniciar um cadastro.';
+    app.querySelector('#new-student').addEventListener('click', () => clearStudentForm());
     editSelectedStudent.addEventListener('click', () => { if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
     studentSearchInput.addEventListener('focus', renderStudentSearch);
