@@ -2213,6 +2213,10 @@ button,
   border-radius:8px;
 }
 
+.student-registration-value .fields.three-columns {
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
 .student-registration-actions {
   display:flex;
   flex-direction:column;
@@ -3148,6 +3152,29 @@ select:focus {
     margin-top:8px;
   }
 
+  .student-form fieldset:has(input[name="qualIntolerancia"]),
+  .student-form fieldset:has(input[name="qualAlergia"]) {
+    display:grid;
+    grid-template-columns:minmax(0, .95fr) minmax(128px, 1.05fr);
+    gap:6px 8px;
+    align-items:end;
+  }
+
+  .student-form fieldset:has(input[name="qualIntolerancia"]) legend,
+  .student-form fieldset:has(input[name="qualAlergia"]) legend {
+    grid-column:1 / -1;
+  }
+
+  .student-form fieldset:has(input[name="qualIntolerancia"]) .inline-choices,
+  .student-form fieldset:has(input[name="qualAlergia"]) .inline-choices {
+    margin:0;
+  }
+
+  .student-form fieldset:has(input[name="qualIntolerancia"]) .field,
+  .student-form fieldset:has(input[name="qualAlergia"]) .field {
+    margin-top:0;
+  }
+
   .student-form fieldset:has(input[name="camiseta"]) .inline-choices {
     grid-template-columns:repeat(4, minmax(0, 1fr));
   }
@@ -3158,7 +3185,7 @@ select:focus {
   }
 
   .student-registration-value .fields {
-    grid-template-columns:repeat(3, minmax(0, 1fr));
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
@@ -3176,8 +3203,13 @@ select:focus {
     grid-template-columns:1fr;
   }
 
+  .student-form fieldset:has(input[name="qualIntolerancia"]),
+  .student-form fieldset:has(input[name="qualAlergia"]) {
+    grid-template-columns:minmax(88px, .85fr) minmax(0, 1.15fr);
+  }
+
   .student-form .student-registration-value .fields.three-columns {
-    grid-template-columns:repeat(3, minmax(0, 1fr));
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
     gap:6px;
   }
 
