@@ -2213,6 +2213,29 @@ button,
   border-radius:8px;
 }
 
+.student-registration-actions {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:8px;
+  flex:0 0 auto;
+}
+
+.student-search-choice {
+  width:100%;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+  box-shadow:none;
+}
+
+.student-search-choice:hover {
+  background:transparent;
+  color:inherit;
+}
+
 .primary-button,
 button[type="submit"],
 .form-actions button[type="submit"] {
