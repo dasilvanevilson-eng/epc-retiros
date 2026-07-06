@@ -3128,10 +3128,12 @@ select:focus {
   }
 
   .public-shell .registration-search-results {
-    top:calc(100% - 6px);
-    right:14px;
-    left:14px;
-    max-height:min(58vh, 430px);
+    position:fixed;
+    z-index:80;
+    top:118px;
+    right:12px;
+    left:12px;
+    max-height:calc(100vh - 140px);
   }
 
   .public-shell #public-form {

@@ -2679,6 +2679,7 @@ async function renderPublicForm(id, embedded = false) {
     const registrationSearchField = searchInput.closest('.registration-search-field');
     const hideRegistrationSearch = () => { searchResults.hidden = true; };
     const closeRegistrationSearch = (event) => {
+      if (searchInput === document.activeElement) return;
       if (!registrationSearchField.contains(event.target) && !searchResults.contains(event.target)) hideRegistrationSearch();
     };
     registrationSearchField.addEventListener('focusout', (event) => {
