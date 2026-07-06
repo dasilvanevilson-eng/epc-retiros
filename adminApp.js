@@ -2357,7 +2357,10 @@ async function renderPublicForm(id, embedded = false) {
   const serviceDays = retreatServiceDays(retreat);
   const includeSubmitText = embedded ? 'Salvar inclusão' : 'Confirmar Inscrição';
   const editSubmitText = embedded ? 'Salvar Alteração' : 'Salvar alterações';
-  const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4>${area === 'escondida' ? '<aside class="hidden-team-notice"><strong>Atenção, querido(a) servo(a) do Senhor!!</strong><p>Servindo neste setor, você deve <span class="hidden-team-danger">TOMAR O MÁXIMO DE CUIDADO PARA NÃO SER VISTO POR NENHUM CURSISTA</span>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.</p></aside>' : '<aside class="room-team-notice"><strong>Querido servo do Senhor</strong><p>Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.</p></aside>'}<div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
+  const hiddenTeamNoticeTitle = 'Atenção, querido(a) servo(a) do Senhor!!';
+  const hiddenTeamNoticeText = 'Servindo neste setor, você deve <span class="hidden-team-danger">TOMAR O MÁXIMO DE CUIDADO PARA NÃO SER VISTO POR NENHUM CURSISTA</span>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.';
+  const hiddenTeamNotice = `<aside class="hidden-team-notice"><strong>${hiddenTeamNoticeTitle}</strong><p>${hiddenTeamNoticeText}</p></aside>`;
+  const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4>${area === 'escondida' ? hiddenTeamNotice : '<aside class="room-team-notice"><strong>Querido servo do Senhor</strong><p>Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.</p></aside>'}<div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form">${stateDatalist()}
@@ -2386,6 +2389,34 @@ async function renderPublicForm(id, embedded = false) {
     const next = controls[current + 1];
     if (next) next.focus();
     else form.querySelector('button[type="submit"]')?.focus();
+  });
+  const showHiddenTeamAlert = () => {
+    mount.querySelector('.hidden-team-alert-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.className = 'hidden-team-alert-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'hidden-team-alert-title');
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog"><p class="eyebrow">Equipe escondida</p><h2 id="hidden-team-alert-title">${hiddenTeamNoticeTitle}</h2><p>${hiddenTeamNoticeText}</p><button type="button" class="hidden-team-alert-close">Li e entendi</button></div>`;
+    const close = () => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+    };
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') close();
+    };
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) close();
+    });
+    overlay.querySelector('.hidden-team-alert-close').addEventListener('click', close);
+    document.addEventListener('keydown', onKeydown);
+    mount.append(overlay);
+    overlay.querySelector('.hidden-team-alert-close').focus();
+  };
+  form.querySelectorAll('[name="setores"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.checked && sectorArea(input.value) === 'escondida') showHiddenTeamAlert();
+    });
   });
   let editingEntry = null;
   let editingSpouseEntry = null;

@@ -4195,3 +4195,56 @@ body:has(.login-shell) {
   color:#b94137;
   font-weight:900;
 }
+
+.hidden-team-alert-overlay {
+  position:fixed;
+  z-index:120;
+  inset:0;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(49, 24, 18, .72);
+  backdrop-filter:blur(4px);
+}
+
+.hidden-team-alert-dialog {
+  width:min(560px, 100%);
+  padding:clamp(24px, 5vw, 36px);
+  border:2px solid #b94137;
+  border-radius:18px;
+  background:linear-gradient(180deg, #fff8f1, #fffdf9);
+  color:#4d261f;
+  text-align:left;
+  box-shadow:0 28px 80px rgba(42, 18, 12, .38);
+}
+
+.hidden-team-alert-dialog .eyebrow {
+  color:#b94137;
+  font-weight:900;
+}
+
+.hidden-team-alert-dialog h2 {
+  margin:6px 0 14px;
+  color:#5b2119;
+  font-size:clamp(26px, 5vw, 36px);
+  line-height:1.05;
+}
+
+.hidden-team-alert-dialog p:not(.eyebrow) {
+  margin:0;
+  color:#5d352d;
+  font-size:clamp(16px, 2.8vw, 19px);
+  font-weight:700;
+  line-height:1.55;
+}
+
+.hidden-team-alert-close {
+  width:100%;
+  margin-top:24px;
+  background:#b94137;
+  box-shadow:0 12px 24px rgba(185, 65, 55, .24);
+}
+
+.hidden-team-alert-close:hover {
+  background:#983126;
+}
