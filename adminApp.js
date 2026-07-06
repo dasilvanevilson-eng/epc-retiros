@@ -2589,11 +2589,12 @@ async function renderPublicForm(id, embedded = false) {
     return row.isCouple ? `${cpfText} · Casal · ${sectorText}` : `${cpfText} · ${sectorText}`;
   };
   if (embedded) {
-    const nameField = form.nome.closest('.field');
+    const nameInput = form.elements.nome;
+    const nameField = nameInput.closest('.field');
     const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const renderCascade = () => { const currentName = form.nome.value; const term = normalizeText(currentName); const rows = registrationSearchRows().filter((row) => !term || normalizeText(rowTitle(row)).includes(term)); const selectedType = new FormData(form).get('tipoFicha'); if (term && !rows.length) resetFormForInclusion(currentName); cascade.innerHTML = rows.length ? rows.map((row) => `<button type="button" data-existing-entry="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
+    const renderCascade = () => { const currentName = nameInput.value; const term = normalizeText(currentName); const rows = registrationSearchRows().filter((row) => !term || normalizeText(rowTitle(row)).includes(term)); const selectedType = new FormData(form).get('tipoFicha'); if (term && !rows.length) resetFormForInclusion(currentName); cascade.innerHTML = rows.length ? rows.map((row) => `<button type="button" data-existing-entry="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
     const closeNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
-    form.nome.addEventListener('focus', renderCascade); form.nome.addEventListener('input', renderCascade);
+    nameInput.addEventListener('focus', renderCascade); nameInput.addEventListener('input', renderCascade);
     nameField.addEventListener('focusout', (event) => { if (!nameField.contains(event.relatedTarget)) cascade.hidden = true; });
     document.addEventListener('pointerdown', closeNameCascade, true);
     document.addEventListener('focusin', closeNameCascade, true);
@@ -2606,7 +2607,12 @@ async function renderPublicForm(id, embedded = false) {
       const currentRequest = ++registrationSearchRequest;
       searchResults.hidden = false;
       searchResults.innerHTML = '<p>Carregando cadastros...</p>';
-      [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+      try {
+        [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+      } catch (error) {
+        searchResults.innerHTML = '<p>Não foi possível carregar os cadastros. Atualize a página e tente novamente.</p>';
+        return;
+      }
       if (currentRequest !== registrationSearchRequest) return;
       const term = normalizeText(searchInput.value);
       const rows = registrationSearchRows()
@@ -2765,7 +2771,7 @@ async function renderPublicForm(id, embedded = false) {
     const cpf = normalizeCpf(form.cpf.value);
     const person = isValidCpf(cpf) && people.find((item) => item.id === cpf || normalizeCpf(item.cpf) === cpf);
     if (!person) return;
-    form.nome.value = form.nome.value || person.nome || '';
+    form.elements.nome.value = form.elements.nome.value || person.nome || '';
     form.nascimento.value = person.nascimento || '';
     form.telefone.value = person.telefone || '';
     form.endereco.value = person.endereco || '';
@@ -3197,11 +3203,11 @@ async function route() {
     };
     const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
     const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
-    const nameField = form.nome.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
+    const studentNameInput = form.elements.nome; const nameField = studentNameInput.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
     const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
-    const renderCascade = () => { const term = form.nome.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
+    const renderCascade = () => { const term = studentNameInput.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
     const closeStudentNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
-    form.nome.addEventListener('focus', renderCascade); form.nome.addEventListener('input', renderCascade);
+    studentNameInput.addEventListener('focus', renderCascade); studentNameInput.addEventListener('input', renderCascade);
     nameField.addEventListener('focusout', (event) => { if (!nameField.contains(event.relatedTarget)) cascade.hidden = true; });
     document.addEventListener('pointerdown', closeStudentNameCascade, true);
     document.addEventListener('focusin', closeStudentNameCascade, true);
