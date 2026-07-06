@@ -2573,14 +2573,15 @@ async function renderPublicForm(id, embedded = false) {
   };
   const rowSearchText = (row) => normalizeText(row.entries.flatMap((entry) => {
     const person = people.find((item) => item.id === entry.pessoaId);
-    const cpf = normalizeCpf(person?.cpf || person?.id);
-    return [entry.nome, cpf, cpf && formatCpf(cpf), person?.telefone, entry.setores?.join(' '), entry.dias?.join(' ')];
+    const snapshot = entry.dadosPessoais || {};
+    const cpf = normalizeCpf(person?.cpf || snapshot.cpf || person?.id);
+    return [entry.nome, snapshot.nome, cpf, cpf && formatCpf(cpf), person?.telefone, snapshot.telefone, entry.setores?.join(' '), entry.dias?.join(' ')];
   }).filter(Boolean).join(' '));
   const rowTitle = (row) => row.entries.map((entry) => entry.nome).filter(Boolean).join(' e ') || 'Sem nome';
   const rowDetail = (row) => {
     const cpfs = row.entries.map((entry) => {
       const person = people.find((item) => item.id === entry.pessoaId);
-      const cpf = normalizeCpf(person?.cpf || person?.id);
+      const cpf = normalizeCpf(person?.cpf || entry.dadosPessoais?.cpf || person?.id);
       return cpf ? formatCpf(cpf) : '';
     }).filter(Boolean);
     const sectors = sortSectors(row.entries.flatMap((entry) => entry.setores || []));
@@ -2630,6 +2631,37 @@ async function renderPublicForm(id, embedded = false) {
         }
       }));
     };
+    const openRegistrationSearch = async () => {
+      const currentRequest = ++registrationSearchRequest;
+      const renderRows = () => {
+        const term = normalizeText(searchInput.value);
+        const rows = registrationSearchRows()
+          .filter((row) => !term || rowSearchText(row).includes(term))
+          .sort((first, second) => rowTitle(first).localeCompare(rowTitle(second), 'pt-BR'));
+        searchResults.hidden = false;
+        searchResults.innerHTML = rows.length ? rows.map((row) => {
+          return `<article><button type="button" class="student-search-choice" data-registration-select="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button></article>`;
+        }).join('') : '<p>Nenhum cadastro encontrado neste retiro.</p>';
+        searchResults.querySelectorAll('[data-registration-select]').forEach((button) => button.addEventListener('click', () => {
+          const entry = enrolments.find((item) => item.id === button.dataset.registrationSelect);
+          if (entry) {
+            loadEntryForEdit(entry, { locked: true });
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            searchResults.hidden = true;
+          }
+        }));
+      };
+      renderRows();
+      try {
+        const [latestEnrolments, latestPeople] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+        if (currentRequest !== registrationSearchRequest) return;
+        enrolments = latestEnrolments;
+        people = latestPeople;
+        renderRows();
+      } catch {
+        if (!registrationSearchRows().length) searchResults.innerHTML = '<p>Nao foi possivel carregar os cadastros.</p>';
+      }
+    };
     setRegistrationFormLocked(true);
     form.querySelector('#form-message').textContent = 'Clique em Incluir novo para iniciar um cadastro.';
     mount.querySelector('#new-registration').addEventListener('click', startNewRegistration);
@@ -2641,9 +2673,9 @@ async function renderPublicForm(id, embedded = false) {
       form.querySelector('#form-message').textContent = 'Editando cadastro da equipe.';
     });
     deleteSelectedRegistration.addEventListener('click', () => deleteRegistration(editingEntry));
-    searchInput.addEventListener('focus', renderRegistrationSearch);
-    searchInput.addEventListener('click', renderRegistrationSearch);
-    searchInput.addEventListener('input', renderRegistrationSearch);
+    searchInput.addEventListener('focus', openRegistrationSearch);
+    searchInput.addEventListener('click', openRegistrationSearch);
+    searchInput.addEventListener('input', openRegistrationSearch);
     const registrationSearchField = searchInput.closest('.registration-search-field');
     const hideRegistrationSearch = () => { searchResults.hidden = true; };
     const closeRegistrationSearch = (event) => {
