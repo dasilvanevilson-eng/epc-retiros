@@ -844,13 +844,21 @@ async function renderRecebedor() {
   const students = (await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id);
   const entries = [
     ...validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
-    ...students.map((student) => ({ ...student, setores: ['Cursista'], contribuicao: student.saldoPagar || student.valorInscricao || student.contribuicao || '', tipoFinanceiro: 'cursista' })),
+    ...students.map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' })),
   ];
   const effectiveSuggested = (entry) => {
     if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
-    return suggestedAmount(entry.contribuicao);
+    return parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
   };
-  const saveFinancialEntry = async (entry) => { if (entry.tipoFinanceiro === 'cursista') await dataService.saveCursista(entry); else await dataService.saveAdesao(entry); };
+  const saveFinancialEntry = async (entry) => {
+    if (entry.tipoFinanceiro === 'cursista') {
+      const balance = Math.max(0, effectiveSuggested(entry) - parseCurrency(entry.valorPago));
+      entry.saldoPagar = currency(balance);
+      await dataService.saveCursista(entry);
+      return;
+    }
+    await dataService.saveAdesao(entry);
+  };
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const entryGender = (entry) => normalizeText(peopleById.get(entry.pessoaId)?.genero || entry.dadosPessoais?.genero || entry.genero);
   const orderedCoupleEntries = (items) => [...items].sort((first, second) => {
@@ -877,7 +885,7 @@ async function renderRecebedor() {
     return row.entries.reduce((sum, entry) => sum + effectiveSuggested(entry), 0);
   };
   const rowPaid = (row) => {
-    const values = row.entries.map((entry) => Number(entry.valorPago) || 0);
+    const values = row.entries.map((entry) => parseCurrency(entry.valorPago));
     const sum = values.reduce((total, value) => total + value, 0);
     if (!isVolunteerCoupleRow(row) || values.length < 2) return sum;
     const suggested = rowSuggested(row);
