@@ -3615,3 +3615,198 @@ select:focus {
     font-size:12px;
   }
 }
+
+/* Tela de inicio compacta */
+.dashboard-hero {
+  justify-items:start;
+  gap:4px;
+  margin:0 0 18px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+}
+
+.dashboard-hero .hero-cross,
+.dashboard-hero .gold-divider,
+.dashboard-blessing,
+.dashboard-blessing::after {
+  display:none;
+}
+
+.dashboard-hero h1 {
+  font-size:clamp(28px, 4vw, 40px);
+  line-height:1.05;
+}
+
+.dashboard-hero p {
+  max-width:none;
+  font-size:14px;
+  line-height:1.4;
+}
+
+.dashboard-metrics {
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.dashboard-metrics .metric-card {
+  min-height:0;
+  padding:14px 16px;
+  border-radius:8px;
+  box-shadow:none;
+}
+
+.dashboard-metrics .metric-card::before,
+.dashboard-metrics .metric-card::after {
+  display:none;
+}
+
+.dashboard-metrics .metric-card strong {
+  margin-top:5px;
+  font-size:28px;
+}
+
+.dashboard-metrics .metric-card span,
+.dashboard-metrics .metric-card small {
+  font-size:12px;
+}
+
+.student-health-grid {
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
+  margin:0 0 14px;
+}
+
+.student-health-card {
+  min-height:0;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:12px;
+  border-radius:8px;
+  box-shadow:none;
+}
+
+.student-health-card span {
+  font-size:12px;
+  line-height:1.25;
+}
+
+.student-health-card strong {
+  margin-top:3px;
+  font-size:24px;
+}
+
+.student-health-card button {
+  min-height:32px;
+  padding:7px 9px;
+  border-radius:7px;
+  font-size:12px;
+}
+
+.home-stat-tabs {
+  gap:10px;
+  margin-top:0;
+}
+
+.home-stat-buttons {
+  gap:8px;
+}
+
+.home-stat-buttons button {
+  min-height:38px;
+  padding:8px 10px;
+  border-radius:8px;
+  box-shadow:none;
+}
+
+.dashboard-panel {
+  margin-top:0;
+  padding:16px;
+  border-radius:8px;
+  box-shadow:none;
+}
+
+.dashboard-panel h2 {
+  font-size:20px;
+}
+
+.dashboard-panel h2::before {
+  display:none;
+}
+
+.dashboard-panel .panel-heading p {
+  font-size:12px;
+  line-height:1.35;
+}
+
+.home-stat-dialog {
+  border-radius:10px;
+  box-shadow:0 18px 48px rgba(31,44,63,.24);
+}
+
+@media(max-width:1100px) {
+  .student-health-grid {
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media(max-width:720px) {
+  .dashboard-hero {
+    margin:0 0 12px;
+    padding-bottom:10px;
+  }
+
+  .dashboard-hero h1 {
+    font-size:clamp(24px, 8vw, 32px);
+  }
+
+  .dashboard-metrics {
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:7px;
+  }
+
+  .dashboard-metrics .metric-card {
+    min-height:0;
+    padding:10px 8px;
+  }
+
+  .dashboard-metrics .metric-card strong {
+    font-size:23px;
+  }
+
+  .dashboard-metrics .metric-card span,
+  .dashboard-metrics .metric-card small {
+    font-size:11px;
+    line-height:1.2;
+  }
+
+  .student-health-grid {
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .student-health-card {
+    padding:10px;
+  }
+
+  .home-stat-buttons {
+    grid-template-columns:1fr;
+  }
+
+  .home-stat-buttons button:last-child {
+    grid-column:auto;
+    justify-self:stretch;
+    width:auto;
+  }
+
+  .dashboard-panel {
+    padding:13px;
+  }
+}
+
+@media(max-width:430px) {
+  .dashboard-metrics {
+    grid-template-columns:1fr;
+  }
+}
