@@ -3716,13 +3716,17 @@ select:focus {
 
 .home-stat-buttons {
   gap:8px;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
 }
 
 .home-stat-buttons button {
   min-height:38px;
+  width:100%;
+  min-width:0;
   padding:8px 10px;
   border-radius:8px;
   box-shadow:none;
+  overflow-wrap:anywhere;
 }
 
 .dashboard-panel {
@@ -3796,13 +3800,13 @@ select:focus {
   }
 
   .home-stat-buttons {
-    grid-template-columns:1fr;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
   }
 
   .home-stat-buttons button:last-child {
     grid-column:auto;
     justify-self:stretch;
-    width:auto;
+    width:100%;
   }
 
   .dashboard-panel {
