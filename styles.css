@@ -4218,9 +4218,20 @@ body:has(.login-shell) {
   box-shadow:0 28px 80px rgba(42, 18, 12, .38);
 }
 
+.hidden-team-alert-dialog.is-room-team {
+  border-color:var(--leaf);
+  background:linear-gradient(180deg, #f4fbf1, #fffdf7);
+  color:#285130;
+  box-shadow:0 28px 80px rgba(23, 55, 31, .30);
+}
+
 .hidden-team-alert-dialog .eyebrow {
   color:#b94137;
   font-weight:900;
+}
+
+.hidden-team-alert-dialog.is-room-team .eyebrow {
+  color:var(--leaf);
 }
 
 .hidden-team-alert-dialog h2 {
@@ -4230,12 +4241,20 @@ body:has(.login-shell) {
   line-height:1.05;
 }
 
+.hidden-team-alert-dialog.is-room-team h2 {
+  color:#285130;
+}
+
 .hidden-team-alert-dialog p:not(.eyebrow) {
   margin:0;
   color:#5d352d;
   font-size:clamp(16px, 2.8vw, 19px);
   font-weight:700;
   line-height:1.55;
+}
+
+.hidden-team-alert-dialog.is-room-team p:not(.eyebrow) {
+  color:#2f4f36;
 }
 
 .hidden-team-alert-close {
@@ -4247,4 +4266,13 @@ body:has(.login-shell) {
 
 .hidden-team-alert-close:hover {
   background:#983126;
+}
+
+.hidden-team-alert-dialog.is-room-team .hidden-team-alert-close {
+  background:var(--leaf);
+  box-shadow:0 12px 24px rgba(71, 114, 78, .24);
+}
+
+.hidden-team-alert-dialog.is-room-team .hidden-team-alert-close:hover {
+  background:#365e3e;
 }

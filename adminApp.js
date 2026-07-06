@@ -2359,7 +2359,9 @@ async function renderPublicForm(id, embedded = false) {
   const editSubmitText = embedded ? 'Salvar Alteração' : 'Salvar alterações';
   const hiddenTeamNoticeTitle = 'Atenção, querido(a) servo(a) do Senhor!!';
   const hiddenTeamNoticeText = 'Servindo neste setor, você deve <span class="hidden-team-danger">TOMAR O MÁXIMO DE CUIDADO PARA NÃO SER VISTO POR NENHUM CURSISTA</span>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.';
-  const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4>${area === 'sala' ? '<aside class="room-team-notice"><strong>Querido servo do Senhor</strong><p>Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.</p></aside>' : ''}<div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
+  const roomTeamNoticeTitle = 'Querido servo do Senhor';
+  const roomTeamNoticeText = 'Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.';
+  const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4><div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form">${stateDatalist()}
@@ -2389,14 +2391,18 @@ async function renderPublicForm(id, embedded = false) {
     if (next) next.focus();
     else form.querySelector('button[type="submit"]')?.focus();
   });
-  const showHiddenTeamAlert = () => {
+  const showSectorTeamAlert = (area) => {
+    const isHiddenTeam = area === 'escondida';
+    const title = isHiddenTeam ? hiddenTeamNoticeTitle : roomTeamNoticeTitle;
+    const text = isHiddenTeam ? hiddenTeamNoticeText : roomTeamNoticeText;
+    const label = isHiddenTeam ? 'Equipe escondida' : 'Equipe Sala';
     mount.querySelector('.hidden-team-alert-overlay')?.remove();
     const overlay = document.createElement('section');
     overlay.className = 'hidden-team-alert-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-labelledby', 'hidden-team-alert-title');
-    overlay.innerHTML = `<div class="hidden-team-alert-dialog"><p class="eyebrow">Equipe escondida</p><h2 id="hidden-team-alert-title">${hiddenTeamNoticeTitle}</h2><p>${hiddenTeamNoticeText}</p><button type="button" class="hidden-team-alert-close">Li e entendi</button></div>`;
+    overlay.setAttribute('aria-labelledby', 'sector-team-alert-title');
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog ${isHiddenTeam ? 'is-hidden-team' : 'is-room-team'}"><p class="eyebrow">${label}</p><h2 id="sector-team-alert-title">${title}</h2><p>${text}</p><button type="button" class="hidden-team-alert-close">Li e entendi</button></div>`;
     const close = () => {
       document.removeEventListener('keydown', onKeydown);
       overlay.remove();
@@ -2414,7 +2420,7 @@ async function renderPublicForm(id, embedded = false) {
   };
   form.querySelectorAll('[name="setores"]').forEach((input) => {
     input.addEventListener('change', () => {
-      if (input.checked && sectorArea(input.value) === 'escondida') showHiddenTeamAlert();
+      if (input.checked) showSectorTeamAlert(sectorArea(input.value));
     });
   });
   let editingEntry = null;
