@@ -825,12 +825,11 @@ async function renderEditRetreat(id) {
 function suggestedAmount(value) { const match = String(value || '').replace('.', '').match(/(\d+(?:,\d{1,2})?)/); return match ? Number(match[1].replace(',', '.')) : 0; }
 function currency(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0); }
 function parseCurrency(value) { return Number(String(value || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0; }
-function volunteerContributionAmount(retreat = {}, entry = {}, amount = suggestedAmount(entry.contribuicao)) {
+function volunteerContributionAmount(retreat = {}, entry = {}) {
   const baseAmount = Number(retreat.valorInscricaoVoluntario) || 0;
   const photoAmount = normalizeText(entry.foto) === 'sim' ? Number(retreat.valorFoto ?? 10) || 0 : 0;
   if (entry.casalId) return (baseAmount * 2) + photoAmount;
-  if (photoAmount) return amount && amount > baseAmount ? amount : baseAmount + photoAmount;
-  return amount || baseAmount;
+  return baseAmount + photoAmount;
 }
 function wireCurrencyInputs(root) {
   root.querySelectorAll('[data-currency-input]').forEach((input) => {
@@ -848,11 +847,8 @@ async function renderRecebedor() {
     ...students.map((student) => ({ ...student, setores: ['Cursista'], contribuicao: student.saldoPagar || student.valorInscricao || student.contribuicao || '', tipoFinanceiro: 'cursista' })),
   ];
   const effectiveSuggested = (entry) => {
-    const amount = suggestedAmount(entry.contribuicao);
-    if (amount) return entry.tipoFinanceiro === 'voluntario' ? volunteerContributionAmount(retreat, entry, amount) : amount;
-    const spouse = entry.casalId && entries.find((item) => item.casalId === entry.casalId && item.id !== entry.id);
-    const spouseAmount = suggestedAmount(spouse?.contribuicao);
-    return entry.tipoFinanceiro === 'voluntario' ? volunteerContributionAmount(retreat, entry, spouseAmount) : spouseAmount;
+    if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
+    return suggestedAmount(entry.contribuicao);
   };
   const saveFinancialEntry = async (entry) => { if (entry.tipoFinanceiro === 'cursista') await dataService.saveCursista(entry); else await dataService.saveAdesao(entry); };
   const peopleById = new Map(people.map((person) => [person.id, person]));
@@ -876,11 +872,7 @@ async function renderRecebedor() {
   const rowSuggested = (row) => {
     const isCoupleRow = isVolunteerCoupleRow(row);
     if (isCoupleRow) {
-      const values = row.entries.map(effectiveSuggested).filter((value) => value > 0);
-      const configuredTotal = (Number(retreat.valorInscricaoVoluntario) || 0) * 2;
-      const informedValue = Math.max(...values, 0);
-      if (configuredTotal || Number(retreat.valorFoto)) return volunteerContributionAmount(retreat, { casalId: row.id, foto: row.entries.some((entry) => normalizeText(entry.foto) === 'sim') ? 'Sim' : 'Não' }, informedValue);
-      return configuredTotal && informedValue >= configuredTotal ? informedValue : informedValue * 2;
+      return volunteerContributionAmount(retreat, { casalId: row.id, foto: row.entries.some((entry) => normalizeText(entry.foto) === 'sim') ? 'Sim' : 'Não' });
     }
     return row.entries.reduce((sum, entry) => sum + effectiveSuggested(entry), 0);
   };
@@ -935,7 +927,7 @@ async function renderRecebedor() {
     });
   };
   app.querySelectorAll('[data-paid-entry]').forEach((input) => { input.addEventListener('focus', () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); input.value = row ? rowPaid(row) || '' : ''; }); input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); const total = parseCurrency(input.value); await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.valorPago = value; return saveFinancialEntry(entry); })); input.value = currency(total); await loadData(); }); });
-  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.feeEntry); if (!row) return; const total = input.checked ? rowSuggested(row) : 0; await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.taxaPaga = input.checked; entry.valorPago = value; return saveFinancialEntry(entry); })); await loadData(); renderRecebedor(); }));
+  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.feeEntry); if (!row) return; const currentPaid = rowPaid(row); const total = input.checked ? (currentPaid > 0 ? currentPaid : rowSuggested(row)) : 0; await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.taxaPaga = input.checked; entry.valorPago = value; return saveFinancialEntry(entry); })); await loadData(); renderRecebedor(); }));
 }
 async function renderPessoas() { layout(`<section class="page-heading"><div><p class="eyebrow">Histórico reutilizável</p><h1>Pessoas</h1><p>Dados pessoais são reaproveitados; a participação é sempre nova em cada retiro.</p></div></section><section class="panel">${people.length ? `<div class="simple-list">${people.map((person) => `<div><strong>${escapeHtml(person.nome)}</strong><span>Nascimento: ${date(person.nascimento)} · ${escapeHtml(person.telefone || 'Sem telefone')}</span><small>${enrolments.filter((entry) => entry.pessoaId === person.id).length} retiro(s)</small></div>`).join('')}</div>` : '<div class="empty-state">O histórico de pessoas será formado quando chegarem os primeiros cadastros.</div>'}</section>`, 'pessoas'); }
 
@@ -2603,7 +2595,7 @@ async function renderPublicForm(id, embedded = false) {
     const coordenacaoSetor = embedded ? data.get('coordenacaoSetor') === 'sim' : Boolean(existingEntry?.coordenacaoSetor);
     const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
-    const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }, parseCurrency(data.get('contribuicao'))));
+    const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
     await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || crypto.randomUUID(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, observacao: data.get('observacao'), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
