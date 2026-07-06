@@ -895,8 +895,65 @@ async function renderRecebedor() {
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
   const rows = [...receiverRows].sort((first, second) => { const result = String(values(first, receiverSort.key)).localeCompare(String(values(second, receiverSort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' }); return receiverSort.direction === 'asc' ? result : -result; });
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
+  const personSnapshotForEntry = (entry) => {
+    const person = peopleById.get(entry.pessoaId) || {};
+    return { ...entry.dadosPessoais, ...person, id: person.id || entry.pessoaId, cpf: person.cpf || entry.dadosPessoais?.cpf || entry.pessoaId, nome: entry.nome || person.nome || entry.dadosPessoais?.nome || '' };
+  };
+  const addressForSnapshot = (person = {}) => [[person.endereco || person.rua, person.numero].filter(Boolean).join(', '), person.bairro, person.cidade, person.estado].filter(Boolean).join(' · ');
+  const uniqueText = (items = []) => {
+    const seen = new Set();
+    return items.map((item) => String(item || '').trim()).filter((item) => {
+      const key = normalizeText(item);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const receiverReportRows = rows.map((row) => {
+    const snapshots = row.entries.map(personSnapshotForEntry);
+    const cpfs = snapshots.map((person) => normalizeCpf(person.cpf || person.id)).filter(Boolean).map(formatCpf);
+    const addresses = uniqueText(snapshots.map(addressForSnapshot));
+    return {
+      nome: row.nome,
+      cpf: cpfs.join(' / '),
+      endereco: addresses.join(' / '),
+      valorSugerido: rowSuggested(row),
+      valorPago: rowPaid(row),
+    };
+  });
+  const reportTitle = `Relatório do Recebedor - ${retreat.nome}`;
+  const receiverReportTable = () => `<div class="receiver-report-preview"><table><thead><tr><th>Nome</th><th>CPF</th><th>Endereço completo</th><th>Valor sugerido</th><th>Valor pago</th></tr></thead><tbody>${receiverReportRows.map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${escapeHtml(row.cpf || 'Não informado')}</td><td>${escapeHtml(row.endereco || 'Não informado')}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="5">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
+  const receiverReportDocument = () => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>body{margin:24px;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}td:nth-child(4),td:nth-child(5){white-space:nowrap}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable()}</body></html>`;
+  const printReceiverReport = (pdf = false) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+    printWindow.document.open();
+    printWindow.document.write(receiverReportDocument());
+    printWindow.document.close();
+    if (pdf) alert('Na janela de impressão, escolha "Salvar como PDF".');
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
+  };
+  const downloadReceiverSpreadsheet = () => {
+    const headers = ['Nome', 'CPF', 'Endereço completo', 'Valor sugerido', 'Valor pago'];
+    const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const lines = [
+      headers.map(csvValue).join(';'),
+      ...receiverReportRows.map((row) => [row.nome, row.cpf, row.endereco, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
+    ];
+    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${normalizeText(retreat.nome || 'relatorio-recebedor').replace(/\s+/g, '-') || 'relatorio-recebedor'}-recebedor.csv`;
+    document.body.append(link);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    link.remove();
+  };
   const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidCount}</strong><small>registro(s)</small></article><article><span>Falta contribuir</span><strong>${receiverRows.length - paidCount}</strong><small>registro(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section>`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><div class="receiver-view-options"><button type="button" id="receiver-by-sector">Buscar setor</button><button type="button" id="receiver-show-panel">Mostrar Painel</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}"><strong>${escapeHtml(row.nome)}</strong><span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''}><span>Pago</span></label></div>`).join('') : '<p class="empty-state">Nenhum voluntário para este retiro.</p>'}</div></section>`, 'recebedor');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><div class="receiver-view-options"><button type="button" id="receiver-by-sector">Buscar setor</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-print-preview" class="receiver-icon-button" aria-label="Pré-visualizar relatório" title="Pré-visualizar relatório">🖨</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}"><strong>${escapeHtml(row.nome)}</strong><span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''}><span>Pago</span></label></div>`).join('') : '<p class="empty-state">Nenhum voluntário para este retiro.</p>'}</div></section>`, 'recebedor');
   if (receiverFocusSector) { const firstIndex = rows.findIndex((row) => rowHasSector(row, receiverFocusSector)); const row = app.querySelectorAll('.receiver-row')[firstIndex]; if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' }); receiverFocusSector = null; }
   app.querySelector('#receiver-show-panel').addEventListener('click', () => {
     const overlay = document.createElement('section');
@@ -904,6 +961,17 @@ async function renderRecebedor() {
     overlay.innerHTML = `<div class="receiver-sector-dialog receiver-panel-dialog"><div class="panel-heading"><div><p class="eyebrow">Painel financeiro</p><h2>Resumo do recebedor</h2><p>${escapeHtml(retreat.nome)}</p></div></div>${receiverSummaryHtml}<button type="button" class="close-sector-view">Fechar painel</button></div>`;
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
+    app.append(overlay);
+  });
+  app.querySelector('#receiver-print-preview').addEventListener('click', () => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div>${receiverReportTable()}<div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
+    overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false));
+    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true));
+    overlay.querySelector('#receiver-report-sheet').addEventListener('click', downloadReceiverSpreadsheet);
     app.append(overlay);
   });
   app.querySelector('#receiver-by-sector').addEventListener('click', () => {
@@ -948,6 +1016,10 @@ async function renderRecebedor() {
   app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {
     const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
     if (!row) return;
+    if (!input.checked && !confirm('Tem certeza que quer eliminar o pagamento')) {
+      input.checked = true;
+      return;
+    }
     const paidInput = app.querySelector(`[data-paid-entry="${CSS.escape(input.dataset.feeEntry)}"]`);
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
