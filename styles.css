@@ -2241,27 +2241,14 @@ button,
   margin-left:auto;
 }
 
-.student-heading-actions button,
-.student-heading-actions a {
+.student-heading-actions button {
   min-height:36px;
   padding:8px 12px;
   border-radius:8px;
   font-size:13px;
   font-weight:700;
   line-height:1.2;
-  text-decoration:none;
   box-shadow:none;
-}
-
-#consult-selected-registration {
-  border:1px solid #a9bea8;
-  background:#fff;
-  color:var(--ui-green);
-}
-
-#consult-selected-registration:hover {
-  background:var(--ui-green-soft);
-  color:#224a2b;
 }
 
 #delete-selected-student,
