@@ -37,9 +37,29 @@ const ensureViewPermission = (section) => {
   return false;
 };
 const renderDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para executar esta acao.</p></div></section>', firstAllowedSection());
+const randomBytes = (length) => {
+  const bytes = new Uint8Array(length);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
+  else bytes.forEach((_, index) => { bytes[index] = Math.floor(Math.random() * 256); });
+  return bytes;
+};
+const createId = () => {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = randomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+const submitForm = (form) => {
+  if (typeof form.requestSubmit === 'function') {
+    form.requestSubmit();
+    return;
+  }
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+};
 const sectorToken = () => {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
+  const bytes = randomBytes(12);
   return Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 18);
 };
 const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
@@ -95,10 +115,37 @@ function wirePasswordToggles(root = document) {
     });
   });
 }
-const date = (value) => value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T12:00:00`)) : 'A definir';
+const normalizeDateInput = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const [, year, month, day] = iso || (br ? [br[0], br[3], br[2], br[1]] : []);
+  if (!year || !month || !day) return '';
+  const parsed = new Date(`${year}-${month}-${day}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const valid = parsed.getFullYear() === Number(year) && parsed.getMonth() + 1 === Number(month) && parsed.getDate() === Number(day);
+  return valid ? `${year}-${month}-${day}` : '';
+};
+const formatDateInput = (value = '') => {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return '';
+  const [year, month, day] = normalized.split('-');
+  return `${day}/${month}/${year}`;
+};
+const date = (value) => {
+  const normalized = normalizeDateInput(value);
+  return normalized ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${normalized}T12:00:00`)) : 'A definir';
+};
 const dateRange = (start, end) => start && end && end !== start ? `${date(start)} a ${date(end)}` : date(start);
-const birthday = (value) => value ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(`${value}T12:00:00`)) : 'A definir';
-const parseLocalDate = (value) => value ? new Date(`${value}T12:00:00`) : null;
+const birthday = (value) => {
+  const normalized = normalizeDateInput(value);
+  return normalized ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(`${normalized}T12:00:00`)) : 'A definir';
+};
+const parseLocalDate = (value) => {
+  const normalized = normalizeDateInput(value);
+  return normalized ? new Date(`${normalized}T12:00:00`) : null;
+};
 const weekdayLabel = (value) => {
   const label = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(value);
   return label.charAt(0).toLocaleUpperCase('pt-BR') + label.slice(1);
@@ -297,6 +344,30 @@ function wireCpfFields(root) {
     };
     input.addEventListener('input', validateCpf);
     input.addEventListener('change', validateCpf);
+  });
+}
+function wireTypedBirthDates(root) {
+  root.querySelectorAll('[name="nascimento"], [name="spouseNascimento"]').forEach((input) => {
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.placeholder = 'dd/mm/aaaa';
+    input.maxLength = 10;
+    input.pattern = '\\d{2}/\\d{2}/\\d{4}';
+    input.title = 'Digite a data no formato dd/mm/aaaa';
+    const maskDate = () => {
+      const digits = input.value.replace(/\D/g, '').slice(0, 8);
+      input.value = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/');
+      input.setCustomValidity('');
+    };
+    const validateDate = () => {
+      input.value = formatDateInput(input.value) || input.value;
+      const invalid = Boolean(input.value.trim()) && !normalizeDateInput(input.value);
+      input.setCustomValidity(invalid ? 'Digite a data no formato dd/mm/aaaa.' : '');
+    };
+    input.value = formatDateInput(input.value) || input.value;
+    input.addEventListener('input', maskDate);
+    input.addEventListener('change', validateDate);
+    input.addEventListener('blur', validateDate);
   });
 }
 
@@ -690,7 +761,7 @@ async function renderNewRetreat() {
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: crypto.randomUUID(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (values.get('origem') && values.get('origem') !== 'vazio') await copyBadgeProfilesToRetreat(values.get('origem'), retreat.id);
       await loadData();
@@ -1470,7 +1541,7 @@ async function renderComunidades() {
   app.querySelector('#add-community').addEventListener('click', async () => {
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
-    await dataService.saveComunidade({ id: crypto.randomUUID(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
+    await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
     renderComunidades();
   });
   app.querySelectorAll('[data-community-name]').forEach((input) => input.addEventListener('change', async () => { const community = communities.find((item) => item.id === input.dataset.communityName); community.nome = input.value.trim() || `Comunidade ${community.ordem}`; await dataService.saveComunidade(community); input.value = community.nome; }));
@@ -1595,7 +1666,7 @@ const normalizeBadgeProfile = (profile = {}, retreatId = '') => {
   const rawSettings = profile.settings || profile;
   const { id, name, retiroId, retreatId: legacyRetreatId, updatedAt, createdAt, clonedFromRetreatId, sourceProfileId, ...settingsOnly } = rawSettings;
   return {
-    id: profile.id || id || crypto.randomUUID(),
+    id: profile.id || id || createId(),
     retiroId: profile.retiroId || profile.retreatId || retreatId || legacyRetreatId || '',
     name: String(profile.name || name || '').trim() || 'Configuracao sem nome',
     settings: { ...defaultBadgeSettings, ...settingsOnly, ...(profile.settings || {}), version: badgeSettingsVersion },
@@ -1648,7 +1719,7 @@ const copyBadgeProfilesToRetreat = async (sourceRetreatId, targetRetreatId) => {
   const now = new Date().toISOString();
   await Promise.all(profiles.map((profile) => saveBadgeProfile({
     ...profile,
-    id: crypto.randomUUID(),
+    id: createId(),
     retiroId: targetRetreatId,
     settings: { ...profile.settings },
     createdAt: now,
@@ -2074,7 +2145,7 @@ async function renderCrachas() {
     const current = readSettings();
     const selected = badgeProfiles.find((profile) => profile.id === selectedProfileId || profile.id === configSelect?.value);
     const isUpdatingLoadedProfile = selected && normalizeText(selected.name) === normalizeText(name);
-    const id = isUpdatingLoadedProfile ? selected.id : crypto.randomUUID();
+    const id = isUpdatingLoadedProfile ? selected.id : createId();
     const nextProfile = normalizeBadgeProfile({ id, retiroId: retreat.id, name, settings: current, updatedAt: new Date().toISOString() }, retreat.id);
     badgeProfiles = [nextProfile, ...badgeProfiles.filter((profile) => profile.id !== id)];
     selectedProfileId = id;
@@ -2340,6 +2411,15 @@ async function renderQuadrante() {
 }
 
 function choices(name, options, multiple = true) { const visibleOptions = options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }
+function syncChoiceStates(root = document) {
+  root.querySelectorAll('.choice').forEach((choice) => {
+    const input = choice.querySelector('input');
+    if (input) choice.classList.toggle('is-selected', input.checked);
+  });
+}
+document.addEventListener('change', (event) => {
+  if (event.target.closest?.('.choice')) syncChoiceStates(event.target.closest('form') || document);
+});
 async function renderPublicForm(id, embedded = false) {
   const retreat = await dataService.getRetiro(id);
   if (embedded) layout('<div id="registration-root"></div>', 'pessoas');
@@ -2366,12 +2446,12 @@ async function renderPublicForm(id, embedded = false) {
   const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4><div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
-  mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form">${stateDatalist()}
+  mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
-    <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field"><span>Nome completo <b>*</b></span><input name="nome" autocomplete="off" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
+    <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field name-field"><span>Nome completo <b>*</b></span><input name="nome" autocomplete="off" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" inputmode="numeric" placeholder="dd/mm/aaaa" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
     <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('dias', serviceDays)}</div></section>
-    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" type="date"></label><label class="field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('spouseDias', serviceDays)}</div></section>
-    <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
+    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field spouse-name-field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('spouseDias', serviceDays)}</div></section>
+    <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field cep-field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field bairro-field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field city-field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field state-field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
     <section class="form-section"><div class="section-heading"><span>05</span><div><h2>Setor de trabalho <b>*</b></h2></div></div><div class="choice-block">${publicSectors}${sectorCoordinatorOption}</div></section>
     <section class="form-section compact-section"><div class="section-heading"><span>06</span><div><h2>Itens e contribuição</h2><p>Escolhas necessárias para sua inscrição.</p></div></div><div class="fields choice-cards"><div class="quadrante-print-option"><label class="kinship-discount-option"><input type="checkbox" name="quadrante" value="Sim"> Quer quadrante impresso?</label><p class="hint">O quadrante (relação de todas a pessoas que serviram no retiro com os seus contatos) é disponibilizado em PDF após o retiro, mas se você quiser levar impresso no dia do retiro, selecione a opção acima.</p></div><div class="field choice-block contribution-field"><span data-contribution-label>Valor da inscrição</span><label class="kinship-discount-option photo-contribution-option"><input type="checkbox" name="foto" value="Sim"> Quer foto? Valor: ${currency(retreat.valorFoto ?? 10)}</label><input name="contribuicao" value="${currency(retreat.valorInscricaoVoluntario)}" readonly><p class="hint payment-instructions"><strong><u>Fazer pix CNPJ 52.109.946/0001-94</u></strong> e encaminhar o comprovante no privado para o coordenador do setor que você vai servir.</p></div></div></section>
     <section class="form-section"><div class="section-heading"><span>07</span><div><h2>Informações adicionais</h2><p>Ajude-nos a cuidar bem de você e de sua família.</p></div></div><div class="choice-block"><div class="kids-heading"><h3>Espaço Kids <b>*</b></h3><label><input type="checkbox" name="kidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${kidsFields}</div></div><div class="volunteer-term-topic"><div><h3>Termo de adesão de voluntariado</h3></div><button type="button" id="read-volunteer-term">Ler termo</button></div></section>
@@ -2383,6 +2463,7 @@ async function renderPublicForm(id, embedded = false) {
   wireStateFields(form);
   wireCepLookup(form);
   wireCpfFields(form);
+  wireTypedBirthDates(form);
   form.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' || event.target.matches('textarea, button')) return;
     event.preventDefault();
@@ -2484,6 +2565,7 @@ async function renderPublicForm(id, embedded = false) {
   const setChoices = (name, values) => {
     const selected = new Set(Array.isArray(values) ? values : [values]);
     form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = selected.has(input.value); });
+    syncChoiceStates(form);
   };
   const isCouple = () => new FormData(form).get('tipoFicha') === 'Casal';
   const syncContributionAmount = () => {
@@ -2616,7 +2698,7 @@ async function renderPublicForm(id, embedded = false) {
     const spouseCpf = normalizeCpf(linked.spouse.cpf || linked.spouse.id);
     form.elements.spouseCpf.value = isValidCpf(spouseCpf) ? formatCpf(spouseCpf) : '';
     form.elements.spouseNome.value = linked.spouse.nome || '';
-    form.elements.spouseNascimento.value = linked.spouse.nascimento || '';
+    form.elements.spouseNascimento.value = formatDateInput(linked.spouse.nascimento);
     form.elements.spouseTelefone.value = linked.spouse.telefone || '';
     form.elements.spouseTelefone.dispatchEvent(new Event('input'));
     setChoices('spouseGenero', linked.spouse.genero);
@@ -2646,7 +2728,7 @@ async function renderPublicForm(id, embedded = false) {
     volunteerTermAccepted = Boolean(entry.termoVoluntariadoAceito);
     syncVolunteerTermState();
     setNewRecordTypeLock(false);
-    ['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado'].forEach((name) => { form.elements[name].value = name === 'cpf' ? formatCpf(person.cpf || person.id) : (person[name] || ''); });
+    ['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado'].forEach((name) => { form.elements[name].value = name === 'cpf' ? formatCpf(person.cpf || person.id) : name === 'nascimento' ? formatDateInput(person[name]) : (person[name] || ''); });
     form.elements.cep.value = person.cep || '';
     setChoices('retiros', entry.retirosAnteriores || []); setChoices('dias', entry.dias || []); setChoices('setores', entry.setores || []); setChoices('quadrante', entry.quadrante); setChoices('foto', entry.foto); setChoices('tipoFicha', entry.casalId ? 'Casal' : 'Individual'); setChoices('genero', person.genero); setChoices('coordenacaoSetor', entry.coordenacaoSetor || editingSpouseEntry?.coordenacaoSetor ? 'sim' : '');
     if (form.elements.coordenacao) form.elements.coordenacao.value = entry.coordenacao || '';
@@ -2658,7 +2740,7 @@ async function renderPublicForm(id, embedded = false) {
       if (spouse) {
         form.elements.spouseNome.value = spouse.nome || '';
         form.elements.spouseCpf.value = formatCpf(spouse.cpf || spouse.id);
-        form.elements.spouseNascimento.value = spouse.nascimento || '';
+        form.elements.spouseNascimento.value = formatDateInput(spouse.nascimento);
         form.elements.spouseTelefone.value = spouse.telefone || '';
         setChoices('spouseGenero', spouse.genero);
       }
@@ -2926,7 +3008,7 @@ async function renderPublicForm(id, embedded = false) {
     const person = isValidCpf(cpf) && people.find((item) => item.id === cpf || normalizeCpf(item.cpf) === cpf);
     if (!person) return;
     form.elements.nome.value = form.elements.nome.value || person.nome || '';
-    form.nascimento.value = person.nascimento || '';
+    form.nascimento.value = formatDateInput(person.nascimento);
     form.telefone.value = person.telefone || '';
     form.endereco.value = person.endereco || '';
     form.numero.value = person.numero || '';
@@ -2964,6 +3046,11 @@ async function renderPublicForm(id, embedded = false) {
   });
   const validateForm = (source, requireType = true, requireSector = true) => {
     const data = new FormData(source);
+    source.querySelectorAll('[name="nascimento"], [name="spouseNascimento"]').forEach((input) => {
+      if (input.disabled) return;
+      const value = input.value.trim();
+      input.setCustomValidity(value && !normalizeDateInput(value) ? 'Digite a data no formato dd/mm/aaaa.' : '');
+    });
     const focusControl = (control) => {
       if (!control) return;
       const target = control.closest('.choice-block, .field, .form-section') || control;
@@ -2985,7 +3072,7 @@ async function renderPublicForm(id, embedded = false) {
     const firstSpouseMissing = () => [
       ['spouseNome', () => !String(data.get('spouseNome') || '').trim()],
       ['spouseCpf', () => !isValidCpf(data.get('spouseCpf'))],
-      ['spouseNascimento', () => !data.get('spouseNascimento')],
+      ['spouseNascimento', () => !normalizeDateInput(data.get('spouseNascimento'))],
       ['spouseTelefone', () => !String(data.get('spouseTelefone') || '').trim()],
       ['genero', () => !spouseGenderValue()],
       ['spouseRetiros', () => !data.getAll('spouseRetiros').length],
@@ -3003,7 +3090,7 @@ async function renderPublicForm(id, embedded = false) {
     const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
-    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && data.get('spouseNascimento') && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && data.getAll('spouseDias').length);
+    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && data.getAll('spouseDias').length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
     const missingRequired = required.filter((name) => !data.get(name));
@@ -3050,13 +3137,13 @@ async function renderPublicForm(id, embedded = false) {
     if (!person && existingEntry) person = people.find((item) => item.id === existingEntry.pessoaId);
     if (!person) person = { createdAt: new Date().toISOString() };
     const previousPersonId = existingEntry?.pessoaId && existingEntry.pessoaId !== cpf ? existingEntry.pessoaId : null;
-    Object.assign(person, { id: cpf, cpf, nome, nomeNormalizado: nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, ' '), nascimento: data.get(fieldName('nascimento')), genero: prefix === 'spouse' ? spouseGenderValue() : data.get(fieldName('genero')), telefone: data.get(fieldName('telefone')), endereco: data.get('endereco'), numero: data.get('numero'), bairro: data.get('bairro'), cep: data.get('cep'), cidade: data.get('cidade'), estado: String(data.get('estado') || '').toUpperCase(), updatedAt: new Date().toISOString() });
+    Object.assign(person, { id: cpf, cpf, nome, nomeNormalizado: nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, ' '), nascimento: normalizeDateInput(data.get(fieldName('nascimento'))), genero: prefix === 'spouse' ? spouseGenderValue() : data.get(fieldName('genero')), telefone: data.get(fieldName('telefone')), endereco: data.get('endereco'), numero: data.get('numero'), bairro: data.get('bairro'), cep: data.get('cep'), cidade: data.get('cidade'), estado: String(data.get('estado') || '').toUpperCase(), updatedAt: new Date().toISOString() });
     await dataService.savePessoa(person);
     const coordenacaoSetor = embedded ? data.get('coordenacaoSetor') === 'sim' : Boolean(existingEntry?.coordenacaoSetor);
     const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || crypto.randomUUID(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
@@ -3064,7 +3151,7 @@ async function renderPublicForm(id, embedded = false) {
     }
     return person;
   };
-  const showSuccess = (name) => { mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Cadastro recebido!</h1><p>Obrigado, ${escapeHtml(name)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p></section></main>`; };
+  const showSuccess = (name) => { mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(name)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p></section></main>`; };
   const finishSave = async (name) => {
     if (!embedded) { showSuccess(name); return; }
     await loadData();
@@ -3131,7 +3218,7 @@ async function renderPublicForm(id, embedded = false) {
         ${reviewRow('Espaço Kids', kidsNotNeeded ? 'Não necessito do Espaço Kids' : reviewValue(kids.map((kid) => `${kid.nome} (${date(kid.nascimento)})`).join(', ')))}
         ${reviewRow('Termo de adesão de voluntariado', 'Lido e aceito')}
       </div></div>
-      <div class="review-actions"><button type="button" id="back-to-registration">Voltar ao cadastro</button><button type="button" id="confirm-registration">Confirmar e enviar inscrição</button></div>`;
+      <p id="review-message" class="form-message"></p><div class="review-actions"><button type="button" id="back-to-registration">Voltar ao cadastro</button><button type="button" id="confirm-registration">Confirmar e enviar inscrição</button></div>`;
     form.hidden = true;
     mount.querySelector('.registration-review')?.remove();
     form.after(section);
@@ -3144,35 +3231,67 @@ async function renderPublicForm(id, embedded = false) {
     });
     section.querySelector('#confirm-registration').addEventListener('click', () => {
       publicConfirmationReady = true;
-      form.requestSubmit();
+      submitForm(form);
+    });
+  };
+  const restorePublicForm = () => {
+    mount.querySelector('.registration-review')?.remove();
+    form.hidden = false;
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const setPublicSubmitting = (submitting) => {
+    [form.querySelector('button[type="submit"]'), mount.querySelector('#confirm-registration')].filter(Boolean).forEach((button) => {
+      if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
+      button.disabled = submitting;
+      if (submitting) button.textContent = 'Enviando...';
+      else button.innerHTML = button.dataset.defaultHtml;
     });
   };
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    syncContributionAmount();
-    if (!validateForm(form)) return;
-    if (await blockPublicCpfIssues()) return;
-    if (!embedded && !publicConfirmationReady) {
-      showPublicConfirmation();
-      return;
-    }
-    publicConfirmationReady = false;
-    if (isCouple()) {
-      const casalId = editingEntry?.casalId || crypto.randomUUID();
-      const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
-      const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
-      await linkCouplePeople(first, second, casalId);
-      await finishSave(first.nome);
-      return;
-    }
-    if (editingEntry?.casalId) {
-      const spouseEntry = editingSpouseEntry || enrolments.find((item) => item.casalId === editingEntry.casalId && item.retiroId === editingEntry.retiroId && item.pessoaId !== editingEntry.pessoaId);
-      if (spouseEntry) {
-        await dataService.deleteAdesao(spouseEntry.id);
+    setPublicSubmitting(true);
+    try {
+      syncContributionAmount();
+      if (!validateForm(form)) {
+        if (publicConfirmationReady) restorePublicForm();
+        publicConfirmationReady = false;
+        return;
       }
+      if (await blockPublicCpfIssues()) {
+        if (publicConfirmationReady) restorePublicForm();
+        publicConfirmationReady = false;
+        return;
+      }
+      if (!embedded && !publicConfirmationReady) {
+        showPublicConfirmation();
+        return;
+      }
+      publicConfirmationReady = false;
+      if (isCouple()) {
+        const casalId = editingEntry?.casalId || createId();
+        const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
+        const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
+        await linkCouplePeople(first, second, casalId);
+        await finishSave(first.nome);
+        return;
+      }
+      if (editingEntry?.casalId) {
+        const spouseEntry = editingSpouseEntry || enrolments.find((item) => item.casalId === editingEntry.casalId && item.retiroId === editingEntry.retiroId && item.pessoaId !== editingEntry.pessoaId);
+        if (spouseEntry) {
+          await dataService.deleteAdesao(spouseEntry.id);
+        }
+      }
+      const person = await saveForm(form, null, null, editingEntry);
+      await finishSave(person.nome);
+      return;
+    } catch (error) {
+      console.error(error);
+      publicConfirmationReady = false;
+      const messageTarget = mount.querySelector('#review-message') || form.querySelector('#form-message');
+      messageTarget?.replaceChildren('Não foi possível salvar a inscrição. Confira os dados e tente novamente.');
+    } finally {
+      setPublicSubmitting(false);
     }
-    const person = await saveForm(form, null, null, editingEntry);
-    await finishSave(person.nome);
   });
 }
 

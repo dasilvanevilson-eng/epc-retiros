@@ -2,6 +2,21 @@ const DATABASE = 'epc-retiros';
 const VERSION = 4;
 const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
+const randomBytes = (length) => {
+  const bytes = new Uint8Array(length);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
+  else bytes.forEach((_, index) => { bytes[index] = Math.floor(Math.random() * 256); });
+  return bytes;
+};
+const createId = () => {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = randomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE, VERSION);
@@ -89,7 +104,7 @@ async function get(storeName, id) {
 }
 
 async function save(storeName, record) {
-  const nextRecord = { ...record, id: record.id || crypto.randomUUID() };
+  const nextRecord = { ...record, id: record.id || createId() };
   return (await ensureBackend()) === 'file'
     ? api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, { method: 'PUT', body: JSON.stringify(nextRecord) })
     : legacyStore.save(storeName, nextRecord);
