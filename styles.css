@@ -2818,7 +2818,37 @@ select:focus {
   }
 
   .student-financial-summary-preview table {
-    min-width:620px;
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  .student-financial-summary-preview th,
+  .student-financial-summary-preview td {
+    padding:8px 6px;
+    font-size:11px;
+  }
+
+  .student-financial-summary-preview th:first-child,
+  .student-financial-summary-preview td:first-child {
+    width:auto;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+
+  .student-financial-summary-preview th:nth-child(2),
+  .student-financial-summary-preview th:nth-child(3),
+  .student-financial-summary-preview th:nth-child(4),
+  .student-financial-summary-preview td:nth-child(2),
+  .student-financial-summary-preview td:nth-child(3),
+  .student-financial-summary-preview td:nth-child(4) {
+    width:72px;
+    white-space:normal;
+  }
+
+  .student-financial-summary-preview tfoot th,
+  .student-financial-summary-preview tfoot td {
+    font-size:11px;
   }
 
   .receiver-sector-overlay {
