@@ -850,10 +850,19 @@ async function renderRecebedor() {
     if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
     return parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
   };
+  const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.recebedorValorPago) : parseCurrency(entry.valorPago);
+  const entryPaidStatus = (entry) => entry.tipoFinanceiro === 'cursista' ? Boolean(entry.recebedorTaxaPaga) : Boolean(entry.taxaPaga);
+  const setEntryPayment = (entry, value, checked) => {
+    if (entry.tipoFinanceiro === 'cursista') {
+      entry.recebedorValorPago = value;
+      entry.recebedorTaxaPaga = checked;
+      return;
+    }
+    entry.valorPago = value;
+    entry.taxaPaga = checked;
+  };
   const saveFinancialEntry = async (entry) => {
     if (entry.tipoFinanceiro === 'cursista') {
-      const balance = Math.max(0, effectiveSuggested(entry) - parseCurrency(entry.valorPago));
-      entry.saldoPagar = currency(balance);
       await dataService.saveCursista(entry);
       return;
     }
@@ -885,7 +894,7 @@ async function renderRecebedor() {
     return row.entries.reduce((sum, entry) => sum + effectiveSuggested(entry), 0);
   };
   const rowPaid = (row) => {
-    const values = row.entries.map((entry) => parseCurrency(entry.valorPago));
+    const values = row.entries.map(entryPaidAmount);
     const sum = values.reduce((total, value) => total + value, 0);
     if (!isVolunteerCoupleRow(row) || values.length < 2) return sum;
     const suggested = rowSuggested(row);
@@ -893,7 +902,7 @@ async function renderRecebedor() {
     const duplicatedCoupleTotal = suggested > 0 && values.filter(Boolean).length > 1 && values.every((value) => !value || Math.abs(value - max) < 0.01) && Math.abs(max - suggested) < 0.01;
     return duplicatedCoupleTotal ? max : sum;
   };
-  const rowPaidStatus = (row) => row.entries.every((entry) => entry.taxaPaga);
+  const rowPaidStatus = (row) => row.entries.every(entryPaidStatus);
   const rowHasPayment = (row) => rowPaid(row) > 0;
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
   const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
@@ -906,25 +915,28 @@ async function renderRecebedor() {
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportRows = rows.map((row) => ({
     nome: row.nome,
+    setores: row.setores || [],
     valorSugerido: rowSuggested(row),
     valorPago: rowPaid(row),
   }));
   const reportTitle = `Relatório do Recebedor - ${retreat.nome}`;
+  const reportSectors = [...new Set(receiverRows.flatMap((row) => row.setores || []))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
   const reportInitialSort = ['nome', 'sugerido', 'pago'].includes(receiverSort.key) ? { ...receiverSort } : { key: 'nome', direction: 'asc' };
   const reportValue = (row, key) => ({ nome: row.nome, sugerido: row.valorSugerido, pago: row.valorPago })[key];
-  const sortReceiverReportRows = (sort = reportInitialSort) => [...receiverReportRows].sort((first, second) => {
+  const reportRowsForSector = (sector = '') => sector ? receiverReportRows.filter((row) => row.setores.some((item) => normalizeText(item) === normalizeText(sector))) : receiverReportRows;
+  const sortReceiverReportRows = (sort = reportInitialSort, sector = '') => [...reportRowsForSector(sector)].sort((first, second) => {
     const result = String(reportValue(first, sort.key)).localeCompare(String(reportValue(second, sort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' });
     return sort.direction === 'asc' ? result : -result;
   });
   const reportIndicator = (sort, key) => sort.key === key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportHeader = (label, key, sort, interactive) => interactive ? `<button type="button" data-receiver-report-sort="${key}">${label} <span>${reportIndicator(sort, key)}</span></button>` : `${label}`;
-  const receiverReportTable = (sort = reportInitialSort, interactive = false) => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort).map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
-  const receiverReportDocument = (sort = reportInitialSort) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable(sort)}</body></html>`;
-  const printReceiverReport = (pdf = false, sort = reportInitialSort) => {
+  const receiverReportTable = (sort = reportInitialSort, interactive = false, sector = '') => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort, sector).map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
+  const receiverReportDocument = (sort = reportInitialSort, sector = '') => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>${sector ? `Setor: ${escapeHtml(sector)} · ` : ''}Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable(sort, false, sector)}</body></html>`;
+  const printReceiverReport = (pdf = false, sort = reportInitialSort, sector = '') => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
     printWindow.document.open();
-    printWindow.document.write(receiverReportDocument(sort));
+    printWindow.document.write(receiverReportDocument(sort, sector));
     printWindow.document.close();
     if (pdf) alert('Na janela de impressão, escolha "Salvar como PDF".');
     setTimeout(() => {
@@ -932,17 +944,18 @@ async function renderRecebedor() {
       printWindow.print();
     }, 250);
   };
-  const downloadReceiverSpreadsheet = (sort = reportInitialSort) => {
+  const downloadReceiverSpreadsheet = (sort = reportInitialSort, sector = '') => {
     const headers = ['Nome', 'Valor sugerido', 'Valor pago'];
     const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       headers.map(csvValue).join(';'),
-      ...sortReceiverReportRows(sort).map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
+      ...sortReceiverReportRows(sort, sector).map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
     ];
     const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${normalizeText(retreat.nome || 'relatorio-recebedor').replace(/\s+/g, '-') || 'relatorio-recebedor'}-recebedor.csv`;
+    const sectorSuffix = sector ? `-${normalizeText(sector).replace(/\s+/g, '-')}` : '';
+    link.download = `${normalizeText(retreat.nome || 'relatorio-recebedor').replace(/\s+/g, '-') || 'relatorio-recebedor'}-recebedor${sectorSuffix}.csv`;
     document.body.append(link);
     link.click();
     URL.revokeObjectURL(link.href);
@@ -963,9 +976,11 @@ async function renderRecebedor() {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
     let currentReportSort = { ...reportInitialSort };
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div><div id="receiver-report-table-mount">${receiverReportTable(currentReportSort, true)}</div><div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+    let currentReportSector = '';
+    const reportSectorOptions = `<option value="">Todos os setores</option>${reportSectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join('')}`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div><label class="field receiver-report-sector"><span>Setor</span><select id="receiver-report-sector">${reportSectorOptions}</select></label><div id="receiver-report-table-mount">${receiverReportTable(currentReportSort, true, currentReportSector)}</div><div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
     const renderReportTable = () => {
-      overlay.querySelector('#receiver-report-table-mount').innerHTML = receiverReportTable(currentReportSort, true);
+      overlay.querySelector('#receiver-report-table-mount').innerHTML = receiverReportTable(currentReportSort, true, currentReportSector);
       overlay.querySelectorAll('[data-receiver-report-sort]').forEach((button) => button.addEventListener('click', () => {
         const key = button.dataset.receiverReportSort;
         currentReportSort = { key, direction: currentReportSort.key === key && currentReportSort.direction === 'asc' ? 'desc' : 'asc' };
@@ -974,9 +989,13 @@ async function renderRecebedor() {
     };
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false, currentReportSort));
-    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true, currentReportSort));
-    overlay.querySelector('#receiver-report-sheet').addEventListener('click', () => downloadReceiverSpreadsheet(currentReportSort));
+    overlay.querySelector('#receiver-report-sector').addEventListener('change', (event) => {
+      currentReportSector = event.target.value;
+      renderReportTable();
+    });
+    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false, currentReportSort, currentReportSector));
+    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true, currentReportSort, currentReportSector));
+    overlay.querySelector('#receiver-report-sheet').addEventListener('click', () => downloadReceiverSpreadsheet(currentReportSort, currentReportSector));
     renderReportTable();
     app.append(overlay);
   });
@@ -1011,8 +1030,7 @@ async function renderRecebedor() {
       const total = parseCurrency(input.value);
       const checked = app.querySelector(`[data-fee-entry="${CSS.escape(input.dataset.paidEntry)}"]`)?.checked;
       await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-        entry.valorPago = value;
-        if (checked) entry.taxaPaga = true;
+        setEntryPayment(entry, value, checked || entryPaidStatus(entry));
         return saveFinancialEntry(entry);
       }));
       input.value = currency(total);
@@ -1032,8 +1050,7 @@ async function renderRecebedor() {
     const currentPaid = rowPaid(row);
     const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
     await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-      entry.taxaPaga = input.checked;
-      entry.valorPago = value;
+      setEntryPayment(entry, value, input.checked);
       return saveFinancialEntry(entry);
     }));
     await loadData();
