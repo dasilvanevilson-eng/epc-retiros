@@ -2432,7 +2432,7 @@ async function renderPublicForm(id, embedded = false) {
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'volunteer-term-title');
-    overlay.innerHTML = `<div class="hidden-team-alert-dialog volunteer-term-dialog"><p class="eyebrow">Voluntariado</p><h2 id="volunteer-term-title">${volunteerTermTitle}</h2>${volunteerTermContent}<button type="button" class="hidden-team-alert-close">Fechar termo</button></div>`;
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog volunteer-term-dialog"><p class="eyebrow">Voluntariado</p><h2 id="volunteer-term-title">${volunteerTermTitle}</h2>${volunteerTermContent}<button type="button" class="hidden-team-alert-close">Lí e concordo</button></div>`;
     const close = () => {
       document.removeEventListener('keydown', onKeydown);
       overlay.remove();
