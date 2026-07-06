@@ -86,7 +86,9 @@
 .receiver-panel-dialog .receiver-summary { margin:20px 0 24px; }
 .receiver-icon-button { display:grid; place-items:center; width:46px; min-width:46px; padding:0; font-size:20px; }
 .receiver-report-dialog { width:min(1080px,100%); }
-.receiver-report-preview { min-height:0; overflow:auto; margin:20px 0; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.receiver-report-dialog .panel-heading,.receiver-report-actions { flex:0 0 auto; }
+#receiver-report-table-mount { flex:1 1 auto; min-height:0; display:flex; }
+.receiver-report-preview { flex:1 1 auto; min-height:0; overflow:auto; margin:20px 0; border:1px solid var(--line); border-radius:10px; background:#fff; }
 .receiver-report-preview table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
 .receiver-report-preview th,.receiver-report-preview td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
 .receiver-report-preview th { position:sticky; top:0; z-index:1; background:#edf5e9; color:#285130; font-size:12px; }
@@ -2738,6 +2740,11 @@ select:focus {
 
   .receiver-report-dialog {
     padding:18px;
+    max-height:calc(100dvh - 24px);
+  }
+
+  .receiver-sector-overlay {
+    padding:12px;
   }
 
   .receiver-report-actions {
