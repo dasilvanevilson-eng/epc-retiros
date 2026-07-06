@@ -2323,9 +2323,9 @@ async function renderPublicForm(id, embedded = false) {
   const editSubmitText = embedded ? 'Salvar Alteração' : 'Salvar alterações';
   const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4>${area === 'escondida' ? '<aside class="hidden-team-notice"><strong>Atenção, querido servo do Senhor</strong><p>Se você vai participar de alguma área deste setor, fique ciente de que <b>não poderá ser visto por nenhum cursista</b>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.</p></aside>' : '<aside class="room-team-notice"><strong>Querido servo do Senhor</strong><p>Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.</p></aside>'}<div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
-  const adminSearchPanel = embedded ? `<section class="admin-registration-tools panel"><div class="panel-heading"><div><p class="eyebrow">Cadastro da equipe</p><h2>Consultar cadastro</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><button type="button" id="new-registration">Incluir novo</button></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
+  const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form">${stateDatalist()}
-    <section class="form-section"><div class="section-heading"><span>01</span><div><h2>Seus Dados</h2></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field"><span>Nome completo <b>*</b></span><input name="nome" autocomplete="off" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></div></section>
+    <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><a href="#pessoas" id="consult-selected-registration">Consultar</a><button type="button" id="delete-selected-registration">Excluir</button></div>' : ''}</div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field"><span>Nome completo <b>*</b></span><input name="nome" autocomplete="off" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></div></section>
     <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('dias', serviceDays)}</div></section>
     <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" type="date"></label><label class="field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('spouseDias', serviceDays)}</div></section>
     <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
@@ -2353,6 +2353,22 @@ async function renderPublicForm(id, embedded = false) {
   let editingEntry = null;
   let editingSpouseEntry = null;
   let newRecordNeedsType = false;
+  const registrationHeadingActions = embedded ? mount.querySelector('.registration-heading-actions') : null;
+  const editSelectedRegistration = embedded ? mount.querySelector('#edit-selected-registration') : null;
+  const consultSelectedRegistration = embedded ? mount.querySelector('#consult-selected-registration') : null;
+  const deleteSelectedRegistration = embedded ? mount.querySelector('#delete-selected-registration') : null;
+  const setRegistrationFormLocked = (locked) => {
+    if (!embedded) return;
+    form.querySelectorAll('input, select, textarea').forEach((control) => {
+      if (control.type !== 'hidden') control.disabled = locked;
+    });
+    form.querySelector('button[type="submit"]').disabled = locked;
+  };
+  const syncRegistrationActions = () => {
+    if (!embedded || !registrationHeadingActions) return;
+    registrationHeadingActions.hidden = !editingEntry;
+    if (consultSelectedRegistration && editingEntry) consultSelectedRegistration.href = `#pessoas/${editingEntry.pessoaId}/${editingEntry.retiroId}/equipe`;
+  };
   const setChoices = (name, values) => {
     const selected = new Set(Array.isArray(values) ? values : [values]);
     form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = selected.has(input.value); });
@@ -2431,6 +2447,8 @@ async function renderPublicForm(id, embedded = false) {
     editingSpouseEntry = null;
     form.querySelector('#delete-registration')?.remove();
     setNewRecordTypeLock(false);
+    setRegistrationFormLocked(false);
+    syncRegistrationActions();
     setCoupleMode(false);
     syncKidsNeed();
     form.querySelector('#form-message').textContent = 'Novo cadastro para o retiro em foco.';
@@ -2505,7 +2523,7 @@ async function renderPublicForm(id, embedded = false) {
     await loadData();
     renderPublicForm(id, true);
   };
-  const loadEntryForEdit = (entry) => {
+  const loadEntryForEdit = (entry, { locked = false } = {}) => {
     const person = people.find((item) => item.id === entry.pessoaId);
     if (!person) return;
     form.reset();
@@ -2533,13 +2551,14 @@ async function renderPublicForm(id, embedded = false) {
       setChoices('spouseDias', editingSpouseEntry.dias || []);
     }
     setCoupleMode(Boolean(entry.casalId));
-    if (!form.querySelector('#delete-registration')) { const remove = document.createElement('button'); remove.type = 'button'; remove.id = 'delete-registration'; remove.className = 'delete-registration'; remove.textContent = 'Excluir cadastro'; form.querySelector('.form-actions').append(remove); remove.addEventListener('click', async () => { if (!editingEntry || !confirm('Excluir este cadastro deste retiro?')) return; const entriesToDelete = [editingEntry, editingSpouseEntry].filter(Boolean); for (const entryToDelete of entriesToDelete) { await dataService.deleteAdesao(entryToDelete.id); const remaining = (await dataService.listAdesoes()).filter((item) => item.pessoaId === entryToDelete.pessoaId); if (!remaining.length) await dataService.deletePessoa(entryToDelete.pessoaId); } await loadData(); renderPublicForm(id, true); }); }
-    form.querySelector('#form-message').textContent = 'Editando o cadastro já enviado para este retiro.';
+    syncRegistrationActions();
+    setRegistrationFormLocked(Boolean(locked));
+    form.querySelector('#form-message').textContent = locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
   };
   if (embedded) {
     const nameField = form.nome.closest('.field');
     const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const renderCascade = () => { const currentName = form.nome.value; const term = currentName.trim().toLocaleLowerCase('pt-BR'); const entries = enrolments.filter((entry) => entry.retiroId === id && (!term || entry.nome.toLocaleLowerCase('pt-BR').includes(term))); const selectedType = new FormData(form).get('tipoFicha'); if (term && !entries.length) resetFormForInclusion(currentName); cascade.innerHTML = entries.length ? entries.map((entry) => `<button type="button" data-existing-entry="${entry.id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry); cascade.hidden = true; } })); };
+    const renderCascade = () => { const currentName = form.nome.value; const term = currentName.trim().toLocaleLowerCase('pt-BR'); const entries = enrolments.filter((entry) => entry.retiroId === id && (!term || entry.nome.toLocaleLowerCase('pt-BR').includes(term))); const selectedType = new FormData(form).get('tipoFicha'); if (term && !entries.length) resetFormForInclusion(currentName); cascade.innerHTML = entries.length ? entries.map((entry) => `<button type="button" data-existing-entry="${entry.id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
     const closeNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
     form.nome.addEventListener('focus', renderCascade); form.nome.addEventListener('input', renderCascade);
     nameField.addEventListener('focusout', (event) => { if (!nameField.contains(event.relatedTarget)) cascade.hidden = true; });
@@ -2564,18 +2583,28 @@ async function renderPublicForm(id, embedded = false) {
       searchResults.innerHTML = entries.length ? entries.map((entry) => {
         const person = people.find((item) => item.id === entry.pessoaId);
         const cpf = normalizeCpf(person?.cpf || person?.id);
-        return `<article><div><strong>${escapeHtml(entry.nome)}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(entry.setores.join(', ') || 'Sem setor')}</span></div><div class="registration-actions"><button type="button" data-registration-edit="${entry.id}">Editar</button><a href="#pessoas/${entry.pessoaId}/${entry.retiroId}/equipe">Consultar</a></div></article>`;
+        return `<article><button type="button" class="student-search-choice" data-registration-select="${entry.id}"><strong>${escapeHtml(entry.nome)}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(entry.setores.join(', ') || 'Sem setor')}</span></button></article>`;
       }).join('') : '<p>Nenhum cadastro encontrado neste retiro.</p>';
-      searchResults.querySelectorAll('[data-registration-edit]').forEach((button) => button.addEventListener('click', () => {
-        const entry = enrolments.find((item) => item.id === button.dataset.registrationEdit);
+      searchResults.querySelectorAll('[data-registration-select]').forEach((button) => button.addEventListener('click', () => {
+        const entry = enrolments.find((item) => item.id === button.dataset.registrationSelect);
         if (entry) {
-          loadEntryForEdit(entry);
+          loadEntryForEdit(entry, { locked: true });
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           searchResults.hidden = true;
         }
       }));
     };
+    setRegistrationFormLocked(true);
+    form.querySelector('#form-message').textContent = 'Clique em Incluir novo para iniciar um cadastro.';
     mount.querySelector('#new-registration').addEventListener('click', startNewRegistration);
+    editSelectedRegistration.addEventListener('click', () => {
+      if (!editingEntry) return;
+      setRegistrationFormLocked(false);
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      form.elements.nome.focus({ preventScroll: true });
+      form.querySelector('#form-message').textContent = 'Editando cadastro da equipe.';
+    });
+    deleteSelectedRegistration.addEventListener('click', () => deleteRegistration(editingEntry));
     searchInput.addEventListener('focus', renderRegistrationSearch);
     searchInput.addEventListener('input', renderRegistrationSearch);
     const registrationSearchField = searchInput.closest('.registration-search-field');
