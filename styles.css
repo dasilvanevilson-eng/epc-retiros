@@ -4113,3 +4113,68 @@ body:has(.login-shell) {
 .admin-shell [data-remove-community-monitor]:hover {
   background:#983126;
 }
+
+/* Endereco proporcional no cadastro publico da equipe */
+.public-shell .address-fields {
+  grid-auto-flow:row;
+  grid-template-columns:minmax(118px, .72fr) minmax(0, 1.12fr) minmax(0, 1.12fr) minmax(132px, .92fr) minmax(72px, .34fr);
+  align-items:end;
+}
+
+.public-shell .address-fields .field {
+  min-width:0;
+}
+
+.public-shell .address-fields .field:has(input[name="cep"]) {
+  grid-column:1;
+}
+
+.public-shell .address-fields .street-field {
+  grid-column:2 / 5;
+}
+
+.public-shell .address-fields .number-field {
+  grid-column:5;
+}
+
+.public-shell .address-fields .field:has(input[name="bairro"]) {
+  grid-column:1 / 3;
+}
+
+.public-shell .address-fields .field:has(input[name="cidade"]) {
+  grid-column:3 / 5;
+}
+
+.public-shell .address-fields .field:has(input[name="estado"]) {
+  grid-column:5;
+}
+
+@media(max-width:720px) {
+  .public-shell .address-fields {
+    grid-template-columns:minmax(0, 1fr) minmax(84px, .42fr);
+  }
+
+  .public-shell .address-fields .field:has(input[name="cep"]) {
+    grid-column:1;
+  }
+
+  .public-shell .address-fields .street-field {
+    grid-column:1;
+  }
+
+  .public-shell .address-fields .number-field {
+    grid-column:2;
+  }
+
+  .public-shell .address-fields .field:has(input[name="bairro"]) {
+    grid-column:1 / -1;
+  }
+
+  .public-shell .address-fields .field:has(input[name="cidade"]) {
+    grid-column:1;
+  }
+
+  .public-shell .address-fields .field:has(input[name="estado"]) {
+    grid-column:2;
+  }
+}
