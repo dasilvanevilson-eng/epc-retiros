@@ -646,13 +646,38 @@ a { color: inherit; }
   display: grid;
   place-items: end center;
   padding: clamp(24px, 7vh, 58px) 18px;
+  isolation: isolate;
+  overflow: hidden;
+  background: #1f160f;
+}
+
+.public-login-overlay::before,
+.public-login-overlay::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.public-login-overlay::before {
+  z-index: -2;
+  inset: -28px;
+  background: url("assets/login-santissimo.png") center / cover no-repeat;
+  filter: blur(18px);
+  opacity: .58;
+  transform: scale(1.04);
+}
+
+.public-login-overlay::after {
+  z-index: -1;
+  inset: 0;
   background:
-    linear-gradient(180deg, rgba(30, 22, 14, .04), rgba(30, 22, 14, .18)),
-    url("assets/login-santissimo.png") center / cover no-repeat;
+    linear-gradient(180deg, rgba(30, 22, 14, .03), rgba(30, 22, 14, .18)),
+    url("assets/login-santissimo.png") center / contain no-repeat;
 }
 
 .public-login-dialog {
   position: relative;
+  z-index: 1;
   width: min(360px, 100%);
   padding: clamp(20px, 5vw, 28px);
   border: 1px solid rgba(255, 239, 195, .64);
