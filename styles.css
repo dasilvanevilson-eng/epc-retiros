@@ -90,6 +90,9 @@
 .receiver-report-preview table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
 .receiver-report-preview th,.receiver-report-preview td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
 .receiver-report-preview th { position:sticky; top:0; z-index:1; background:#edf5e9; color:#285130; font-size:12px; }
+.receiver-report-preview th button { width:100%; padding:0; border:0; background:transparent; color:inherit; text-align:left; text-transform:uppercase; letter-spacing:.04em; font:700 12px 'DM Sans',sans-serif; box-shadow:none; }
+.receiver-report-preview th button:hover { background:transparent; color:var(--leaf); }
+.receiver-report-preview th button span { margin-left:4px; }
 .receiver-report-preview th:first-child,.receiver-report-preview td:first-child { width:auto; overflow-wrap:anywhere; word-break:normal; }
 .receiver-report-preview th:nth-child(2),.receiver-report-preview th:nth-child(3),.receiver-report-preview td:nth-child(2),.receiver-report-preview td:nth-child(3) { width:118px; white-space:nowrap; font-weight:700; }
 .receiver-report-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }

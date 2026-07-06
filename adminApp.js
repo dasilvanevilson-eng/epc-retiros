@@ -901,13 +901,21 @@ async function renderRecebedor() {
     valorPago: rowPaid(row),
   }));
   const reportTitle = `Relatório do Recebedor - ${retreat.nome}`;
-  const receiverReportTable = () => `<div class="receiver-report-preview"><table><thead><tr><th>Nome</th><th>Valor sugerido</th><th>Valor pago</th></tr></thead><tbody>${receiverReportRows.map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
-  const receiverReportDocument = () => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable()}</body></html>`;
-  const printReceiverReport = (pdf = false) => {
+  const reportInitialSort = ['nome', 'sugerido', 'pago'].includes(receiverSort.key) ? { ...receiverSort } : { key: 'nome', direction: 'asc' };
+  const reportValue = (row, key) => ({ nome: row.nome, sugerido: row.valorSugerido, pago: row.valorPago })[key];
+  const sortReceiverReportRows = (sort = reportInitialSort) => [...receiverReportRows].sort((first, second) => {
+    const result = String(reportValue(first, sort.key)).localeCompare(String(reportValue(second, sort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return sort.direction === 'asc' ? result : -result;
+  });
+  const reportIndicator = (sort, key) => sort.key === key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
+  const receiverReportHeader = (label, key, sort, interactive) => interactive ? `<button type="button" data-receiver-report-sort="${key}">${label} <span>${reportIndicator(sort, key)}</span></button>` : `${label}`;
+  const receiverReportTable = (sort = reportInitialSort, interactive = false) => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort).map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
+  const receiverReportDocument = (sort = reportInitialSort) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable(sort)}</body></html>`;
+  const printReceiverReport = (pdf = false, sort = reportInitialSort) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
     printWindow.document.open();
-    printWindow.document.write(receiverReportDocument());
+    printWindow.document.write(receiverReportDocument(sort));
     printWindow.document.close();
     if (pdf) alert('Na janela de impressão, escolha "Salvar como PDF".');
     setTimeout(() => {
@@ -915,12 +923,12 @@ async function renderRecebedor() {
       printWindow.print();
     }, 250);
   };
-  const downloadReceiverSpreadsheet = () => {
+  const downloadReceiverSpreadsheet = (sort = reportInitialSort) => {
     const headers = ['Nome', 'Valor sugerido', 'Valor pago'];
     const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       headers.map(csvValue).join(';'),
-      ...receiverReportRows.map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
+      ...sortReceiverReportRows(sort).map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
     ];
     const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
@@ -945,12 +953,22 @@ async function renderRecebedor() {
   app.querySelector('#receiver-print-preview').addEventListener('click', () => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div>${receiverReportTable()}<div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+    let currentReportSort = { ...reportInitialSort };
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div><div id="receiver-report-table-mount">${receiverReportTable(currentReportSort, true)}</div><div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+    const renderReportTable = () => {
+      overlay.querySelector('#receiver-report-table-mount').innerHTML = receiverReportTable(currentReportSort, true);
+      overlay.querySelectorAll('[data-receiver-report-sort]').forEach((button) => button.addEventListener('click', () => {
+        const key = button.dataset.receiverReportSort;
+        currentReportSort = { key, direction: currentReportSort.key === key && currentReportSort.direction === 'asc' ? 'desc' : 'asc' };
+        renderReportTable();
+      }));
+    };
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false));
-    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true));
-    overlay.querySelector('#receiver-report-sheet').addEventListener('click', downloadReceiverSpreadsheet);
+    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false, currentReportSort));
+    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true, currentReportSort));
+    overlay.querySelector('#receiver-report-sheet').addEventListener('click', () => downloadReceiverSpreadsheet(currentReportSort));
+    renderReportTable();
     app.append(overlay);
   });
   app.querySelector('#receiver-by-sector').addEventListener('click', () => {
