@@ -895,35 +895,14 @@ async function renderRecebedor() {
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
   const rows = [...receiverRows].sort((first, second) => { const result = String(values(first, receiverSort.key)).localeCompare(String(values(second, receiverSort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' }); return receiverSort.direction === 'asc' ? result : -result; });
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
-  const personSnapshotForEntry = (entry) => {
-    const person = peopleById.get(entry.pessoaId) || {};
-    return { ...entry.dadosPessoais, ...person, id: person.id || entry.pessoaId, cpf: person.cpf || entry.dadosPessoais?.cpf || entry.pessoaId, nome: entry.nome || person.nome || entry.dadosPessoais?.nome || '' };
-  };
-  const addressForSnapshot = (person = {}) => [[person.endereco || person.rua, person.numero].filter(Boolean).join(', '), person.bairro, person.cidade, person.estado].filter(Boolean).join(' · ');
-  const uniqueText = (items = []) => {
-    const seen = new Set();
-    return items.map((item) => String(item || '').trim()).filter((item) => {
-      const key = normalizeText(item);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  };
-  const receiverReportRows = rows.map((row) => {
-    const snapshots = row.entries.map(personSnapshotForEntry);
-    const cpfs = snapshots.map((person) => normalizeCpf(person.cpf || person.id)).filter(Boolean).map(formatCpf);
-    const addresses = uniqueText(snapshots.map(addressForSnapshot));
-    return {
-      nome: row.nome,
-      cpf: cpfs.join(' / '),
-      endereco: addresses.join(' / '),
-      valorSugerido: rowSuggested(row),
-      valorPago: rowPaid(row),
-    };
-  });
+  const receiverReportRows = rows.map((row) => ({
+    nome: row.nome,
+    valorSugerido: rowSuggested(row),
+    valorPago: rowPaid(row),
+  }));
   const reportTitle = `Relatório do Recebedor - ${retreat.nome}`;
-  const receiverReportTable = () => `<div class="receiver-report-preview"><table><thead><tr><th>Nome</th><th>CPF</th><th>Endereço completo</th><th>Valor sugerido</th><th>Valor pago</th></tr></thead><tbody>${receiverReportRows.map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${escapeHtml(row.cpf || 'Não informado')}</td><td>${escapeHtml(row.endereco || 'Não informado')}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="5">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
-  const receiverReportDocument = () => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>body{margin:24px;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}td:nth-child(4),td:nth-child(5){white-space:nowrap}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable()}</body></html>`;
+  const receiverReportTable = () => `<div class="receiver-report-preview"><table><thead><tr><th>Nome</th><th>Valor sugerido</th><th>Valor pago</th></tr></thead><tbody>${receiverReportRows.map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
+  const receiverReportDocument = () => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>body{margin:24px;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}td:nth-child(2),td:nth-child(3){white-space:nowrap}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable()}</body></html>`;
   const printReceiverReport = (pdf = false) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
@@ -937,11 +916,11 @@ async function renderRecebedor() {
     }, 250);
   };
   const downloadReceiverSpreadsheet = () => {
-    const headers = ['Nome', 'CPF', 'Endereço completo', 'Valor sugerido', 'Valor pago'];
+    const headers = ['Nome', 'Valor sugerido', 'Valor pago'];
     const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       headers.map(csvValue).join(';'),
-      ...receiverReportRows.map((row) => [row.nome, row.cpf, row.endereco, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
+      ...receiverReportRows.map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
     ];
     const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
