@@ -2804,7 +2804,21 @@ select:focus {
 
   .receiver-report-dialog {
     padding:18px;
+    height:calc(100dvh - 24px);
     max-height:calc(100dvh - 24px);
+  }
+
+  .student-financial-summary-dialog .panel-heading {
+    margin-bottom:8px;
+  }
+
+  #student-financial-summary-table {
+    min-height:220px;
+    overflow:hidden;
+  }
+
+  .student-financial-summary-preview table {
+    min-width:620px;
   }
 
   .receiver-sector-overlay {
