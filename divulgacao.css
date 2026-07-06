@@ -1011,3 +1011,181 @@ a { color: inherit; }
     margin-bottom: 0;
   }
 }
+
+@media (max-width: 620px) {
+  .welcome-orbit {
+    display: block;
+    padding: 72px 12px 28px;
+  }
+
+  .welcome-heading {
+    margin-bottom: 12px;
+  }
+
+  .welcome-heading h1 {
+    font-size: clamp(29px, 8.7vw, 36px);
+  }
+
+  .title-stack p {
+    font-size: clamp(21px, 6.5vw, 27px);
+  }
+
+  .title-stack .parish-line {
+    font-size: clamp(17px, 5.1vw, 22px);
+  }
+
+  .orbit-map {
+    position: relative;
+    display: block;
+    width: min(100%, 390px);
+    height: clamp(590px, 158vw, 650px);
+    margin: 0 auto;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .orbit-map::before {
+    display: block;
+    z-index: 0;
+    top: 26px;
+    left: 50%;
+    width: min(302px, 82vw);
+    height: calc(100% - 54px);
+    border: 2px solid rgba(215, 167, 82, .5);
+    border-radius: 50%;
+    background: transparent;
+    mask-image: none;
+    transform: translateX(-50%);
+  }
+
+  .orbit-map::after {
+    display: block;
+    z-index: 0;
+    inset: 116px 70px 116px;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(255, 231, 184, .7), transparent 48%),
+      radial-gradient(circle at 36% 78%, rgba(230, 139, 117, .32), transparent 30%),
+      radial-gradient(circle at 64% 78%, rgba(230, 139, 117, .32), transparent 30%);
+    filter: blur(11px);
+  }
+
+  .gold-line {
+    display: block;
+    z-index: 1;
+    width: 96px;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(215, 167, 82, .74), transparent);
+    opacity: .55;
+  }
+
+  .line-left-top { top: 118px; left: 106px; transform: rotate(28deg); }
+  .line-right-top { top: 118px; right: 106px; transform: rotate(-28deg); }
+  .line-left-middle { top: 292px; left: 62px; width: 118px; transform: rotate(6deg); }
+  .line-right-middle { top: 292px; right: 62px; width: 118px; transform: rotate(-6deg); }
+  .line-left-bottom { top: 498px; left: 104px; transform: rotate(-33deg); }
+  .line-right-bottom { top: 498px; right: 104px; transform: rotate(33deg); }
+
+  .main-devotion {
+    position: absolute;
+    z-index: 4;
+    top: clamp(120px, 33vw, 142px);
+    left: 50%;
+    display: block;
+    width: clamp(188px, 58vw, 226px);
+    height: clamp(300px, 88vw, 356px);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    filter: drop-shadow(0 18px 30px rgba(99, 58, 8, .2));
+    overflow: visible;
+    transform: translateX(-50%);
+  }
+
+  .main-devotion:hover {
+    transform: translateX(-50%) translateY(-3px);
+  }
+
+  .main-devotion::before {
+    display: block;
+  }
+
+  .main-devotion img {
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .movement-button {
+    position: absolute;
+    z-index: 3;
+    width: clamp(82px, 25vw, 104px);
+    min-height: 0;
+    aspect-ratio: 1;
+    padding: 4px;
+    border-width: 2px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, .98) 0 66%, rgba(255, 246, 224, .96) 100%);
+    box-shadow: 0 10px 24px rgba(113, 76, 22, .16);
+    overflow: hidden;
+  }
+
+  .movement-button:hover {
+    transform: translateY(-3px) scale(1.02);
+  }
+
+  .movement-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 4%;
+    object-fit: contain;
+    transform: scale(.9);
+  }
+
+  .movement-pastor {
+    top: 28px;
+    left: max(18px, calc(50% - 150px));
+  }
+
+  .movement-epc {
+    top: 28px;
+    right: max(18px, calc(50% - 150px));
+  }
+
+  .movement-girassol {
+    top: 206px;
+    left: 0;
+  }
+
+  .movement-eja {
+    top: 206px;
+    right: 0;
+  }
+
+  .movement-onda {
+    bottom: 30px;
+    left: max(18px, calc(50% - 150px));
+  }
+
+  .movement-eju {
+    bottom: 30px;
+    right: max(18px, calc(50% - 150px));
+  }
+
+  .movement-image + .movement-logo {
+    display: none;
+    opacity: 0;
+  }
+
+  .movement-image.is-missing + .movement-logo {
+    display: grid;
+    opacity: 1;
+  }
+}

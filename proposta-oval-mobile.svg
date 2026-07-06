@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e7f8ff"/>
+      <stop offset="0.44" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#eef9ff"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="47%" r="58%">
+      <stop offset="0" stop-color="#fff0b8" stop-opacity=".95"/>
+      <stop offset=".5" stop-color="#fff4d7" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="11" stdDeviation="10" flood-color="#5c3b10" flood-opacity=".16"/>
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="15" flood-color="#5c3b10" flood-opacity=".18"/>
+    </filter>
+  </defs>
+
+  <rect width="390" height="844" fill="url(#bg)"/>
+  <rect width="390" height="844" fill="url(#centerGlow)"/>
+  <path d="M-20 788 C96 760 284 760 410 794 L410 844 L-20 844 Z" fill="#9ed2f1" opacity=".78"/>
+  <path d="M-20 822 C98 790 283 787 410 808 L410 844 L-20 844 Z" fill="#eef9ff"/>
+
+  <rect x="264" y="16" width="110" height="42" rx="8" fill="#fffdf7" stroke="#d8ba7a" filter="url(#shadow)"/>
+  <text x="319" y="42" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="13" font-weight="800" fill="#5d3a11">Área Restrita</text>
+
+  <g text-anchor="middle">
+    <text x="195" y="93" font-family="Fraunces, Georgia, serif" font-size="31" font-weight="700" fill="#542f07">Encontro de Pais</text>
+    <text x="195" y="125" font-family="Fraunces, Georgia, serif" font-size="31" font-weight="700" fill="#542f07">com Cristo</text>
+    <text x="195" y="154" font-family="Fraunces, Georgia, serif" font-size="21" font-weight="800" fill="#58a6dd">Família unida filhos</text>
+    <text x="195" y="179" font-family="Fraunces, Georgia, serif" font-size="21" font-weight="800" fill="#58a6dd">com vida!</text>
+    <text x="195" y="206" font-family="Fraunces, Georgia, serif" font-size="18" font-weight="700" fill="#6c4a1b">Paróquia Santa Inês - Indaial</text>
+  </g>
+
+  <ellipse cx="195" cy="510" rx="144" ry="248" fill="none" stroke="#d7a752" stroke-width="2.5" opacity=".48"/>
+  <ellipse cx="195" cy="510" rx="101" ry="190" fill="none" stroke="#e7c77f" stroke-width="1.5" opacity=".28"/>
+
+  <g stroke="#d7a752" stroke-width="1.4" opacity=".34">
+    <line x1="195" y1="334" x2="116" y2="270"/>
+    <line x1="195" y1="334" x2="274" y2="270"/>
+    <line x1="195" y1="421" x2="70" y2="445"/>
+    <line x1="195" y1="421" x2="320" y2="445"/>
+    <line x1="195" y1="608" x2="116" y2="720"/>
+    <line x1="195" y1="608" x2="274" y2="720"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="111" y="319" width="168" height="302" rx="82" fill="#fffaf0" opacity=".58"/>
+    <image href="assets/clean/eis-me-aqui-central.png" x="83" y="309" width="224" height="330" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <text x="195" y="315" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-size="31" font-weight="700" fill="#5d3a11">Eis-me Aqui</text>
+
+  <g filter="url(#shadow)">
+    <circle cx="116" cy="270" r="52" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/pastor.png" x="70" y="224" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="274" cy="270" r="52" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/epc.png" x="228" y="224" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="70" cy="445" r="50" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/girassol.png" x="26" y="401" width="88" height="88" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="320" cy="445" r="50" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/eja.png" x="276" y="401" width="88" height="88" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="116" cy="720" r="52" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/onda.png" x="70" y="674" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="274" cy="720" r="52" fill="#fffdf7" stroke="#e6c47d" stroke-width="3"/>
+    <image href="assets/clean/eju.png" x="228" y="674" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+
+  <path d="M182 810 L195 823 L208 810" fill="none" stroke="#d7a752" stroke-width="3"/>
+</svg>
