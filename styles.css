@@ -4185,8 +4185,13 @@ body:has(.login-shell) {
     grid-row:4;
   }
 
-  .public-shell .address-fields .field:has(input[name="estado"]) {
+.public-shell .address-fields .field:has(input[name="estado"]) {
     grid-column:3;
     grid-row:4;
   }
+}
+
+.hidden-team-danger {
+  color:#b94137;
+  font-weight:900;
 }
