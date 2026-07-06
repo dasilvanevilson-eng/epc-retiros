@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs>
+    <linearGradient id="pageBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8f8ff"/>
+      <stop offset="0.45" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#f2fbff"/>
+    </linearGradient>
+    <radialGradient id="warmGlow" cx="50%" cy="40%" r="62%">
+      <stop offset="0" stop-color="#fff1bd" stop-opacity="0.95"/>
+      <stop offset="0.52" stop-color="#fff5dd" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#4b3312" flood-opacity="0.14"/>
+    </filter>
+    <filter id="cardShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#714c16" flood-opacity="0.14"/>
+    </filter>
+    <clipPath id="circleClip">
+      <circle cx="0" cy="0" r="1"/>
+    </clipPath>
+  </defs>
+
+  <rect width="390" height="844" fill="url(#pageBg)"/>
+  <rect width="390" height="844" fill="url(#warmGlow)"/>
+  <path d="M-20 783 C88 753 277 754 414 792 L414 844 L-20 844 Z" fill="#9ed2f1" opacity="0.82"/>
+  <path d="M-20 820 C94 785 275 782 414 806 L414 844 L-20 844 Z" fill="#eef9ff"/>
+
+  <a href="epc-retiros.html#inicio">
+    <rect x="266" y="18" width="106" height="42" rx="8" fill="#fffdf7" stroke="#d7b878" filter="url(#cardShadow)"/>
+    <text x="319" y="44" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="13" font-weight="800" fill="#5d3a11">Área Restrita</text>
+  </a>
+
+  <g text-anchor="middle">
+    <text x="195" y="96" font-family="Fraunces, Georgia, serif" font-size="31" font-weight="700" fill="#542f07">Encontro de Pais</text>
+    <text x="195" y="128" font-family="Fraunces, Georgia, serif" font-size="31" font-weight="700" fill="#542f07">com Cristo</text>
+    <text x="195" y="158" font-family="Fraunces, Georgia, serif" font-size="22" font-weight="800" fill="#58a6dd">Família unida filhos</text>
+    <text x="195" y="184" font-family="Fraunces, Georgia, serif" font-size="22" font-weight="800" fill="#58a6dd">com vida!</text>
+    <text x="195" y="211" font-family="Fraunces, Georgia, serif" font-size="19" font-weight="700" fill="#6c4a1b">Paróquia Santa Inês - Indaial</text>
+  </g>
+
+  <path d="M92 232 C143 212 247 212 298 232" fill="none" stroke="#d7a752" stroke-width="2" opacity="0.42"/>
+  <path d="M78 452 C137 498 253 498 312 452" fill="none" stroke="#d7a752" stroke-width="2" opacity="0.28"/>
+
+  <a href="movimento.html?id=eis-me-aqui">
+    <g filter="url(#softShadow)">
+      <rect x="55" y="236" width="280" height="222" rx="20" fill="#fffdf7" stroke="#e4c37b"/>
+      <text x="195" y="271" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-size="26" font-weight="700" fill="#5d3a11">Eis-me Aqui</text>
+      <image href="assets/clean/eis-me-aqui-central.png" x="111" y="282" width="168" height="150" preserveAspectRatio="xMidYMid meet"/>
+      <rect x="129" y="421" width="132" height="28" rx="14" fill="#fff3d8" stroke="#e4c37b"/>
+      <text x="195" y="440" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="12" font-weight="800" fill="#5d3a11">Abrir retiro</text>
+    </g>
+  </a>
+
+  <g font-family="DM Sans, Arial, sans-serif" font-size="12" font-weight="800" fill="#5d3a11" text-anchor="middle">
+    <a href="movimento.html?id=o-senhor-e-meu-pastor">
+      <g filter="url(#cardShadow)">
+        <rect x="28" y="486" width="152" height="104" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="104" cy="527" r="34" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/pastor.png" x="72" y="495" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
+        <text x="104" y="578">O Senhor é meu Pastor</text>
+      </g>
+    </a>
+    <a href="movimento.html?id=epc">
+      <g filter="url(#cardShadow)">
+        <rect x="210" y="486" width="152" height="104" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="286" cy="527" r="34" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/epc.png" x="254" y="495" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
+        <text x="286" y="578">EPC</text>
+      </g>
+    </a>
+    <a href="movimento.html?id=girassol">
+      <g filter="url(#cardShadow)">
+        <rect x="28" y="606" width="152" height="104" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="104" cy="647" r="34" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/girassol.png" x="72" y="615" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
+        <text x="104" y="698">Girassol</text>
+      </g>
+    </a>
+    <a href="movimento.html?id=eja">
+      <g filter="url(#cardShadow)">
+        <rect x="210" y="606" width="152" height="104" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="286" cy="647" r="34" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/eja.png" x="254" y="615" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
+        <text x="286" y="698">EJA</text>
+      </g>
+    </a>
+    <a href="movimento.html?id=onda">
+      <g filter="url(#cardShadow)">
+        <rect x="28" y="726" width="152" height="92" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="104" cy="763" r="30" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/onda.png" x="76" y="735" width="56" height="56" preserveAspectRatio="xMidYMid meet"/>
+        <text x="104" y="807">ONDA</text>
+      </g>
+    </a>
+    <a href="movimento.html?id=eju">
+      <g filter="url(#cardShadow)">
+        <rect x="210" y="726" width="152" height="92" rx="18" fill="#fffdf7" stroke="#e4c37b"/>
+        <circle cx="286" cy="763" r="30" fill="#ffffff" stroke="#e4c37b" stroke-width="2"/>
+        <image href="assets/clean/eju.png" x="258" y="735" width="56" height="56" preserveAspectRatio="xMidYMid meet"/>
+        <text x="286" y="807">EJU</text>
+      </g>
+    </a>
+  </g>
+</svg>
