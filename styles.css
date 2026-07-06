@@ -2982,3 +2982,34 @@ select:focus {
       "suggested paid check";
   }
 }
+
+@media(max-width:720px) {
+  .student-page-heading,
+  .student-registration-tools .panel-heading {
+    flex-direction:row;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .student-page-heading>div,
+  .student-registration-tools .panel-heading>div:first-child {
+    min-width:0;
+  }
+
+  .student-page-heading h1,
+  .student-registration-tools .panel-heading h2 {
+    overflow-wrap:anywhere;
+  }
+
+  .student-page-heading .primary-button,
+  .student-registration-tools .panel-heading button {
+    flex:0 0 auto;
+    width:auto;
+    min-height:38px;
+    padding:8px 10px;
+    font-size:12px;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+}
