@@ -3177,10 +3177,16 @@ select:focus {
   }
 
   .student-form .student-registration-value .fields.three-columns {
-    grid-template-columns:repeat(2, minmax(0, 1fr));
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:6px;
   }
 
-  .student-form .field:has(input[name="saldoPagar"]) {
-    grid-column:1 / -1;
+  .student-form .student-registration-value .field {
+    font-size:11px;
+  }
+
+  .student-form .student-registration-value input {
+    padding:8px 6px;
+    font-size:12px;
   }
 }

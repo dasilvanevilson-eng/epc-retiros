@@ -1174,6 +1174,43 @@ async function renderCursista() {
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => control.focus({ preventScroll: true }), 180);
   };
+  let studentRequiredReviewActive = false;
+  const firstStudentRequiredIssue = () => {
+    const values = new FormData(form);
+    const requiredChoices = ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro', 'paisMovimento', 'camiseta', 'intoleranciaAlimentos', 'alergiaMedicamento'];
+    const missingChoice = requiredChoices.find((name) => !values.get(name));
+    if (missingChoice) return form.querySelector(`[name="${missingChoice}"]`);
+    if (values.get('intoleranciaAlimentos') === 'Sim' && !String(values.get('qualIntolerancia') || '').trim()) return form.elements.qualIntolerancia;
+    if (values.get('alergiaMedicamento') === 'Sim' && !String(values.get('qualAlergia') || '').trim()) return form.elements.qualAlergia;
+    return form.querySelector(':invalid');
+  };
+  const syncStudentConditionalRequired = () => {
+    const values = new FormData(form);
+    const intoleranceRequired = values.get('intoleranciaAlimentos') === 'Sim';
+    const allergyRequired = values.get('alergiaMedicamento') === 'Sim';
+    form.elements.qualIntolerancia.required = intoleranceRequired;
+    form.elements.qualAlergia.required = allergyRequired;
+    form.elements.qualIntolerancia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(intoleranceRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
+    form.elements.qualAlergia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(allergyRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
+  };
+  const focusNextStudentRequiredIssue = (currentControl) => {
+    if (!studentRequiredReviewActive || !currentControl) return;
+    syncStudentConditionalRequired();
+    const nextIssue = firstStudentRequiredIssue();
+    const currentGroup = currentControl.name ? form.querySelector(`[name="${currentControl.name}"]`) : currentControl;
+    if (nextIssue && nextIssue !== currentGroup && nextIssue !== currentControl) focusStudentIssue(nextIssue);
+    if (!nextIssue) studentRequiredReviewActive = false;
+  };
+  form.querySelectorAll('[name="intoleranciaAlimentos"], [name="alergiaMedicamento"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      syncStudentConditionalRequired();
+      const detailField = input.name === 'intoleranciaAlimentos' ? form.elements.qualIntolerancia : form.elements.qualAlergia;
+      if (input.checked && input.value === 'Sim') focusStudentIssue(detailField);
+    });
+  });
+  form.addEventListener('change', (event) => focusNextStudentRequiredIssue(event.target));
+  form.addEventListener('blur', (event) => focusNextStudentRequiredIssue(event.target), true);
+  syncStudentConditionalRequired();
   const duplicateStudentCpfMessage = 'CPF já cadastrado';
   const studentTeamConflictMessage = 'Este CPF já está cadastrado na equipe de trabalho deste retiro.';
   const studentArchiveMessage = 'Dados encontrados no acervo da equipe. Revise antes de salvar.';
@@ -1311,15 +1348,15 @@ async function renderCursista() {
   form.elements.cpf.addEventListener('change', () => checkStudentCpf(true));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    syncStudentConditionalRequired();
     const values = new FormData(form);
     const submitCpf = normalizeCpf(values.get('cpf'));
     if (isValidCpf(submitCpf) && await checkStudentCpf(true)) return;
-    const requiredChoices = ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro', 'paisMovimento', 'camiseta', 'intoleranciaAlimentos', 'alergiaMedicamento'];
-    const firstInvalid = form.querySelector(':invalid');
-    const missingChoice = requiredChoices.find((name) => !values.get(name));
-    if (!form.checkValidity() || missingChoice) {
+    const firstIssue = firstStudentRequiredIssue();
+    if (!form.checkValidity() || firstIssue) {
+      studentRequiredReviewActive = true;
       app.querySelector('#student-message').textContent = 'Revise os campos obrigatórios antes de salvar.';
-      focusStudentIssue(firstInvalid || form.querySelector(`[name="${missingChoice}"]`));
+      focusStudentIssue(firstIssue);
       return;
     }
     const cpf = normalizeCpf(values.get('cpf'));
@@ -1355,6 +1392,7 @@ async function renderCursista() {
     form.querySelector('.delete-student')?.setAttribute('hidden', '');
     app.querySelector('.student-heading-actions')?.setAttribute('hidden', '');
     app.querySelector('#student-message').textContent = 'Cadastro do cursista salvo com sucesso.';
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
 async function renderCursistaDetalhe(id) {
