@@ -3076,16 +3076,21 @@ select:focus {
   }
 
   .student-form .address-fields {
-    grid-auto-flow:dense;
-    grid-template-columns:minmax(90px, .85fr) minmax(0, 1.15fr) minmax(62px, .55fr);
+    grid-auto-flow:row;
+    grid-template-columns:minmax(0, 1fr) minmax(66px, .34fr);
+  }
+
+  .student-form .field:has(input[name="cep"]),
+  .student-form .field:has(input[name="bairro"]) {
+    grid-column:1 / -1;
   }
 
   .student-form .address-fields .street-field {
-    grid-column:1 / 3;
+    grid-column:1;
   }
 
   .student-form .address-fields .number-field {
-    grid-column:3;
+    grid-column:2;
   }
 
   .student-form .field:has(input[name="cep"]),
@@ -3093,13 +3098,12 @@ select:focus {
     width:auto;
   }
 
-  .student-form .field:has(input[name="estado"]) {
-    grid-column:3;
+  .student-form .field:has(input[name="cidade"]) {
+    grid-column:1;
   }
 
-  .student-form .field:has(input[name="bairro"]),
-  .student-form .field:has(input[name="cidade"]) {
-    grid-column:span 2;
+  .student-form .field:has(input[name="estado"]) {
+    grid-column:2;
   }
 
   .student-form .student-questions {
@@ -3152,6 +3156,8 @@ select:focus {
     margin-top:8px;
   }
 
+  .student-form fieldset:has(input[name="qualRetiro"]),
+  .student-form fieldset:has(input[name="qualMovimento"]),
   .student-form fieldset:has(input[name="qualIntolerancia"]),
   .student-form fieldset:has(input[name="qualAlergia"]) {
     display:grid;
@@ -3160,16 +3166,22 @@ select:focus {
     align-items:end;
   }
 
+  .student-form fieldset:has(input[name="qualRetiro"]) legend,
+  .student-form fieldset:has(input[name="qualMovimento"]) legend,
   .student-form fieldset:has(input[name="qualIntolerancia"]) legend,
   .student-form fieldset:has(input[name="qualAlergia"]) legend {
     grid-column:1 / -1;
   }
 
+  .student-form fieldset:has(input[name="qualRetiro"]) .inline-choices,
+  .student-form fieldset:has(input[name="qualMovimento"]) .inline-choices,
   .student-form fieldset:has(input[name="qualIntolerancia"]) .inline-choices,
   .student-form fieldset:has(input[name="qualAlergia"]) .inline-choices {
     margin:0;
   }
 
+  .student-form fieldset:has(input[name="qualRetiro"]) .field,
+  .student-form fieldset:has(input[name="qualMovimento"]) .field,
   .student-form fieldset:has(input[name="qualIntolerancia"]) .field,
   .student-form fieldset:has(input[name="qualAlergia"]) .field {
     margin-top:0;
@@ -3195,7 +3207,7 @@ select:focus {
   }
 
   .student-form .address-fields {
-    grid-template-columns:minmax(86px, .9fr) minmax(0, 1fr) minmax(58px, .55fr);
+    grid-template-columns:minmax(0, 1fr) minmax(58px, .36fr);
     gap:8px;
   }
 
@@ -3203,6 +3215,8 @@ select:focus {
     grid-template-columns:1fr;
   }
 
+  .student-form fieldset:has(input[name="qualRetiro"]),
+  .student-form fieldset:has(input[name="qualMovimento"]),
   .student-form fieldset:has(input[name="qualIntolerancia"]),
   .student-form fieldset:has(input[name="qualAlergia"]) {
     grid-template-columns:minmax(88px, .85fr) minmax(0, 1.15fr);
