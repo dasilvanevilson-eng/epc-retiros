@@ -3870,3 +3870,246 @@ select:focus {
     grid-template-columns:1fr;
   }
 }
+
+/* Paleta celestial da area restrita */
+body:has(.admin-shell),
+body:has(.login-shell) {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(151, 214, 244, .48), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(255, 238, 190, .44), transparent 31%),
+    linear-gradient(180deg, #edf9ff 0%, #fbfdff 48%, #eef8ff 100%);
+}
+
+.admin-shell,
+.login-shell {
+  --ink:#15324a;
+  --muted:#5d7184;
+  --leaf:#2b91cf;
+  --sun:#d7a752;
+  --paper:#fbfdff;
+  --line:#cde8f5;
+  --soft:#eef9ff;
+  --epc-navy:#15324a;
+  --epc-blue:#2b91cf;
+  --epc-blue-soft:#e8f7ff;
+  --epc-gold:#d7a752;
+  --epc-gold-soft:#fff6dc;
+  --epc-green:#4f9c89;
+  --epc-green-soft:#e9f8f4;
+  --epc-line:#cde8f5;
+}
+
+.admin-shell.has-sidebar {
+  border-color:rgba(142, 201, 232, .58);
+  background:
+    linear-gradient(180deg, rgba(251, 253, 255, .94), rgba(236, 248, 255, .91)),
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, .96), transparent 28%),
+    radial-gradient(circle at 84% 0%, rgba(255, 239, 195, .33), transparent 34%);
+  box-shadow:0 22px 64px rgba(43, 145, 207, .14);
+}
+
+.admin-sidebar {
+  border:1px solid rgba(142, 201, 232, .36);
+  border-radius:17px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .82), rgba(231, 247, 255, .68)),
+    radial-gradient(circle at 50% 0%, rgba(215, 167, 82, .18), transparent 46%);
+  box-shadow:0 18px 42px rgba(43, 145, 207, .10);
+}
+
+.admin-shell .admin-sidebar p,
+.admin-shell .main-nav a,
+.admin-shell .dashboard-hero p,
+.admin-shell .panel-heading p,
+.admin-shell .panel .hint,
+.admin-shell .dashboard-metrics .metric-card span,
+.admin-shell .dashboard-metrics .metric-card small,
+.admin-shell .student-health-card span {
+  color:#5d7184;
+}
+
+.admin-header {
+  border-color:rgba(142, 201, 232, .42);
+  background:rgba(251, 253, 255, .88);
+  box-shadow:0 12px 30px rgba(43, 145, 207, .12);
+}
+
+.admin-shell .main-nav a:hover,
+.admin-shell .main-nav a.is-active {
+  background:#e8f7ff;
+  color:#15537a;
+}
+
+.admin-shell .main-nav a.is-active {
+  border-bottom-color:#2b91cf;
+}
+
+.admin-main {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .98), rgba(239, 249, 255, .92)),
+    radial-gradient(circle at 50% 0, rgba(255, 246, 220, .52), transparent 32%);
+}
+
+.admin-shell .page-heading,
+.admin-shell .dashboard-hero,
+.admin-shell .panel-heading h2,
+.admin-shell .panel h2,
+.admin-shell .sidebar-brand strong,
+.admin-shell .dashboard-hero h1 {
+  color:#15324a;
+}
+
+.admin-shell .panel,
+.admin-shell .dashboard-panel,
+.admin-shell .admin-registration-tools,
+.admin-shell .access-list-panel,
+.admin-shell .access-user-form,
+.admin-shell .community-card,
+.admin-shell .retreat-card,
+.admin-shell .metric-grid article,
+.admin-shell .dashboard-metrics .metric-card,
+.admin-shell .student-health-card,
+.login-shell .login-panel {
+  border-color:rgba(142, 201, 232, .54);
+  background:rgba(251, 253, 255, .94);
+  box-shadow:0 18px 42px rgba(43, 145, 207, .10);
+}
+
+.admin-shell .panel:hover,
+.admin-shell .retreat-card:hover,
+.admin-shell .dashboard-metrics .metric-card:hover,
+.admin-shell .student-health-card:hover {
+  border-color:rgba(88, 166, 221, .70);
+  box-shadow:0 18px 38px rgba(43, 145, 207, .13);
+}
+
+.admin-shell .eyebrow,
+.admin-shell .text-link,
+.admin-shell .back-link,
+.admin-shell .panel-heading a,
+.admin-shell .metric-grid strong,
+.admin-shell .focus-retreat-counts strong,
+.admin-shell .retreat-card-meta strong,
+.admin-shell .dashboard-metrics .metric-card strong,
+.admin-shell .student-health-card strong,
+.admin-shell .statistics-grid strong,
+.admin-shell .day-presence-grid strong,
+.admin-shell .shirt-size-grid strong,
+.admin-shell .receiver-summary strong,
+.admin-shell .simple-list small {
+  color:#2b91cf;
+}
+
+.admin-shell .primary-button,
+.login-shell .login-panel .primary-button,
+.admin-shell .registration-actions button:not([data-registration-delete]):not([data-delete-user]),
+.admin-shell .form-actions button[type="submit"],
+.admin-shell .suggest-by-age,
+.admin-shell [data-paid-entry] {
+  background:linear-gradient(180deg, #8fd8f7 0%, #2b91cf 100%);
+  color:#fff;
+  box-shadow:0 10px 22px rgba(43, 145, 207, .24);
+}
+
+.admin-shell .primary-button:hover,
+.login-shell .login-panel .primary-button:hover,
+.admin-shell .registration-actions button:not([data-registration-delete]):not([data-delete-user]):hover,
+.admin-shell .form-actions button[type="submit"]:hover,
+.admin-shell .suggest-by-age:hover,
+.admin-shell [data-paid-entry]:hover {
+  background:linear-gradient(180deg, #78cbed 0%, #1f7fb8 100%);
+}
+
+.admin-shell .secondary-button,
+.admin-shell .clear-student-form,
+.admin-shell .registration-actions a,
+.admin-shell .receiver-view-options button:not(.is-selected) {
+  border-color:#9ed2f1;
+  background:#fff;
+  color:#1f7fb8;
+  box-shadow:none;
+}
+
+.admin-shell .secondary-button:hover,
+.admin-shell .clear-student-form:hover,
+.admin-shell .registration-actions a:hover,
+.admin-shell .receiver-view-options button:not(.is-selected):hover {
+  background:#e8f7ff;
+  color:#15537a;
+}
+
+.admin-shell input,
+.admin-shell textarea,
+.admin-shell select,
+.login-shell input,
+.admin-shell .registration-search-results,
+.admin-shell .metric-results,
+.admin-shell .person-cascade {
+  border-color:#cde8f5;
+  background:#fff;
+}
+
+.admin-shell input:focus,
+.admin-shell textarea:focus,
+.admin-shell select:focus,
+.login-shell input:focus {
+  border-color:#58a6dd;
+  box-shadow:0 0 0 3px rgba(88, 166, 221, .22);
+}
+
+.admin-shell .registration-search-results,
+.admin-shell .metric-results,
+.admin-shell .person-cascade,
+.admin-shell .main-nav.is-open {
+  background:#fbfdff;
+  box-shadow:0 18px 42px rgba(21, 50, 74, .16);
+}
+
+.admin-shell .metric-results a:hover,
+.admin-shell .registration-search-results article:hover,
+.admin-shell .choice:has(input:checked),
+.admin-shell .status.publicado,
+.admin-shell .validation-status.is-valid,
+.admin-shell .receiver-report-preview th,
+.admin-shell .student-financial-summary-preview tfoot th,
+.admin-shell .student-financial-summary-preview tfoot td {
+  background:#e8f7ff;
+  color:#15537a;
+}
+
+.admin-shell .choice:has(input:checked) {
+  border-color:#2b91cf;
+  box-shadow:inset 0 0 0 1px #2b91cf;
+}
+
+.admin-shell .delete-student,
+.admin-shell .delete-retreat,
+.admin-shell .delete-community,
+.admin-shell .delete-registration,
+.admin-shell #delete-selected-student,
+.admin-shell #delete-selected-registration,
+.admin-shell [data-registration-delete],
+.admin-shell [data-delete-user],
+.admin-shell [data-delete-community],
+.admin-shell [data-remove-member],
+.admin-shell [data-remove-community-leader],
+.admin-shell [data-remove-community-monitor] {
+  background:#b94137;
+  color:#fff;
+  box-shadow:none;
+}
+
+.admin-shell .delete-student:hover,
+.admin-shell .delete-retreat:hover,
+.admin-shell .delete-community:hover,
+.admin-shell .delete-registration:hover,
+.admin-shell #delete-selected-student:hover,
+.admin-shell #delete-selected-registration:hover,
+.admin-shell [data-registration-delete]:hover,
+.admin-shell [data-delete-user]:hover,
+.admin-shell [data-delete-community]:hover,
+.admin-shell [data-remove-member]:hover,
+.admin-shell [data-remove-community-leader]:hover,
+.admin-shell [data-remove-community-monitor]:hover {
+  background:#983126;
+}
