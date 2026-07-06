@@ -926,8 +926,40 @@ async function renderRecebedor() {
       return { entry, value: suggestedTotal ? total * (suggested / suggestedTotal) : total / row.entries.length };
     });
   };
-  app.querySelectorAll('[data-paid-entry]').forEach((input) => { input.addEventListener('focus', () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); input.value = row ? rowPaid(row) || '' : ''; }); input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.paidEntry); const total = parseCurrency(input.value); await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.valorPago = value; return saveFinancialEntry(entry); })); input.value = currency(total); await loadData(); }); });
-  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => { const row = receiverRows.find((item) => item.id === input.dataset.feeEntry); if (!row) return; const currentPaid = rowPaid(row); const total = input.checked ? (currentPaid > 0 ? currentPaid : rowSuggested(row)) : 0; await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => { entry.taxaPaga = input.checked; entry.valorPago = value; return saveFinancialEntry(entry); })); await loadData(); renderRecebedor(); }));
+  app.querySelectorAll('[data-paid-entry]').forEach((input) => {
+    input.addEventListener('focus', () => {
+      const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
+      input.value = row ? rowPaid(row) || '' : '';
+    });
+    input.addEventListener('change', async () => {
+      const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
+      if (!row) return;
+      const total = parseCurrency(input.value);
+      const checked = app.querySelector(`[data-fee-entry="${CSS.escape(input.dataset.paidEntry)}"]`)?.checked;
+      await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
+        entry.valorPago = value;
+        if (checked) entry.taxaPaga = true;
+        return saveFinancialEntry(entry);
+      }));
+      input.value = currency(total);
+      await loadData();
+    });
+  });
+  app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {
+    const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
+    if (!row) return;
+    const paidInput = app.querySelector(`[data-paid-entry="${CSS.escape(input.dataset.feeEntry)}"]`);
+    const typedPaid = parseCurrency(paidInput?.value);
+    const currentPaid = rowPaid(row);
+    const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
+    await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
+      entry.taxaPaga = input.checked;
+      entry.valorPago = value;
+      return saveFinancialEntry(entry);
+    }));
+    await loadData();
+    renderRecebedor();
+  }));
 }
 async function renderPessoas() { layout(`<section class="page-heading"><div><p class="eyebrow">Histórico reutilizável</p><h1>Pessoas</h1><p>Dados pessoais são reaproveitados; a participação é sempre nova em cada retiro.</p></div></section><section class="panel">${people.length ? `<div class="simple-list">${people.map((person) => `<div><strong>${escapeHtml(person.nome)}</strong><span>Nascimento: ${date(person.nascimento)} · ${escapeHtml(person.telefone || 'Sem telefone')}</span><small>${enrolments.filter((entry) => entry.pessoaId === person.id).length} retiro(s)</small></div>`).join('')}</div>` : '<div class="empty-state">O histórico de pessoas será formado quando chegarem os primeiros cadastros.</div>'}</section>`, 'pessoas'); }
 
