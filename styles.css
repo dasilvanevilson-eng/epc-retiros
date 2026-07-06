@@ -101,6 +101,7 @@
 .receiver-report-preview th:first-child,.receiver-report-preview td:first-child { width:auto; overflow-wrap:anywhere; word-break:normal; }
 .receiver-report-preview th:nth-child(2),.receiver-report-preview th:nth-child(3),.receiver-report-preview td:nth-child(2),.receiver-report-preview td:nth-child(3) { width:118px; white-space:nowrap; font-weight:700; }
 .student-financial-summary-preview th:nth-child(2),.student-financial-summary-preview th:nth-child(3),.student-financial-summary-preview th:nth-child(4),.student-financial-summary-preview td:nth-child(2),.student-financial-summary-preview td:nth-child(3),.student-financial-summary-preview td:nth-child(4) { width:118px; white-space:nowrap; font-weight:700; }
+.student-financial-summary-preview tr.has-student-balance td { font-weight:900; }
 .student-financial-summary-preview tfoot th,.student-financial-summary-preview tfoot td { position:sticky; bottom:0; background:#f6fbf2; color:#285130; font-weight:900; }
 .receiver-report-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
 .receiver-report-actions .close-sector-view { border:1px solid #9bb49c; background:#fff; color:#285130; box-shadow:none; }
