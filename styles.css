@@ -90,6 +90,7 @@
 .receiver-report-sector { margin:14px 0 0; }
 .receiver-report-sector select { min-height:40px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; font:inherit; }
 #receiver-report-table-mount { flex:1 1 auto; min-height:0; display:flex; }
+#student-financial-summary-table { flex:1 1 auto; min-height:0; display:flex; }
 .receiver-report-preview { flex:1 1 auto; min-height:0; overflow:auto; margin:20px 0; border:1px solid var(--line); border-radius:10px; background:#fff; }
 .receiver-report-preview table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
 .receiver-report-preview th,.receiver-report-preview td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
@@ -99,6 +100,8 @@
 .receiver-report-preview th button span { margin-left:4px; }
 .receiver-report-preview th:first-child,.receiver-report-preview td:first-child { width:auto; overflow-wrap:anywhere; word-break:normal; }
 .receiver-report-preview th:nth-child(2),.receiver-report-preview th:nth-child(3),.receiver-report-preview td:nth-child(2),.receiver-report-preview td:nth-child(3) { width:118px; white-space:nowrap; font-weight:700; }
+.student-financial-summary-preview th:nth-child(2),.student-financial-summary-preview th:nth-child(3),.student-financial-summary-preview th:nth-child(4),.student-financial-summary-preview td:nth-child(2),.student-financial-summary-preview td:nth-child(3),.student-financial-summary-preview td:nth-child(4) { width:118px; white-space:nowrap; font-weight:700; }
+.student-financial-summary-preview tfoot th,.student-financial-summary-preview tfoot td { position:sticky; bottom:0; background:#f6fbf2; color:#285130; font-weight:900; }
 .receiver-report-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
 .receiver-report-actions .close-sector-view { border:1px solid #9bb49c; background:#fff; color:#285130; box-shadow:none; }
 @media(max-width:720px) { .admin-shell { width:calc(100% - 24px); margin-top:12px; }.admin-header { min-height:55px; }.menu-toggle { display:block; }.main-nav { display:none; position:absolute; z-index:3; top:61px; right:12px; padding:8px; border:1px solid var(--line); border-radius:10px; background:#fffdf7; box-shadow:0 12px 30px #0002; flex-direction:column; align-items:stretch; }.main-nav.is-open { display:flex; }.page-heading,.focus-retreat { flex-direction:column; align-items:stretch; }.focus-retreat-counts { width:100%; justify-content:space-between; text-align:left; }.primary-button { width:100%; }.detail-actions { width:100%; flex-direction:column; }.secondary-button { width:100%; }.metric-grid,.detail-grid,.statistics-grid,.day-presence-grid,.shirt-size-grid,.validation-summary,.access-layout,.access-permission-grid,.access-check-grid { grid-template-columns:1fr; }.sector-checks { grid-template-columns:1fr; }.kids-heading { align-items:flex-start; flex-direction:column; }.kids-row { grid-template-columns:28px 1fr; }.kids-row .field:last-child { grid-column:2; }.simple-list>div,.validation-list article,.access-user-row,.sector-link-row { grid-template-columns:1fr; gap:5px; }.retreat-card { align-items:flex-start; flex-wrap:wrap; }.retreat-card-meta { margin-left:auto; }.public-shell { width:100%; margin:0; min-height:100vh; border-radius:0; }.copy-field { flex-direction:column; } }
