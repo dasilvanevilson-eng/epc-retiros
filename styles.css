@@ -3013,3 +3013,174 @@ select:focus {
     white-space:nowrap;
   }
 }
+
+@media(max-width:720px) {
+  .student-form {
+    padding:16px 14px;
+  }
+
+  .student-form .form-section {
+    padding:18px 0;
+  }
+
+  .student-form .section-heading {
+    margin-bottom:12px;
+  }
+
+  .student-form .section-heading p {
+    display:none;
+  }
+
+  .student-form .fields {
+    gap:10px;
+  }
+
+  .student-form .field {
+    gap:5px;
+    margin-top:0;
+    font-size:12px;
+  }
+
+  .student-form input,
+  .student-form textarea {
+    min-height:40px;
+    padding:9px 10px;
+    font-size:13px;
+  }
+
+  .student-form .fields.two-columns,
+  .student-form .student-registration-value .fields.three-columns {
+    grid-auto-flow:dense;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .student-form .field.full,
+  .student-form .field:has(input[name="nome"]),
+  .student-form .field:has(input[name="convidou"]) {
+    grid-column:1 / -1;
+  }
+
+  .student-form .field:has(input[name="cpf"]),
+  .student-form .field:has(input[name="nascimento"]),
+  .student-form .field:has(input[name="telefone"]),
+  .student-form .field:has(input[name="telefonePai"]),
+  .student-form .field:has(input[name="telefoneMae"]),
+  .student-form .field:has(input[name="valorInscricao"]),
+  .student-form .field:has(input[name="valorPago"]),
+  .student-form .field:has(input[name="saldoPagar"]) {
+    grid-column:auto;
+  }
+
+  .student-form .address-fields {
+    grid-auto-flow:dense;
+    grid-template-columns:minmax(90px, .85fr) minmax(0, 1.15fr) minmax(62px, .55fr);
+  }
+
+  .student-form .address-fields .street-field {
+    grid-column:1 / 3;
+  }
+
+  .student-form .address-fields .number-field {
+    grid-column:3;
+  }
+
+  .student-form .field:has(input[name="cep"]),
+  .student-form .field:has(input[name="estado"]) {
+    width:auto;
+  }
+
+  .student-form .field:has(input[name="estado"]) {
+    grid-column:3;
+  }
+
+  .student-form .field:has(input[name="bairro"]),
+  .student-form .field:has(input[name="cidade"]) {
+    grid-column:span 2;
+  }
+
+  .student-form .student-questions {
+    gap:10px;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .student-form .student-questions fieldset,
+  .student-form .student-fieldset {
+    padding:10px;
+    border-radius:8px;
+  }
+
+  .student-form legend {
+    font-size:12px;
+    line-height:1.25;
+  }
+
+  .student-form .inline-choices {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:6px;
+    margin:8px 0;
+  }
+
+  .student-form .choice {
+    justify-content:center;
+    min-height:36px;
+    padding:7px 8px;
+    font-size:12px;
+    text-align:center;
+  }
+
+  .student-form .student-questions fieldset:has(input[name="estuda"]),
+  .student-form .student-questions fieldset:has(input[name="fezRetiro"]),
+  .student-form .student-questions fieldset:has(input[name="intoleranciaAlimentos"]),
+  .student-form .student-questions fieldset:has(input[name="alergiaMedicamento"]),
+  .student-form .student-fieldset {
+    grid-column:1 / -1;
+  }
+
+  .student-form fieldset:has(input[name="estuda"]) .fields.two-columns {
+    grid-template-columns:minmax(92px, .8fr) minmax(0, 1.2fr);
+  }
+
+  .student-form fieldset:has(input[name="qualRetiro"]) .field,
+  .student-form fieldset:has(input[name="qualIntolerancia"]) .field,
+  .student-form fieldset:has(input[name="qualAlergia"]) .field,
+  .student-form fieldset:has(input[name="qualMovimento"]) .field {
+    margin-top:8px;
+  }
+
+  .student-form fieldset:has(input[name="camiseta"]) .inline-choices {
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+  }
+
+  .student-form fieldset:has(input[name="camiseta"]) .choice {
+    min-height:34px;
+    padding:6px 4px;
+  }
+
+  .student-registration-value .fields {
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media(max-width:430px) {
+  .student-form {
+    padding:14px 12px;
+  }
+
+  .student-form .address-fields {
+    grid-template-columns:minmax(86px, .9fr) minmax(0, 1fr) minmax(58px, .55fr);
+    gap:8px;
+  }
+
+  .student-form .student-questions {
+    grid-template-columns:1fr;
+  }
+
+  .student-form .student-registration-value .fields.three-columns {
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .student-form .field:has(input[name="saldoPagar"]) {
+    grid-column:1 / -1;
+  }
+}
