@@ -1038,7 +1038,7 @@ a { color: inherit; }
     position: relative;
     display: block;
     width: min(100%, 390px);
-    height: clamp(590px, 158vw, 650px);
+    height: clamp(560px, 150vw, 620px);
     margin: 0 auto;
     padding: 0;
     overflow: visible;
@@ -1083,17 +1083,17 @@ a { color: inherit; }
   .line-right-top { top: 118px; right: 106px; transform: rotate(-28deg); }
   .line-left-middle { top: 292px; left: 62px; width: 118px; transform: rotate(6deg); }
   .line-right-middle { top: 292px; right: 62px; width: 118px; transform: rotate(-6deg); }
-  .line-left-bottom { top: 498px; left: 104px; transform: rotate(-33deg); }
-  .line-right-bottom { top: 498px; right: 104px; transform: rotate(33deg); }
+  .line-left-bottom { top: 468px; left: 104px; transform: rotate(-33deg); }
+  .line-right-bottom { top: 468px; right: 104px; transform: rotate(33deg); }
 
   .main-devotion {
     position: absolute;
     z-index: 4;
-    top: clamp(120px, 33vw, 142px);
+    top: clamp(112px, 31vw, 132px);
     left: 50%;
     display: block;
-    width: clamp(188px, 58vw, 226px);
-    height: clamp(300px, 88vw, 356px);
+    width: clamp(180px, 54vw, 212px);
+    height: clamp(282px, 82vw, 330px);
     padding: 0;
     border: 0;
     border-radius: 0;
