@@ -1631,6 +1631,32 @@ button:hover,
   line-height:1.45;
 }
 
+.kids-health-list>div {
+  grid-template-columns:1fr;
+  gap:5px;
+}
+
+.kids-health-list strong {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 14px;
+  align-items:baseline;
+  justify-content:space-between;
+}
+
+.kids-health-list .student-health-inline {
+  color:#5e6874;
+  font-size:13px;
+  font-weight:700;
+}
+
+.kids-health-list small {
+  display:block;
+  color:#6f7782;
+  font-size:12px;
+  line-height:1.4;
+}
+
 .presence-stat-panel,
 .shirt-stat-panel {
   min-height:100%;
