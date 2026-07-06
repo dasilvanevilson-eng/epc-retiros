@@ -2553,10 +2553,49 @@ async function renderPublicForm(id, embedded = false) {
     setRegistrationFormLocked(Boolean(locked));
     form.querySelector('#form-message').textContent = locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
   };
+  const orderedRegistrationEntries = (items) => [...items].sort((first, second) => {
+    const order = { 'Primeira pessoa': 0, 'Segunda pessoa': 1 };
+    return (order[first.papelNoCasal] ?? 9) - (order[second.papelNoCasal] ?? 9)
+      || String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR');
+  });
+  const registrationSearchRows = () => {
+    const rows = [];
+    const usedCouples = new Set();
+    enrolments
+      .filter((entry) => entry.retiroId === id)
+      .forEach((entry) => {
+        if (!entry.casalId) {
+          rows.push({ id: entry.id, entries: [entry], selectedEntry: entry });
+          return;
+        }
+        if (usedCouples.has(entry.casalId)) return;
+        const couple = orderedRegistrationEntries(enrolments.filter((item) => item.retiroId === id && item.casalId === entry.casalId));
+        usedCouples.add(entry.casalId);
+        rows.push({ id: `casal-${entry.casalId}`, entries: couple, selectedEntry: couple[0] || entry, isCouple: true });
+      });
+    return rows;
+  };
+  const rowSearchText = (row) => normalizeText(row.entries.flatMap((entry) => {
+    const person = people.find((item) => item.id === entry.pessoaId);
+    const cpf = normalizeCpf(person?.cpf || person?.id);
+    return [entry.nome, cpf, cpf && formatCpf(cpf), person?.telefone, entry.setores?.join(' '), entry.dias?.join(' ')];
+  }).filter(Boolean).join(' '));
+  const rowTitle = (row) => row.entries.map((entry) => entry.nome).filter(Boolean).join(' e ') || 'Sem nome';
+  const rowDetail = (row) => {
+    const cpfs = row.entries.map((entry) => {
+      const person = people.find((item) => item.id === entry.pessoaId);
+      const cpf = normalizeCpf(person?.cpf || person?.id);
+      return cpf ? formatCpf(cpf) : '';
+    }).filter(Boolean);
+    const sectors = sortSectors(row.entries.flatMap((entry) => entry.setores || []));
+    const cpfText = cpfs.length ? cpfs.join(' e ') : 'CPF não informado';
+    const sectorText = sectors.length ? sectors.join(', ') : 'Sem setor';
+    return row.isCouple ? `${cpfText} · Casal · ${sectorText}` : `${cpfText} · ${sectorText}`;
+  };
   if (embedded) {
     const nameField = form.nome.closest('.field');
     const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const renderCascade = () => { const currentName = form.nome.value; const term = currentName.trim().toLocaleLowerCase('pt-BR'); const entries = enrolments.filter((entry) => entry.retiroId === id && (!term || entry.nome.toLocaleLowerCase('pt-BR').includes(term))); const selectedType = new FormData(form).get('tipoFicha'); if (term && !entries.length) resetFormForInclusion(currentName); cascade.innerHTML = entries.length ? entries.map((entry) => `<button type="button" data-existing-entry="${entry.id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
+    const renderCascade = () => { const currentName = form.nome.value; const term = normalizeText(currentName); const rows = registrationSearchRows().filter((row) => !term || normalizeText(rowTitle(row)).includes(term)); const selectedType = new FormData(form).get('tipoFicha'); if (term && !rows.length) resetFormForInclusion(currentName); cascade.innerHTML = rows.length ? rows.map((row) => `<button type="button" data-existing-entry="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
     const closeNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
     form.nome.addEventListener('focus', renderCascade); form.nome.addEventListener('input', renderCascade);
     nameField.addEventListener('focusout', (event) => { if (!nameField.contains(event.relatedTarget)) cascade.hidden = true; });
@@ -2568,20 +2607,12 @@ async function renderPublicForm(id, embedded = false) {
     const searchResults = mount.querySelector('#registration-search-results');
     const renderRegistrationSearch = () => {
       const term = normalizeText(searchInput.value);
-      const entries = enrolments
-        .filter((entry) => entry.retiroId === id)
-        .filter((entry) => {
-          const person = people.find((item) => item.id === entry.pessoaId);
-          const cpf = normalizeCpf(person?.cpf || person?.id);
-          const haystack = normalizeText([entry.nome, cpf, cpf && formatCpf(cpf), person?.telefone, entry.setores?.join(' '), entry.dias?.join(' ')].filter(Boolean).join(' '));
-          return !term || haystack.includes(term);
-        })
-        .sort((first, second) => first.nome.localeCompare(second.nome, 'pt-BR'));
+      const rows = registrationSearchRows()
+        .filter((row) => !term || rowSearchText(row).includes(term))
+        .sort((first, second) => rowTitle(first).localeCompare(rowTitle(second), 'pt-BR'));
       searchResults.hidden = false;
-      searchResults.innerHTML = entries.length ? entries.map((entry) => {
-        const person = people.find((item) => item.id === entry.pessoaId);
-        const cpf = normalizeCpf(person?.cpf || person?.id);
-        return `<article><button type="button" class="student-search-choice" data-registration-select="${entry.id}"><strong>${escapeHtml(entry.nome)}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(entry.setores.join(', ') || 'Sem setor')}</span></button></article>`;
+      searchResults.innerHTML = rows.length ? rows.map((row) => {
+        return `<article><button type="button" class="student-search-choice" data-registration-select="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button></article>`;
       }).join('') : '<p>Nenhum cadastro encontrado neste retiro.</p>';
       searchResults.querySelectorAll('[data-registration-select]').forEach((button) => button.addEventListener('click', () => {
         const entry = enrolments.find((item) => item.id === button.dataset.registrationSelect);
