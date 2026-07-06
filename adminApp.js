@@ -2601,13 +2601,17 @@ async function renderPublicForm(id, embedded = false) {
   if (embedded) {
     const searchInput = mount.querySelector('#registration-search');
     const searchResults = mount.querySelector('#registration-search-results');
+    let registrationSearchRequest = 0;
     const renderRegistrationSearch = async () => {
+      const currentRequest = ++registrationSearchRequest;
+      searchResults.hidden = false;
+      searchResults.innerHTML = '<p>Carregando cadastros...</p>';
       [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+      if (currentRequest !== registrationSearchRequest) return;
       const term = normalizeText(searchInput.value);
       const rows = registrationSearchRows()
         .filter((row) => !term || rowSearchText(row).includes(term))
         .sort((first, second) => rowTitle(first).localeCompare(rowTitle(second), 'pt-BR'));
-      searchResults.hidden = false;
       searchResults.innerHTML = rows.length ? rows.map((row) => {
         return `<article><button type="button" class="student-search-choice" data-registration-select="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button></article>`;
       }).join('') : '<p>Nenhum cadastro encontrado neste retiro.</p>';
@@ -2632,6 +2636,7 @@ async function renderPublicForm(id, embedded = false) {
     });
     deleteSelectedRegistration.addEventListener('click', () => deleteRegistration(editingEntry));
     searchInput.addEventListener('focus', renderRegistrationSearch);
+    searchInput.addEventListener('click', renderRegistrationSearch);
     searchInput.addEventListener('input', renderRegistrationSearch);
     const registrationSearchField = searchInput.closest('.registration-search-field');
     const hideRegistrationSearch = () => { searchResults.hidden = true; };
