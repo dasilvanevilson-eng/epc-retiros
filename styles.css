@@ -3068,6 +3068,334 @@ select:focus {
 }
 
 @media(max-width:720px) {
+  .admin-main .public-shell {
+    padding:0;
+  }
+
+  .admin-main .public-shell .hero {
+    padding-bottom:12px;
+    border-bottom:0;
+  }
+
+  .admin-main .public-shell .hero .eyebrow,
+  .admin-main .public-shell .hero-copy {
+    display:none;
+  }
+
+  .admin-main .public-shell .hero h1 {
+    font-size:clamp(24px, 7vw, 32px);
+    line-height:1.05;
+  }
+
+  .admin-main .public-shell .admin-registration-tools {
+    margin-bottom:12px;
+  }
+
+  .admin-main .public-shell .admin-registration-tools.panel {
+    padding:14px;
+  }
+
+  .admin-main .public-shell .admin-registration-tools .panel-heading {
+    flex-direction:row;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .admin-main .public-shell .admin-registration-tools .panel-heading>div:first-child {
+    min-width:0;
+  }
+
+  .admin-main .public-shell .admin-registration-tools .panel-heading h2 {
+    font-size:18px;
+  }
+
+  .admin-main .public-shell .admin-registration-tools .panel-heading p {
+    display:none;
+  }
+
+  .admin-main .public-shell .admin-registration-tools .panel-heading button {
+    width:auto;
+    min-height:38px;
+    padding:8px 10px;
+    font-size:12px;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+
+  .admin-main .public-shell .registration-search-field {
+    margin-top:10px;
+  }
+
+  .admin-main .public-shell .registration-search-results {
+    top:calc(100% - 6px);
+    right:14px;
+    left:14px;
+    max-height:min(58vh, 430px);
+  }
+
+  .admin-main .public-shell #public-form {
+    padding:0 2px;
+  }
+
+  .admin-main .public-shell .form-section {
+    padding:16px 0;
+  }
+
+  .admin-main .public-shell .section-heading {
+    align-items:flex-start;
+    gap:8px;
+    margin-bottom:10px;
+  }
+
+  .admin-main .public-shell .section-heading h2 {
+    font-size:18px;
+    line-height:1.1;
+  }
+
+  .admin-main .public-shell .section-heading p {
+    display:none;
+  }
+
+  .admin-main .public-shell .student-personal-heading {
+    flex-wrap:wrap;
+  }
+
+  .admin-main .public-shell .registration-heading-actions {
+    width:100%;
+    margin-left:38px;
+    justify-content:flex-start;
+  }
+
+  .admin-main .public-shell .registration-heading-actions button {
+    min-height:36px;
+    padding:8px 10px;
+    font-size:12px;
+  }
+
+  .admin-main .public-shell .fields {
+    gap:10px;
+  }
+
+  .admin-main .public-shell .fields.two-columns {
+    grid-auto-flow:dense;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .admin-main .public-shell .field {
+    min-width:0;
+    gap:4px;
+    font-size:12px;
+  }
+
+  .admin-main .public-shell input,
+  .admin-main .public-shell textarea,
+  .admin-main .public-shell select {
+    min-height:40px;
+    padding:8px 10px;
+    font-size:13px;
+  }
+
+  .admin-main .public-shell textarea {
+    min-height:86px;
+  }
+
+  .admin-main .public-shell .field:has(input[name="nome"]),
+  .admin-main .public-shell .field:has(input[name="spouseNome"]),
+  .admin-main .public-shell .field:has(textarea),
+  .admin-main .public-shell .choice-block.full,
+  .admin-main .public-shell .form-type-choice {
+    grid-column:1 / -1;
+  }
+
+  .admin-main .public-shell .address-fields {
+    grid-auto-flow:dense;
+    grid-template-columns:minmax(0, 1fr) minmax(82px, .45fr);
+  }
+
+  .admin-main .public-shell .address-fields .street-field {
+    grid-column:1;
+  }
+
+  .admin-main .public-shell .address-fields .number-field {
+    grid-column:2;
+  }
+
+  .admin-main .public-shell .address-fields .field:has(input[name="cep"]),
+  .admin-main .public-shell .address-fields .field:has(input[name="bairro"]) {
+    grid-column:1 / -1;
+  }
+
+  .admin-main .public-shell .address-fields .field:has(input[name="cidade"]) {
+    grid-column:1;
+  }
+
+  .admin-main .public-shell .address-fields .field:has(input[name="estado"]) {
+    grid-column:2;
+    width:auto;
+  }
+
+  .admin-main .public-shell .field input[name="estado"] {
+    text-align:center;
+  }
+
+  .admin-main .public-shell .choice-block {
+    margin-bottom:12px;
+  }
+
+  .admin-main .public-shell .choice-block h3,
+  .admin-main .public-shell .choice-block legend {
+    margin-bottom:7px;
+    font-size:13px;
+    line-height:1.2;
+  }
+
+  .admin-main .public-shell .inline-choices,
+  .admin-main .public-shell .choice-grid,
+  .admin-main .public-shell .sectors,
+  .admin-main .public-shell .form-type-choice .inline-choices {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(128px, 1fr));
+    gap:7px;
+  }
+
+  .admin-main .public-shell .choice {
+    min-height:38px;
+    padding:7px 9px;
+    font-size:12px;
+    line-height:1.2;
+    overflow-wrap:anywhere;
+  }
+
+  .admin-main .public-shell .form-type-choice .choice {
+    min-height:46px;
+    font-size:14px;
+  }
+
+  .admin-main .public-shell .public-sector-area {
+    margin-top:12px;
+  }
+
+  .admin-main .public-shell .public-sector-area h4 {
+    margin-bottom:8px;
+    font-size:13px;
+  }
+
+  .admin-main .public-shell .hidden-team-notice,
+  .admin-main .public-shell .room-team-notice {
+    padding:10px;
+    margin-bottom:10px;
+    font-size:12px;
+    line-height:1.35;
+  }
+
+  .admin-main .public-shell .hidden-team-notice p,
+  .admin-main .public-shell .room-team-notice p {
+    margin:4px 0 0;
+  }
+
+  .admin-main .public-shell .choice-cards {
+    grid-template-columns:1fr;
+  }
+
+  .admin-main .public-shell .choice-cards .choice-block,
+  .admin-main .public-shell .choice-cards .quadrante-print-option {
+    padding:12px;
+  }
+
+  .admin-main .public-shell .kinship-discount-option {
+    align-items:flex-start;
+    gap:8px;
+    font-size:13px;
+    line-height:1.25;
+  }
+
+  .admin-main .public-shell .kinship-discount-option input {
+    flex:0 0 18px;
+    width:18px;
+    height:18px;
+    min-height:18px;
+  }
+
+  .admin-main .public-shell .hint {
+    margin:5px 0 8px;
+    font-size:12px;
+    line-height:1.35;
+  }
+
+  .admin-main .public-shell .kids-heading {
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items:center;
+    gap:8px;
+  }
+
+  .admin-main .public-shell .kids-heading label {
+    justify-content:flex-end;
+    font-size:11px;
+    line-height:1.15;
+  }
+
+  .admin-main .public-shell .kids-list {
+    gap:6px;
+  }
+
+  .admin-main .public-shell .kids-row {
+    grid-template-columns:24px minmax(0, 1fr) minmax(116px, .58fr);
+    gap:7px;
+    padding:7px 0;
+  }
+
+  .admin-main .public-shell .kids-row>span {
+    width:22px;
+    height:22px;
+    font-size:11px;
+  }
+
+  .admin-main .public-shell .kids-row .field {
+    font-size:11px;
+  }
+
+  .admin-main .public-shell .form-message {
+    min-height:0;
+    margin:12px 0 0;
+    font-size:13px;
+  }
+
+  .admin-main .public-shell .form-actions {
+    margin:16px 0 0;
+    padding:12px 0 0;
+    position:static;
+    border-top:1px solid var(--ui-line);
+    box-shadow:none;
+    background:transparent;
+    backdrop-filter:none;
+  }
+}
+
+@media(max-width:430px) {
+  .admin-main .public-shell .inline-choices,
+  .admin-main .public-shell .choice-grid,
+  .admin-main .public-shell .sectors {
+    grid-template-columns:repeat(auto-fit, minmax(118px, 1fr));
+  }
+
+  .admin-main .public-shell .choice {
+    padding-right:7px;
+    padding-left:7px;
+    font-size:11px;
+  }
+
+  .admin-main .public-shell .kids-row {
+    grid-template-columns:22px minmax(0, 1fr);
+  }
+
+  .admin-main .public-shell .kids-row .field:last-child {
+    grid-column:2;
+  }
+}
+
+@media(max-width:720px) {
   .student-form {
     padding:16px 14px;
   }
