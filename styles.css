@@ -4295,6 +4295,17 @@ body:has(.login-shell) {
   font-size:16px;
 }
 
+.volunteer-term-topic.is-accepted {
+  border-color:rgba(71, 114, 78, .55);
+  background:#edf7e8;
+}
+
+.volunteer-term-topic.is-accepted h3::after {
+  content:" - lido e aceito";
+  color:var(--leaf);
+  font:800 13px "DM Sans", sans-serif;
+}
+
 .volunteer-term-topic button {
   flex:0 0 auto;
   min-height:40px;

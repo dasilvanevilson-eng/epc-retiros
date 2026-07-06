@@ -2367,10 +2367,10 @@ async function renderPublicForm(id, embedded = false) {
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="public-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form">${stateDatalist()}
+    <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field"><span>Nome completo <b>*</b></span><input name="nome" autocomplete="off" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
     <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('dias', serviceDays)}</div></section>
     <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" type="date"></label><label class="field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label><fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('spouseDias', serviceDays)}</div></section>
-    <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
     <section class="form-section"><div class="section-heading"><span>05</span><div><h2>Setor de trabalho <b>*</b></h2></div></div><div class="choice-block">${publicSectors}${sectorCoordinatorOption}</div></section>
     <section class="form-section compact-section"><div class="section-heading"><span>06</span><div><h2>Itens e contribuição</h2><p>Escolhas necessárias para sua inscrição.</p></div></div><div class="fields choice-cards"><div class="quadrante-print-option"><label class="kinship-discount-option"><input type="checkbox" name="quadrante" value="Sim"> Quer quadrante impresso?</label><p class="hint">O quadrante (relação de todas a pessoas que serviram no retiro com os seus contatos) é disponibilizado em PDF após o retiro, mas se você quiser levar impresso no dia do retiro, selecione a opção acima.</p></div><div class="field choice-block contribution-field"><span data-contribution-label>Valor da inscrição</span><label class="kinship-discount-option photo-contribution-option"><input type="checkbox" name="foto" value="Sim"> Quer foto? Valor: ${currency(retreat.valorFoto ?? 10)}</label><input name="contribuicao" value="${currency(retreat.valorInscricaoVoluntario)}" readonly><p class="hint payment-instructions"><strong><u>Fazer pix CNPJ 52.109.946/0001-94</u></strong> e encaminhar o comprovante no privado para o coordenador do setor que você vai servir.</p></div></div></section>
@@ -2425,6 +2425,14 @@ async function renderPublicForm(id, embedded = false) {
       if (input.checked) showSectorTeamAlert(sectorArea(input.value));
     });
   });
+  let volunteerTermAccepted = false;
+  const syncVolunteerTermState = () => {
+    const button = form.querySelector('#read-volunteer-term');
+    const topic = button?.closest('.volunteer-term-topic');
+    if (!button || !topic) return;
+    topic.classList.toggle('is-accepted', volunteerTermAccepted);
+    button.textContent = volunteerTermAccepted ? 'Termo lido e aceito' : 'Ler termo';
+  };
   const showVolunteerTermAlert = () => {
     mount.querySelector('.hidden-team-alert-overlay')?.remove();
     const overlay = document.createElement('section');
@@ -2440,15 +2448,22 @@ async function renderPublicForm(id, embedded = false) {
     const onKeydown = (event) => {
       if (event.key === 'Escape') close();
     };
+    const accept = () => {
+      volunteerTermAccepted = true;
+      syncVolunteerTermState();
+      form.querySelector('#form-message')?.replaceChildren('');
+      close();
+    };
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay) close();
     });
-    overlay.querySelector('.hidden-team-alert-close').addEventListener('click', close);
+    overlay.querySelector('.hidden-team-alert-close').addEventListener('click', accept);
     document.addEventListener('keydown', onKeydown);
     mount.append(overlay);
     overlay.querySelector('.hidden-team-alert-close').focus();
   };
   form.querySelector('#read-volunteer-term')?.addEventListener('click', showVolunteerTermAlert);
+  syncVolunteerTermState();
   let editingEntry = null;
   let editingSpouseEntry = null;
   let newRecordNeedsType = false;
@@ -2526,6 +2541,8 @@ async function renderPublicForm(id, embedded = false) {
     const selectedType = new FormData(form).get('tipoFicha');
     form.querySelector('.inline-partner-registration')?.remove();
     form.reset();
+    volunteerTermAccepted = false;
+    syncVolunteerTermState();
     form.elements.nome.value = nome;
     form.elements.cpf.value = cpf;
     if (selectedType) setChoices('tipoFicha', selectedType);
@@ -2540,6 +2557,8 @@ async function renderPublicForm(id, embedded = false) {
   const startNewRegistration = () => {
     form.querySelector('.inline-partner-registration')?.remove();
     form.reset();
+    volunteerTermAccepted = false;
+    syncVolunteerTermState();
     editingEntry = null;
     editingSpouseEntry = null;
     form.querySelector('#delete-registration')?.remove();
@@ -2624,6 +2643,8 @@ async function renderPublicForm(id, embedded = false) {
     form.reset();
     editingEntry = entry;
     editingSpouseEntry = entry.casalId && enrolments.find((item) => item.casalId === entry.casalId && item.retiroId === entry.retiroId && item.pessoaId !== entry.pessoaId);
+    volunteerTermAccepted = Boolean(entry.termoVoluntariadoAceito);
+    syncVolunteerTermState();
     setNewRecordTypeLock(false);
     ['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado'].forEach((name) => { form.elements[name].value = name === 'cpf' ? formatCpf(person.cpf || person.id) : (person[name] || ''); });
     form.elements.cep.value = person.cep || '';
@@ -2986,19 +3007,21 @@ async function renderPublicForm(id, embedded = false) {
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
     const missingRequired = required.filter((name) => !data.get(name));
-    const valid = browserValid && (!requireSector || sectors.length) && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && spouseValid;
+    const valid = browserValid && (!requireSector || sectors.length) && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && spouseValid && volunteerTermAccepted;
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
       const missing = [
         ...(!browserValid ? ['campos marcados com *'] : []),
         ...(requireSector && !sectors.length ? ['setor de trabalho'] : []),
         ...(!days.length ? ['dias que vai trabalhar'] : []),
+        ...(!volunteerTermAccepted ? ['termo de adesão de voluntariado'] : []),
         ...missingRequired.map((name) => labels[name] || name),
       ];
       let message = missing.length ? `Revise: ${[...new Set(missing)].join(', ')}.` : 'Revise os campos obrigatórios.';
       if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
       else if (hasIncompleteKid) message = 'No Espaço Kids, preencha nome e data de nascimento de cada criança informada.';
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
+      else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
       source.querySelector('#form-message')?.replaceChildren(message);
       const candidateControls = [
         firstInvalid,
@@ -3007,6 +3030,7 @@ async function renderPublicForm(id, embedded = false) {
         requireSector && !sectors.length ? firstByName('setores') : null,
         !hasKidsChoice ? firstByName('kidsNotNeeded') || firstByName('kidNome1') : null,
         hasIncompleteKid ? firstIncompleteKid() : null,
+        !volunteerTermAccepted ? source.querySelector('#read-volunteer-term') : null,
         isCouple() && !spouseValid ? firstByName(firstSpouseMissing()) : null,
       ].filter(Boolean);
       const nextControl = candidateControls.sort((first, second) => first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1)[0];
@@ -3032,7 +3056,7 @@ async function renderPublicForm(id, embedded = false) {
     const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || crypto.randomUUID(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || crypto.randomUUID(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
@@ -3105,6 +3129,7 @@ async function renderPublicForm(id, embedded = false) {
       </div></div>
       <div class="review-group"><h3>Informações adicionais</h3><div class="review-list">
         ${reviewRow('Espaço Kids', kidsNotNeeded ? 'Não necessito do Espaço Kids' : reviewValue(kids.map((kid) => `${kid.nome} (${date(kid.nascimento)})`).join(', ')))}
+        ${reviewRow('Termo de adesão de voluntariado', 'Lido e aceito')}
       </div></div>
       <div class="review-actions"><button type="button" id="back-to-registration">Voltar ao cadastro</button><button type="button" id="confirm-registration">Confirmar e enviar inscrição</button></div>`;
     form.hidden = true;
