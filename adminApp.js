@@ -3164,9 +3164,8 @@ async function renderPublicForm(id, embedded = false) {
     const names = list.map((item) => item.nome).join(' e ');
     const participantRows = list.map((item) => `<li><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml((item.dias || []).join(', ') || 'Dias não informados')}</span></li>`).join('');
     mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(names)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p><ul class="success-participants">${participantRows}</ul><button type="button" id="close-success-message">Fechar</button></section></main>`;
-    mount.querySelector('#close-success-message')?.addEventListener('click', () => {
-      window.close();
-      mount.querySelector('.success-card')?.setAttribute('hidden', '');
+    mount.querySelector('#close-success-message')?.addEventListener('click', async () => {
+      await renderPublicForm(id, embedded);
     });
   };
   const finishSave = async (participants) => {
