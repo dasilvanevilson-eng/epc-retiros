@@ -2964,11 +2964,18 @@ async function renderPublicForm(id, embedded = false) {
     if (embedded || editingEntry) return;
     form.querySelectorAll('input, textarea, select, button').forEach((field) => {
       const canCorrectCpf = ['cpf', 'spouseCpf'].includes(field.name);
-      field.disabled = locked && !canCorrectCpf;
+      if (canCorrectCpf) {
+        field.disabled = false;
+        field.readOnly = false;
+        field.classList.remove('is-waiting-type');
+      } else {
+        field.disabled = locked;
+      }
     });
     if (!locked) {
       setCoupleMode(isCouple());
       syncKidsNeed();
+      syncTypeSelectionLock();
     }
   };
   const showCpfLockMessage = (control, text) => {
@@ -3090,6 +3097,9 @@ async function renderPublicForm(id, embedded = false) {
   };
   form.cpf.addEventListener('change', loadPersonByCpf);
   [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
+    control.addEventListener('focus', () => {
+      if (form.querySelector('.cpf-duplicate-message')) clearDuplicateCpfMessage();
+    });
     control.addEventListener('input', () => {
       clearDuplicateCpfMessage();
       if (normalizeCpf(control.value).length === 11 && isValidCpf(control.value)) checkPublicCpf(control);
