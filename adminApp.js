@@ -2624,6 +2624,7 @@ async function renderPublicForm(id, embedded = false) {
       control.readOnly = locked && !control.disabled;
       control.classList.toggle('is-waiting-type', locked);
     });
+    if (!locked) form.querySelector('.form-type-section')?.classList.remove('field-warning');
   };
   const guardTypeSelection = (event) => {
     if (!typeSelectionLocked()) return;
