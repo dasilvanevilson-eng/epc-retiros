@@ -2436,6 +2436,8 @@ async function renderPublicForm(id, embedded = false) {
   const publicLead = embedded ? 'Preencha os dados para organizar a participacao da equipe neste retiro.' : 'Este e o formulario oficial da equipe de organizacao. Confira o nome do retiro antes de informar seus dados.';
   const publicShellClass = embedded ? 'public-shell embedded-registration-shell' : 'public-shell external-registration-shell';
   const serviceDays = retreatServiceDays(retreat);
+  const dayConfirmationName = (name, index) => `${name}Confirm${index}`;
+  const dayConfirmations = (name, days) => `<div class="day-confirmation-list" data-day-confirmations="${name}">${days.map((day, index) => `<div class="day-confirmation-row" role="group" aria-label="${escapeHtml(day)}"><strong>${escapeHtml(day)}</strong><div class="day-confirmation-options"><label class="choice"><input type="radio" name="${dayConfirmationName(name, index)}" value="Sim" data-day-value="${escapeHtml(day)}"><span>Sim</span></label><label class="choice"><input type="radio" name="${dayConfirmationName(name, index)}" value="Não" data-day-value="${escapeHtml(day)}"><span>Não</span></label></div></div>`).join('')}</div><p class="hint day-confirmation-hint">Responda Sim ou Não para cada dia. Marque Sim somente nos dias em que você confirma presença.</p>`;
   const includeSubmitText = embedded ? 'Salvar inclusão' : 'Confirmar Inscrição';
   const editSubmitText = embedded ? 'Salvar Alteração' : 'Salvar alterações';
   const hiddenTeamNoticeTitle = 'Atenção, querido(a) servo(a) do Senhor!!';
@@ -2456,8 +2458,8 @@ async function renderPublicForm(id, embedded = false) {
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns">${personalFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
-    <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('dias', serviceDays)}</div></section>
-    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns">${spouseFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block"><h3>Que dias vai trabalhar <b>*</b></h3>${choices('spouseDias', serviceDays)}</div></section>
+    <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('dias', serviceDays)}</div></section>
+    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns">${spouseFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('spouseDias', serviceDays)}</div></section>
     <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field cep-field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field bairro-field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field city-field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field state-field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
     <section class="form-section"><div class="section-heading"><span>05</span><div><h2>Setor de trabalho <b>*</b></h2></div></div><div class="choice-block">${publicSectors}${sectorCoordinatorOption}</div></section>
     <section class="form-section compact-section"><div class="section-heading"><span>06</span><div><h2>Itens e contribuição</h2><p>Escolhas necessárias para sua inscrição.</p></div></div><div class="fields choice-cards"><div class="quadrante-print-option"><label class="kinship-discount-option"><input type="checkbox" name="quadrante" value="Sim"> Quer quadrante impresso?</label><p class="hint">O quadrante (relação de todas a pessoas que serviram no retiro com os seus contatos) é disponibilizado em PDF após o retiro, mas se você quiser levar impresso no dia do retiro, selecione a opção acima.</p></div><div class="field choice-block contribution-field"><span data-contribution-label>Valor da inscrição</span><label class="kinship-discount-option photo-contribution-option"><input type="checkbox" name="foto" value="Sim"> Quer foto? Valor: ${currency(retreat.valorFoto ?? 10)}</label><input name="contribuicao" value="${currency(retreat.valorInscricaoVoluntario)}" readonly><p class="hint payment-instructions"><strong><u>Fazer pix CNPJ 52.109.946/0001-94</u></strong> e encaminhar o comprovante no privado para o coordenador do setor que você vai servir.</p></div></div></section>
@@ -2573,6 +2575,22 @@ async function renderPublicForm(id, embedded = false) {
   const setChoices = (name, values) => {
     const selected = new Set(Array.isArray(values) ? values : [values]);
     form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = selected.has(input.value); });
+    syncChoiceStates(form);
+  };
+  const dayConfirmationInputs = (name) => serviceDays.map((day, index) => ({ day, input: form.querySelector(`[name="${dayConfirmationName(name, index)}"]:checked`) }));
+  const selectedConfirmedDays = (name) => dayConfirmationInputs(name).filter((item) => item.input?.value === 'Sim').map((item) => item.day);
+  const allDaysAnswered = (name) => dayConfirmationInputs(name).every((item) => Boolean(item.input));
+  const firstUnansweredDay = (name) => {
+    const index = dayConfirmationInputs(name).findIndex((item) => !item.input);
+    return index >= 0 ? form.querySelector(`[name="${dayConfirmationName(name, index)}"]`) : null;
+  };
+  const setDayConfirmations = (name, selectedDays = []) => {
+    const selected = new Set(selectedDays || []);
+    serviceDays.forEach((day, index) => {
+      const value = selected.has(day) ? 'Sim' : 'Não';
+      const input = form.querySelector(`[name="${dayConfirmationName(name, index)}"][value="${value}"]`);
+      if (input) input.checked = true;
+    });
     syncChoiceStates(form);
   };
   const isCouple = () => new FormData(form).get('tipoFicha') === 'Casal';
@@ -2746,7 +2764,7 @@ async function renderPublicForm(id, embedded = false) {
     form.elements.spouseTelefone.dispatchEvent(new Event('input'));
     setChoices('spouseGenero', linked.spouse.genero);
     setChoices('spouseRetiros', (currentSpouseEntry || linked.spouseEntry).retirosAnteriores || []);
-    setChoices('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
+    setDayConfirmations('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
     form.elements.spouseCpf.dispatchEvent(new Event('change'));
     if (form.querySelector('#form-message').textContent !== duplicatePublicCpfMessage) {
       form.querySelector('#form-message').textContent = 'Encontramos o cônjuge vinculado a este CPF. Revise os dados antes de enviar.';
@@ -2773,7 +2791,7 @@ async function renderPublicForm(id, embedded = false) {
     setNewRecordTypeLock(false);
     ['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado'].forEach((name) => { form.elements[name].value = name === 'cpf' ? formatCpf(person.cpf || person.id) : name === 'nascimento' ? formatDateInput(person[name]) : (person[name] || ''); });
     form.elements.cep.value = person.cep || '';
-    setChoices('retiros', entry.retirosAnteriores || []); setChoices('dias', entry.dias || []); setChoices('setores', entry.setores || []); setChoices('quadrante', entry.quadrante); setChoices('foto', entry.foto); setChoices('tipoFicha', entry.casalId ? 'Casal' : 'Individual'); setChoices('genero', person.genero); setChoices('coordenacaoSetor', entry.coordenacaoSetor || editingSpouseEntry?.coordenacaoSetor ? 'sim' : '');
+    setChoices('retiros', entry.retirosAnteriores || []); setDayConfirmations('dias', entry.dias || []); setChoices('setores', entry.setores || []); setChoices('quadrante', entry.quadrante); setChoices('foto', entry.foto); setChoices('tipoFicha', entry.casalId ? 'Casal' : 'Individual'); setChoices('genero', person.genero); setChoices('coordenacaoSetor', entry.coordenacaoSetor || editingSpouseEntry?.coordenacaoSetor ? 'sim' : '');
     if (form.elements.coordenacao) form.elements.coordenacao.value = entry.coordenacao || '';
     form.elements.kidsNotNeeded.checked = Boolean(entry.espacoKidsNaoNecessito);
     (entry.espacoKids || []).forEach((kid, index) => { if (index < 5) { form.elements[`kidNome${index + 1}`].value = kid.nome || ''; form.elements[`kidNascimento${index + 1}`].value = kid.nascimento || ''; } });
@@ -2788,7 +2806,7 @@ async function renderPublicForm(id, embedded = false) {
         setChoices('spouseGenero', spouse.genero);
       }
       setChoices('spouseRetiros', editingSpouseEntry.retirosAnteriores || []);
-      setChoices('spouseDias', editingSpouseEntry.dias || []);
+      setDayConfirmations('spouseDias', editingSpouseEntry.dias || []);
     }
     setCoupleMode(Boolean(entry.casalId));
     syncTypeSelectionLock();
@@ -3115,43 +3133,54 @@ async function renderPublicForm(id, embedded = false) {
       }
       return null;
     };
-    const firstSpouseMissing = () => [
-      ['spouseNome', () => !String(data.get('spouseNome') || '').trim()],
-      ['spouseCpf', () => !isValidCpf(data.get('spouseCpf'))],
-      ['spouseNascimento', () => !normalizeDateInput(data.get('spouseNascimento'))],
-      ['spouseTelefone', () => !String(data.get('spouseTelefone') || '').trim()],
-      ['genero', () => !spouseGenderValue()],
-      ['spouseRetiros', () => !data.getAll('spouseRetiros').length],
-      ['spouseDias', () => !data.getAll('spouseDias').length],
-    ].find(([, missing]) => missing())?.[0];
+    const firstSpouseMissing = () => {
+      const missingField = [
+        ['spouseNome', () => !String(data.get('spouseNome') || '').trim()],
+        ['spouseCpf', () => !isValidCpf(data.get('spouseCpf'))],
+        ['spouseNascimento', () => !normalizeDateInput(data.get('spouseNascimento'))],
+        ['spouseTelefone', () => !String(data.get('spouseTelefone') || '').trim()],
+        ['genero', () => !spouseGenderValue()],
+        ['spouseRetiros', () => !data.getAll('spouseRetiros').length],
+      ].find(([, missing]) => missing())?.[0];
+      if (missingField) return missingField;
+      if (!allDaysAnswered('spouseDias')) return firstUnansweredDay('spouseDias')?.name;
+      if (!selectedConfirmedDays('spouseDias').length) return dayConfirmationName('spouseDias', 0);
+      return null;
+    };
     if (embedded && !editingEntry && requireType && !data.get('tipoFicha')) {
       source.querySelector('#form-message')?.replaceChildren('Escolha se esta ficha é Individual ou Casal antes de salvar.');
       focusControl(firstByName('tipoFicha'));
       return false;
     }
     const sectors = data.getAll('setores');
-    const days = data.getAll('dias');
+    const days = selectedConfirmedDays('dias');
+    const daysComplete = allDaysAnswered('dias');
+    const spouseDays = selectedConfirmedDays('spouseDias');
+    const spouseDaysComplete = !isCouple() || allDaysAnswered('spouseDias');
     const required = ['cpf', 'genero', 'retiros', 'contribuicao', ...(requireType ? ['tipoFicha'] : [])].filter((name) => source.elements[name]);
     const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
     const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
-    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && data.getAll('spouseDias').length);
+    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && spouseDaysComplete && spouseDays.length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
     const missingRequired = required.filter((name) => !data.get(name));
-    const valid = browserValid && (!requireSector || sectors.length) && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && spouseValid && volunteerTermAccepted;
+    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && spouseValid && volunteerTermAccepted;
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
       const missing = [
         ...(!browserValid ? ['campos marcados com *'] : []),
         ...(requireSector && !sectors.length ? ['setor de trabalho'] : []),
-        ...(!days.length ? ['dias que vai trabalhar'] : []),
+        ...(!daysComplete ? ['Sim ou Não em todos os dias'] : []),
+        ...(daysComplete && !days.length ? ['pelo menos um dia confirmado para trabalhar'] : []),
         ...(!volunteerTermAccepted ? ['termo de adesão de voluntariado'] : []),
         ...missingRequired.map((name) => labels[name] || name),
       ];
       let message = missing.length ? `Revise: ${[...new Set(missing)].join(', ')}.` : 'Revise os campos obrigatórios.';
-      if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
+      if (!daysComplete) message = 'Em Dias confirmados para trabalhar, responda Sim ou Não para todos os dias.';
+      else if (!days.length) message = 'Em Dias confirmados para trabalhar, confirme pelo menos um dia com Sim.';
+      else if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
       else if (hasIncompleteKid) message = 'No Espaço Kids, preencha nome e data de nascimento de cada criança informada.';
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
       else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
@@ -3159,7 +3188,8 @@ async function renderPublicForm(id, embedded = false) {
       const candidateControls = [
         firstInvalid,
         ...missingRequired.map(firstByName),
-        !days.length ? firstByName('dias') : null,
+        !daysComplete ? firstUnansweredDay('dias') : null,
+        daysComplete && !days.length ? firstByName(dayConfirmationName('dias', 0)) : null,
         requireSector && !sectors.length ? firstByName('setores') : null,
         !hasKidsChoice ? firstByName('kidsNotNeeded') || firstByName('kidNome1') : null,
         hasIncompleteKid ? firstIncompleteKid() : null,
@@ -3189,7 +3219,7 @@ async function renderPublicForm(id, embedded = false) {
     const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: data.getAll(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
@@ -3243,15 +3273,14 @@ async function renderPublicForm(id, embedded = false) {
       if (await blockPublicCpfIssues()) {
         return;
       }
-      const data = new FormData(form);
       if (isCouple()) {
         const casalId = editingEntry?.casalId || createId();
         const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
         const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
         await linkCouplePeople(first, second, casalId);
         await finishSave([
-          { nome: first.nome, dias: data.getAll('dias') },
-          { nome: second.nome, dias: data.getAll('spouseDias') },
+          { nome: first.nome, dias: selectedConfirmedDays('dias') },
+          { nome: second.nome, dias: selectedConfirmedDays('spouseDias') },
         ]);
         return;
       }
@@ -3262,7 +3291,7 @@ async function renderPublicForm(id, embedded = false) {
         }
       }
       const person = await saveForm(form, null, null, editingEntry);
-      await finishSave([{ nome: person.nome, dias: data.getAll('dias') }]);
+      await finishSave([{ nome: person.nome, dias: selectedConfirmedDays('dias') }]);
       return;
     } catch (error) {
       console.error(error);
