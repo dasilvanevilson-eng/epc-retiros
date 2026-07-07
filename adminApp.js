@@ -3091,6 +3091,7 @@ async function renderPublicForm(id, embedded = false) {
   form.cpf.addEventListener('change', loadPersonByCpf);
   [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
     control.addEventListener('input', () => {
+      clearDuplicateCpfMessage();
       if (normalizeCpf(control.value).length === 11 && isValidCpf(control.value)) checkPublicCpf(control);
     });
     control.addEventListener('change', () => checkPublicCpf(control));
