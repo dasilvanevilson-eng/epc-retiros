@@ -2821,15 +2821,18 @@ async function renderPublicForm(id, embedded = false) {
       return true;
     }
     if (currentSpouseEntry) editingSpouseEntry = currentSpouseEntry;
+    if (!embedded) clearSpouseFields();
     const spouseCpf = normalizeCpf(linked.spouse.cpf || linked.spouse.id);
     form.elements.spouseCpf.value = isValidCpf(spouseCpf) ? formatCpf(spouseCpf) : '';
     form.elements.spouseNome.value = linked.spouse.nome || '';
     form.elements.spouseNascimento.value = formatDateInput(linked.spouse.nascimento);
     form.elements.spouseTelefone.value = linked.spouse.telefone || '';
     form.elements.spouseTelefone.dispatchEvent(new Event('input'));
-    setChoices('spouseGenero', linked.spouse.genero);
-    setChoices('spouseRetiros', (currentSpouseEntry || linked.spouseEntry).retirosAnteriores || []);
-    setDayConfirmations('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
+    if (embedded) {
+      setChoices('spouseGenero', linked.spouse.genero);
+      setChoices('spouseRetiros', (currentSpouseEntry || linked.spouseEntry).retirosAnteriores || []);
+      setDayConfirmations('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
+    }
     form.elements.spouseCpf.dispatchEvent(new Event('change'));
     if (form.querySelector('#form-message').textContent !== duplicatePublicCpfMessage) {
       form.querySelector('#form-message').textContent = 'Encontramos o cônjuge vinculado a este CPF. Revise os dados antes de enviar.';
