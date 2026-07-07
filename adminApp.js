@@ -3099,6 +3099,11 @@ async function renderPublicForm(id, embedded = false) {
       .filter(Boolean),
   ]);
   const entryMatchesCpf = (entry, cpf) => personIdsForCpf(cpf).has(entry.pessoaId) || normalizeCpf(entry.pessoaId) === cpf;
+  const findFocusedRetreatEntryByCpf = async (cpf, excludeEntryId = '') => {
+    const latestEnrolments = await dataService.listAdesoes().catch(() => enrolments);
+    if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
+    return enrolments.find((entry) => entry.retiroId === id && entry.id !== excludeEntryId && entryMatchesCpf(entry, cpf));
+  };
   const warnSpouseCpfConflict = async (control, focus = false) => {
     if (!control || control.name !== 'spouseCpf' || !isCouple()) return false;
     const cpf = normalizeCpf(control.value);
@@ -3107,7 +3112,7 @@ async function renderPublicForm(id, embedded = false) {
       return false;
     }
     const mainCpf = normalizeCpf(form.elements.cpf.value);
-    const teamConflictEntry = enrolments.find((entry) => entry.retiroId === id && entry.id !== editingSpouseEntry?.id && entryMatchesCpf(entry, cpf));
+    const teamConflictEntry = await findFocusedRetreatEntryByCpf(cpf, embedded ? editingSpouseEntry?.id : '');
     const students = await listStudentsForCpfCheck();
     const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
     const sameAsMainCpf = mainCpf && mainCpf === cpf;
@@ -3127,17 +3132,17 @@ async function renderPublicForm(id, embedded = false) {
   };
   const warnDuplicatePublicCpf = async (control, focus = false) => {
     if (embedded || editingEntry || !control) return false;
-    if (control.name === 'spouseCpf') return false;
     const cpf = normalizeCpf(control.value);
     if (cpf.length !== 11 || !isValidCpf(cpf)) {
       clearDuplicateCpfMessage();
       return false;
     }
-    const existingEntries = await dataService.listAdesoes();
-    const hasDuplicate = existingEntries.some((entry) => entry.retiroId === id && entry.pessoaId === cpf);
-    if (!hasDuplicate) clearDuplicateCpfMessage();
-    if (!hasDuplicate) return false;
-    setTimeout(() => showDuplicateCpfMessage(control));
+    const duplicateEntry = await findFocusedRetreatEntryByCpf(cpf);
+    if (!duplicateEntry) clearDuplicateCpfMessage();
+    if (!duplicateEntry) return false;
+    const duplicatePerson = people.find((person) => person.id === duplicateEntry.pessoaId || normalizeCpf(person.cpf || person.id) === cpf);
+    const message = control.name === 'spouseCpf' ? spouseRegisteredMessage(duplicatePerson, duplicateEntry) : duplicatePublicCpfMessage;
+    setTimeout(() => showCpfLockMessage(control, message));
     if (focus) {
       control.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => control.focus({ preventScroll: true }), 180);
