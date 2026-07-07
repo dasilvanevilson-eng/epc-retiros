@@ -3159,15 +3159,18 @@ async function renderPublicForm(id, embedded = false) {
     }
     return person;
   };
-  const showSuccess = (name) => {
-    mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(name)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p><button type="button" id="close-success-message">Fechar</button></section></main>`;
+  const showSuccess = (participants) => {
+    const list = (Array.isArray(participants) ? participants : [{ nome: participants, dias: [] }]).filter((item) => item?.nome);
+    const names = list.map((item) => item.nome).join(' e ');
+    const participantRows = list.map((item) => `<li><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml((item.dias || []).join(', ') || 'Dias não informados')}</span></li>`).join('');
+    mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(names)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p><ul class="success-participants">${participantRows}</ul><button type="button" id="close-success-message">Fechar</button></section></main>`;
     mount.querySelector('#close-success-message')?.addEventListener('click', () => {
       window.close();
       mount.querySelector('.success-card')?.setAttribute('hidden', '');
     });
   };
-  const finishSave = async (name) => {
-    if (!embedded) { showSuccess(name); return; }
+  const finishSave = async (participants) => {
+    if (!embedded) { showSuccess(participants); return; }
     await loadData();
     await renderPublicForm(id, true);
     app.querySelector('#public-form')?.elements.cpf.focus();
@@ -3203,12 +3206,16 @@ async function renderPublicForm(id, embedded = false) {
       if (await blockPublicCpfIssues()) {
         return;
       }
+      const data = new FormData(form);
       if (isCouple()) {
         const casalId = editingEntry?.casalId || createId();
         const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
         const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
         await linkCouplePeople(first, second, casalId);
-        await finishSave(first.nome);
+        await finishSave([
+          { nome: first.nome, dias: data.getAll('dias') },
+          { nome: second.nome, dias: data.getAll('spouseDias') },
+        ]);
         return;
       }
       if (editingEntry?.casalId) {
@@ -3218,7 +3225,7 @@ async function renderPublicForm(id, embedded = false) {
         }
       }
       const person = await saveForm(form, null, null, editingEntry);
-      await finishSave(person.nome);
+      await finishSave([{ nome: person.nome, dias: data.getAll('dias') }]);
       return;
     } catch (error) {
       console.error(error);
