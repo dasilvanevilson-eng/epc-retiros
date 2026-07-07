@@ -2990,6 +2990,13 @@ async function renderPublicForm(id, embedded = false) {
     if (publicCpfMessages.includes(form.querySelector('#form-message').textContent)) form.querySelector('#form-message').textContent = '';
     setDuplicateCpfLock(false);
   };
+  const listStudentsForCpfCheck = async () => {
+    try {
+      return await dataService.listCursistas();
+    } catch {
+      return [];
+    }
+  };
   const warnPublicStudentConflict = async (control, focus = false) => {
     if (!control) return false;
     const cpf = normalizeCpf(control.value);
@@ -2997,7 +3004,7 @@ async function renderPublicForm(id, embedded = false) {
       clearDuplicateCpfMessage();
       return false;
     }
-    const students = await dataService.listCursistas();
+    const students = await listStudentsForCpfCheck();
     const hasConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
     if (!hasConflict) {
       if (form.querySelector('#form-message').textContent === publicStudentConflictMessage) clearDuplicateCpfMessage();
@@ -3027,7 +3034,7 @@ async function renderPublicForm(id, embedded = false) {
     }
     const mainCpf = normalizeCpf(form.elements.cpf.value);
     const teamConflict = enrolments.some((entry) => entry.retiroId === id && entry.id !== editingSpouseEntry?.id && entryMatchesCpf(entry, cpf));
-    const students = await dataService.listCursistas();
+    const students = await listStudentsForCpfCheck();
     const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
     const sameAsMainCpf = mainCpf && mainCpf === cpf;
     if (!teamConflict && !studentConflict && !sameAsMainCpf) {
