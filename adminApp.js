@@ -2628,7 +2628,7 @@ async function renderPublicForm(id, embedded = false) {
   setCoupleMode(false);
   const typeSelectionMessage = 'Primeiro selecione se a ficha é Individual ou Casal';
   const typeSelectionControl = (control) => control?.name === 'tipoFicha';
-  const typeSelectionLocked = () => !new FormData(form).get('tipoFicha');
+  const typeSelectionLocked = () => !form.querySelector('[name="tipoFicha"]:checked');
   const showTypeSelectionMessage = () => {
     form.querySelector('#form-message').textContent = typeSelectionMessage;
     const typeSection = form.querySelector('.form-type-section');
