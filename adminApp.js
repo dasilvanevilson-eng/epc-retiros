@@ -2648,6 +2648,7 @@ async function renderPublicForm(id, embedded = false) {
     if (!typeSelectionLocked()) return;
     const control = event.target.closest?.('input, select, textarea, button') || event.target.closest?.('label')?.querySelector('input, select, textarea, button');
     if (!control || typeSelectionControl(control)) return;
+    if (control.id === 'delete-selected-registration' || control.id === 'edit-selected-registration') return;
     event.preventDefault();
     event.stopPropagation();
     if (event.type === 'focusin') control.blur();
@@ -2812,6 +2813,7 @@ async function renderPublicForm(id, embedded = false) {
     syncTypeSelectionLock();
     syncRegistrationActions();
     setRegistrationFormLocked(Boolean(locked));
+    syncTypeSelectionLock();
     form.querySelector('#form-message').textContent = locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
   };
   const orderedRegistrationEntries = (items) => [...items].sort((first, second) => {
