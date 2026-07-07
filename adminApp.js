@@ -2751,6 +2751,7 @@ async function renderPublicForm(id, embedded = false) {
     await Promise.all([dataService.savePessoa(firstPerson), dataService.savePessoa(secondPerson)]);
     people = people.map((person) => person.id === first.id ? firstPerson : person.id === second.id ? secondPerson : person);
   };
+  const spouseRegisteredMessage = (spouse, spouseEntry) => `Seu conjuge ${spouse?.nome || 'informado'} já fez inscrição no setor ${(spouseEntry?.setores || []).join(', ') || 'não informado'}`;
   const clearSpouseFields = () => {
     ['spouseCpf', 'spouseNome', 'spouseNascimento', 'spouseTelefone'].forEach((name) => {
       if (form.elements[name]) form.elements[name].value = '';
@@ -2770,7 +2771,7 @@ async function renderPublicForm(id, embedded = false) {
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'spouse-registered-title');
-    overlay.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Cadastro de casal</p><h2 id="spouse-registered-title">Cônjuge já cadastrado</h2><p>Cônjuge ${escapeHtml(spouse.nome || 'informado')} já cadastrado para o setor ${escapeHtml((spouseEntry.setores || []).join(', ') || 'não informado')}.</p><p>Deseja alterar os dados particulares do cônjuge?</p><div class="spouse-registered-actions"><button type="button" data-spouse-registered-yes>Sim</button><button type="button" data-spouse-registered-no>Não</button></div></div>`;
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Cadastro de casal</p><h2 id="spouse-registered-title">Cônjuge já cadastrado</h2><p>${escapeHtml(spouseRegisteredMessage(spouse, spouseEntry))}.</p><p>Deseja alterar os dados particulares do cônjuge?</p><div class="spouse-registered-actions"><button type="button" data-spouse-registered-yes>Sim</button><button type="button" data-spouse-registered-no>Não</button></div></div>`;
     const close = () => {
       document.removeEventListener('keydown', onKeydown);
       overlay.remove();
@@ -3059,7 +3060,8 @@ async function renderPublicForm(id, embedded = false) {
   const showStudentCpfConflictMessage = (control) => showCpfLockMessage(control, publicStudentConflictMessage);
   const clearDuplicateCpfMessage = () => {
     form.querySelectorAll('.cpf-duplicate-message').forEach((message) => message.remove());
-    if (publicCpfMessages.includes(form.querySelector('#form-message').textContent)) form.querySelector('#form-message').textContent = '';
+    const currentMessage = form.querySelector('#form-message').textContent;
+    if (publicCpfMessages.includes(currentMessage) || currentMessage.startsWith('Seu conjuge ')) form.querySelector('#form-message').textContent = '';
     setDuplicateCpfLock(false);
   };
   const listStudentsForCpfCheck = async () => {
@@ -3105,15 +3107,18 @@ async function renderPublicForm(id, embedded = false) {
       return false;
     }
     const mainCpf = normalizeCpf(form.elements.cpf.value);
-    const teamConflict = enrolments.some((entry) => entry.retiroId === id && entry.id !== editingSpouseEntry?.id && entryMatchesCpf(entry, cpf));
+    const teamConflictEntry = enrolments.find((entry) => entry.retiroId === id && entry.id !== editingSpouseEntry?.id && entryMatchesCpf(entry, cpf));
     const students = await listStudentsForCpfCheck();
     const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
     const sameAsMainCpf = mainCpf && mainCpf === cpf;
-    if (!teamConflict && !studentConflict && !sameAsMainCpf) {
-      if (form.querySelector('#form-message').textContent === spouseCpfConflictMessage) clearDuplicateCpfMessage();
+    if (!teamConflictEntry && !studentConflict && !sameAsMainCpf) {
+      const currentMessage = form.querySelector('#form-message').textContent;
+      if (currentMessage === spouseCpfConflictMessage || currentMessage.startsWith('Seu conjuge ')) clearDuplicateCpfMessage();
       return false;
     }
-    setTimeout(() => showCpfLockMessage(control, spouseCpfConflictMessage));
+    const spouse = teamConflictEntry && people.find((person) => person.id === teamConflictEntry.pessoaId || normalizeCpf(person.cpf || person.id) === cpf);
+    const message = teamConflictEntry ? spouseRegisteredMessage(spouse, teamConflictEntry) : spouseCpfConflictMessage;
+    setTimeout(() => showCpfLockMessage(control, message));
     if (focus) {
       control.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => control.focus({ preventScroll: true }), 180);
