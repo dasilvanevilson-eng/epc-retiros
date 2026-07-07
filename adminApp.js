@@ -3170,6 +3170,7 @@ async function renderPublicForm(id, embedded = false) {
   [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
     control.addEventListener('focus', () => {
       if (form.querySelector('.cpf-duplicate-message')) clearDuplicateCpfMessage();
+      if (control.name === 'spouseCpf' && normalizeCpf(control.value).length === 11 && isValidCpf(control.value)) checkPublicCpf(control);
     });
     control.addEventListener('input', () => {
       clearDuplicateCpfMessage();
