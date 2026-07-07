@@ -2608,6 +2608,35 @@ async function renderPublicForm(id, embedded = false) {
     updateSubmitButton();
   };
   setCoupleMode(false);
+  const typeSelectionMessage = 'Primeiro selecione se a ficha é Individual ou Casal';
+  const typeSelectionControl = (control) => control?.name === 'tipoFicha';
+  const typeSelectionLocked = () => !new FormData(form).get('tipoFicha');
+  const showTypeSelectionMessage = () => {
+    form.querySelector('#form-message').textContent = typeSelectionMessage;
+    const typeSection = form.querySelector('.form-type-section');
+    typeSection?.classList.add('field-warning');
+    typeSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const syncTypeSelectionLock = () => {
+    const locked = typeSelectionLocked();
+    form.querySelectorAll('input, textarea').forEach((control) => {
+      if (control.type === 'hidden' || typeSelectionControl(control)) return;
+      control.readOnly = locked && !control.disabled;
+      control.classList.toggle('is-waiting-type', locked);
+    });
+  };
+  const guardTypeSelection = (event) => {
+    if (!typeSelectionLocked()) return;
+    const control = event.target.closest?.('input, select, textarea, button') || event.target.closest?.('label')?.querySelector('input, select, textarea, button');
+    if (!control || typeSelectionControl(control)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === 'focusin') control.blur();
+    showTypeSelectionMessage();
+  };
+  ['pointerdown', 'click', 'focusin', 'keydown', 'beforeinput'].forEach((eventName) => {
+    form.addEventListener(eventName, guardTypeSelection, true);
+  });
   form.querySelectorAll('[name="foto"]').forEach((input) => input.addEventListener('change', syncContributionAmount));
   const syncKidsNeed = () => {
     const notNeeded = form.elements.kidsNotNeeded?.checked;
@@ -2620,12 +2649,15 @@ async function renderPublicForm(id, embedded = false) {
     form.querySelector('.kids-hint')?.toggleAttribute('hidden', Boolean(notNeeded));
   };
   form.elements.kidsNotNeeded?.addEventListener('change', syncKidsNeed);
+  syncKidsNeed();
+  syncTypeSelectionLock();
   const setNewRecordTypeLock = (locked) => {
     newRecordNeedsType = locked;
     form.querySelectorAll('input, textarea, select').forEach((field) => {
       field.disabled = locked && !['nome', 'cpf', 'tipoFicha'].includes(field.name);
     });
     form.querySelector('button[type="submit"]').disabled = locked;
+    syncTypeSelectionLock();
   };
   const resetFormForInclusion = (nome = form.elements.nome.value, cpf = form.elements.cpf.value) => {
     const selectedType = new FormData(form).get('tipoFicha');
@@ -2643,6 +2675,7 @@ async function renderPublicForm(id, embedded = false) {
     form.querySelector('#delete-registration')?.remove();
     form.querySelector('#form-message').textContent = selectedType ? 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.' : 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.';
     setNewRecordTypeLock(!selectedType);
+    syncTypeSelectionLock();
   };
   const startNewRegistration = () => {
     form.querySelector('.inline-partner-registration')?.remove();
@@ -2657,8 +2690,9 @@ async function renderPublicForm(id, embedded = false) {
     syncRegistrationActions();
     setCoupleMode(false);
     syncKidsNeed();
+    syncTypeSelectionLock();
     form.querySelector('#form-message').textContent = 'Novo cadastro para o retiro em foco.';
-    form.elements.cpf.focus();
+    form.querySelector('[name="tipoFicha"]')?.focus();
   };
   const showSavedSpouse = (spouseEntry) => {
     const spouse = people.find((person) => person.id === spouseEntry.pessoaId);
@@ -2756,6 +2790,7 @@ async function renderPublicForm(id, embedded = false) {
       setChoices('spouseDias', editingSpouseEntry.dias || []);
     }
     setCoupleMode(Boolean(entry.casalId));
+    syncTypeSelectionLock();
     syncRegistrationActions();
     setRegistrationFormLocked(Boolean(locked));
     form.querySelector('#form-message').textContent = locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
@@ -3040,6 +3075,8 @@ async function renderPublicForm(id, embedded = false) {
       if (newRecordNeedsType) setNewRecordTypeLock(false);
       setCoupleMode(event.target.value === 'Casal');
       syncKidsNeed();
+      syncTypeSelectionLock();
+      if (form.querySelector('#form-message').textContent === typeSelectionMessage) form.querySelector('#form-message').textContent = '';
       if (event.target.value === 'Casal') {
         const cpf = normalizeCpf(form.elements.cpf.value);
         const person = isValidCpf(cpf) && people.find((item) => item.id === cpf || normalizeCpf(item.cpf) === cpf);
