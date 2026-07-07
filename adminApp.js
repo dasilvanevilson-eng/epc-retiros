@@ -2828,8 +2828,8 @@ async function renderPublicForm(id, embedded = false) {
     form.elements.spouseNascimento.value = formatDateInput(linked.spouse.nascimento);
     form.elements.spouseTelefone.value = linked.spouse.telefone || '';
     form.elements.spouseTelefone.dispatchEvent(new Event('input'));
+    setChoices('spouseGenero', linked.spouse.genero);
     if (embedded) {
-      setChoices('spouseGenero', linked.spouse.genero);
       setChoices('spouseRetiros', (currentSpouseEntry || linked.spouseEntry).retirosAnteriores || []);
       setDayConfirmations('spouseDias', (currentSpouseEntry || linked.spouseEntry).dias || []);
     }
@@ -3171,6 +3171,7 @@ async function renderPublicForm(id, embedded = false) {
     form.cep.value = person.cep || '';
     form.cidade.value = person.cidade || '';
     form.estado.value = person.estado || '';
+    setChoices('genero', person.genero);
     const spouseLoaded = await loadLinkedSpouse(person);
     if (!spouseLoaded) mount.querySelector('#form-message').textContent = 'Encontramos seus dados pelo CPF. Revise antes de enviar este cadastro.';
   };
