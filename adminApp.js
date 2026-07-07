@@ -3159,7 +3159,13 @@ async function renderPublicForm(id, embedded = false) {
     }
     return person;
   };
-  const showSuccess = (name) => { mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(name)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p></section></main>`; };
+  const showSuccess = (name) => {
+    mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(name)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p><button type="button" id="close-success-message">Fechar</button></section></main>`;
+    mount.querySelector('#close-success-message')?.addEventListener('click', () => {
+      window.close();
+      mount.querySelector('.success-card')?.setAttribute('hidden', '');
+    });
+  };
   const finishSave = async (name) => {
     if (!embedded) { showSuccess(name); return; }
     await loadData();
@@ -3178,77 +3184,8 @@ async function renderPublicForm(id, embedded = false) {
     }
     return false;
   };
-  let publicConfirmationReady = false;
-  const reviewValue = (value) => escapeHtml(value || 'Não informado');
-  const reviewList = (values) => reviewValue(values.length ? values.join(', ') : '');
-  const reviewRow = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${value}</span></div>`;
-  const showPublicConfirmation = () => {
-    const data = new FormData(form);
-    const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
-    const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
-    const section = document.createElement('section');
-    section.className = 'registration-review';
-    section.innerHTML = `<div class="section-heading"><span>✓</span><div><h2 class="review-alert-title">Revise os seus dados antes de confirmar a inscrição</h2><p>Confira todos os dados antes de enviar sua inscrição para a coordenação.</p></div></div>
-      <div class="review-group"><h3>Seus dados</h3><div class="review-list">
-        ${reviewRow('CPF', reviewValue(formatCpf(data.get('cpf'))))}
-        ${reviewRow('Nome completo', reviewValue(data.get('nome')))}
-        ${reviewRow('Data de nascimento', reviewValue(date(data.get('nascimento'))))}
-        ${reviewRow('Telefone', reviewValue(data.get('telefone')))}
-        ${reviewRow('Gênero', reviewValue(data.get('genero')))}
-        ${reviewRow('Ficha', reviewValue(data.get('tipoFicha')))}
-      </div></div>
-      ${isCouple() ? `<div class="review-group"><h3>Segundo cônjuge</h3><div class="review-list">
-        ${reviewRow('CPF', reviewValue(formatCpf(data.get('spouseCpf'))))}
-        ${reviewRow('Nome completo', reviewValue(data.get('spouseNome')))}
-        ${reviewRow('Data de nascimento', reviewValue(date(data.get('spouseNascimento'))))}
-        ${reviewRow('Telefone', reviewValue(data.get('spouseTelefone')))}
-        ${reviewRow('Gênero', reviewValue(spouseGenderValue()))}
-        ${reviewRow('Retiro(s) que fez', reviewList(data.getAll('spouseRetiros')))}
-        ${reviewRow('Dias que vai trabalhar', reviewList(data.getAll('spouseDias')))}
-      </div></div>` : ''}
-      <div class="review-group"><h3>Participação</h3><div class="review-list">
-        ${reviewRow('Retiro(s) que fez', reviewList(data.getAll('retiros')))}
-        ${reviewRow('Dias que vai trabalhar', reviewList(data.getAll('dias')))}
-        ${reviewRow('Setor de trabalho', reviewList(data.getAll('setores')))}
-        ${reviewRow('Quadrante impresso', reviewValue(data.get('quadrante') === 'Sim' ? 'Sim' : 'Não'))}
-        ${reviewRow('Foto', reviewValue(data.get('foto') === 'Sim' ? 'Sim' : 'Não'))}
-        ${reviewRow('Valor da inscrição', reviewValue(data.get('contribuicao')))}
-      </div></div>
-      <div class="review-group"><h3>Endereço</h3><div class="review-list">
-        ${reviewRow('CEP', reviewValue(data.get('cep')))}
-        ${reviewRow('Rua / Avenida', reviewValue(data.get('endereco')))}
-        ${reviewRow('Número', reviewValue(data.get('numero')))}
-        ${reviewRow('Bairro', reviewValue(data.get('bairro')))}
-        ${reviewRow('Cidade', reviewValue(data.get('cidade')))}
-        ${reviewRow('Estado', reviewValue(data.get('estado')))}
-      </div></div>
-      <div class="review-group"><h3>Informações adicionais</h3><div class="review-list">
-        ${reviewRow('Espaço Kids', kidsNotNeeded ? 'Não necessito do Espaço Kids' : reviewValue(kids.map((kid) => `${kid.nome} (${date(kid.nascimento)})`).join(', ')))}
-        ${reviewRow('Termo de adesão de voluntariado', 'Lido e aceito')}
-      </div></div>
-      <p id="review-message" class="form-message"></p><div class="review-actions"><button type="button" id="back-to-registration">Voltar ao cadastro</button><button type="button" id="confirm-registration">Confirmar e enviar inscrição</button></div>`;
-    form.hidden = true;
-    mount.querySelector('.registration-review')?.remove();
-    form.after(section);
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    section.querySelector('#back-to-registration').addEventListener('click', () => {
-      section.remove();
-      form.hidden = false;
-      publicConfirmationReady = false;
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    section.querySelector('#confirm-registration').addEventListener('click', () => {
-      publicConfirmationReady = true;
-      submitForm(form);
-    });
-  };
-  const restorePublicForm = () => {
-    mount.querySelector('.registration-review')?.remove();
-    form.hidden = false;
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
   const setPublicSubmitting = (submitting) => {
-    [form.querySelector('button[type="submit"]'), mount.querySelector('#confirm-registration')].filter(Boolean).forEach((button) => {
+    [form.querySelector('button[type="submit"]')].filter(Boolean).forEach((button) => {
       if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
       button.disabled = submitting;
       if (submitting) button.textContent = 'Enviando...';
@@ -3261,20 +3198,11 @@ async function renderPublicForm(id, embedded = false) {
     try {
       syncContributionAmount();
       if (!validateForm(form)) {
-        if (publicConfirmationReady) restorePublicForm();
-        publicConfirmationReady = false;
         return;
       }
       if (await blockPublicCpfIssues()) {
-        if (publicConfirmationReady) restorePublicForm();
-        publicConfirmationReady = false;
         return;
       }
-      if (!embedded && !publicConfirmationReady) {
-        showPublicConfirmation();
-        return;
-      }
-      publicConfirmationReady = false;
       if (isCouple()) {
         const casalId = editingEntry?.casalId || createId();
         const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
@@ -3294,8 +3222,7 @@ async function renderPublicForm(id, embedded = false) {
       return;
     } catch (error) {
       console.error(error);
-      publicConfirmationReady = false;
-      const messageTarget = mount.querySelector('#review-message') || form.querySelector('#form-message');
+      const messageTarget = form.querySelector('#form-message');
       messageTarget?.replaceChildren('Não foi possível salvar a inscrição. Confira os dados e tente novamente.');
     } finally {
       setPublicSubmitting(false);
