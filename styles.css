@@ -4293,6 +4293,28 @@ body:has(.login-shell) {
   background:#365e3e;
 }
 
+.spouse-registered-actions {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:24px;
+}
+
+.spouse-registered-actions button {
+  width:100%;
+}
+
+.spouse-registered-actions [data-spouse-registered-no] {
+  border:1px solid #b94137;
+  background:#fff;
+  color:#983126;
+  box-shadow:none;
+}
+
+.spouse-registered-actions [data-spouse-registered-no]:hover {
+  background:#fff1ef;
+}
+
 .volunteer-term-topic {
   display:flex;
   align-items:center;

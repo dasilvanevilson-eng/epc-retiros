@@ -2751,11 +2751,74 @@ async function renderPublicForm(id, embedded = false) {
     await Promise.all([dataService.savePessoa(firstPerson), dataService.savePessoa(secondPerson)]);
     people = people.map((person) => person.id === first.id ? firstPerson : person.id === second.id ? secondPerson : person);
   };
+  const clearSpouseFields = () => {
+    ['spouseCpf', 'spouseNome', 'spouseNascimento', 'spouseTelefone'].forEach((name) => {
+      if (form.elements[name]) form.elements[name].value = '';
+    });
+    ['spouseGenero', 'spouseRetiros'].forEach((name) => {
+      form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = false; });
+    });
+    serviceDays.forEach((day, index) => {
+      form.querySelectorAll(`[name="${dayConfirmationName('spouseDias', index)}"]`).forEach((input) => { input.checked = false; });
+    });
+    syncChoiceStates(form);
+  };
+  const showSpouseAlreadyRegisteredDialog = (spouse, spouseEntry) => new Promise((resolve) => {
+    mount.querySelector('.hidden-team-alert-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.className = 'hidden-team-alert-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'spouse-registered-title');
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Cadastro de casal</p><h2 id="spouse-registered-title">Cônjuge já cadastrado</h2><p>Cônjuge ${escapeHtml(spouse.nome || 'informado')} já cadastrado para o setor ${escapeHtml((spouseEntry.setores || []).join(', ') || 'não informado')}.</p><p>Deseja alterar os dados particulares do cônjuge?</p><div class="spouse-registered-actions"><button type="button" data-spouse-registered-yes>Sim</button><button type="button" data-spouse-registered-no>Não</button></div></div>`;
+    const close = () => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+    };
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        close();
+        resolve(false);
+      }
+    };
+    overlay.querySelector('[data-spouse-registered-yes]').addEventListener('click', () => {
+      close();
+      resolve(true);
+    });
+    overlay.querySelector('[data-spouse-registered-no]').addEventListener('click', () => {
+      close();
+      mount.querySelector('.hidden-team-alert-overlay')?.remove();
+      const notice = document.createElement('section');
+      notice.className = 'hidden-team-alert-overlay';
+      notice.setAttribute('role', 'dialog');
+      notice.setAttribute('aria-modal', 'true');
+      notice.setAttribute('aria-labelledby', 'spouse-contact-title');
+      notice.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Cadastro de casal</p><h2 id="spouse-contact-title">Atenção</h2><p>Entre em contato com a coordenação do retiro.</p><button type="button" class="hidden-team-alert-close">OK</button></div>`;
+      notice.querySelector('.hidden-team-alert-close').addEventListener('click', async () => {
+        notice.remove();
+        await renderPublicForm(id, embedded);
+        resolve(true);
+      });
+      mount.append(notice);
+      notice.querySelector('.hidden-team-alert-close').focus();
+    });
+    document.addEventListener('keydown', onKeydown);
+    mount.append(overlay);
+    overlay.querySelector('[data-spouse-registered-yes]').focus();
+  });
   const loadLinkedSpouse = async (person) => {
     if (!isCouple() || !person) return false;
     const linked = linkedSpouseForPerson(person.id);
     if (!linked) return false;
     const currentSpouseEntry = enrolments.find((entry) => entry.retiroId === id && entryMatchesCpf(entry, normalizeCpf(linked.spouse.cpf || linked.spouse.id)));
+    if (!embedded && currentSpouseEntry) {
+      const shouldContinue = await showSpouseAlreadyRegisteredDialog(linked.spouse, currentSpouseEntry);
+      if (!shouldContinue) return false;
+      editingSpouseEntry = currentSpouseEntry;
+      clearSpouseFields();
+      form.querySelector('#form-message').textContent = 'Informe os dados particulares do cônjuge para atualizar este cadastro.';
+      return true;
+    }
     if (currentSpouseEntry) editingSpouseEntry = currentSpouseEntry;
     const spouseCpf = normalizeCpf(linked.spouse.cpf || linked.spouse.id);
     form.elements.spouseCpf.value = isValidCpf(spouseCpf) ? formatCpf(spouseCpf) : '';
@@ -3059,6 +3122,7 @@ async function renderPublicForm(id, embedded = false) {
   };
   const warnDuplicatePublicCpf = async (control, focus = false) => {
     if (embedded || editingEntry || !control) return false;
+    if (control.name === 'spouseCpf') return false;
     const cpf = normalizeCpf(control.value);
     if (cpf.length !== 11 || !isValidCpf(cpf)) {
       clearDuplicateCpfMessage();
