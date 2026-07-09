@@ -457,6 +457,7 @@ function layout(content, active = 'inicio') {
     </div>`;
   const menuToggle = app.querySelector('.menu-toggle');
   const mainNav = app.querySelector('.main-nav');
+  if (!menuToggle || !mainNav) return;
   const closeAdminMenu = () => {
     mainNav.classList.remove('is-open');
     menuToggle.setAttribute('aria-expanded', 'false');
@@ -1074,7 +1075,7 @@ async function renderRetreat(id) {
       button.textContent = 'Excluir retiro';
     }
   });
-  app.querySelector('#copy-link').addEventListener('click', async () => { await navigator.clipboard.writeText(publicUrl); app.querySelector('#copy-link').textContent = 'Copiado!'; });
+  app.querySelector('#copy-link')?.addEventListener('click', async () => { await navigator.clipboard.writeText(publicUrl); app.querySelector('#copy-link').textContent = 'Copiado!'; });
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);
     button.textContent = 'Copiado!';
@@ -1096,7 +1097,7 @@ async function renderRetreat(id) {
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
     filterSectorLinks();
   }
-  app.querySelector('#toggle-participants').addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
+  app.querySelector('#toggle-participants')?.addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
   app.querySelectorAll('[data-participant-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.participantSort; participantSort = { key, direction: participantSort.key === key && participantSort.direction === 'asc' ? 'desc' : 'asc' }; renderRetreat(id); }));
 }
 
@@ -3817,16 +3818,17 @@ function renderLogin(message = '') {
 }
 
 async function route() {
-  if (publicRetreatId) return renderPublicForm(publicRetreatId);
-  if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
-  const target = location.hash.slice(1) || firstAllowedSection();
-  if (target === 'usuarios') return renderUsuarios();
-  const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
-  if (!ensureViewPermission(section)) return;
-  await loadData();
-  if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
-  if (target === 'cursista') {
-    await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
+  try {
+    if (publicRetreatId) return renderPublicForm(publicRetreatId);
+    if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
+    const target = location.hash.slice(1) || firstAllowedSection();
+    if (target === 'usuarios') return renderUsuarios();
+    const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
+    if (!ensureViewPermission(section)) return;
+    await loadData();
+    if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
+    if (target === 'cursista') {
+      await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;
     form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
@@ -3898,9 +3900,13 @@ async function route() {
     document.addEventListener('pointerdown', closeStudentSearch, true);
     document.addEventListener('focusin', closeStudentSearch, true);
     form.querySelector('.delete-student').addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
-    return;
+      return;
+    }
+    if (target === 'pessoas') { const focusRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao'); return focusRetreat ? renderPublicForm(focusRetreat.id, true) : renderPessoas(); } if (target.startsWith('pessoas/')) { const [, personId, personRetreatId, source] = target.split('/'); return renderPessoa(personId, personRetreatId, source); } renderHome();
+  } catch (error) {
+    console.error(error);
+    app.innerHTML = `<main class="login-shell"><section class="login-panel"><a class="brand" href="index.html"><span>EPC</span><strong><small>Familia</small>EPC</strong></a><div class="login-heading"><p class="eyebrow">Area restrita</p><h1>Nao foi possivel abrir a tela</h1><p>${escapeHtml(error.message || 'Atualize a pagina e tente novamente.')}</p></div><button type="button" class="primary-button" onclick="location.reload()">Recarregar</button></section></main>`;
   }
-  if (target === 'pessoas') { const focusRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao'); return focusRetreat ? renderPublicForm(focusRetreat.id, true) : renderPessoas(); } if (target.startsWith('pessoas/')) { const [, personId, personRetreatId, source] = target.split('/'); return renderPessoa(personId, personRetreatId, source); } renderHome();
 }
 document.addEventListener('focusin', (event) => { if (['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) { event.target.type = 'tel'; event.target.inputMode = 'numeric'; event.target.placeholder = '(00) 00000-0000'; } });
 document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) return; const digits = event.target.value.replace(/\D/g, '').slice(0, 11); event.target.value = digits.length <= 10 ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`) : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`); });
