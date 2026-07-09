@@ -988,6 +988,30 @@ async function renderEditRetreat(id) {
     if (!form.reportValidity()) return;
     const values = new FormData(form);
     const selectedSectors = values.getAll('setores');
+    const selectedSectorKeys = new Set(selectedSectors.map(normalizeText));
+    const removedSectors = (retreat.setores || []).filter((sector) => !selectedSectorKeys.has(normalizeText(sector)));
+    const blockedRemovals = removedSectors.map((sector) => ({
+      sector,
+      volunteers: enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, sector)).map((entry) => entry.nome).filter(Boolean),
+    })).filter((item) => item.volunteers.length);
+    if (blockedRemovals.length) {
+      const publicSectorKeys = new Set((retreat.setoresPublicos ?? retreat.setores ?? []).map(normalizeText));
+      blockedRemovals.forEach(({ sector }) => {
+        const sectorKey = normalizeText(sector);
+        const sectorInput = [...form.querySelectorAll('input[name="setores"]')].find((input) => normalizeText(input.value) === sectorKey);
+        if (sectorInput) {
+          sectorInput.checked = true;
+          sectorInput.closest('.sector-option')?.classList.add('field-warning');
+        }
+        const publicInput = [...form.querySelectorAll('input[name="setoresPublicos"]')].find((input) => normalizeText(input.value) === sectorKey);
+        if (publicInput) {
+          publicInput.disabled = false;
+          publicInput.checked = publicSectorKeys.has(sectorKey);
+        }
+      });
+      alert(`Setor já tem voluntário(s) cadastrados\n\n${blockedRemovals.map(({ sector, volunteers }) => `${sector}:\n${volunteers.map((name) => `- ${name}`).join('\n')}`).join('\n\n')}`);
+      return;
+    }
     if (!selectedSectors.length) { alert('Selecione ao menos um setor de trabalho.'); return; }
     if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); return; }
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
