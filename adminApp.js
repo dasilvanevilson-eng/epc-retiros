@@ -882,8 +882,100 @@ async function renderRetreat(id) {
     return (entry.espacoKids || []).map((kid) => ({ ...kid, volunteer: entry.nome, contact: responsible.telefone || '', sectors: entry.setores || [] }));
   });
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
-  const shirtOrder = ['P', 'M', 'G', 'GG'];
+  const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
+  const activeEntries = enrolments.filter((item) => item.retiroId === id);
+  const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
+  const sectorCounts = sortSectors(uniqueSectors([...(retreat.setores || []), ...retreatEnrolments.flatMap((entry) => entry.setores || [])]))
+    .map((sector) => [sector, retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
+    .filter(([sector, count]) => count > 0 || retreat.setores?.includes(sector));
+  const intoleranceStudents = registeredStudents
+    .filter((student) => normalizeText(student.intoleranciaAlimentos) === 'sim' || String(student.qualIntolerancia || '').trim())
+    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+  const allergyStudents = registeredStudents
+    .filter((student) => normalizeText(student.alergiaMedicamento) === 'sim' || String(student.qualAlergia || '').trim())
+    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+  const groupedPreferenceRows = (entries, field) => {
+    const usedCouples = new Set();
+    return entries.reduce((rows, entry) => {
+      if (entry.casalId) {
+        if (usedCouples.has(entry.casalId)) return rows;
+        const couple = entries.filter((item) => item.casalId === entry.casalId);
+        usedCouples.add(entry.casalId);
+        if (!couple.some((item) => normalizeText(item[field]) === 'sim')) return rows;
+        rows.push({ name: couple.map((item) => item.nome).filter(Boolean).join(' e '), detail: 'Ficha de casal' });
+        return rows;
+      }
+      if (normalizeText(entry[field]) !== 'sim') return rows;
+      rows.push({ name: entry.nome || 'Sem nome', detail: entry.setores?.join(', ') || 'Ficha individual' });
+      return rows;
+    }, []).sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
+  };
+  const quadranteRows = groupedPreferenceRows(retreatEnrolments, 'quadrante');
+  const photoRows = groupedPreferenceRows(retreatEnrolments, 'foto');
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const spaceKidsRows = retreatEnrolments.flatMap((entry) => {
+    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
+    return (entry.espacoKids || []).map((kid) => ({
+      ...kid,
+      volunteer: entry.nome || responsible.nome || 'Não informado',
+      contact: responsible.telefone || entry.dadosPessoais?.telefone || '',
+    }));
+  }).sort((first, second) => {
+    const firstBirth = Date.parse(`${first.nascimento || ''}T12:00:00`);
+    const secondBirth = Date.parse(`${second.nascimento || ''}T12:00:00`);
+    if (Number.isFinite(firstBirth) && Number.isFinite(secondBirth) && firstBirth !== secondBirth) return secondBirth - firstBirth;
+    if (Number.isFinite(firstBirth) !== Number.isFinite(secondBirth)) return Number.isFinite(firstBirth) ? -1 : 1;
+    return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+  });
+  const cityStats = new Map();
+  const addCityCount = (city, type) => {
+    const label = String(city || '').trim();
+    if (!label) return;
+    const key = normalizeText(label);
+    const row = cityStats.get(key) || { city: label, students: 0, team: 0 };
+    row[type] += 1;
+    cityStats.set(key, row);
+  };
+  registeredStudents.forEach((student) => addCityCount(student.cidade, 'students'));
+  retreatEnrolments.forEach((entry) => {
+    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
+    addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
+  });
+  const cityRows = [...cityStats.values()].sort((first, second) => first.city.localeCompare(second.city, 'pt-BR', { sensitivity: 'base' }));
+  const sectorRows = sectorCounts.length ? sectorCounts.map(([sector, count]) => `<div><span>${escapeHtml(sector)}</span><strong>${count}</strong></div>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
+  const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
+  const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
+  const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
+  const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const cityRowsHtml = (rows) => rows.length ? `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
+  const retreatStatisticsHtml = `<section class="metric-grid dashboard-metrics">
+      <article class="metric-card static-metric"><span>Cursistas</span><strong>${registeredStudents.length}</strong><small>pessoa(s)</small></article>
+      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${retreatEnrolments.length}</strong><small>pessoa(s) validada(s)</small></article>
+      <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
+    </section>
+    <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
+      <article class="student-health-card"><div><span>Cursistas com Intolerância a alimentos</span><strong>${intoleranceStudents.length}</strong></div><button type="button" data-home-health="intolerance">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Cursistas Alérgicos a Medicamentos</span><strong>${allergyStudents.length}</strong></div><button type="button" data-home-health="allergy">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
+    </section>
+    <section class="dashboard-grid retreat-stats-grid">
+      <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
+      <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
+      <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho validada por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
+    </section>`;
+  const healthContent = {
+    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada')}`,
+    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado')}`,
+    quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
+    photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
+    kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
+  };
   const sortedParticipants = [...retreatEnrolments].sort((first, second) => {
     const value = participantSort.key === 'setor' ? first.setores.join(', ') : first.nome;
     const otherValue = participantSort.key === 'setor' ? second.setores.join(', ') : second.nome;
@@ -892,10 +984,17 @@ async function renderRetreat(id) {
   });
   const sortIndicator = (key) => participantSort.key === key ? (participantSort.direction === 'asc' ? '↑' : '↓') : '↕';
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="detail-actions"><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar link'}</button></div></section>
-    <section class="statistics-panel panel"><div class="panel-heading"><div><h2>Estatísticas do retiro</h2><p>Resumo dos voluntários registrados para este evento.</p></div></div><div class="statistics-grid"><div><span>Total equipe de trabalho</span><strong>${retreatEnrolments.length} <small>Pessoa(s)</small></strong></div><div><span>Total de cursistas</span><strong>${registeredStudents.length} <small>Pessoa(s)</small></strong></div><div><span>Idade média</span><strong>${averageAge}</strong></div></div><h3 class="day-presence-heading">Presença prevista por dia</h3><div class="day-presence-grid">${serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)} <small>pessoa(s)</small></strong></div>`).join('')}</div><h3 class="day-presence-heading">Camisetas dos cursistas</h3><div class="shirt-size-grid">${shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count} <small>camiseta(s)</small></strong></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>'}</div></section>
+    ${retreatStatisticsHtml}
     <section class="detail-grid"><article class="panel"><h2>Estrutura</h2><p class="hint">${retreat.setores.length} setores configurados; nenhum voluntário é trazido de outro retiro.</p><div class="structure-summary"><div><strong>Equipe escondida</strong><div class="sector-tags">${sortSectors(retreat.setores.filter((sector) => sectorArea(sector) === 'escondida')).map((sector) => sectorCount(sector) ? `<button type="button" data-sector-participants="${escapeHtml(sector)}">${escapeHtml(sector)} <b>${sectorCount(sector)}</b></button>` : `<span>${escapeHtml(sector)} <b>0</b></span>`).join('') || '<em>Nenhum setor</em>'}<button type="button" id="view-space-kids">Crianças Espaço Kids <b>${spaceKids.length}</b></button></div></div><div><strong>Equipe Sala</strong><div class="sector-tags">${sortSectors(retreat.setores.filter((sector) => sectorArea(sector) === 'sala')).map((sector) => sectorCount(sector) ? `<button type="button" data-sector-participants="${escapeHtml(sector)}">${escapeHtml(sector)} <b>${sectorCount(sector)}</b></button>` : `<span>${escapeHtml(sector)} <b>0</b></span>`).join('') || '<em>Nenhum setor</em>'}</div></div></div></article><article class="panel"><h2>Link de cadastro</h2><p class="hint">Envie este link somente após publicar o retiro.</p><div class="copy-field"><input readonly value="${publicUrl}"><button id="copy-link" type="button">Copiar</button></div></article></section>
     <section class="participants-panel panel"><button class="participants-toggle" id="toggle-participants" type="button">${participantsVisible ? 'Fechar visualização dos participantes' : 'Visualizar participantes'}</button>${participantsVisible ? `<div class="participants-content"><h3 class="participants-heading">Participantes</h3><div class="participants-column-heading"><button type="button" data-participant-sort="nome">Nome <span>${sortIndicator('nome')}</span></button><button type="button" data-participant-sort="setor">Setor de trabalho <span>${sortIndicator('setor')}</span></button></div><div class="participants-scroll">${retreatEnrolments.length ? sortedParticipants.map((entry) => `<a href="#pessoas/${entry.pessoaId}/${id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></a>`).join('') : '<p>Nenhum voluntário registrado.</p>'}</div></div>` : ''}</section>
     `, 'retiros');
+  setupHomeStatTabs();
+  app.querySelectorAll('[data-home-health]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.homeHealth;
+      openHomeInfoWindow(button.closest('.student-health-card')?.querySelector('span')?.textContent || 'Cursistas', healthContent[key] || '');
+    });
+  });
   if (canDeleteRetreat) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'delete-retreat';
