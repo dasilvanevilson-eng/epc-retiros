@@ -2419,9 +2419,11 @@ async function renderQuadrante() {
     }).join('');
   };
   const presentSectors = [...new Set(entries.flatMap((entry) => entry.setores || []))].filter((sector) => normalizeText(sector) !== 'tios de comunidade');
+  const configuredSectors = uniqueSectors(retreat.setores || []).filter((sector) => normalizeText(sector) !== 'tios de comunidade');
   const orderSource = savedQuadranteOrder || retreat.ordemQuadrante || retreatQuadranteOrderFallback();
-  const order = quadranteOrderForSectors(allQuadranteSectors([...orderSource, ...presentSectors]), orderSource);
-  const sectors = [...order.filter((sector) => presentSectors.some((item) => normalizeText(item) === normalizeText(sector))), ...sortSectors(presentSectors.filter((sector) => !order.some((item) => normalizeText(item) === normalizeText(sector))))];
+  const sectors = quadranteOrderForSectors(configuredSectors, orderSource);
+  const orderableSectors = allQuadranteSectors([...orderSource, ...configuredSectors, ...presentSectors]);
+  const orderableOrder = quadranteOrderForSectors(orderableSectors, orderSource);
   const sectorSections = sectors.map((sector) => {
     const sectorEntries = entries
       .filter((entry) => entryHasSector(entry, sector))
@@ -2450,13 +2452,13 @@ async function renderQuadrante() {
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
   layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div><div class="detail-actions"><button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button><button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button></div></section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
   app.querySelector('#order-quadrante').addEventListener('click', () => {
-    const sectors = allQuadranteSectors([...orderSource, ...presentSectors]);
+    const sectors = orderableSectors;
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    overlay.innerHTML = `<form class="receiver-sector-dialog quadrante-order-dialog"><div class="panel-heading"><div><p class="eyebrow">Quadrante</p><h2>Ordenar setores</h2><p>Esta ordem é fixa para todos os retiros. Em cada retiro mudam apenas os nomes inscritos.</p></div></div><div data-quadrante-order></div><p class="form-message" id="quadrante-order-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="submit" class="is-couple-continue">Salvar ordem</button></div></form>`;
+    overlay.innerHTML = `<form class="receiver-sector-dialog quadrante-order-dialog"><div class="panel-heading"><div><p class="eyebrow">Quadrante</p><h2>Ordenar setores</h2><p>A ordem definida ficará a mesma para todos os retiros posteriores. Nesta tela estão exibidos todos os setores possíveis, porém apenas os setores configurados para o retiro em foco serão listados no quadrante. As comunidades já seguem uma ordem pré-definida e são listadas ao final do quadrante. Cada comunidade segue a ordem: Monitor, Tios e cursistas.</p></div></div><div data-quadrante-order></div><p class="form-message" id="quadrante-order-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="submit" class="is-couple-continue">Salvar ordem</button></div></form>`;
     const dialog = overlay.querySelector('form');
     const close = () => overlay.remove();
-    setupQuadranteOrderEditor(dialog, order, () => sectors);
+    setupQuadranteOrderEditor(dialog, orderableOrder, () => sectors);
     overlay.querySelector('.close-sector-view').addEventListener('click', close);
     overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
     dialog.addEventListener('submit', async (event) => {
