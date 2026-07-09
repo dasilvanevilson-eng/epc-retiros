@@ -62,6 +62,11 @@ function permissionForRequest(resource, id, req) {
     if (req.method === 'PUT') return 'crachas.editar';
     if (req.method === 'DELETE') return 'crachas.excluir';
   }
+  if (resource === 'configuracoes') {
+    if (req.method === 'GET') return 'quadrante.ver';
+    if (req.method === 'PUT') return 'quadrante.imprimir';
+    if (req.method === 'DELETE') return 'usuarios.editar';
+  }
   return null;
 }
 

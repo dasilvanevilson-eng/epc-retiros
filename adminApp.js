@@ -674,16 +674,26 @@ function sectorGroups(sectors, selectedSectors = sectors, publicSectors = sector
 }
 
 function quadranteOrderList(sectors = [], order = []) {
-  const active = [...new Set([...order.filter((sector) => sectors.includes(sector)), ...sectors])];
+  const sectorByKey = new Map(sectors.map((sector) => [normalizeText(sector), sector]));
+  const orderedSectors = order.map((sector) => sectorByKey.get(normalizeText(sector))).filter(Boolean);
+  const active = uniqueSectors([...orderedSectors, ...sectors]);
   return `<div class="quadrante-order-list">${active.map((sector) => `<div class="quadrante-order-row" draggable="true" data-sector="${escapeHtml(sector)}"><input type="hidden" name="ordemQuadrante" value="${escapeHtml(sector)}"><span class="drag-handle" aria-hidden="true">↕</span><span>${escapeHtml(sector)}</span></div>`).join('')}</div>`;
 }
 
 const quadranteOrderForSectors = (sectors = [], savedOrder = []) => {
   const baseOrder = savedOrder.length ? savedOrder : retreatDefaults.setores;
-  return [...new Set([...baseOrder.filter((sector) => sectors.includes(sector)), ...sortSectors(sectors.filter((sector) => !baseOrder.includes(sector)))])];
+  const sectorByKey = new Map(sectors.map((sector) => [normalizeText(sector), sector]));
+  const orderedSectors = baseOrder.map((sector) => sectorByKey.get(normalizeText(sector))).filter(Boolean);
+  const orderedKeys = new Set(orderedSectors.map(normalizeText));
+  return uniqueSectors([...orderedSectors, ...sortSectors(sectors.filter((sector) => !orderedKeys.has(normalizeText(sector))))]);
 };
 
 const knownSectors = (extra = []) => uniqueSectors([...standardSectors(), ...extra]);
+const quadranteOrderSettingId = 'quadrante-order';
+const retreatQuadranteOrderFallback = () => retreats.find((retreat) => retreat.ordemQuadrante?.length)?.ordemQuadrante || retreatDefaults.setores;
+const loadQuadranteOrderSetting = async () => (await dataService.getConfiguracao(quadranteOrderSettingId).catch(() => null))?.setores || null;
+const allQuadranteSectors = (extra = []) => knownSectors([...retreats.flatMap((retreat) => [...(retreat.setores || []), ...(retreat.ordemQuadrante || [])]), ...extra]);
+
 function structureOptions(retreat) {
   const sectors = knownSectors(retreat?.setores || []);
   const selected = retreat ? retreat.setores : retreatDefaults.setores;
@@ -696,16 +706,16 @@ function wirePublicSectorToggles(form) {
   form.querySelectorAll('input[name="setores"]').forEach(sync);
 }
 
-function setupQuadranteOrderEditor(form, initialOrder = []) {
-  const container = form.querySelector('[data-quadrante-order]');
+function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = null) {
+  const container = root.querySelector('[data-quadrante-order]');
   if (!container) return;
   let currentOrder = [...initialOrder];
   let draggedSector = null;
-  const orderSectors = () => form.querySelectorAll('input[name="setores"]');
+  const orderSectors = () => sectorsProvider ? sectorsProvider() : [...root.querySelectorAll('input[name="setores"]')].map((input) => input.value);
   const syncFromRows = () => { currentOrder = [...container.querySelectorAll('.quadrante-order-row')].map((row) => row.dataset.sector); };
   const render = () => {
-    const sectors = [...orderSectors()].map((input) => input.value);
-    currentOrder = [...new Set([...currentOrder.filter((sector) => sectors.includes(sector)), ...sectors])];
+    const sectors = orderSectors();
+    currentOrder = quadranteOrderForSectors(sectors, currentOrder);
     container.innerHTML = quadranteOrderList(sectors, currentOrder);
   };
   container.addEventListener('dragstart', (event) => {
@@ -735,8 +745,8 @@ function setupQuadranteOrderEditor(form, initialOrder = []) {
     draggedSector = null;
     syncFromRows();
   });
-  form.addEventListener('change', (event) => { if (event.target.name === 'setores') render(); });
-  form.addEventListener('sectors:updated', (event) => { if (event.detail?.order) currentOrder = [...event.detail.order]; render(); });
+  root.addEventListener('change', (event) => { if (event.target.name === 'setores') render(); });
+  root.addEventListener('sectors:updated', (event) => { if (event.detail?.order) currentOrder = [...event.detail.order]; render(); });
   render();
 }
 
@@ -744,7 +754,7 @@ async function renderNewRetreat() {
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Novo evento</p><h1>Criar retiro</h1><p>Os voluntários começam sempre vazios. Você só pode reaproveitar a estrutura.</p></div><a class="text-link" href="#retiros">← Voltar</a></section>
   <form id="retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required placeholder="Ex.: Retiro de Casais 2027"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date"></label><label class="field"><span>Local</span><input name="local" placeholder="Ex.: Casa de Retiros"></label><label class="field"><span>Coordenação geral</span><input name="coordenacaoGeral" placeholder="Nome(s) responsável(is)"></label><label class="field"><span>Coordenação do retiro</span><input name="coordenacaoRetiro" placeholder="Nome(s) responsável(is)"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label></div></div>
   <fieldset><legend>Estrutura inicial</legend><p class="hint">A opção abaixo copia setores e opções, mas nunca os voluntários cadastrados.</p><div class="source-options"><label class="source-option"><input type="radio" name="origem" value="vazio" checked> Começar com a estrutura padrão</label>${retreats.map((retreat) => `<label class="source-option"><input type="radio" name="origem" value="${retreat.id}"> Usar a estrutura de <b>${escapeHtml(retreat.nome)}</b></label>`).join('')}</div></fieldset>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p><div class="sector-groups" id="sector-checks">${structureOptions()}</div></fieldset><fieldset><legend>Ordem dos setores no quadrante</legend><p class="hint">Esta ordem será usada apenas no Quadrante e na impressão. Ela não altera os cadastros, filtros ou listas de setores.</p><div data-quadrante-order></div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p><div class="sector-groups" id="sector-checks">${structureOptions()}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#retreat-form');
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
@@ -753,9 +763,7 @@ async function renderNewRetreat() {
     const source = retreats.find((retreat) => retreat.id === input.value);
     app.querySelector('#sector-checks').innerHTML = structureOptions(source);
     wirePublicSectorToggles(form);
-    form.dispatchEvent(new CustomEvent('sectors:updated', { bubbles: true, detail: { order: source?.ordemQuadrante || retreatDefaults.setores } }));
   }));
-  setupQuadranteOrderEditor(form, quadranteOrderForSectors(knownSectors(retreatDefaults.setores), retreatDefaults.setores));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -765,12 +773,11 @@ async function renderNewRetreat() {
     try {
       const values = new FormData(form);
       const selectedSectors = values.getAll('setores');
-      const quadranteSectors = [...form.querySelectorAll('input[name="setores"]')].map((input) => input.value);
       if (!selectedSectors.length) { alert('Selecione ao menos um setor de trabalho.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (values.get('origem') && values.get('origem') !== 'vazio') await copyBadgeProfilesToRetreat(values.get('origem'), retreat.id);
       await loadData();
@@ -907,23 +914,21 @@ async function renderEditRetreat(id) {
   if (!retreat) return renderRetiros();
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="#retiros/${retreat.id}">← Voltar</a></section>
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}"></label><label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><label class="field"><span>Coordenação geral</span><input name="coordenacaoGeral" value="${escapeHtml(retreat.coordenacaoGeral || '')}"></label><label class="field"><span>Coordenação do retiro</span><input name="coordenacaoRetiro" value="${escapeHtml(retreat.coordenacaoRetiro || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label></div></div>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><fieldset><legend>Ordem dos setores no quadrante</legend><p class="hint">Esta ordem será usada apenas no Quadrante e na impressão. Ela não altera os cadastros, filtros ou listas de setores.</p><div data-quadrante-order></div></fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
-  setupQuadranteOrderEditor(form, quadranteOrderForSectors(knownSectors([...(retreat.setores || []), ...(retreat.ordemQuadrante || [])]), retreat.ordemQuadrante || []));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
     const values = new FormData(form);
     const selectedSectors = values.getAll('setores');
-    const quadranteSectors = [...form.querySelectorAll('input[name="setores"]')].map((input) => input.value);
     if (!selectedSectors.length) { alert('Selecione ao menos um setor de trabalho.'); return; }
     if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); return; }
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), ordemQuadrante: quadranteOrderForSectors(quadranteSectors, values.getAll('ordemQuadrante')), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, sortedSectors), updatedAt: new Date().toISOString() });
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), coordenacaoGeral: String(values.get('coordenacaoGeral') || '').trim(), coordenacaoRetiro: String(values.get('coordenacaoRetiro') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, sortedSectors), updatedAt: new Date().toISOString() });
     const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
     for (const [from, to] of renames) {
       const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
@@ -2339,7 +2344,7 @@ async function renderCrachas() {
 async function renderQuadrante() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
-  const [communities, students] = await Promise.all([dataService.listComunidades(), dataService.listCursistas()]);
+  const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(), dataService.listCursistas(), loadQuadranteOrderSetting()]);
   const entries = validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
   const retreatStudents = students.filter((student) => student.retiroId === retreat.id);
   const reportCommunities = sortCommunitiesByPosition(communities.filter((community) => community.retiroId === retreat.id));
@@ -2387,7 +2392,8 @@ async function renderQuadrante() {
     }).join('');
   };
   const presentSectors = [...new Set(entries.flatMap((entry) => entry.setores || []))].filter((sector) => normalizeText(sector) !== 'tios de comunidade');
-  const order = quadranteOrderForSectors(knownSectors([...(retreat.setores || []), ...(retreat.ordemQuadrante || []), ...presentSectors]), retreat.ordemQuadrante || []);
+  const orderSource = savedQuadranteOrder || retreat.ordemQuadrante || retreatQuadranteOrderFallback();
+  const order = quadranteOrderForSectors(allQuadranteSectors([...orderSource, ...presentSectors]), orderSource);
   const sectors = [...order.filter((sector) => presentSectors.some((item) => normalizeText(item) === normalizeText(sector))), ...sortSectors(presentSectors.filter((sector) => !order.some((item) => normalizeText(item) === normalizeText(sector))))];
   const sectorSections = sectors.map((sector) => {
     const sectorEntries = entries
@@ -2415,7 +2421,35 @@ async function renderQuadrante() {
     return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tr><td colspan="4">Nenhum cursista alocado.</td></tr>' : '')}</tbody></table></article>`;
   }).join('');
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
-  layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div><button class="primary-button" id="print-quadrante">Imprimir relatório</button></section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
+  layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div><div class="detail-actions"><button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button><button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button></div></section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
+  app.querySelector('#order-quadrante').addEventListener('click', () => {
+    const sectors = allQuadranteSectors([...orderSource, ...presentSectors]);
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    overlay.innerHTML = `<form class="receiver-sector-dialog quadrante-order-dialog"><div class="panel-heading"><div><p class="eyebrow">Quadrante</p><h2>Ordenar setores</h2><p>Esta ordem é fixa para todos os retiros. Em cada retiro mudam apenas os nomes inscritos.</p></div></div><div data-quadrante-order></div><p class="form-message" id="quadrante-order-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="submit" class="is-couple-continue">Salvar ordem</button></div></form>`;
+    const dialog = overlay.querySelector('form');
+    const close = () => overlay.remove();
+    setupQuadranteOrderEditor(dialog, order, () => sectors);
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    dialog.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submitButton = dialog.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.textContent = 'Salvando...';
+      const setores = [...dialog.querySelectorAll('input[name="ordemQuadrante"]')].map((input) => input.value);
+      try {
+        await dataService.saveConfiguracao({ id: quadranteOrderSettingId, setores, updatedAt: new Date().toISOString() });
+        close();
+        renderQuadrante();
+      } catch (error) {
+        dialog.querySelector('#quadrante-order-message').textContent = `Não foi possível salvar a ordem. ${error.message || 'Atualize a página e tente novamente.'}`;
+        submitButton.disabled = false;
+        submitButton.textContent = 'Salvar ordem';
+      }
+    });
+    app.append(overlay);
+  });
   app.querySelector('#print-quadrante').addEventListener('click', () => window.print());
 }
 

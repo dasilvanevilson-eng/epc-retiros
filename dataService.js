@@ -1,6 +1,6 @@
 const DATABASE = 'epc-retiros';
-const VERSION = 4;
-const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
+const VERSION = 5;
+const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
 const randomBytes = (length) => {
   const bytes = new Uint8Array(length);
@@ -148,6 +148,8 @@ export const dataService = {
   listCrachas: () => list('crachas'),
   saveCracha: (badgeProfile) => save('crachas', badgeProfile),
   deleteCracha: (id) => remove('crachas', id),
+  getConfiguracao: (id) => get('configuracoes', id),
+  saveConfiguracao: (setting) => save('configuracoes', setting),
   findPessoa: async (nome, nascimento) => {
     const people = await list('pessoas');
     const normalized = nome.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
