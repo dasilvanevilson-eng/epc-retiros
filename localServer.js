@@ -45,7 +45,10 @@ async function handleStatic(req, res, pathname) {
 
   try {
     const data = await fs.readFile(filePath);
-    res.writeHead(200, { 'Content-Type': mimeTypes[path.extname(filePath)] || 'application/octet-stream' });
+    const extension = path.extname(filePath);
+    const headers = { 'Content-Type': mimeTypes[extension] || 'application/octet-stream' };
+    if (['.html', '.js', '.css'].includes(extension)) headers['Cache-Control'] = 'no-store, must-revalidate';
+    res.writeHead(200, headers);
     res.end(data);
   } catch {
     sendStaticError(res, 404, 'Arquivo nao encontrado.');
