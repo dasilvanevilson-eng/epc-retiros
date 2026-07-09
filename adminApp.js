@@ -205,6 +205,7 @@ const formatCpf = (value = '') => {
   return digits.replace(/^(\d{3})(\d{0,3})(\d{0,3})(\d{0,2}).*/, (_, first, second, third, fourth) => [first, second, third].filter(Boolean).join('.') + (fourth ? `-${fourth}` : ''));
 };
 const entryHasSector = (entry, sector) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores]).some((item) => normalizeText(item) === normalizeText(sector));
+const isSpaceKidsSector = (sector = '') => ['espaco kids', 'criancas espaco kids'].includes(normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
 const isCoupleMateValidated = (entry = {}, items = enrolments) => Boolean(entry.casalId && items.some((item) => item.id !== entry.id && item.retiroId === entry.retiroId && item.casalId === entry.casalId && isEnrolmentValidated(item)));
 const isEnrolmentEffectivelyValidated = (entry = {}, items = enrolments) => isEnrolmentValidated(entry) || isCoupleMateValidated(entry, items);
@@ -574,6 +575,7 @@ async function renderHome() {
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeEnrolments.flatMap((entry) => entry.setores || [])]))
+    .filter((sector) => !isSpaceKidsSector(sector))
     .map((sector) => [sector, activeEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
   const dayCount = (day) => activeEnrolments.filter((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
@@ -921,6 +923,7 @@ async function renderRetreat(id) {
   const activeEntries = enrolments.filter((item) => item.retiroId === id);
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const sectorCounts = sortSectors(uniqueSectors([...(retreat.setores || []), ...retreatEnrolments.flatMap((entry) => entry.setores || [])]))
+    .filter((sector) => !isSpaceKidsSector(sector))
     .map((sector) => [sector, retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || retreat.setores?.includes(sector));
   const intoleranceStudents = registeredStudents
