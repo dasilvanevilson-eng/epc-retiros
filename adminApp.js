@@ -780,17 +780,55 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
 async function renderNewRetreat() {
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Novo evento</p><h1>Criar retiro</h1><p>Os voluntários começam sempre vazios. Você só pode reaproveitar a estrutura.</p></div><a class="text-link" href="#retiros">← Voltar</a></section>
   <form id="retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required placeholder="Ex.: Retiro de Casais 2027"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date"></label><label class="field"><span>Local</span><input name="local" placeholder="Ex.: Casa de Retiros"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label></div></div>
-  <fieldset><legend>Estrutura inicial</legend><p class="hint">A opção abaixo copia setores e opções, mas nunca os voluntários cadastrados.</p><div class="source-options"><label class="source-option"><input type="radio" name="origem" value="vazio" checked> Começar com a estrutura padrão</label>${retreats.map((retreat) => `<label class="source-option"><input type="radio" name="origem" value="${retreat.id}"> Usar a estrutura de <b>${escapeHtml(retreat.nome)}</b></label>`).join('')}</div></fieldset>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p><div class="sector-groups" id="sector-checks">${structureOptions()}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p><div class="sector-groups" id="sector-checks">${sectorGroups(knownSectors(), [], [])}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#retreat-form');
+  let sourceRetreatId = '';
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
-  const originInputs = form.querySelectorAll('input[name="origem"]');
-  originInputs.forEach((input) => input.addEventListener('change', () => {
-    const source = retreats.find((retreat) => retreat.id === input.value);
-    app.querySelector('#sector-checks').innerHTML = structureOptions(source);
+  const applySourceRetreat = (source = null) => {
+    sourceRetreatId = source?.id || '';
+    form.reset();
+    form.elements.nome.value = source?.nome || '';
+    form.elements.dataInicio.value = source?.dataInicio || '';
+    form.elements.dataTermino.value = source?.dataTermino || '';
+    form.elements.local.value = source?.local || '';
+    form.elements.valorInscricaoCursista.value = source ? currency(source.valorInscricaoCursista) : '';
+    form.elements.valorInscricaoVoluntario.value = source ? currency(source.valorInscricaoVoluntario) : '';
+    form.elements.valorFoto.value = source ? currency(source.valorFoto ?? 10) : '';
+    app.querySelector('#sector-checks').innerHTML = source
+      ? sectorGroups(knownSectors(source.setores), source.setores, source.setoresPublicos ?? source.setores)
+      : sectorGroups(knownSectors(), [], []);
     wirePublicSectorToggles(form);
-  }));
+  };
+  const openStructureChoice = () => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    const closeToList = () => { overlay.remove(); location.hash = '#retiros'; };
+    const finish = (source = null) => { applySourceRetreat(source); overlay.remove(); form.elements.nome.focus(); };
+    const renderChoice = () => {
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Criar retiro</p><h2>Escolha a estrutura inicial</h2><p>Defina se o novo retiro começa em branco ou se será preenchido a partir de outro retiro.</p></div></div><div class="receiver-sector-list"><button type="button" data-new-retreat-standard><strong>Começar com estrutura padrão</strong><span>Campos vazios, setores desmarcados e sem crachás.</span></button><button type="button" data-new-retreat-copy><strong>Usar estrutura de outro retiro</strong><span>Busca um retiro para copiar dados, setores e crachás ao salvar.</span></button></div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
+      overlay.querySelector('[data-new-retreat-standard]').addEventListener('click', () => finish());
+      overlay.querySelector('[data-new-retreat-copy]').addEventListener('click', renderSearch);
+      overlay.querySelector('.close-sector-view').addEventListener('click', closeToList);
+    };
+    const renderSearch = () => {
+      const rowsHtml = retreats.map((retreat) => `<button type="button" data-source-retreat="${escapeHtml(retreat.id)}"><strong>${escapeHtml(retreat.nome)}</strong><span>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</span></button>`).join('');
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><button type="button" class="receiver-sector-back">← Escolher outra opção</button><div class="panel-heading"><div><p class="eyebrow">Duplicar estrutura</p><h2>Buscar retiro de origem</h2><p>Selecione o retiro que terá dados, setores e modelos de crachá copiados para a nova inclusão.</p></div></div><label class="field"><span>Buscar retiro</span><input id="new-retreat-source-search" autocomplete="off" placeholder="Digite o nome do retiro"></label><div class="receiver-sector-list">${rowsHtml || '<p class="empty-state">Nenhum retiro cadastrado para copiar.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
+      const search = overlay.querySelector('#new-retreat-source-search');
+      const rows = [...overlay.querySelectorAll('[data-source-retreat]')];
+      search?.addEventListener('input', () => {
+        const term = normalizeText(search.value);
+        rows.forEach((row) => { row.hidden = term && !normalizeText(row.textContent).includes(term); });
+      });
+      overlay.querySelector('.receiver-sector-back').addEventListener('click', renderChoice);
+      overlay.querySelector('.close-sector-view').addEventListener('click', closeToList);
+      rows.forEach((row) => row.addEventListener('click', () => finish(retreats.find((retreat) => retreat.id === row.dataset.sourceRetreat))));
+      search?.focus();
+    };
+    renderChoice();
+    app.append(overlay);
+  };
+  openStructureChoice();
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -806,7 +844,7 @@ async function renderNewRetreat() {
       const sortedSectors = sortSectors(selectedSectors);
       const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
-      if (values.get('origem') && values.get('origem') !== 'vazio') await copyBadgeProfilesToRetreat(values.get('origem'), retreat.id);
+      if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
       location.hash = `#retiros/${retreat.id}`;
     } catch (error) {
