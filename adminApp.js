@@ -14,6 +14,7 @@ let badgePrintEntries = [];
 let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
+let closeAdminMenuOnOutsidePointer = null;
 
 const viewPermissions = {
   inicio: 'inicio.ver',
@@ -455,14 +456,22 @@ function layout(content, active = 'inicio') {
     </div>`;
   const menuToggle = app.querySelector('.menu-toggle');
   const mainNav = app.querySelector('.main-nav');
+  const closeAdminMenu = () => {
+    mainNav.classList.remove('is-open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  };
   menuToggle.addEventListener('click', () => {
     const open = mainNav.classList.toggle('is-open');
     menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
-  mainNav.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
-    mainNav.classList.remove('is-open');
-    menuToggle.setAttribute('aria-expanded', 'false');
-  }));
+  mainNav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeAdminMenu));
+  if (closeAdminMenuOnOutsidePointer) document.removeEventListener('pointerdown', closeAdminMenuOnOutsidePointer, true);
+  closeAdminMenuOnOutsidePointer = (event) => {
+    if (!mainNav.classList.contains('is-open')) return;
+    if (mainNav.contains(event.target) || menuToggle.contains(event.target)) return;
+    closeAdminMenu();
+  };
+  document.addEventListener('pointerdown', closeAdminMenuOnOutsidePointer, true);
   app.querySelector('#logout-button')?.addEventListener('click', async () => {
     await dataService.logout().catch(() => null);
     currentUser = null;
