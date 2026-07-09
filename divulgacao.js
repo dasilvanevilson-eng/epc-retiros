@@ -147,7 +147,7 @@ function openRestrictedLogin() {
     message.textContent = 'Validando acesso...';
     try {
       await publicApi('/auth/login', { method: 'POST', body: JSON.stringify({ username: form.elements.username.value.trim(), password: form.elements.password.value }) });
-      location.href = 'epc-retiros.html?v=20260709-restrita-prod#inicio';
+      location.href = 'epc-retiros.html?v=20260709-restrita-timeout#inicio';
     } catch (error) {
       message.textContent = error.message || 'Login ou senha invalidos.';
       button.disabled = false;
@@ -164,7 +164,7 @@ function setupRestrictedAccessLinks() {
       try {
         const session = await publicApi('/auth/session');
         if (session.authenticated) {
-          location.href = 'epc-retiros.html?v=20260709-restrita-prod#inicio';
+          location.href = 'epc-retiros.html?v=20260709-restrita-timeout#inicio';
           return;
         }
       } catch {}

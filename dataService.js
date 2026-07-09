@@ -53,11 +53,23 @@ let backend = null;
 let migrationPromise = null;
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    credentials: 'same-origin',
-    ...options,
-  });
+  const timeoutMs = options.timeoutMs || 10000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(`/api${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      credentials: 'same-origin',
+      ...options,
+      signal: options.signal || controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Tempo esgotado ao acessar o servidor.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!response.ok) {
     const details = await response.json().catch(() => ({}));
     throw new Error(details.error || `Falha ao acessar o banco (${response.status})`);
@@ -69,7 +81,8 @@ async function api(path, options = {}) {
 async function ensureBackend() {
   if (backend) return backend;
   try {
-    await api('/health');
+    const health = await api('/health', { timeoutMs: 5000 });
+    if (!health.ok) throw new Error(health.error || 'Backend indisponivel.');
     backend = 'file';
     await migrateIndexedDbToFile().catch(() => null);
   } catch {
