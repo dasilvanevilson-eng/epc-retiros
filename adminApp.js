@@ -537,6 +537,34 @@ function setupHomeStatTabs() {
   });
 }
 
+function setupSectorStatDrilldown(root, rows = []) {
+  root.querySelectorAll('[data-stat-sector]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const sector = button.dataset.statSector;
+      const selected = rows.find((row) => normalizeText(row.sector) === normalizeText(sector));
+      const volunteers = selected?.volunteers || [];
+      root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><div class="panel-heading"><div><h2>${escapeHtml(sector)}</h2><p>${volunteers.length} voluntário(s) neste setor.</p></div></div><div class="student-health-list">${volunteers.length ? volunteers.map((entry) => `<div><strong>${escapeHtml(entry.nome || 'Sem nome')}</strong><span>${escapeHtml((entry.setores || []).join(', ') || sector)}</span></div>`).join('') : '<p class="empty-state">Nenhum voluntário neste setor.</p>'}</div>`;
+      root.querySelector('[data-sector-stat-back]').addEventListener('click', () => {
+        root.innerHTML = root.dataset.sectorListHtml || '';
+        setupSectorStatDrilldown(root, rows);
+      });
+    });
+  });
+}
+
+function wireSectorStatWindows(rows = []) {
+  app.querySelectorAll('[data-home-stat="sectors"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      setTimeout(() => {
+        const root = app.querySelector('.home-stat-scroll');
+        if (!root) return;
+        root.dataset.sectorListHtml = root.innerHTML;
+        setupSectorStatDrilldown(root, rows);
+      }, 0);
+    });
+  });
+}
+
 async function renderHome() {
   const active = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
   const allStudents = await dataService.listCursistas();
@@ -615,7 +643,12 @@ async function renderHome() {
     addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
   });
   const cityRows = [...cityStats.values()].sort((first, second) => first.city.localeCompare(second.city, 'pt-BR', { sensitivity: 'base' }));
-  const sectorRows = sectorCounts.length ? sectorCounts.map(([sector, count]) => `<div><span>${escapeHtml(sector)}</span><strong>${count}</strong></div>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
+  const sectorStatRows = sectorCounts.map(([sector, count]) => ({
+    sector,
+    count,
+    volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
+  }));
+  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
@@ -657,6 +690,7 @@ async function renderHome() {
       openHomeInfoWindow(button.closest('.student-health-card')?.querySelector('span')?.textContent || 'Cursistas', healthContent[key] || '');
     });
   });
+  wireSectorStatWindows(sectorStatRows);
 }
 
 async function renderRetiros() {
@@ -943,7 +977,12 @@ async function renderRetreat(id) {
     addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
   });
   const cityRows = [...cityStats.values()].sort((first, second) => first.city.localeCompare(second.city, 'pt-BR', { sensitivity: 'base' }));
-  const sectorRows = sectorCounts.length ? sectorCounts.map(([sector, count]) => `<div><span>${escapeHtml(sector)}</span><strong>${count}</strong></div>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
+  const sectorStatRows = sectorCounts.map(([sector, count]) => ({
+    sector,
+    count,
+    volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
+  }));
+  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
@@ -995,6 +1034,7 @@ async function renderRetreat(id) {
       openHomeInfoWindow(button.closest('.student-health-card')?.querySelector('span')?.textContent || 'Cursistas', healthContent[key] || '');
     });
   });
+  wireSectorStatWindows(sectorStatRows);
   if (canDeleteRetreat) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'delete-retreat';

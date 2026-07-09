@@ -1749,13 +1749,25 @@ button:hover,
   border-top:1px solid rgba(198,154,69,.24);
 }
 
-.sector-simple-list>div {
+.sector-simple-list>div,
+.sector-simple-list>button {
   display:grid;
   grid-template-columns:minmax(0, 1fr) auto;
   gap:12px;
   align-items:center;
+  width:100%;
   padding:10px 2px;
+  border:0;
   border-bottom:1px solid rgba(198,154,69,.18);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:inherit;
+  text-align:left;
+}
+
+.sector-simple-list>button:hover {
+  background:#edf5e9;
 }
 
 .sector-simple-list span {
