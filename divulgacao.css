@@ -861,7 +861,7 @@ a { color: inherit; }
   .gold-line,
   .main-devotion { display: none; }
   .movement-button {
-    position: static;
+    position: relative;
     width: 100%;
     max-width: none;
     min-height: 132px;

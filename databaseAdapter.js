@@ -8,6 +8,18 @@ const databaseFile = path.join(databaseDir, 'db.json');
 
 const emptyDatabase = () => Object.fromEntries(stores.map((store) => [store, []]));
 const hasSupabase = () => Boolean(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY));
+const canFallbackToFile = () => !process.env.VERCEL && process.env.NODE_ENV !== 'production';
+
+async function withLocalFallback(action) {
+  if (!hasSupabase()) return action(false);
+  try {
+    return await action(true);
+  } catch (error) {
+    if (!canFallbackToFile()) throw error;
+    console.warn(`Supabase indisponivel; usando banco local. ${error.message || error}`);
+    return action(false);
+  }
+}
 
 function firstJsonObjectEnd(content) {
   let depth = 0;
@@ -113,9 +125,11 @@ async function deleteSupabase(storeName, id) {
 }
 
 async function readDatabase() {
-  if (!hasSupabase()) return readFileDatabase();
-  const entries = await Promise.all(stores.map(async (storeName) => [storeName, await listSupabase(storeName)]));
-  return Object.fromEntries(entries);
+  return withLocalFallback(async (useSupabase) => {
+    if (!useSupabase) return readFileDatabase();
+    const entries = await Promise.all(stores.map(async (storeName) => [storeName, await listSupabase(storeName)]));
+    return Object.fromEntries(entries);
+  });
 }
 
 async function importDatabase(incoming) {
@@ -135,17 +149,16 @@ async function importDatabase(incoming) {
 }
 
 async function listRecords(storeName) {
-  if (!hasSupabase()) return (await readFileDatabase())[storeName];
-  return listSupabase(storeName);
+  return withLocalFallback(async (useSupabase) => (useSupabase ? listSupabase(storeName) : (await readFileDatabase())[storeName]));
 }
 
 async function getRecord(storeName, id) {
-  if (!hasSupabase()) return (await readFileDatabase())[storeName].find((item) => item.id === id) || null;
-  return getSupabase(storeName, id);
+  return withLocalFallback(async (useSupabase) => (useSupabase ? getSupabase(storeName, id) : (await readFileDatabase())[storeName].find((item) => item.id === id) || null));
 }
 
 async function saveRecord(storeName, record) {
-  if (!hasSupabase()) {
+  return withLocalFallback(async (useSupabase) => {
+    if (useSupabase) return saveSupabase(storeName, record);
     const database = await readFileDatabase();
     const collection = database[storeName];
     const index = collection.findIndex((item) => item.id === record.id);
@@ -153,18 +166,19 @@ async function saveRecord(storeName, record) {
     else collection.push(record);
     await writeFileDatabase(database);
     return record;
-  }
-  return saveSupabase(storeName, record);
+  });
 }
 
 async function deleteRecord(storeName, id) {
-  if (!hasSupabase()) {
+  return withLocalFallback(async (useSupabase) => {
+    if (useSupabase) {
+      await deleteSupabase(storeName, id);
+      return;
+    }
     const database = await readFileDatabase();
     database[storeName] = database[storeName].filter((item) => item.id !== id);
     await writeFileDatabase(database);
-    return;
-  }
-  await deleteSupabase(storeName, id);
+  });
 }
 
 async function checkDatabaseConnection() {

@@ -24,12 +24,9 @@ function pageHtml(retreatId, retreat, origin = '') {
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <link rel="canonical" href="${escapeHtml(canonical)}" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260709-publico" />
   </head>
-  <body><div id="app"></div><script type="module" src="/adminApp.js"></script></body>
+  <body><div id="app"></div><script type="module" src="/adminApp.js?v=20260709-publico"></script></body>
 </html>`;
 }
 
