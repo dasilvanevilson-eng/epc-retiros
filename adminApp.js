@@ -711,8 +711,31 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
   if (!container) return;
   let currentOrder = [...initialOrder];
   let draggedSector = null;
+  let scrollFrame = null;
+  let scrollSpeed = 0;
   const orderSectors = () => sectorsProvider ? sectorsProvider() : [...root.querySelectorAll('input[name="setores"]')].map((input) => input.value);
   const syncFromRows = () => { currentOrder = [...container.querySelectorAll('.quadrante-order-row')].map((row) => row.dataset.sector); };
+  const stopAutoScroll = () => {
+    scrollSpeed = 0;
+    if (scrollFrame) cancelAnimationFrame(scrollFrame);
+    scrollFrame = null;
+  };
+  const runAutoScroll = () => {
+    if (!scrollSpeed) { scrollFrame = null; return; }
+    container.scrollTop += scrollSpeed;
+    scrollFrame = requestAnimationFrame(runAutoScroll);
+  };
+  const updateAutoScroll = (clientY) => {
+    const rect = container.getBoundingClientRect();
+    const edge = Math.min(90, rect.height / 3);
+    const topDistance = clientY - rect.top;
+    const bottomDistance = rect.bottom - clientY;
+    if (topDistance < edge) scrollSpeed = -Math.max(4, Math.round((edge - topDistance) / 3));
+    else if (bottomDistance < edge) scrollSpeed = Math.max(4, Math.round((edge - bottomDistance) / 3));
+    else scrollSpeed = 0;
+    if (scrollSpeed && !scrollFrame) scrollFrame = requestAnimationFrame(runAutoScroll);
+    if (!scrollSpeed && scrollFrame) stopAutoScroll();
+  };
   const render = () => {
     const sectors = orderSectors();
     currentOrder = quadranteOrderForSectors(sectors, currentOrder);
@@ -727,10 +750,12 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
     event.dataTransfer.setData('text/plain', draggedSector);
   });
   container.addEventListener('dragover', (event) => {
-    const target = event.target.closest('.quadrante-order-row');
     const dragged = container.querySelector('.is-dragging');
-    if (!target || !dragged || target === dragged) return;
+    if (!dragged) return;
     event.preventDefault();
+    updateAutoScroll(event.clientY);
+    const target = event.target.closest('.quadrante-order-row');
+    if (!target || target === dragged) return;
     const rect = target.getBoundingClientRect();
     const afterTarget = event.clientY > rect.top + rect.height / 2;
     target.parentNode.insertBefore(dragged, afterTarget ? target.nextSibling : target);
@@ -738,11 +763,13 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
   container.addEventListener('drop', (event) => {
     if (!draggedSector) return;
     event.preventDefault();
+    stopAutoScroll();
     syncFromRows();
   });
   container.addEventListener('dragend', () => {
     container.querySelectorAll('.is-dragging').forEach((row) => row.classList.remove('is-dragging'));
     draggedSector = null;
+    stopAutoScroll();
     syncFromRows();
   });
   root.addEventListener('change', (event) => { if (event.target.name === 'setores') render(); });
