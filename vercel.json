@@ -4,6 +4,14 @@
     { "src": "api/**/*.js", "use": "@vercel/node" },
     { "src": "**/*", "use": "@vercel/static" }
   ],
+  "headers": [
+    {
+      "source": "/(epc-retiros\\.html|adminApp\\.js|styles\\.css|index\\.html|divulgacao\\.js|divulgacao\\.css)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    }
+  ],
   "routes": [
     { "src": "/adesao/(.*)", "dest": "/api/adesao.js?id=$1" },
     { "src": "/setor/([^/]+)/([^/]+)", "dest": "/api/setor.js?retiro=$1&token=$2" },

@@ -4,7 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EPC Retiros - Área Restrita</title>
-    <link rel="stylesheet" href="styles.css?v=20260709-restrita-fix" />
+    <style>
+      body { margin:0; min-height:100vh; background:#edf9ff; color:#15324a; font-family:Arial, sans-serif; }
+      #app:empty::before { content:"Carregando área restrita..."; min-height:100vh; display:grid; place-items:center; padding:24px; font-weight:700; color:#15324a; }
+      .login-shell { min-height:100vh !important; display:grid !important; place-items:center !important; padding:28px 16px !important; color:#15324a !important; }
+      .login-panel { width:min(430px, 100%) !important; padding:clamp(28px, 6vw, 44px) !important; border:1px solid #cde8f5 !important; border-radius:20px !important; background:#fbfdff !important; box-shadow:0 18px 42px rgba(43,145,207,.10) !important; }
+      .login-panel input { width:100%; min-height:44px; padding:12px 14px; border:1px solid #cde8f5; border-radius:8px; background:#fff; color:#15324a; font:inherit; }
+      .login-panel button.primary-button { width:100%; min-height:46px; margin-top:10px; border:0; border-radius:8px; background:#2b91cf; color:#fff; font-weight:700; }
+    </style>
+    <link rel="stylesheet" href="styles.css?v=20260709-restrita-prod" />
   </head>
-  <body><div id="app"></div><script type="module" src="adminApp.js?v=20260709-restrita-fix"></script></body>
+  <body><div id="app"></div><script type="module" src="adminApp.js?v=20260709-restrita-prod"></script></body>
 </html>
