@@ -649,7 +649,7 @@ async function renderHome() {
   const sectorStatRows = sectorCounts.map(([sector, count]) => ({
     sector,
     count,
-    volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
+    volunteers: activeEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
