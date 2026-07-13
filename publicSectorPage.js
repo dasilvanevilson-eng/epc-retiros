@@ -36,7 +36,7 @@ function sectorPageHtml({ retreat, sector, entries }) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="robots" content="noindex,nofollow" />
-    <link rel="stylesheet" href="/styles.css?v=20260709-publico" />
+    <link rel="stylesheet" href="/styles.css?v=20260713-links-setor" />
     <style>
       body{min-height:100vh;display:grid;place-items:center;padding:18px;background:#eef4ee;font-family:'DM Sans',sans-serif}
       .sector-public-modal{width:min(560px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column;padding:24px;border:1px solid #d9cdb7;border-radius:14px;background:#fffdf7;box-shadow:0 24px 70px rgba(54,80,57,.2)}
@@ -62,7 +62,7 @@ function sectorPageHtml({ retreat, sector, entries }) {
       <p class="eyebrow">Acompanhamento do setor</p>
       <h1 id="sector-title">${escapeHtml(sector)}</h1>
       <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
-      ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(person.days.length ? person.days.join(', ') : 'Dias não informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Resumo por dia</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
+      ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
       <button type="button" class="sector-public-close" id="close-sector-view">Fechar visualização</button>
     </section>
     <script>
