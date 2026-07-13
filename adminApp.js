@@ -1178,6 +1178,7 @@ function wireCurrencyInputs(root) {
 async function renderRecebedor() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
+  const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
   const students = (await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id);
   const entries = [
     ...validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
@@ -1189,14 +1190,17 @@ async function renderRecebedor() {
   };
   const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.recebedorValorPago) : parseCurrency(entry.valorPago);
   const entryPaidStatus = (entry) => entry.tipoFinanceiro === 'cursista' ? Boolean(entry.recebedorTaxaPaga) : Boolean(entry.taxaPaga);
-  const setEntryPayment = (entry, value, checked) => {
+  const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.recebedorFormaPagamento || '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
+  const setEntryPayment = (entry, value, checked, paymentMethod = '') => {
     if (entry.tipoFinanceiro === 'cursista') {
       entry.recebedorValorPago = value;
       entry.recebedorTaxaPaga = checked;
+      entry.recebedorFormaPagamento = checked ? paymentMethod : '';
       return;
     }
     entry.valorPago = value;
     entry.taxaPaga = checked;
+    entry.formaPagamento = checked ? paymentMethod : '';
   };
   const saveFinancialEntry = async (entry) => {
     if (entry.tipoFinanceiro === 'cursista') {
@@ -1241,6 +1245,7 @@ async function renderRecebedor() {
   };
   const rowPaidStatus = (row) => row.entries.every(entryPaidStatus);
   const rowHasPayment = (row) => rowPaid(row) > 0;
+  const rowPaymentMethod = (row) => row.entries.map(entryPaymentMethod).find(Boolean) || '';
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
   const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
   const totalPeopleCount = receiverRows.reduce((total, row) => total + row.entries.length, 0);
@@ -1250,6 +1255,11 @@ async function renderRecebedor() {
   const paidSuggested = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowSuggested(row) : 0), 0);
   const balance = totalPaid - paidSuggested;
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
+  const totalsByPaymentMethod = paymentMethods.map((method) => ({
+    method,
+    total: receiverRows.reduce((sum, row) => rowPaidStatus(row) && rowPaymentMethod(row) === method ? sum + rowPaid(row) : sum, 0),
+  }));
+  const totalWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowPaidStatus(row) && !rowPaymentMethod(row) ? sum + rowPaid(row) : sum, 0);
   const rows = [...receiverRows].sort((first, second) => { const result = String(values(first, receiverSort.key)).localeCompare(String(values(second, receiverSort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' }); return receiverSort.direction === 'asc' ? result : -result; });
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportRows = rows.map((row) => ({
@@ -1300,7 +1310,8 @@ async function renderRecebedor() {
     URL.revokeObjectURL(link.href);
     link.remove();
   };
-  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section>`;
+  const paymentMethodSummaryHtml = `<section class="receiver-payment-summary">${totalsByPaymentMethod.map(({ method, total }) => `<article><span>${escapeHtml(method)}</span><strong>${currency(total)}</strong></article>`).join('')}${totalWithoutPaymentMethod ? `<article><span>Sem forma informada</span><strong>${currency(totalWithoutPaymentMethod)}</strong></article>` : ''}</section>`;
+  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><div class="receiver-view-options"><button type="button" id="receiver-by-sector">Buscar setor</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-print-preview" class="receiver-icon-button" aria-label="Pré-visualizar relatório" title="Pré-visualizar relatório">🖨</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}"><strong>${escapeHtml(row.nome)}</strong><span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check${rowHasPayment(row) ? ' has-payment' : ''}"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''} ${rowHasPayment(row) && !rowPaidStatus(row) ? 'data-partial-payment="true"' : ''}><span>Pago</span></label></div>`).join('') : '<p class="empty-state">Nenhum voluntário para este retiro.</p>'}</div></section>`, 'recebedor');
   if (receiverFocusSector) { const firstIndex = rows.findIndex((row) => rowHasSector(row, receiverFocusSector)); const row = app.querySelectorAll('.receiver-row')[firstIndex]; if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' }); receiverFocusSector = null; }
   app.querySelector('#receiver-show-panel').addEventListener('click', () => {
@@ -1358,6 +1369,29 @@ async function renderRecebedor() {
       return { entry, value: suggestedTotal ? total * (suggested / suggestedTotal) : total / row.entries.length };
     });
   };
+  const askPaymentMethod = (row, total) => new Promise((resolve) => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    const currentMethod = rowPaymentMethod(row);
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(row.nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    const close = () => { overlay.remove(); resolve(''); };
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
+      overlay.querySelector('#confirm-receiver-payment').disabled = false;
+      overlay.querySelector('[data-payment-method-message]').textContent = '';
+    }));
+    overlay.querySelector('#confirm-receiver-payment').addEventListener('click', () => {
+      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
+      if (!selectedMethod) {
+        overlay.querySelector('[data-payment-method-message]').textContent = 'Selecione uma forma de pagamento para confirmar.';
+        return;
+      }
+      overlay.remove();
+      resolve(selectedMethod);
+    });
+    app.append(overlay);
+  });
   app.querySelectorAll('[data-paid-entry]').forEach((input) => {
     input.addEventListener('focus', () => {
       const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
@@ -1369,7 +1403,7 @@ async function renderRecebedor() {
       const total = parseCurrency(input.value);
       const checked = app.querySelector(`[data-fee-entry="${CSS.escape(input.dataset.paidEntry)}"]`)?.checked;
       await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-        setEntryPayment(entry, value, checked || entryPaidStatus(entry));
+        setEntryPayment(entry, value, checked || entryPaidStatus(entry), entryPaymentMethod(entry));
         return saveFinancialEntry(entry);
       }));
       input.value = currency(total);
@@ -1388,8 +1422,13 @@ async function renderRecebedor() {
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
     const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
+    const paymentMethod = input.checked ? await askPaymentMethod(row, total) : '';
+    if (input.checked && !paymentMethod) {
+      input.checked = false;
+      return;
+    }
     await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-      setEntryPayment(entry, value, input.checked);
+      setEntryPayment(entry, value, input.checked, paymentMethod);
       return saveFinancialEntry(entry);
     }));
     await loadData();
@@ -3912,7 +3951,6 @@ document.addEventListener('focusin', (event) => { if (['telefone', 'spouseTelefo
 document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) return; const digits = event.target.value.replace(/\D/g, '').slice(0, 11); event.target.value = digits.length <= 10 ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`) : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`); });
 window.addEventListener('hashchange', route);
 route();
-
 
 
 
