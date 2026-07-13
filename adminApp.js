@@ -222,9 +222,6 @@ const formatCpf = (value = '') => {
 const entryHasSector = (entry, sector) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores]).some((item) => normalizeText(item) === normalizeText(sector));
 const isSpaceKidsSector = (sector = '') => ['espaco kids', 'criancas espaco kids'].includes(normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
-const isCoupleMateValidated = (entry = {}, items = enrolments) => Boolean(entry.casalId && items.some((item) => item.id !== entry.id && item.retiroId === entry.retiroId && item.casalId === entry.casalId && isEnrolmentValidated(item)));
-const isEnrolmentEffectivelyValidated = (entry = {}, items = enrolments) => isEnrolmentValidated(entry) || isCoupleMateValidated(entry, items);
-const validatedEnrolments = (items = enrolments) => items.filter((entry) => isEnrolmentEffectivelyValidated(entry, items));
 const enrolmentValidationGroups = (items = []) => {
   const groupedCouples = new Set();
   return items.reduce((groups, entry) => {
@@ -597,7 +594,7 @@ async function renderHome() {
   const active = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
   const allStudents = await dataService.listCursistas();
   const activeStudents = active ? allStudents.filter((student) => student.retiroId === active.id) : [];
-  const activeEnrolments = active ? validatedEnrolments(enrolments.filter((item) => item.retiroId === active.id)) : [];
+  const activeEnrolments = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
@@ -678,7 +675,7 @@ async function renderHome() {
     days: serviceDays,
     volunteers: activeEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
-  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
+  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
@@ -688,7 +685,7 @@ async function renderHome() {
   layout(`<section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
-      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s) validada(s)</small></article>
+      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section>
     <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
@@ -702,7 +699,7 @@ async function renderHome() {
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
       <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
-      <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho validada por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
+      <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
     </section>
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
   setupHomeStatTabs();
@@ -725,7 +722,7 @@ async function renderHome() {
 
 async function renderRetiros() {
   layout(`<section class="page-heading"><div><p class="eyebrow">Configuração de eventos</p><h1>Retiros</h1><p>Cada retiro possui sua própria estrutura, voluntários e histórico.</p></div><a class="primary-button" href="#retiros/novo">+ Novo retiro</a></section>
-  <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${validatedEnrolments(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
+  <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${enrolments.filter((item) => item.retiroId === retreat.id).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
 }
 
 const sectorOptionHtml = (sector, selected = false, publicSelected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label><label class="sector-public-option"><input type="checkbox" name="setoresPublicos" value="${escapeHtml(sector)}" ${publicSelected ? 'checked' : ''}> Público</label></div>`;
@@ -928,7 +925,7 @@ async function renderRetreat(id) {
   if (!retreat) return renderRetiros();
   const canDeleteRetreat = canAccess('retiros.excluir');
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
-  const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
+  const retreatEnrolments = enrolments.filter((item) => item.retiroId === id);
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
     ? await ensureSectorLinks(retreat)
@@ -1009,7 +1006,7 @@ async function renderRetreat(id) {
     days: serviceDays,
     volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
-  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
+  const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
@@ -1018,7 +1015,7 @@ async function renderRetreat(id) {
   const cityRowsHtml = (rows) => rows.length ? `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
   const retreatStatisticsHtml = `<section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${registeredStudents.length}</strong><small>pessoa(s)</small></article>
-      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${retreatEnrolments.length}</strong><small>pessoa(s) validada(s)</small></article>
+      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${retreatEnrolments.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section>
     <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
@@ -1032,7 +1029,7 @@ async function renderRetreat(id) {
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
       <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
-      <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho validada por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
+      <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
     </section>`;
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada')}`,
@@ -1213,7 +1210,7 @@ async function renderRecebedor() {
   const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
   const students = (await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id);
   const entries = [
-    ...validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
+    ...enrolments.filter((entry) => entry.retiroId === retreat.id).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
     ...students.map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' })),
   ];
   const effectiveSuggested = (entry) => {
@@ -1542,7 +1539,7 @@ async function renderValidacaoInscricoes() {
     }).join('');
     return `<article class="${group.length > 1 ? 'is-couple-validation' : ''}"><div class="validation-people"><small class="validation-group-label">${label}</small>${peopleHtml}</div><span class="validation-status ${validated ? 'is-valid' : 'is-pending'}">${validated ? 'Validada' : 'Pendente'}</span><div class="registration-actions"><button type="button" data-validate-entry="${representative.id}" ${validated ? 'disabled' : ''}>Validar</button></div></article>`;
   };
-  layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>${escapeHtml(retreat.nome)} · Confira os cadastros recebidos antes de liberar nas estat\u00edsticas.</p></div></section><section class="receiver-summary validation-summary"><article><span>Pendentes</span><strong>${pendingCount}</strong><small>ficha(s)</small></article><article><span>Validadas</span><strong>${validatedCount}</strong><small>ficha(s)</small></article><article><span>Total recebido</span><strong>${validationGroups.length}</strong><small>ficha(s)</small></article></section><section class="panel validation-list">${validationGroups.length ? validationGroups.map(validationGroupHtml).join('') : '<p class="empty-state">Nenhuma inscrição da equipe foi recebida para este retiro.</p>'}</section>`, 'validacao-inscricoes');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>${escapeHtml(retreat.nome)} · Confira os cadastros recebidos e registre a ciência da coordenação.</p></div></section><section class="receiver-summary validation-summary"><article><span>Pendentes</span><strong>${pendingCount}</strong><small>ficha(s)</small></article><article><span>Validadas</span><strong>${validatedCount}</strong><small>ficha(s)</small></article><article><span>Total recebido</span><strong>${validationGroups.length}</strong><small>ficha(s)</small></article></section><section class="panel validation-list">${validationGroups.length ? validationGroups.map(validationGroupHtml).join('') : '<p class="empty-state">Nenhuma inscrição da equipe foi recebida para este retiro.</p>'}</section>`, 'validacao-inscricoes');
   app.querySelectorAll('[data-validate-entry]').forEach((button) => button.addEventListener('click', async () => {
     const entry = enrolments.find((item) => item.id === button.dataset.validateEntry);
     if (!entry) return;
@@ -1843,7 +1840,7 @@ async function renderComunidades() {
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
   const [students, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
-  const entries = validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id));
+  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id);
   const leaders = [...new Set(entries.filter((entry) => entry.casalId && entryHasSector(entry, 'Tios de comunidade')).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const monitorCandidates = [...new Set(entries.filter((entry) => entry.casalId && (entry.setores || []).some((sector) => normalizeText(sector).includes('monitor'))).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const retreatStudents = students.filter((student) => student.retiroId === retreat.id);
@@ -2165,7 +2162,7 @@ async function renderCrachas() {
   const [allCommunities, allStudents] = await Promise.all([dataService.listComunidades(), dataService.listCursistas()]);
   const badgeCommunities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
   const badgeStudents = allStudents.filter((student) => student.retiroId === retreat.id);
-  const entries = validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length))
+  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length)
     .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
   const sectors = sortSectors(uniqueSectors([...(retreat.setores || []), ...entries.flatMap((entry) => entry.setores || [])]));
   const badgeSectorCount = (sector) => entries.filter((entry) => entryHasSector(entry, sector)).length;
@@ -2648,7 +2645,7 @@ async function renderQuadrante() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
   const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(), dataService.listCursistas(), loadQuadranteOrderSetting()]);
-  const entries = validatedEnrolments(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
+  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length);
   const retreatStudents = students.filter((student) => student.retiroId === retreat.id);
   const reportCommunities = sortCommunitiesByPosition(communities.filter((community) => community.retiroId === retreat.id));
   const missing = '—';
