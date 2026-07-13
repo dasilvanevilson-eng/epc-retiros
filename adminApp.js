@@ -561,7 +561,17 @@ function setupSectorStatDrilldown(root, rows = []) {
       const sector = button.dataset.statSector;
       const selected = rows.find((row) => normalizeText(row.sector) === normalizeText(sector));
       const volunteers = selected?.volunteers || [];
-      root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><div class="panel-heading"><div><h2>${escapeHtml(sector)}</h2><p>${volunteers.length} voluntário(s) neste setor.</p></div></div><div class="student-health-list">${volunteers.length ? volunteers.map((entry) => `<div><strong>${escapeHtml(entry.nome || 'Sem nome')}</strong><span>${escapeHtml((entry.setores || []).join(', ') || sector)}</span></div>`).join('') : '<p class="empty-state">Nenhum voluntário neste setor.</p>'}</div>`;
+      const configuredDays = selected?.days?.length
+        ? selected.days
+        : [...new Set(volunteers.flatMap((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean)))];
+      const people = volunteers
+        .map((entry) => ({ name: String(entry.nome || '').trim(), days: (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean) }))
+        .filter((entry) => entry.name)
+        .sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
+      const daySummary = configuredDays
+        .map((day) => ({ day, count: people.filter((entry) => entry.days.some((entryDay) => normalizeText(entryDay) === normalizeText(day))).length }))
+        .filter((item) => item.day);
+      root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><section class="sector-public-modal sector-public-modal-inline" role="dialog" aria-modal="true" aria-labelledby="sector-title"><p class="eyebrow">Acompanhamento do setor</p><h1 id="sector-title">${escapeHtml(sector)}</h1><p>${people.length} pessoa(s) inscrita(s) neste setor.</p>${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}</section>`;
       root.querySelector('[data-sector-stat-back]').addEventListener('click', () => {
         root.innerHTML = root.dataset.sectorListHtml || '';
         setupSectorStatDrilldown(root, rows);
@@ -665,6 +675,7 @@ async function renderHome() {
   const sectorStatRows = sectorCounts.map(([sector, count]) => ({
     sector,
     count,
+    days: serviceDays,
     volunteers: activeEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';
@@ -995,6 +1006,7 @@ async function renderRetreat(id) {
   const sectorStatRows = sectorCounts.map(([sector, count]) => ({
     sector,
     count,
+    days: serviceDays,
     volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe validada.</p>';

@@ -1618,6 +1618,100 @@ button:hover,
   padding-right:4px;
 }
 
+.sector-public-modal-inline {
+  width:100%;
+  padding:0;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+
+.sector-public-modal-inline h1 {
+  margin:0;
+  color:#203c26;
+  font:700 28px "Fraunces", serif;
+  line-height:1.08;
+}
+
+.sector-public-modal-inline p {
+  margin:8px 0 0;
+  color:#6c7469;
+  line-height:1.45;
+}
+
+.sector-public-list {
+  overflow-y:auto;
+  max-height:42vh;
+  margin:18px 0;
+  padding:0;
+  border-top:1px solid #e7ddca;
+  border-bottom:1px solid #e7ddca;
+}
+
+.sector-public-list li {
+  list-style:none;
+  padding:12px 4px;
+  border-bottom:1px solid #eee6d8;
+  color:#203c26;
+}
+
+.sector-public-list li:last-child {
+  border-bottom:0;
+}
+
+.sector-public-list strong {
+  display:block;
+  font-weight:800;
+}
+
+.sector-public-list span {
+  display:block;
+  margin-top:4px;
+  color:#6c7469;
+  font-size:13px;
+  line-height:1.4;
+}
+
+.sector-public-summary {
+  margin:0 0 18px;
+  padding:14px;
+  border:1px solid #e7ddca;
+  border-radius:10px;
+  background:#fff8ec;
+}
+
+.sector-public-summary h2 {
+  margin:0 0 10px;
+  color:#203c26;
+  font:700 17px "Fraunces", serif;
+}
+
+.sector-public-summary div {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:10px;
+  padding:7px 0;
+  border-top:1px solid #eee0c8;
+  color:#203c26;
+}
+
+.sector-public-summary div:first-of-type {
+  border-top:0;
+}
+
+.sector-public-summary span {
+  color:#6c7469;
+}
+
+.sector-public-summary strong {
+  font-weight:800;
+}
+
+.sector-public-empty {
+  padding:18px 4px;
+  color:#6c7469;
+}
+
 .student-health-list {
   max-height:52vh;
   overflow:auto;

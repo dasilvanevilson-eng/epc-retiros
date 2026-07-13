@@ -17,7 +17,7 @@ function receiverPageHtml({ retreat, token }) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="robots" content="noindex,nofollow" />
-    <link rel="stylesheet" href="/styles.css?v=20260713-itens-obrigatorios" />
+    <link rel="stylesheet" href="/styles.css?v=20260713-setor-lider" />
     <style>
       .main-nav,.admin-header{display:none!important}
     </style>
@@ -27,7 +27,7 @@ function receiverPageHtml({ retreat, token }) {
     <script>
       window.EPC_PUBLIC_RECEIVER = ${JSON.stringify({ token, retiroId: retreat.id })};
     </script>
-    <script type="module" src="/adminApp.js?v=20260713-itens-obrigatorios"></script>
+    <script type="module" src="/adminApp.js?v=20260713-setor-lider"></script>
   </body>
 </html>`;
 }
