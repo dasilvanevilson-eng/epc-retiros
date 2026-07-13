@@ -35,6 +35,57 @@ function isPublicRegistrationRequest(resource, id, req) {
   return false;
 }
 
+async function publicReceiverRetreat(req) {
+  const token = String(req.headers['x-public-receiver-token'] || '').trim();
+  if (!token) return null;
+  const retreats = await listRecords('retiros');
+  return retreats.find((retreat) => retreat?.recebedorToken === token) || null;
+}
+
+async function handlePublicReceiverRequest(req, res, resource, id) {
+  const retreat = await publicReceiverRetreat(req);
+  if (!retreat) return false;
+  const retreatId = retreat.id;
+  const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas'];
+  if (!allowedStores.includes(resource)) return false;
+
+  if (req.method === 'GET' && resource === 'retiros' && id) {
+    if (decodeURIComponent(id) !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este retiro.'), true;
+    return sendJson(res, 200, retreat), true;
+  }
+  if (req.method === 'GET' && resource === 'retiros' && !id) return sendJson(res, 200, [retreat]), true;
+
+  if (req.method === 'GET' && resource === 'adesoes' && !id) {
+    const records = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
+    return sendJson(res, 200, records), true;
+  }
+  if (req.method === 'GET' && resource === 'cursistas' && !id) {
+    const records = (await listRecords('cursistas')).filter((entry) => entry.retiroId === retreatId);
+    return sendJson(res, 200, records), true;
+  }
+  if (req.method === 'GET' && resource === 'pessoas' && !id) {
+    const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
+    const peopleIds = new Set(entries.map((entry) => entry.pessoaId).filter(Boolean));
+    const records = (await listRecords('pessoas')).filter((person) => peopleIds.has(person.id));
+    return sendJson(res, 200, records), true;
+  }
+  if (req.method === 'PUT' && ['adesoes', 'cursistas'].includes(resource) && id) {
+    const decodedId = decodeURIComponent(id);
+    const current = await getRecord(resource, decodedId);
+    if (!current || current.retiroId !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este registro.'), true;
+    const incoming = await readBody(req);
+    const allowedFields = resource === 'cursistas'
+      ? ['recebedorValorPago', 'recebedorTaxaPaga', 'recebedorFormaPagamento', 'recebedorObservacao']
+      : ['valorPago', 'taxaPaga', 'formaPagamento', 'recebedorObservacao'];
+    const record = { ...current };
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(incoming, field)) record[field] = incoming[field];
+    });
+    return sendJson(res, 200, await saveRecord(resource, record)), true;
+  }
+  return false;
+}
+
 function permissionForRequest(resource, id, req) {
   if (resource === 'database') return req.method === 'GET' ? 'usuarios.ver' : 'usuarios.editar';
   if (resource === 'retiros') {
@@ -99,6 +150,7 @@ async function handleApi(req, res, pathname) {
 
   const publicRegistrationRequest = isPublicRegistrationRequest(resource, id, req);
   const session = readSession(req);
+  if (!session && await handlePublicReceiverRequest(req, res, resource, id)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
 
   if (resource === 'access' && req.method === 'GET') {

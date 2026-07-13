@@ -14,7 +14,6 @@ async function findPublicSectorLink({ retreatId = '', token = '', type = 'cadast
   const fieldByType = {
     cadastro: 'cadastroToken',
     acompanhamento: 'acompanhamentoToken',
-    recebedor: 'recebedorToken',
   };
   const tokenField = fieldByType[type] || fieldByType.cadastro;
   const retreats = cleanRetreatId
@@ -30,4 +29,12 @@ async function findPublicSectorLink({ retreatId = '', token = '', type = 'cadast
   return null;
 }
 
-module.exports = { findPublicSectorLink, normalizeText };
+async function findPublicReceiverRetreat(token = '') {
+  const cleanToken = decodeURIComponent(String(token || '').trim());
+  if (!cleanToken) return null;
+  const retreats = await listRecords('retiros');
+  const retreat = retreats.find((item) => item?.recebedorToken === cleanToken);
+  return retreat ? { retreat, retreatId: retreat.id } : null;
+}
+
+module.exports = { findPublicSectorLink, findPublicReceiverRetreat, normalizeText };

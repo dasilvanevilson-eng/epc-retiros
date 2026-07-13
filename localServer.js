@@ -81,12 +81,10 @@ loadLocalEnv().then(async () => {
         const token = parts[2] || parts[1];
         await sendPublicSectorInvitePage(req, res, retreatId, token);
       }
-      else if (pathname.startsWith('/recebedor-setor/')) {
+      else if (pathname.startsWith('/recebedor/')) {
         const { sendPublicReceiverPage } = require('./publicReceiverPage');
-        const parts = pathname.match(/^\/recebedor-setor\/([^/]+)(?:\/([^/]+))?/) || [];
-        const retreatId = parts[2] ? parts[1] : '';
-        const token = parts[2] || parts[1];
-        await sendPublicReceiverPage(req, res, retreatId, token);
+        const [, token] = pathname.match(/^\/recebedor\/([^/]+)/) || [];
+        await sendPublicReceiverPage(req, res, token);
       }
       else await handleStatic(req, res, pathname);
     } catch (error) {

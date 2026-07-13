@@ -56,10 +56,11 @@ async function api(path, options = {}) {
   const timeoutMs = options.timeoutMs || 10000;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const publicReceiverToken = globalThis.EPC_PUBLIC_RECEIVER?.token || new URLSearchParams(globalThis.location?.search || '').get('recebedorToken') || globalThis.location?.pathname?.match(/^\/recebedor\/([^/?#]+)/)?.[1] || '';
   let response;
   try {
     response = await fetch(`/api${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...(publicReceiverToken ? { 'X-Public-Receiver-Token': decodeURIComponent(publicReceiverToken) } : {}), ...(options.headers || {}) },
       credentials: 'same-origin',
       ...options,
       signal: options.signal || controller.signal,

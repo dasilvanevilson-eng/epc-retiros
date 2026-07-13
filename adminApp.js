@@ -2,9 +2,12 @@ import { dataService, retreatDefaults } from './dataService.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
+const publicPathReceiverToken = location.pathname.match(/^\/recebedor\/([^/?#]+)/)?.[1];
 const publicParams = new URLSearchParams(location.search);
 const publicRetreatId = publicParams.get('adesao') || (publicPathRetreatId ? decodeURIComponent(publicPathRetreatId) : '');
 const publicSectorToken = publicParams.get('setor') || publicParams.get('setorToken') || '';
+const publicReceiverToken = publicParams.get('recebedorToken') || (publicPathReceiverToken ? decodeURIComponent(publicPathReceiverToken) : '');
+const publicReceiverRetreatId = globalThis.EPC_PUBLIC_RECEIVER?.retiroId || '';
 let retreats = [];
 let enrolments = [];
 let people = [];
@@ -78,7 +81,6 @@ const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
       token: current?.token || sectorToken(),
       cadastroToken: current?.cadastroToken || publicAccessToken(),
       acompanhamentoToken: current?.acompanhamentoToken || publicAccessToken(),
-      recebedorToken: current?.recebedorToken || publicAccessToken(),
     };
   });
 };
@@ -86,8 +88,9 @@ const ensureSectorLinks = async (retreat) => {
   const nextLinks = syncSectorLinks(retreat, knownSectors(retreat.setores || []));
   const current = JSON.stringify(retreat.linksSetores || []);
   const next = JSON.stringify(nextLinks);
-  if (current === next) return nextLinks;
+  if (current === next && retreat.recebedorToken) return nextLinks;
   retreat.linksSetores = nextLinks;
+  retreat.recebedorToken = retreat.recebedorToken || publicAccessToken();
   await dataService.saveRetiro(retreat);
   return nextLinks;
 };
@@ -439,6 +442,7 @@ function setupMetricSearch() {
 }
 
 function layout(content, active = 'inicio') {
+  const isPublicReceiverView = Boolean(publicReceiverToken);
   const navItems = [
     ['inicio', 'Início', '⌂'],
     ['retiros', 'Retiros', '▣'],
@@ -1057,11 +1061,11 @@ async function renderRetreat(id) {
   if (activeSectorLinks.length) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
-    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
+    const receiverUrl = `${location.origin}/recebedor/${encodeURIComponent(retreat.recebedorToken || '')}`;
+    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia. O link do recebedor abre o módulo financeiro completo deste retiro.</p><label class="copy-field receiver-retreat-link"><span>Recebedor</span><input readonly value="${escapeHtml(receiverUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(receiverUrl)}">Copiar</button></label><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
-      const receiverUrl = `${location.origin}/recebedor-setor/${encodeURIComponent(link.recebedorToken || link.token)}`;
-      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label><label class="copy-field"><span>Recebedor</span><input readonly value="${escapeHtml(receiverUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(receiverUrl)}">Copiar</button></label></div></div>`;
+      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label></div></div>`;
     }).join('')}</div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
@@ -1190,7 +1194,9 @@ function wireCurrencyInputs(root) {
   });
 }
 async function renderRecebedor() {
-  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  const retreat = publicReceiverRetreatId
+    ? retreats.find((item) => item.id === publicReceiverRetreatId)
+    : retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
   const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
   const students = (await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id);
@@ -3902,6 +3908,14 @@ function renderLogin(message = '') {
 async function route() {
   try {
     if (publicRetreatId) return renderPublicForm(publicRetreatId, false, publicSectorToken);
+    if (publicReceiverToken) {
+      if (!publicReceiverRetreatId) {
+        app.innerHTML = '<section class="page-heading"><div><p class="eyebrow">Recebedor</p><h1>Link indisponivel</h1><p>Confira o link enviado pelo financeiro.</p></div></section>';
+        return;
+      }
+      await loadData();
+      return renderRecebedor();
+    }
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
     const target = location.hash.slice(1) || firstAllowedSection();
     if (target === 'usuarios') return renderUsuarios();
