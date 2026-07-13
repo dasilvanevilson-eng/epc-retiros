@@ -219,6 +219,45 @@ const formatCpf = (value = '') => {
   const digits = normalizeCpf(value);
   return digits.replace(/^(\d{3})(\d{0,3})(\d{0,3})(\d{0,2}).*/, (_, first, second, third, fourth) => [first, second, third].filter(Boolean).join('.') + (fourth ? `-${fourth}` : ''));
 };
+const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.updatedAt || record.enviadoEm || record.criadoEm || record.createdAt || '') || 0;
+const participantIdentity = (record = {}) => normalizeCpf(record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id) || String(record.pessoaId || record.id || record.nome || '').trim();
+const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
+const uniqueByParticipant = (items = []) => {
+  const byIdentity = new Map();
+  items.forEach((item) => {
+    const key = participantIdentity(item);
+    if (!key) return;
+    const current = byIdentity.get(key);
+    if (!current || recordTime(item) >= recordTime(current)) byIdentity.set(key, item);
+  });
+  return [...byIdentity.values()];
+};
+const mergeEnrolmentsByParticipant = (items = []) => {
+  const grouped = new Map();
+  items.forEach((item) => {
+    const key = participantIdentity(item);
+    if (!key) return;
+    const group = grouped.get(key) || [];
+    group.push(item);
+    grouped.set(key, group);
+  });
+  return [...grouped.values()].map((group) => {
+    const latest = [...group].sort((first, second) => recordTime(second) - recordTime(first))[0] || group[0];
+    const kidsByIdentity = new Map();
+    group.flatMap((entry) => entry.espacoKids || []).forEach((kid) => {
+      const key = normalizeText(`${kid.nome || ''}:${kid.nascimento || ''}`);
+      if (key) kidsByIdentity.set(key, kid);
+    });
+    return {
+      ...latest,
+      setores: sortSectors(uniqueSectors(group.flatMap((entry) => Array.isArray(entry.setores) ? entry.setores : [entry.setores]).filter(Boolean))),
+      dias: uniqueSectors(group.flatMap(entryDays)),
+      espacoKids: [...kidsByIdentity.values()],
+      quadrante: group.some((entry) => normalizeText(entry.quadrante) === 'sim') ? 'Sim' : latest.quadrante,
+      foto: group.some((entry) => normalizeText(entry.foto) === 'sim') ? 'Sim' : latest.foto,
+    };
+  });
+};
 const entryHasSector = (entry, sector) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores]).some((item) => normalizeText(item) === normalizeText(sector));
 const isSpaceKidsSector = (sector = '') => ['espaco kids', 'criancas espaco kids'].includes(normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
@@ -593,8 +632,8 @@ function wireSectorStatWindows(rows = []) {
 async function renderHome() {
   const active = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
   const allStudents = await dataService.listCursistas();
-  const activeStudents = active ? allStudents.filter((student) => student.retiroId === active.id) : [];
-  const activeEnrolments = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
+  const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
+  const activeEnrolments = active ? mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
@@ -602,7 +641,7 @@ async function renderHome() {
     .filter((sector) => !isSpaceKidsSector(sector))
     .map((sector) => [sector, activeEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
-  const dayCount = (day) => activeEnrolments.filter((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
+  const dayCount = (day) => activeEnrolments.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
   const shirtCounts = activeStudents.reduce((counts, student) => {
     const size = String(student.camiseta || '').trim();
     if (size) counts[size] = (counts[size] || 0) + 1;
@@ -722,7 +761,7 @@ async function renderHome() {
 
 async function renderRetiros() {
   layout(`<section class="page-heading"><div><p class="eyebrow">Configuração de eventos</p><h1>Retiros</h1><p>Cada retiro possui sua própria estrutura, voluntários e histórico.</p></div><a class="primary-button" href="#retiros/novo">+ Novo retiro</a></section>
-  <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${enrolments.filter((item) => item.retiroId === retreat.id).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
+  <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
 }
 
 const sectorOptionHtml = (sector, selected = false, publicSelected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label><label class="sector-public-option"><input type="checkbox" name="setoresPublicos" value="${escapeHtml(sector)}" ${publicSelected ? 'checked' : ''}> Público</label></div>`;
@@ -924,8 +963,8 @@ async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   const canDeleteRetreat = canAccess('retiros.excluir');
-  const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
-  const retreatEnrolments = enrolments.filter((item) => item.retiroId === id);
+  const registeredStudents = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === id));
+  const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
     ? await ensureSectorLinks(retreat)
@@ -936,7 +975,7 @@ async function renderRetreat(id) {
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
   const averageAge = ages.length ? `${(ages.reduce((sum, age) => sum + age, 0) / ages.length).toFixed(1).replace('.', ',')} anos` : 'Sem dados';
-  const dayCount = (day) => retreatEnrolments.filter((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length;
+  const dayCount = (day) => retreatEnrolments.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length;
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
   const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
@@ -1208,9 +1247,9 @@ async function renderRecebedor() {
     : retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
   const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
-  const students = (await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id);
+  const students = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id));
   const entries = [
-    ...enrolments.filter((entry) => entry.retiroId === retreat.id).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
+    ...mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
     ...students.map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' })),
   ];
   const effectiveSuggested = (entry) => {
@@ -1840,18 +1879,20 @@ async function renderComunidades() {
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
   const [students, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
-  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id);
+  const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id));
   const leaders = [...new Set(entries.filter((entry) => entry.casalId && entryHasSector(entry, 'Tios de comunidade')).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const monitorCandidates = [...new Set(entries.filter((entry) => entry.casalId && (entry.setores || []).some((sector) => normalizeText(sector).includes('monitor'))).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
-  const retreatStudents = students.filter((student) => student.retiroId === retreat.id);
+  const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
+  const retreatStudents = uniqueByParticipant(retreatStudentRecords);
   const assignedStudentIds = new Set(communities.flatMap((community) => community.membroIds || []));
-  const studentsWithoutCommunity = retreatStudents.filter((student) => !assignedStudentIds.has(student.id)).length;
+  const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
+  const studentsWithoutCommunity = retreatStudents.filter((student) => !assignedStudentKeys.has(participantIdentity(student))).length;
   const communitiesWithoutLeaders = communities.filter((community) => !community.liderCasalId).length;
   const communitiesWithoutMonitor = communities.filter((community) => !community.monitorCasalId && !(community.monitorIds || []).length).length;
   const leaderOptions = (selected) => `<option value="">Buscar tios da comunidade</option>${leaders.map((leader) => `<option value="${leader.casalId}" ${leader.casalId === selected ? 'selected' : ''}>${escapeHtml(leader.label)}</option>`).join('')}`;
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os cursistas.</p><div class="community-overview"><article><span>Cursistas sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir cursistas</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = retreatStudents.filter((student) => (community.membroIds || []).includes(student.id)).sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>Cursistas</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${ageInYearsAndMonths(student.nascimento)}</small></span><select data-move-student="${student.id}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${student.id}">Remover</button></div>`).join('') : '<p>Nenhum cursista alocado.</p>'}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${members.length ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os cursistas.</p><div class="community-overview"><article><span>Cursistas sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir cursistas</button></div></section><section class="community-grid">${communities.map((community, index) => { const memberIds = new Set(community.membroIds || []); const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id))).sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>Cursistas</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${ageInYearsAndMonths(student.nascimento)}</small></span><select data-move-student="${student.id}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${student.id}">Remover</button></div>`).join('') : '<p>Nenhum cursista alocado.</p>'}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${members.length ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
   app.querySelector('#add-community').addEventListener('click', async () => {
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
@@ -2161,8 +2202,8 @@ async function renderCrachas() {
   let settings = loadBadgeSettings();
   const [allCommunities, allStudents] = await Promise.all([dataService.listComunidades(), dataService.listCursistas()]);
   const badgeCommunities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
-  const badgeStudents = allStudents.filter((student) => student.retiroId === retreat.id);
-  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length)
+  const badgeStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === retreat.id));
+  const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length))
     .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
   const sectors = sortSectors(uniqueSectors([...(retreat.setores || []), ...entries.flatMap((entry) => entry.setores || [])]));
   const badgeSectorCount = (sector) => entries.filter((entry) => entryHasSector(entry, sector)).length;
@@ -2645,8 +2686,9 @@ async function renderQuadrante() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
   const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(), dataService.listCursistas(), loadQuadranteOrderSetting()]);
-  const entries = enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length);
-  const retreatStudents = students.filter((student) => student.retiroId === retreat.id);
+  const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
+  const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
+  const retreatStudents = uniqueByParticipant(retreatStudentRecords);
   const reportCommunities = sortCommunitiesByPosition(communities.filter((community) => community.retiroId === retreat.id));
   const missing = '—';
   const byName = (first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
@@ -2704,7 +2746,8 @@ async function renderQuadrante() {
     return `<article class="quadrante-sector"><h3>${escapeHtml(sector)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(sectorEntries)}</tbody></table></article>`;
   }).join('');
   const assignedStudentIds = new Set(reportCommunities.flatMap((community) => community.membroIds || []));
-  const unassignedStudents = retreatStudents.filter((student) => !assignedStudentIds.has(student.id));
+  const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
+  const unassignedStudents = retreatStudents.filter((student) => !assignedStudentKeys.has(participantIdentity(student)));
   const communitySections = [
     ...reportCommunities.map((community, index) => ({ ...community, nome: community.nome || `Comunidade ${index + 1}` })),
     ...(unassignedStudents.length ? [{ id: 'sem-comunidade', nome: 'Sem comunidade', liderCasalId: null, membroIds: unassignedStudents.map((student) => student.id) }] : []),
@@ -2716,8 +2759,8 @@ async function renderQuadrante() {
     const monitorEntries = entries
       .filter((entry) => (community.monitorIds || []).includes(entry.id) || (entry.casalId && monitorCasalIds.has(entry.casalId)))
       .map((entry) => { const person = personForEntry(entry); return { person, casalId: entry.casalId, address: addressForPerson(person) }; });
-    const members = retreatStudents
-      .filter((student) => (community.membroIds || []).includes(student.id))
+    const memberIds = new Set(community.membroIds || []);
+    const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id)))
       .sort(byName)
       .map((student) => ({ person: student, address: addressForStudent(student) }));
     return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tr><td colspan="4">Nenhum cursista alocado.</td></tr>' : '')}</tbody></table></article>`;
