@@ -36,7 +36,7 @@ function sectorPageHtml({ retreat, sector, entries }) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="robots" content="noindex,nofollow" />
-    <link rel="stylesheet" href="/styles.css?v=20260713-links-setor" />
+    <link rel="stylesheet" href="/styles.css?v=20260713-convite-setor" />
     <style>
       body{min-height:100vh;display:grid;place-items:center;padding:18px;background:#eef4ee;font-family:'DM Sans',sans-serif}
       .sector-public-modal{width:min(560px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column;padding:24px;border:1px solid #d9cdb7;border-radius:14px;background:#fffdf7;box-shadow:0 24px 70px rgba(54,80,57,.2)}

@@ -72,6 +72,11 @@ loadLocalEnv().then(async () => {
         const [, retreatId, token] = pathname.match(/^\/setor\/([^/]+)\/([^/]+)/) || [];
         await sendPublicSectorPage(req, res, retreatId, token);
       }
+      else if (pathname.startsWith('/convite-setor/')) {
+        const { sendPublicSectorInvitePage } = require('./publicSectorInvitePage');
+        const [, retreatId, token] = pathname.match(/^\/convite-setor\/([^/]+)\/([^/]+)/) || [];
+        await sendPublicSectorInvitePage(req, res, retreatId, token);
+      }
       else await handleStatic(req, res, pathname);
     } catch (error) {
       sendError(res, 500, error.message || 'Erro interno.');

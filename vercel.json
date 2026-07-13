@@ -14,6 +14,7 @@
   ],
   "routes": [
     { "src": "/adesao/(.*)", "dest": "/api/adesao.js?id=$1" },
+    { "src": "/convite-setor/([^/]+)/([^/]+)", "dest": "/api/convite-setor.js?retiro=$1&token=$2" },
     { "src": "/setor/([^/]+)/([^/]+)", "dest": "/api/setor.js?retiro=$1&token=$2" },
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "src": "/", "dest": "/index.html" },
