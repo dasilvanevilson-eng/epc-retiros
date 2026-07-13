@@ -2,7 +2,9 @@ import { dataService, retreatDefaults } from './dataService.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
-const publicRetreatId = new URLSearchParams(location.search).get('adesao') || (publicPathRetreatId ? decodeURIComponent(publicPathRetreatId) : '');
+const publicParams = new URLSearchParams(location.search);
+const publicRetreatId = publicParams.get('adesao') || (publicPathRetreatId ? decodeURIComponent(publicPathRetreatId) : '');
+const publicSectorToken = publicParams.get('setor') || publicParams.get('setorToken') || '';
 let retreats = [];
 let enrolments = [];
 let people = [];
@@ -71,7 +73,7 @@ const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
   });
 };
 const ensureSectorLinks = async (retreat) => {
-  const nextLinks = syncSectorLinks(retreat);
+  const nextLinks = syncSectorLinks(retreat, knownSectors(retreat.setores || []));
   const current = JSON.stringify(retreat.linksSetores || []);
   const next = JSON.stringify(nextLinks);
   if (current === next) return nextLinks;
@@ -879,7 +881,7 @@ async function renderNewRetreat() {
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, sortedSectors), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
@@ -906,7 +908,9 @@ async function renderRetreat(id) {
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
     ? await ensureSectorLinks(retreat)
-    : syncSectorLinks({ linksSetores: storedSectorLinks }, retreat.setores || []).filter((link) => storedSectorLinks.some((stored) => stored.token === link.token));
+    : syncSectorLinks({ linksSetores: storedSectorLinks }, knownSectors(retreat.setores || [])).filter((link) => storedSectorLinks.some((stored) => stored.token === link.token));
+  const activeSectorKeys = new Set((retreat.setores || []).map(normalizeText));
+  const activeSectorLinks = sectorLinks.filter((link) => activeSectorKeys.has(normalizeText(link.setor)));
   const serviceDays = retreatServiceDays(retreat);
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
@@ -1041,11 +1045,11 @@ async function renderRetreat(id) {
     deleteButton.textContent = 'Excluir retiro';
     app.querySelector('.detail-actions')?.append(deleteButton);
   }
-  if (sectorLinks.length) {
+  if (activeSectorLinks.length) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
-    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Busque o setor e envie o link ao coordenador para acompanhar os nomes inscritos naquela equipe.</p><label class="field sector-link-search"><span>Buscar setor</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${sectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor.</div><div class="sector-link-list" id="sector-link-list">${sectorLinks.map((link) => {
-      const url = `${location.origin}/setor/${encodeURIComponent(id)}/${encodeURIComponent(link.token)}`;
+    sectorLinksPanel.innerHTML = `<h2>Links de cadastro por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. Cada link abre o mesmo cadastro público com apenas o setor correspondente disponível.</p><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
+      const url = `${location.origin}/adesao/${encodeURIComponent(id)}?setor=${encodeURIComponent(link.token)}`;
       return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="copy-field"><input readonly value="${escapeHtml(url)}"><button type="button" data-copy-sector-link="${escapeHtml(url)}">Copiar</button></div></div>`;
     }).join('')}</div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
@@ -1092,7 +1096,7 @@ async function renderRetreat(id) {
         row.hidden = !matches;
         if (matches) visible += 1;
       });
-      feedback.textContent = query ? (visible ? `${visible} setor(es) encontrado(s).` : 'Nenhum setor encontrado.') : 'Digite para localizar um setor.';
+      feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : 'Digite para localizar um setor ativo.';
     };
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
     filterSectorLinks();
@@ -1144,7 +1148,7 @@ async function renderEditRetreat(id) {
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, sortedSectors), updatedAt: new Date().toISOString() });
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
     const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
     for (const [from, to] of renames) {
       const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
@@ -2736,7 +2740,7 @@ function syncChoiceStates(root = document) {
 document.addEventListener('change', (event) => {
   if (event.target.closest?.('.choice')) syncChoiceStates(event.target.closest('form') || document);
 });
-async function renderPublicForm(id, embedded = false) {
+async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const retreat = await dataService.getRetiro(id);
   if (embedded) layout('<div id="registration-root"></div>', 'pessoas');
   const mount = embedded ? app.querySelector('#registration-root') : app;
@@ -2744,12 +2748,20 @@ async function renderPublicForm(id, embedded = false) {
   if (!embedded && (!people.length || !enrolments.length)) {
     [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
   }
+  const requestedSectorToken = !embedded ? String(sectorToken || '').trim() : '';
+  const sectorLink = requestedSectorToken ? (retreat.linksSetores || retreat.setorLinks || []).find((item) => item.token === requestedSectorToken) : null;
+  const activeSectorByKey = new Map((retreat.setores || []).map((sector) => [normalizeText(sector), sector]));
+  const forcedSector = sectorLink ? activeSectorByKey.get(normalizeText(sectorLink.setor || sectorLink.sector)) : '';
+  if (requestedSectorToken && !forcedSector) {
+    mount.innerHTML = '<main class="public-shell"><h1>Link de setor indisponível</h1><p>Confira se este setor está ativo no retiro ou solicite um novo link à coordenação.</p></main>';
+    return;
+  }
   const binaryChoices = (name, options) => choices(name, options, false);
   const contributionOptions = ['R$ 60,00 se o voluntário for o único da família', 'R$ 55,00 se o voluntário tiver mais pessoas da mesma família trabalhando no retiro'];
   const kidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="kidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="kidNascimento${index + 1}" type="date"></label></div>`).join('');
-  const sectorsForRegistration = embedded ? retreat.setores : (retreat.setoresPublicos ?? retreat.setores);
+  const sectorsForRegistration = forcedSector ? [forcedSector] : (embedded ? retreat.setores : (retreat.setoresPublicos ?? retreat.setores));
   const publicHeading = embedded ? String(retreat.nome || '') : `Cadastro da equipe de trabalho para: ${retreat.nome || ''}`;
-  const publicLead = embedded ? 'Preencha os dados para organizar a participacao da equipe neste retiro.' : 'Este e o formulario oficial da equipe de organizacao. Confira o nome do retiro antes de informar seus dados.';
+  const publicLead = forcedSector ? `Este link é exclusivo para cadastro no setor ${forcedSector}.` : (embedded ? 'Preencha os dados para organizar a participacao da equipe neste retiro.' : 'Este e o formulario oficial da equipe de organizacao. Confira o nome do retiro antes de informar seus dados.');
   const publicShellClass = embedded ? 'public-shell embedded-registration-shell' : 'public-shell external-registration-shell';
   const serviceDays = retreatServiceDays(retreat);
   const dayConfirmationName = (name, index) => `${name}Confirm${index}`;
@@ -2768,7 +2780,8 @@ async function renderPublicForm(id, embedded = false) {
   const spouseFields = embedded
     ? `<label class="field spouse-cpf-field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field spouse-name-field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field spouse-birthdate-field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field spouse-phone-field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label>`
     : `<label class="field spouse-cpf-field"><span>CPF <b>*</b></span><input name="spouseCpf"></label><label class="field spouse-birthdate-field"><span>Data de nascimento <b>*</b></span><input name="spouseNascimento" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field spouse-name-field"><span>Nome completo <b>*</b></span><input name="spouseNome" autocomplete="off"></label><label class="field spouse-phone-field"><span>Telefone <b>*</b></span><input name="spouseTelefone"></label>`;
-  const publicSectors = ['escondida', 'sala'].map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4><div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
+  const sectorAreasForRegistration = forcedSector ? [sectorArea(forcedSector)] : ['escondida', 'sala'];
+  const publicSectors = sectorAreasForRegistration.map((area) => `<section class="public-sector-area"><h4>${area === 'escondida' ? 'Equipe escondida' : 'Equipe Sala'}</h4><div class="choice-grid sectors">${sortSectors(sectorsForRegistration.filter((sector) => sectorArea(sector) === area)).map((sector) => `<label class="choice"><input type="radio" name="setores" value="${escapeHtml(sector)}" ${forcedSector && normalizeText(sector) === normalizeText(forcedSector) ? 'checked' : ''}><span>${escapeHtml(sector)}</span></label>`).join('') || '<p class="hint">Nenhum setor configurado nesta área.</p>'}</div></section>`).join('');
   const sectorCoordinatorOption = embedded ? '<label class="choice sector-coordinator-option"><input type="checkbox" name="coordenacaoSetor" value="sim"><span>Coordenação do setor</span></label>' : '';
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
@@ -2786,6 +2799,7 @@ async function renderPublicForm(id, embedded = false) {
   mount.querySelector('.hero-copy').textContent = publicLead;
   if (!embedded) document.title = publicHeading;
   const form = mount.querySelector('#public-form');
+  syncChoiceStates(form);
   wireStateFields(form);
   wireCepLookup(form);
   wireCpfFields(form);
@@ -3113,7 +3127,7 @@ async function renderPublicForm(id, embedded = false) {
       notice.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Cadastro de casal</p><h2 id="spouse-contact-title">Atenção</h2><p>Entre em contato com a coordenação do retiro.</p><button type="button" class="hidden-team-alert-close">OK</button></div>`;
       notice.querySelector('.hidden-team-alert-close').addEventListener('click', async () => {
         notice.remove();
-        await renderPublicForm(id, embedded);
+        await renderPublicForm(id, embedded, sectorToken);
         resolve(true);
       });
       mount.append(notice);
@@ -3648,7 +3662,7 @@ async function renderPublicForm(id, embedded = false) {
     const participantRows = list.map((item) => `<li><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml((item.dias || []).join(', ') || 'Dias não informados')}</span></li>`).join('');
     mount.innerHTML = `<main class="public-shell"><section class="success-card"><div class="success-icon">✓</div><h1>Inscrição enviada com sucesso</h1><p>Obrigado, ${escapeHtml(names)}. Sua participação foi registrada para ${escapeHtml(retreat.nome)}.</p><ul class="success-participants">${participantRows}</ul><button type="button" id="close-success-message">Fechar</button></section></main>`;
     mount.querySelector('#close-success-message')?.addEventListener('click', async () => {
-      await renderPublicForm(id, embedded);
+      await renderPublicForm(id, embedded, sectorToken);
     });
   };
   const finishSave = async (participants) => {
@@ -3874,7 +3888,7 @@ function renderLogin(message = '') {
 
 async function route() {
   try {
-    if (publicRetreatId) return renderPublicForm(publicRetreatId);
+    if (publicRetreatId) return renderPublicForm(publicRetreatId, false, publicSectorToken);
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
     const target = location.hash.slice(1) || firstAllowedSection();
     if (target === 'usuarios') return renderUsuarios();
@@ -3967,6 +3981,3 @@ document.addEventListener('focusin', (event) => { if (['telefone', 'spouseTelefo
 document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) return; const digits = event.target.value.replace(/\D/g, '').slice(0, 11); event.target.value = digits.length <= 10 ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`) : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`); });
 window.addEventListener('hashchange', route);
 route();
-
-
-
