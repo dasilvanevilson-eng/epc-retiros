@@ -69,13 +69,24 @@ loadLocalEnv().then(async () => {
       }
       else if (pathname.startsWith('/setor/')) {
         const { sendPublicSectorPage } = require('./publicSectorPage');
-        const [, retreatId, token] = pathname.match(/^\/setor\/([^/]+)\/([^/]+)/) || [];
+        const parts = pathname.match(/^\/setor\/([^/]+)(?:\/([^/]+))?/) || [];
+        const retreatId = parts[2] ? parts[1] : '';
+        const token = parts[2] || parts[1];
         await sendPublicSectorPage(req, res, retreatId, token);
       }
       else if (pathname.startsWith('/convite-setor/')) {
         const { sendPublicSectorInvitePage } = require('./publicSectorInvitePage');
-        const [, retreatId, token] = pathname.match(/^\/convite-setor\/([^/]+)\/([^/]+)/) || [];
+        const parts = pathname.match(/^\/convite-setor\/([^/]+)(?:\/([^/]+))?/) || [];
+        const retreatId = parts[2] ? parts[1] : '';
+        const token = parts[2] || parts[1];
         await sendPublicSectorInvitePage(req, res, retreatId, token);
+      }
+      else if (pathname.startsWith('/recebedor-setor/')) {
+        const { sendPublicReceiverPage } = require('./publicReceiverPage');
+        const parts = pathname.match(/^\/recebedor-setor\/([^/]+)(?:\/([^/]+))?/) || [];
+        const retreatId = parts[2] ? parts[1] : '';
+        const token = parts[2] || parts[1];
+        await sendPublicReceiverPage(req, res, retreatId, token);
       }
       else await handleStatic(req, res, pathname);
     } catch (error) {

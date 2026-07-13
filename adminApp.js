@@ -65,11 +65,21 @@ const sectorToken = () => {
   const bytes = randomBytes(12);
   return Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 18);
 };
+const publicAccessToken = () => {
+  const bytes = randomBytes(16);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
 const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
   const existing = new Map((retreat.linksSetores || retreat.setorLinks || []).map((item) => [normalizeText(item.setor || item.sector), item]));
   return sortSectors(sectors).map((setor) => {
     const current = existing.get(normalizeText(setor));
-    return { setor, token: current?.token || sectorToken() };
+    return {
+      setor,
+      token: current?.token || sectorToken(),
+      cadastroToken: current?.cadastroToken || publicAccessToken(),
+      acompanhamentoToken: current?.acompanhamentoToken || publicAccessToken(),
+      recebedorToken: current?.recebedorToken || publicAccessToken(),
+    };
   });
 };
 const ensureSectorLinks = async (retreat) => {
@@ -1048,9 +1058,10 @@ async function renderRetreat(id) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
     sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
-      const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(id)}/${encodeURIComponent(link.token)}`;
-      const followupUrl = `${location.origin}/setor/${encodeURIComponent(id)}/${encodeURIComponent(link.token)}`;
-      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label></div></div>`;
+      const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
+      const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
+      const receiverUrl = `${location.origin}/recebedor-setor/${encodeURIComponent(link.recebedorToken || link.token)}`;
+      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label><label class="copy-field"><span>Recebedor</span><input readonly value="${escapeHtml(receiverUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(receiverUrl)}">Copiar</button></label></div></div>`;
     }).join('')}</div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }

@@ -1,4 +1,5 @@
-const { getRecord, listRecords } = require('./databaseAdapter');
+const { listRecords } = require('./databaseAdapter');
+const { findPublicSectorLink, normalizeText } = require('./publicLinkResolver');
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({
   '&': '&amp;',
@@ -7,12 +8,6 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character)
   "'": '&#39;',
   '"': '&quot;',
 }[character]));
-
-const normalizeText = (value = '') => String(value)
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .trim()
-  .toLowerCase();
 
 const entryHasSector = (entry = {}, sector = '') => (entry.setores || []).some((item) => normalizeText(item) === normalizeText(sector));
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
@@ -83,21 +78,19 @@ function sectorPageHtml({ retreat, sector, entries }) {
 }
 
 async function sendPublicSectorPage(req, res, retreatId, token) {
-  const id = decodeURIComponent(String(retreatId || '').trim());
-  const sectorToken = decodeURIComponent(String(token || '').trim());
-  const retreat = id ? await getRecord('retiros', id).catch(() => null) : null;
-  const link = (retreat?.linksSetores || retreat?.setorLinks || []).find((item) => item.token === sectorToken);
-  if (!retreat || !link) {
+  const sectorToken = decodeURIComponent(String(token || retreatId || '').trim());
+  const result = await findPublicSectorLink({ retreatId, token: sectorToken, type: 'acompanhamento' });
+  if (!result) {
     res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end('<!doctype html><html lang="pt-BR"><body><h1>Link nao encontrado</h1><p>Confira o link enviado pela equipe.</p></body></html>');
     return;
   }
-  const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === id && entryHasSector(entry, link.setor));
+  const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === result.retreatId && entryHasSector(entry, result.sector));
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
-  res.end(sectorPageHtml({ retreat, sector: link.setor, entries }));
+  res.end(sectorPageHtml({ retreat: result.retreat, sector: result.sector, entries }));
 }
 
 module.exports = { sectorPageHtml, sendPublicSectorPage };

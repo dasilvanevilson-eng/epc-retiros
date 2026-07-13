@@ -1,4 +1,4 @@
-const { getRecord } = require('./databaseAdapter');
+const { findPublicSectorLink } = require('./publicLinkResolver');
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({
   '&': '&amp;',
@@ -106,15 +106,12 @@ function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
 }
 
 async function sendPublicSectorInvitePage(req, res, retreatId, token) {
-  const id = decodeURIComponent(String(retreatId || '').trim());
-  const sectorToken = decodeURIComponent(String(token || '').trim());
+  const sectorToken = decodeURIComponent(String(token || retreatId || '').trim());
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
   const protocol = req.headers['x-forwarded-proto'] || (String(host).includes('localhost') ? 'http' : 'https');
   const origin = host ? `${protocol}://${host}` : '';
-  const retreat = id ? await getRecord('retiros', id).catch(() => null) : null;
-  const link = (retreat?.linksSetores || retreat?.setorLinks || []).find((item) => item.token === sectorToken);
-  const activeSector = link && (retreat.setores || []).find((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector));
-  if (!retreat || !link || !activeSector) {
+  const result = await findPublicSectorLink({ retreatId, token: sectorToken, type: 'cadastro' });
+  if (!result) {
     res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end('<!doctype html><html lang="pt-BR"><body><h1>Link nao encontrado</h1><p>Confira o link enviado pela equipe.</p></body></html>');
     return;
@@ -123,7 +120,7 @@ async function sendPublicSectorInvitePage(req, res, retreatId, token) {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
-  res.end(invitePageHtml({ retreat, sector: activeSector, retreatId: id, token: sectorToken, origin }));
+  res.end(invitePageHtml({ retreat: result.retreat, sector: result.sector, retreatId: result.retreatId, token: result.link.token, origin }));
 }
 
 module.exports = { invitePageHtml, sendPublicSectorInvitePage };

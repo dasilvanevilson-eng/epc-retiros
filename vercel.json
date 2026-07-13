@@ -15,7 +15,11 @@
   "routes": [
     { "src": "/adesao/(.*)", "dest": "/api/adesao.js?id=$1" },
     { "src": "/convite-setor/([^/]+)/([^/]+)", "dest": "/api/convite-setor.js?retiro=$1&token=$2" },
+    { "src": "/convite-setor/([^/]+)", "dest": "/api/convite-setor.js?token=$1" },
     { "src": "/setor/([^/]+)/([^/]+)", "dest": "/api/setor.js?retiro=$1&token=$2" },
+    { "src": "/setor/([^/]+)", "dest": "/api/setor.js?token=$1" },
+    { "src": "/recebedor-setor/([^/]+)/([^/]+)", "dest": "/api/recebedor-setor.js?retiro=$1&token=$2" },
+    { "src": "/recebedor-setor/([^/]+)", "dest": "/api/recebedor-setor.js?token=$1" },
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/epc-retiros", "dest": "/epc-retiros.html" },
