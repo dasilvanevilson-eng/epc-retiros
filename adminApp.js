@@ -904,7 +904,6 @@ async function renderRetreat(id) {
   const canDeleteRetreat = canAccess('retiros.excluir');
   const registeredStudents = (await dataService.listCursistas()).filter((student) => student.retiroId === id);
   const retreatEnrolments = validatedEnrolments(enrolments.filter((item) => item.retiroId === id));
-  const publicUrl = `${location.origin}/adesao/${encodeURIComponent(id)}`;
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
     ? await ensureSectorLinks(retreat)
@@ -1026,7 +1025,7 @@ async function renderRetreat(id) {
   const sortIndicator = (key) => participantSort.key === key ? (participantSort.direction === 'asc' ? '↑' : '↓') : '↕';
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="detail-actions"><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar link'}</button></div></section>
     ${retreatStatisticsHtml}
-    <section class="detail-grid"><article class="panel"><h2>Link de cadastro</h2><p class="hint">Envie este link somente após publicar o retiro.</p><div class="copy-field"><input readonly value="${publicUrl}"><button id="copy-link" type="button">Copiar</button></div></article></section>
+    <section class="detail-grid"></section>
     <section class="participants-panel panel"><button class="participants-toggle" id="toggle-participants" type="button">${participantsVisible ? 'Fechar visualização dos participantes' : 'Visualizar participantes'}</button>${participantsVisible ? `<div class="participants-content"><h3 class="participants-heading">Participantes</h3><div class="participants-column-heading"><button type="button" data-participant-sort="nome">Nome <span>${sortIndicator('nome')}</span></button><button type="button" data-participant-sort="setor">Setor de trabalho <span>${sortIndicator('setor')}</span></button></div><div class="participants-scroll">${retreatEnrolments.length ? sortedParticipants.map((entry) => `<a href="#pessoas/${entry.pessoaId}/${id}"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></a>`).join('') : '<p>Nenhum voluntário registrado.</p>'}</div></div>` : ''}</section>
     `, 'retiros');
   setupHomeStatTabs();
@@ -1079,7 +1078,6 @@ async function renderRetreat(id) {
       button.textContent = 'Excluir retiro';
     }
   });
-  app.querySelector('#copy-link')?.addEventListener('click', async () => { await navigator.clipboard.writeText(publicUrl); app.querySelector('#copy-link').textContent = 'Copiado!'; });
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);
     button.textContent = 'Copiado!';
