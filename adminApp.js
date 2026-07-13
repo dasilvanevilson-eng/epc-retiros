@@ -1392,6 +1392,22 @@ async function renderRecebedor() {
     });
     app.append(overlay);
   });
+  const askDeletePayment = (row) => new Promise((resolve) => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    let settled = false;
+    const finish = (confirmed) => {
+      if (settled) return;
+      settled = true;
+      overlay.remove();
+      resolve(confirmed);
+    };
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Excluir pagamento</p><h2>Confirmar exclusão</h2><p>Tem certeza que quer eliminar o pagamento de ${escapeHtml(row.nome)}?</p></div></div><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-delete-payment" class="delete-student">Confirmar</button></div></div>`;
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) finish(false); });
+    overlay.querySelector('.close-sector-view').addEventListener('click', () => finish(false));
+    overlay.querySelector('#confirm-delete-payment').addEventListener('click', () => finish(true));
+    app.append(overlay);
+  });
   app.querySelectorAll('[data-paid-entry]').forEach((input) => {
     input.addEventListener('focus', () => {
       const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
@@ -1414,7 +1430,7 @@ async function renderRecebedor() {
   app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {
     const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
     if (!row) return;
-    if (!input.checked && !confirm('Tem certeza que quer eliminar o pagamento')) {
+    if (!input.checked && !(await askDeletePayment(row))) {
       input.checked = true;
       return;
     }
@@ -3951,7 +3967,6 @@ document.addEventListener('focusin', (event) => { if (['telefone', 'spouseTelefo
 document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) return; const digits = event.target.value.replace(/\D/g, '').slice(0, 11); event.target.value = digits.length <= 10 ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`) : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`); });
 window.addEventListener('hashchange', route);
 route();
-
 
 
 
