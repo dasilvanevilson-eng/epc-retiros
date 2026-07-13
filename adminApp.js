@@ -259,7 +259,6 @@ const mergeEnrolmentsByParticipant = (items = []) => {
   });
 };
 const entryHasSector = (entry, sector) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores]).some((item) => normalizeText(item) === normalizeText(sector));
-const isSpaceKidsSector = (sector = '') => ['espaco kids', 'criancas espaco kids'].includes(normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
 const enrolmentValidationGroups = (items = []) => {
   const groupedCouples = new Set();
@@ -638,7 +637,6 @@ async function renderHome() {
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeEnrolments.flatMap((entry) => entry.setores || [])]))
-    .filter((sector) => !isSpaceKidsSector(sector))
     .map((sector) => [sector, activeEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
   const dayCount = (day) => activeEnrolments.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
@@ -982,7 +980,6 @@ async function renderRetreat(id) {
   const activeEntries = enrolments.filter((item) => item.retiroId === id);
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const sectorCounts = sortSectors(uniqueSectors([...(retreat.setores || []), ...retreatEnrolments.flatMap((entry) => entry.setores || [])]))
-    .filter((sector) => !isSpaceKidsSector(sector))
     .map((sector) => [sector, retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || retreat.setores?.includes(sector));
   const intoleranceStudents = registeredStudents
