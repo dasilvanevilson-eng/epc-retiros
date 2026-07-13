@@ -31,26 +31,35 @@ function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <style>
       *{box-sizing:border-box}
-      body{min-height:100vh;margin:0;display:grid;place-items:center;padding:20px;background:#eef4ee;color:#26382c;font-family:Arial,sans-serif}
-      .invite-card{width:min(440px,100%);padding:28px;border:1px solid #d9cdb7;border-radius:16px;background:#fffdf7;box-shadow:0 22px 60px rgba(54,80,57,.18);text-align:center}
-      .invite-card .eyebrow{margin:0 0 10px;color:#47724e;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-      .invite-card h1{margin:0;color:#203c26;font-family:Georgia,serif;font-size:clamp(25px,7vw,34px);line-height:1.08}
-      .invite-card p{margin:14px 0 0;color:#68746b;font-size:15px;line-height:1.5}
-      .invite-sector{display:block;margin:18px 0 0;padding:12px;border:1px solid #dfe6dc;border-radius:10px;background:#f6faf3;color:#285130;font-weight:800}
-      .invite-button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;margin-top:24px;padding:12px 22px;border-radius:8px;background:#47724e;color:#fff;font-weight:800;text-decoration:none;box-shadow:0 10px 22px rgba(71,114,78,.24)}
+      body{min-height:100vh;margin:0;display:grid;place-items:center;padding:18px;background:#eaf2ea;color:#26382c;font-family:Arial,sans-serif}
+      .invite-card{width:min(480px,100%);overflow:hidden;border:1px solid #d9cdb7;border-radius:18px;background:#fffdf7;box-shadow:0 24px 70px rgba(54,80,57,.2)}
+      .invite-top{padding:18px 24px;background:#47724e;color:#fff;text-align:center}
+      .invite-top .eyebrow{margin:0;color:#eaf4e8;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+      .invite-body{padding:26px 26px 28px;text-align:center}
+      .invite-mark{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 14px;border-radius:50%;background:#edf5e9;color:#285130;font-family:Georgia,serif;font-size:22px;font-weight:800}
+      .invite-card h1{margin:0;color:#203c26;font-family:Georgia,serif;font-size:clamp(26px,7vw,36px);line-height:1.05}
+      .invite-card p{margin:13px 0 0;color:#68746b;font-size:15px;line-height:1.5}
+      .invite-retreat{display:block;margin-top:8px;color:#203c26;font-weight:800}
+      .invite-sector{display:block;margin:18px 0 0;padding:13px 14px;border:1px solid #dfe6dc;border-radius:10px;background:#f6faf3;color:#285130;font-size:18px;font-weight:900}
+      .invite-button{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:50px;margin-top:24px;padding:13px 22px;border-radius:8px;background:#47724e;color:#fff;font-size:16px;font-weight:900;text-decoration:none;box-shadow:0 10px 22px rgba(71,114,78,.24)}
       .invite-button:hover{background:#365e3e}
-      .invite-note{margin-top:14px;font-size:12px;color:#68746b}
+      .invite-note{margin-top:13px;font-size:12px;color:#68746b}
     </style>
   </head>
   <body>
     <main class="invite-card" aria-labelledby="invite-title">
-      <p class="eyebrow">Equipe de trabalho</p>
-      <h1 id="invite-title">Ficha de inscrição</h1>
-      <p>Ficha de inscrição para o setor</p>
-      <strong class="invite-sector">${escapeHtml(sector)}</strong>
-      <p>para o ${escapeHtml(retreat.nome || 'retiro')}.</p>
-      <a class="invite-button" href="${escapeHtml(registrationUrl)}">Clique aqui</a>
-      <p class="invite-note">O formulário abrirá somente com este setor disponível.</p>
+      <header class="invite-top">
+        <p class="eyebrow">Equipe de trabalho</p>
+      </header>
+      <section class="invite-body">
+        <div class="invite-mark" aria-hidden="true">EPC</div>
+        <h1 id="invite-title">Ficha de inscrição</h1>
+        <p>Você foi convidado(a) para servir no setor</p>
+        <strong class="invite-sector">${escapeHtml(sector)}</strong>
+        <p>no retiro <span class="invite-retreat">${escapeHtml(retreat.nome || 'retiro')}</span></p>
+        <a class="invite-button" href="${escapeHtml(registrationUrl)}">Acessar cadastro</a>
+        <p class="invite-note">O formulário abrirá somente com este setor disponível.</p>
+      </section>
     </main>
   </body>
 </html>`;
