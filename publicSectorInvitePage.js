@@ -14,10 +14,19 @@ const normalizeText = (value = '') => String(value)
   .trim()
   .toLowerCase();
 
+const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaco kids', 'espiritual', 'externo', 'refeitorio', 'secretaria', 'zeladoria']);
+const sectorArea = (sector = '') => hiddenTeamSectors.has(normalizeText(sector)) ? 'escondida' : 'sala';
+
 function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
   const baseOrigin = String(origin || '').replace(/\/$/, '');
   const registrationUrl = `${baseOrigin}/adesao/${encodeURIComponent(retreatId)}?setor=${encodeURIComponent(token)}`;
   const title = `Ficha de inscricao para o setor ${sector} para o ${retreat.nome || 'retiro'}`;
+  const isHiddenTeam = sectorArea(sector) === 'escondida';
+  const warningLabel = isHiddenTeam ? 'Equipe escondida' : 'Equipe Sala';
+  const warningTitle = isHiddenTeam ? 'Atenção, querido(a) servo(a) do Senhor!!' : 'Querido servo do Senhor';
+  const warningText = isHiddenTeam
+    ? 'Servindo neste setor, você deve <span class="invite-danger">TOMAR O MÁXIMO DE CUIDADO PARA NÃO SER VISTO POR NENHUM CURSISTA</span>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.'
+    : 'Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.';
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -44,6 +53,14 @@ function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
       .invite-button{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:50px;margin-top:24px;padding:13px 22px;border-radius:8px;background:#47724e;color:#fff;font-size:16px;font-weight:900;text-decoration:none;box-shadow:0 10px 22px rgba(71,114,78,.24)}
       .invite-button:hover{background:#365e3e}
       .invite-note{margin-top:13px;font-size:12px;color:#68746b}
+      .invite-warning-overlay{position:fixed;inset:0;display:none;place-items:center;padding:18px;background:rgba(38,56,44,.6)}
+      .invite-warning-overlay.is-open{display:grid}
+      .invite-warning-dialog{width:min(460px,100%);padding:24px;border-radius:16px;background:#fffdf7;box-shadow:0 24px 70px rgba(0,0,0,.28);text-align:center}
+      .invite-warning-dialog h2{margin:0;color:#203c26;font-family:Georgia,serif;font-size:26px;line-height:1.1}
+      .invite-warning-dialog p{margin:12px 0 0;color:#68746b;line-height:1.5}
+      .invite-warning-dialog .eyebrow{margin:0 0 10px;color:#47724e;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+      .invite-warning-dialog button{width:100%;min-height:46px;margin-top:20px;border:0;border-radius:8px;background:#47724e;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+      .invite-danger{color:#b94137;font-weight:900}
     </style>
   </head>
   <body>
@@ -57,10 +74,33 @@ function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
         <p>Você foi convidado(a) para servir no setor</p>
         <strong class="invite-sector">${escapeHtml(sector)}</strong>
         <p>no retiro <span class="invite-retreat">${escapeHtml(retreat.nome || 'retiro')}</span></p>
-        <a class="invite-button" href="${escapeHtml(registrationUrl)}">Acessar cadastro</a>
+        <a class="invite-button" id="access-registration" href="${escapeHtml(registrationUrl)}">Acessar cadastro</a>
         <p class="invite-note">O formulário abrirá somente com este setor disponível.</p>
       </section>
     </main>
+    <section class="invite-warning-overlay" id="sector-warning" aria-hidden="true">
+      <div class="invite-warning-dialog" role="dialog" aria-modal="true" aria-labelledby="sector-warning-title">
+        <p class="eyebrow">${escapeHtml(warningLabel)}</p>
+        <h2 id="sector-warning-title">${escapeHtml(warningTitle)}</h2>
+        <p>${warningText}</p>
+        <button type="button" id="continue-registration">Li e entendi</button>
+      </div>
+    </section>
+    <script>
+      const registrationUrl = ${JSON.stringify(registrationUrl)};
+      const accessButton = document.getElementById('access-registration');
+      const warning = document.getElementById('sector-warning');
+      const continueButton = document.getElementById('continue-registration');
+      accessButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        warning.classList.add('is-open');
+        warning.setAttribute('aria-hidden', 'false');
+        continueButton.focus();
+      });
+      continueButton.addEventListener('click', () => {
+        location.href = registrationUrl;
+      });
+    </script>
   </body>
 </html>`;
 }

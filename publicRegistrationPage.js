@@ -24,9 +24,9 @@ function pageHtml(retreatId, retreat, origin = '') {
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <link rel="canonical" href="${escapeHtml(canonical)}" />
-    <link rel="stylesheet" href="/styles.css?v=20260713-convite-setor" />
+    <link rel="stylesheet" href="/styles.css?v=20260713-setor-oculto" />
   </head>
-  <body><div id="app"></div><script type="module" src="/adminApp.js?v=20260713-convite-setor"></script></body>
+  <body><div id="app"></div><script type="module" src="/adminApp.js?v=20260713-setor-oculto"></script></body>
 </html>`;
 }
 
