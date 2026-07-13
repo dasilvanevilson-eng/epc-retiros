@@ -71,11 +71,10 @@ function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
       <section class="invite-body">
         <div class="invite-mark" aria-hidden="true">EPC</div>
         <h1 id="invite-title">Ficha de inscrição</h1>
-        <p>Você foi convidado(a) para servir no setor</p>
+        <p>Setor</p>
         <strong class="invite-sector">${escapeHtml(sector)}</strong>
         <p>no retiro <span class="invite-retreat">${escapeHtml(retreat.nome || 'retiro')}</span></p>
         <a class="invite-button" id="access-registration" href="${escapeHtml(registrationUrl)}">Acessar cadastro</a>
-        <p class="invite-note">O formulário abrirá somente com este setor disponível.</p>
       </section>
     </main>
     <section class="invite-warning-overlay" id="sector-warning" aria-hidden="true">
