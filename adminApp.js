@@ -1284,16 +1284,21 @@ async function renderRecebedor() {
   const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.recebedorValorPago) : parseCurrency(entry.valorPago);
   const entryPaidStatus = (entry) => entry.tipoFinanceiro === 'cursista' ? Boolean(entry.recebedorTaxaPaga) : Boolean(entry.taxaPaga);
   const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.recebedorFormaPagamento || '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
-  const setEntryPayment = (entry, value, checked, paymentMethod = '') => {
+  const entryPaymentObservation = (entry) => entry.recebedorObservacao || '';
+  const setEntryPayment = (entry, value, checked, paymentMethod = '', observation) => {
     if (entry.tipoFinanceiro === 'cursista') {
       entry.recebedorValorPago = value;
       entry.recebedorTaxaPaga = checked;
       entry.recebedorFormaPagamento = checked ? paymentMethod : '';
+      if (!checked) entry.recebedorObservacao = '';
+      else if (observation !== undefined) entry.recebedorObservacao = observation;
       return;
     }
     entry.valorPago = value;
     entry.taxaPaga = checked;
     entry.formaPagamento = checked ? paymentMethod : '';
+    if (!checked) entry.recebedorObservacao = '';
+    else if (observation !== undefined) entry.recebedorObservacao = observation;
   };
   const saveFinancialEntry = async (entry) => {
     if (entry.tipoFinanceiro === 'cursista') {
@@ -1339,6 +1344,7 @@ async function renderRecebedor() {
   const rowPaidStatus = (row) => row.entries.every(entryPaidStatus);
   const rowHasPayment = (row) => rowPaid(row) > 0;
   const rowPaymentMethod = (row) => row.entries.map(entryPaymentMethod).find(Boolean) || '';
+  const rowPaymentObservation = (row) => row.entries.map(entryPaymentObservation).find(Boolean) || '';
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
   const rowMatchesSectorFilter = (row) => !receiverSectorFilter || rowHasSector(row, receiverSectorFilter);
   const paymentFilterOptions = [
@@ -1391,6 +1397,8 @@ async function renderRecebedor() {
     setores: row.setores || [],
     valorSugerido: rowSuggested(row),
     valorPago: rowPaid(row),
+    formaPagamento: rowPaymentMethod(row),
+    observacao: rowPaymentObservation(row),
   }));
   const reportTitle = `Relatório do Recebedor - ${retreat.nome}`;
   const reportSectors = [...new Set(receiverRows.flatMap((row) => row.setores || []))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
@@ -1403,8 +1411,12 @@ async function renderRecebedor() {
   });
   const reportIndicator = (sort, key) => sort.key === key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportHeader = (label, key, sort, interactive) => interactive ? `<button type="button" data-receiver-report-sort="${key}">${label} <span>${reportIndicator(sort, key)}</span></button>` : `${label}`;
-  const receiverReportTable = (sort = reportInitialSort, interactive = false, sector = '') => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort, sector).map((row) => `<tr><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
-  const receiverReportDocument = (sort = reportInitialSort, sector = '') => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>${sector ? `Setor: ${escapeHtml(sector)} · ` : ''}Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable(sort, false, sector)}</body></html>`;
+  const receiverReportNameCell = (row) => {
+    const note = [row.formaPagamento ? `Forma: ${row.formaPagamento}` : '', row.observacao ? `Obs.: ${row.observacao}` : ''].filter(Boolean).join(' · ');
+    return `<strong>${escapeHtml(row.nome)}</strong>${note ? `<small class="receiver-report-payment-note">${escapeHtml(note)}</small>` : ''}`;
+  };
+  const receiverReportTable = (sort = reportInitialSort, interactive = false, sector = '') => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort, sector).map((row) => `<tr><td>${receiverReportNameCell(row)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
+  const receiverReportDocument = (sort = reportInitialSort, sector = '') => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(reportTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){width:105px;white-space:nowrap;font-weight:700}.receiver-report-payment-note{display:block;margin-top:3px;color:#667268;font-size:10px;font-weight:400;line-height:1.25}</style></head><body><h1>${escapeHtml(reportTitle)}</h1><p>${sector ? `Setor: ${escapeHtml(sector)} · ` : ''}Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${receiverReportTable(sort, false, sector)}</body></html>`;
   const printReceiverReport = (pdf = false, sort = reportInitialSort, sector = '') => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
@@ -1513,14 +1525,25 @@ async function renderRecebedor() {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
     const currentMethod = rowPaymentMethod(row);
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(row.nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
-    const close = () => { overlay.remove(); resolve(''); };
+    const currentObservation = rowPaymentObservation(row);
+    const observationMethods = new Set(['Pix', 'Acerto']);
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(row.nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><label class="field receiver-payment-observation" ${observationMethods.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    const observationField = overlay.querySelector('.receiver-payment-observation');
+    const observationInput = overlay.querySelector('#receiver-payment-observation');
+    const toggleObservation = () => {
+      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
+      observationField.hidden = !observationMethods.has(selectedMethod);
+      if (observationField.hidden) observationInput.value = '';
+    };
+    const close = () => { overlay.remove(); resolve(null); };
     overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', close);
     overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
       overlay.querySelector('#confirm-receiver-payment').disabled = false;
       overlay.querySelector('[data-payment-method-message]').textContent = '';
+      toggleObservation();
     }));
+    toggleObservation();
     overlay.querySelector('#confirm-receiver-payment').addEventListener('click', () => {
       const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
       if (!selectedMethod) {
@@ -1528,7 +1551,7 @@ async function renderRecebedor() {
         return;
       }
       overlay.remove();
-      resolve(selectedMethod);
+      resolve({ method: selectedMethod, observation: observationInput.value.trim() });
     });
     app.append(overlay);
   });
@@ -1578,13 +1601,13 @@ async function renderRecebedor() {
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
     const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
-    const paymentMethod = input.checked ? await askPaymentMethod(row, total) : '';
-    if (input.checked && !paymentMethod) {
+    const paymentDetails = input.checked ? await askPaymentMethod(row, total) : null;
+    if (input.checked && !paymentDetails?.method) {
       input.checked = false;
       return;
     }
     await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-      setEntryPayment(entry, value, input.checked, paymentMethod);
+      setEntryPayment(entry, value, input.checked, paymentDetails?.method || '', paymentDetails?.observation || '');
       return saveFinancialEntry(entry);
     }));
     await loadData();
