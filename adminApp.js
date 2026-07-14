@@ -1399,6 +1399,8 @@ async function renderRecebedor() {
     setores: row.setores || [],
     valorSugerido: rowSuggested(row),
     valorPago: rowPaid(row),
+    pagoMais: Math.max(0, rowPaid(row) - rowSuggested(row)),
+    pagoMenos: Math.max(0, rowSuggested(row) - rowPaid(row)),
     formaPagamento: rowPaymentMethod(row),
     observacao: rowPaymentObservation(row),
   }));
@@ -1431,18 +1433,19 @@ async function renderRecebedor() {
       printWindow.print();
     }, 250);
   };
-  const downloadReceiverSpreadsheet = (sort = reportInitialSort, sector = '') => {
-    const headers = ['Nome', 'Valor sugerido', 'Valor pago'];
+  const downloadReceiverSpreadsheet = () => {
+    const headers = ['Nome', 'Valor sugerido', 'Valor pago', 'Pago a mais', 'Pago a menos', 'Forma de pagamento', 'Observação'];
     const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       headers.map(csvValue).join(';'),
-      ...sortReceiverReportRows(sort, sector).map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago)].map(csvValue).join(';')),
+      ...receiverReportRows.map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago), currency(row.pagoMais), currency(row.pagoMenos), row.formaPagamento, row.observacao].map(csvValue).join(';')),
     ];
     const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    const sectorSuffix = sector ? `-${normalizeText(sector).replace(/\s+/g, '-')}` : '';
-    link.download = `${normalizeText(retreat.nome || 'relatorio-recebedor').replace(/\s+/g, '-') || 'relatorio-recebedor'}-recebedor${sectorSuffix}.csv`;
+    const sectorSuffix = receiverSectorFilter ? `-${normalizeText(receiverSectorFilter).replace(/\s+/g, '-')}` : '';
+    const paymentSuffix = receiverPaymentFilter ? `-${normalizeText(paymentFilterLabel).replace(/\s+/g, '-')}` : '';
+    link.download = `${normalizeText(retreat.nome || 'relatorio-recebedor').replace(/\s+/g, '-') || 'relatorio-recebedor'}-recebedor${sectorSuffix}${paymentSuffix}.csv`;
     document.body.append(link);
     link.click();
     URL.revokeObjectURL(link.href);
@@ -1452,7 +1455,7 @@ async function renderRecebedor() {
   const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   const sectorFilterLabel = receiverSectorFilter ? `: ${escapeHtml(receiverSectorFilter)}` : '';
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
-  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><div class="receiver-view-options"><button type="button" id="receiver-by-sector" class="${receiverSectorFilter ? 'is-selected' : ''}">Buscar setor${sectorFilterLabel}</button><button type="button" id="receiver-by-payment" class="${receiverPaymentFilter ? 'is-selected' : ''}">Pagamentos${paymentFilterLabel ? `: ${escapeHtml(paymentFilterLabel)}` : ''}</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-print-preview" class="receiver-icon-button" aria-label="Pré-visualizar relatório" title="Pré-visualizar relatório">🖨</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}">${receiverNameCell(row)}<span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input class="${rowPaymentState(row)}" data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check${rowHasPayment(row) ? ' has-payment' : ''}"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''} ${rowHasPayment(row) && !rowPaidStatus(row) ? 'data-partial-payment="true"' : ''}><span>Pago</span></label></div>`).join('') : `<p class="empty-state">${receiverEmptyMessage}</p>`}</div></section>`, 'recebedor');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section><div class="receiver-view-options"><button type="button" id="receiver-by-sector" class="${receiverSectorFilter ? 'is-selected' : ''}">Buscar setor${sectorFilterLabel}</button><button type="button" id="receiver-by-payment" class="${receiverPaymentFilter ? 'is-selected' : ''}">Pagamentos${paymentFilterLabel ? `: ${escapeHtml(paymentFilterLabel)}` : ''}</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-download-sheet">Gerar planilha</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Valor sugerido <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}">${receiverNameCell(row)}<span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input class="${rowPaymentState(row)}" data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check${rowHasPayment(row) ? ' has-payment' : ''}"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''} ${rowHasPayment(row) && !rowPaidStatus(row) ? 'data-partial-payment="true"' : ''}><span>Pago</span></label></div>`).join('') : `<p class="empty-state">${receiverEmptyMessage}</p>`}</div></section>`, 'recebedor');
   app.querySelector('#receiver-show-panel').addEventListener('click', () => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
@@ -1474,33 +1477,7 @@ async function renderRecebedor() {
     }));
     app.append(overlay);
   });
-  app.querySelector('#receiver-print-preview').addEventListener('click', () => {
-    const overlay = document.createElement('section');
-    overlay.className = 'receiver-sector-overlay';
-    let currentReportSort = { ...reportInitialSort };
-    let currentReportSector = '';
-    const reportSectorOptions = `<option value="">Todos os setores</option>${reportSectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join('')}`;
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog"><div class="panel-heading"><div><p class="eyebrow">Pré-visualização</p><h2>${escapeHtml(reportTitle)}</h2><p>Confira os dados antes de imprimir, salvar em PDF ou gerar a planilha.</p></div></div><label class="field receiver-report-sector"><span>Setor</span><select id="receiver-report-sector">${reportSectorOptions}</select></label><div id="receiver-report-table-mount">${receiverReportTable(currentReportSort, true, currentReportSector)}</div><div class="receiver-report-actions"><button type="button" id="receiver-report-print">Imprimir</button><button type="button" id="receiver-report-pdf">Salvar como PDF</button><button type="button" id="receiver-report-sheet">Gerar planilha eletrônica</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
-    const renderReportTable = () => {
-      overlay.querySelector('#receiver-report-table-mount').innerHTML = receiverReportTable(currentReportSort, true, currentReportSector);
-      overlay.querySelectorAll('[data-receiver-report-sort]').forEach((button) => button.addEventListener('click', () => {
-        const key = button.dataset.receiverReportSort;
-        currentReportSort = { key, direction: currentReportSort.key === key && currentReportSort.direction === 'asc' ? 'desc' : 'asc' };
-        renderReportTable();
-      }));
-    };
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
-    overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#receiver-report-sector').addEventListener('change', (event) => {
-      currentReportSector = event.target.value;
-      renderReportTable();
-    });
-    overlay.querySelector('#receiver-report-print').addEventListener('click', () => printReceiverReport(false, currentReportSort, currentReportSector));
-    overlay.querySelector('#receiver-report-pdf').addEventListener('click', () => printReceiverReport(true, currentReportSort, currentReportSector));
-    overlay.querySelector('#receiver-report-sheet').addEventListener('click', () => downloadReceiverSpreadsheet(currentReportSort, currentReportSector));
-    renderReportTable();
-    app.append(overlay);
-  });
+  app.querySelector('#receiver-download-sheet').addEventListener('click', downloadReceiverSpreadsheet);
   app.querySelector('#receiver-by-sector').addEventListener('click', () => {
     const sectors = [...new Set(receiverRows.flatMap((row) => row.setores))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
