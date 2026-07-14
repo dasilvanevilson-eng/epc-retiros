@@ -150,7 +150,7 @@ async function handleApi(req, res, pathname) {
 
   const publicRegistrationRequest = isPublicRegistrationRequest(resource, id, req);
   const session = readSession(req);
-  if (!session && await handlePublicReceiverRequest(req, res, resource, id)) return;
+  if (await handlePublicReceiverRequest(req, res, resource, id)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
 
   if (resource === 'access' && req.method === 'GET') {
