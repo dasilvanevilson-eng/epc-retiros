@@ -453,8 +453,16 @@ function ageFromBirthAt(dateOfBirth, reference = new Date()) {
   return Number.isFinite(age) ? age : null;
 }
 
+function kidBirthDateReadyForAgeCheck(value) {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return '';
+  const year = Number(normalized.slice(0, 4));
+  const currentYear = new Date().getFullYear();
+  return year >= 1900 && year <= currentYear ? normalized : '';
+}
+
 function kidExceedsRetreatAgeLimit(retreat, dateOfBirth) {
-  const normalizedBirth = normalizeDateInput(dateOfBirth);
+  const normalizedBirth = kidBirthDateReadyForAgeCheck(dateOfBirth);
   const limit = Number(retreat?.idadeMaximaEspacoKids);
   if (!normalizedBirth || !Number.isFinite(limit) || limit <= 0) return false;
   const reference = retreat?.dataInicio ? new Date(`${retreat.dataInicio}T12:00:00`) : new Date();
@@ -2876,7 +2884,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     if (Number(retreat.idadeMaximaEspacoKids) <= 0) return null;
     for (let index = 1; index <= 5; index += 1) {
       const control = source.elements[`kidNascimento${index}`];
-      const normalizedBirth = normalizeDateInput(control?.value);
+      const normalizedBirth = kidBirthDateReadyForAgeCheck(control?.value);
       if (!control || control.disabled || !normalizedBirth) continue;
       if (kidExceedsRetreatAgeLimit(retreat, normalizedBirth)) return { index, control };
     }
