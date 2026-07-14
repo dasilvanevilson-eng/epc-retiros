@@ -444,6 +444,23 @@ function ageFromBirth(dateOfBirth) {
   return Number.isFinite(age) ? age : null;
 }
 
+function ageFromBirthAt(dateOfBirth, reference = new Date()) {
+  if (!dateOfBirth) return null;
+  const birth = new Date(`${dateOfBirth}T12:00:00`);
+  const target = reference instanceof Date && Number.isFinite(reference.getTime()) ? reference : new Date();
+  let age = target.getFullYear() - birth.getFullYear();
+  if (target < new Date(target.getFullYear(), birth.getMonth(), birth.getDate())) age -= 1;
+  return Number.isFinite(age) ? age : null;
+}
+
+function kidExceedsRetreatAgeLimit(retreat, dateOfBirth) {
+  const limit = Number(retreat?.idadeMaximaEspacoKids);
+  if (!dateOfBirth || !Number.isFinite(limit) || limit <= 0) return false;
+  const reference = retreat?.dataInicio ? new Date(`${retreat.dataInicio}T12:00:00`) : new Date();
+  const age = ageFromBirthAt(dateOfBirth, reference);
+  return age !== null && age > limit;
+}
+
 function ageInYearsAndMonths(dateOfBirth) {
   if (!dateOfBirth) return 'Data não informada';
   const birth = new Date(`${dateOfBirth}T12:00:00`); const today = new Date();
@@ -2853,6 +2870,16 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     ? `<input type="hidden" name="setores" value="${escapeHtml(forcedSector)}">`
     : `<section class="form-section"><div class="section-heading"><span>05</span><div><h2>Setor de trabalho <b>*</b></h2></div></div><div class="choice-block">${publicSectors}${sectorCoordinatorOption}</div></section>`;
   const kidsAgeLimitHint = Number(retreat.idadeMaximaEspacoKids) > 0 ? ` Idade máxima: ${Number(retreat.idadeMaximaEspacoKids)} ano(s).` : '';
+  const kidsAgeLimitMessage = 'A idade da criança supera a idade máxima para ocupar o espaço kids neste retiro. Por gentileza consulte a coordenação';
+  const kidAgeLimitViolation = (source) => {
+    if (Number(retreat.idadeMaximaEspacoKids) <= 0) return null;
+    for (let index = 1; index <= 5; index += 1) {
+      const control = source.elements[`kidNascimento${index}`];
+      if (!control || control.disabled || !control.value) continue;
+      if (kidExceedsRetreatAgeLimit(retreat, control.value)) return { index, control };
+    }
+    return null;
+  };
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
@@ -3589,6 +3616,11 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   });
   form.addEventListener('change', async (event) => {
     event.target.closest('.field, .choice-block, .form-section')?.classList.remove('field-warning');
+    if (/^kidNascimento\d+$/.test(event.target.name || '') && kidAgeLimitViolation(form)?.control === event.target) {
+      alert(kidsAgeLimitMessage);
+      if (!embedded) form.querySelector('#form-message')?.replaceChildren(kidsAgeLimitMessage);
+      return;
+    }
     if (event.target.name === 'tipoFicha') {
       if (newRecordNeedsType) setNewRecordTypeLock(false);
       setCoupleMode(event.target.value === 'Casal');
@@ -3661,11 +3693,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
+    const ageLimitViolation = !kidsNotNeeded ? kidAgeLimitViolation(source) : null;
+    const blocksKidAgeLimit = !embedded && ageLimitViolation;
     const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && spouseDaysComplete && spouseDays.length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
     const missingRequired = required.filter((name) => !data.get(name));
-    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && spouseValid && volunteerTermAccepted;
+    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !blocksKidAgeLimit && spouseValid && volunteerTermAccepted;
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', quadrante: 'quadrante impresso', foto: 'foto oficial do retiro', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
       const missing = [
@@ -3681,6 +3715,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       else if (!days.length) message = 'Em Dias confirmados para trabalhar, confirme pelo menos um dia com Sim.';
       else if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
       else if (hasIncompleteKid) message = 'No Espaço Kids, preencha nome e data de nascimento de cada criança informada.';
+      else if (blocksKidAgeLimit) message = kidsAgeLimitMessage;
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
       else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
       source.querySelector('#form-message')?.replaceChildren(message);
@@ -3692,11 +3727,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         requireSector && !sectors.length ? firstByName('setores') : null,
         !hasKidsChoice ? firstByName('kidsNotNeeded') || firstByName('kidNome1') : null,
         hasIncompleteKid ? firstIncompleteKid() : null,
+        blocksKidAgeLimit ? ageLimitViolation.control : null,
         !volunteerTermAccepted ? source.querySelector('#read-volunteer-term') : null,
         isCouple() && !spouseValid ? firstByName(firstSpouseMissing()) : null,
       ].filter(Boolean);
       const nextControl = candidateControls.sort((first, second) => first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1)[0];
       focusControl(nextControl);
+      if (blocksKidAgeLimit) alert(kidsAgeLimitMessage);
     }
     return valid;
   };
@@ -3768,6 +3805,9 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       syncContributionAmount();
       if (!validateForm(form)) {
         return;
+      }
+      if (embedded && kidAgeLimitViolation(form)) {
+        alert(kidsAgeLimitMessage);
       }
       if (await blockPublicCpfIssues()) {
         return;
