@@ -1341,6 +1341,7 @@ async function renderRecebedor() {
   const rowPaymentMethod = (row) => row.entries.map(entryPaymentMethod).find(Boolean) || '';
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
   const paymentFilterOptions = [
+    { id: '', label: 'Mostrar tudo' },
     { id: 'overpaid', label: 'Pago a maior' },
     { id: 'underpaid', label: 'Pago a Menor' },
     { id: 'open', label: 'Em aberto' },
@@ -1435,14 +1436,9 @@ async function renderRecebedor() {
   app.querySelector('#receiver-by-payment').addEventListener('click', () => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Pagamentos</p><h2>Escolha um filtro</h2><p>Serão exibidos os registros da lista que se encaixam na situação selecionada.</p></div></div><div class="receiver-sector-list">${paymentFilterOptions.map((option) => `<button type="button" data-receiver-payment-filter="${escapeHtml(option.id)}" class="${receiverPaymentFilter === option.id ? 'is-selected' : ''}"><strong>${escapeHtml(option.label)}</strong><span>${receiverRows.filter((row) => rowMatchesPaymentFilter(row, option.id)).length} registro(s)</span></button>`).join('')}</div><div class="form-actions">${receiverPaymentFilter ? '<button type="button" id="clear-receiver-payment-filter">Limpar filtro</button>' : ''}<button type="button" class="close-sector-view">Fechar</button></div></div>`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Pagamentos</p><h2>Escolha um filtro</h2><p>Serão exibidos os registros da lista que se encaixam na situação selecionada.</p></div></div><div class="receiver-sector-list">${paymentFilterOptions.map((option) => `<button type="button" data-receiver-payment-filter="${escapeHtml(option.id)}" class="${receiverPaymentFilter === option.id ? 'is-selected' : ''}"><strong>${escapeHtml(option.label)}</strong><span>${receiverRows.filter((row) => rowMatchesPaymentFilter(row, option.id)).length} registro(s)</span></button>`).join('')}</div><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button></div></div>`;
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#clear-receiver-payment-filter')?.addEventListener('click', () => {
-      receiverPaymentFilter = '';
-      overlay.remove();
-      renderRecebedor();
-    });
     overlay.querySelectorAll('[data-receiver-payment-filter]').forEach((button) => button.addEventListener('click', () => {
       receiverPaymentFilter = button.dataset.receiverPaymentFilter;
       overlay.remove();
