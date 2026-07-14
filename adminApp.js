@@ -1252,7 +1252,20 @@ async function renderEditRetreat(id) {
 
 function suggestedAmount(value) { const match = String(value || '').replace('.', '').match(/(\d+(?:,\d{1,2})?)/); return match ? Number(match[1].replace(',', '.')) : 0; }
 function currency(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0); }
-function parseCurrency(value) { return Number(String(value || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0; }
+function parseCurrency(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const raw = String(value || '').replace(/[^\d,.-]/g, '');
+  if (!raw) return 0;
+  const hasComma = raw.includes(',');
+  const hasDot = raw.includes('.');
+  if (hasComma) return Number(raw.replace(/\./g, '').replace(',', '.')) || 0;
+  if (hasDot) {
+    const parts = raw.split('.');
+    const decimalLike = parts.length === 2 && parts[1].length > 0 && parts[1].length <= 2;
+    return Number(decimalLike ? raw : raw.replace(/\./g, '')) || 0;
+  }
+  return Number(raw) || 0;
+}
 function volunteerContributionAmount(retreat = {}, entry = {}) {
   const baseAmount = Number(retreat.valorInscricaoVoluntario) || 0;
   const photoAmount = normalizeText(entry.foto) === 'sim' ? Number(retreat.valorFoto ?? 10) || 0 : 0;

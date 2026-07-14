@@ -53,7 +53,7 @@ async function main() {
     ok: Boolean(retreatId),
     database: connection.database,
     retiro: retreat?.nome || null,
-    retiroId,
+    retiroId: retreatId,
     pessoasEquipe: people.filter((item) => item.simulation === marker).length,
     adesoes: enrolments.filter((item) => item.retiroId === retreatId).length,
     cursistas: students.filter((item) => item.retiroId === retreatId).length,
