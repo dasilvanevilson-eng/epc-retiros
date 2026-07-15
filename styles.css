@@ -4572,3 +4572,21 @@ body:has(.login-shell) {
     width:100%;
   }
 }
+
+.team-message-form {
+  max-width:980px;
+  margin-right:auto;
+  margin-left:auto;
+}
+
+.team-message-list {
+  display:grid;
+  gap:16px;
+  margin-top:24px;
+}
+
+.team-message-field textarea {
+  min-height:118px;
+  resize:vertical;
+  line-height:1.45;
+}

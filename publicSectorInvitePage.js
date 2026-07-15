@@ -1,4 +1,5 @@
 const { findPublicSectorLink } = require('./publicLinkResolver');
+const { getRecord } = require('./databaseAdapter');
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({
   '&': '&amp;',
@@ -16,17 +17,21 @@ const normalizeText = (value = '') => String(value)
 
 const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaco kids', 'espiritual', 'externo', 'refeitorio', 'secretaria', 'zeladoria']);
 const sectorArea = (sector = '') => hiddenTeamSectors.has(normalizeText(sector)) ? 'escondida' : 'sala';
+const teamMessageConfigId = (retreatId) => `recado-equipe:${retreatId}`;
+const messageHtml = (value = '') => escapeHtml(value).replace(/\r?\n/g, '<br>');
 
-function invitePageHtml({ retreat, sector, retreatId, token, origin = '' }) {
+function invitePageHtml({ retreat, sector, retreatId, token, origin = '', teamMessage = '' }) {
   const baseOrigin = String(origin || '').replace(/\/$/, '');
   const registrationUrl = `${baseOrigin}/adesao/${encodeURIComponent(retreatId)}?setor=${encodeURIComponent(token)}`;
   const title = `Ficha de inscricao para o setor ${sector} para o ${retreat.nome || 'retiro'}`;
   const isHiddenTeam = sectorArea(sector) === 'escondida';
   const warningLabel = isHiddenTeam ? 'Equipe escondida' : 'Equipe Sala';
   const warningTitle = isHiddenTeam ? 'Atenção, querido(a) servo(a) do Senhor!!' : 'Querido servo do Senhor';
-  const warningText = isHiddenTeam
+  const defaultWarningText = isHiddenTeam
     ? 'Servindo neste setor, você deve <span class="invite-danger">TOMAR O MÁXIMO DE CUIDADO PARA NÃO SER VISTO POR NENHUM CURSISTA</span>. Evite chegar nos horários em que eles estiverem chegando ou saindo do retiro e estacione seu veículo em um local escondido, principalmente se você tiver algum conhecido fazendo o curso.'
     : 'Neste retiro, você será a imagem do movimento EPC para os cursistas e, mais ainda, será a imagem de Deus para eles. Por isso: sorriso no rosto, cante com determinação, use roupas adequadas, reze muito e seja cordial em todos os momentos.';
+  const customWarningText = String(teamMessage || '').trim();
+  const warningText = customWarningText ? messageHtml(customWarningText) : defaultWarningText;
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -119,7 +124,9 @@ async function sendPublicSectorInvitePage(req, res, retreatId, token) {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
-  res.end(invitePageHtml({ retreat: result.retreat, sector: result.sector, retreatId: result.retreatId, token: result.link.token, origin }));
+  const setting = await getRecord('configuracoes', teamMessageConfigId(result.retreatId)).catch(() => null);
+  const teamMessage = setting?.mensagens?.[normalizeText(result.sector)] || '';
+  res.end(invitePageHtml({ retreat: result.retreat, sector: result.sector, retreatId: result.retreatId, token: result.link.token, origin, teamMessage }));
 }
 
 module.exports = { invitePageHtml, sendPublicSectorInvitePage };

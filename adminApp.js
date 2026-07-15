@@ -29,6 +29,7 @@ const viewPermissions = {
   'validacao-inscricoes': 'validacao-inscricoes.ver',
   cursista: 'cursista.ver',
   comunidades: 'comunidades.ver',
+  'recado-equipe': 'retiros.editar',
   crachas: 'crachas.ver',
   quadrante: 'quadrante.ver',
   recebedor: 'recebedor.ver',
@@ -44,6 +45,7 @@ const ensureViewPermission = (section) => {
   return false;
 };
 const renderDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para executar esta acao.</p></div></section>', firstAllowedSection());
+const teamMessageConfigId = (retreatId) => `recado-equipe:${retreatId}`;
 const randomBytes = (length) => {
   const bytes = new Uint8Array(length);
   if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
@@ -512,6 +514,7 @@ function layout(content, active = 'inicio') {
     ['validacao-inscricoes', 'Validação', '✓'],
     ['cursista', 'Cursista', '♙'],
     ['comunidades', 'Comunidades', '♧'],
+    ['recado-equipe', 'Recado &agrave; equipe', '!'],
     ['crachas', 'Crach&aacute;s', '▣'],
     ['quadrante', 'Quadrante', '✣'],
     ['recebedor', 'Recebedor', '▱'],
@@ -2895,6 +2898,56 @@ async function renderCrachas() {
   renderBadges();
 }
 
+async function renderRecadoEquipe() {
+  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  if (!retreat) {
+    layout('<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Recado &agrave; equipe</h1><p>Crie ou publique um retiro para cadastrar os recados por setor.</p></div></section>', 'recado-equipe');
+    return;
+  }
+  const sectors = sortSectors(uniqueSectors(retreat.setores || []));
+  const settingId = teamMessageConfigId(retreat.id);
+  const setting = await dataService.getConfiguracao(settingId).catch(() => null);
+  const messages = setting?.mensagens || {};
+  const messageFields = sectors.map((sector) => {
+    const key = normalizeText(sector);
+    return `<label class="field team-message-field"><span>${escapeHtml(sector)}</span><textarea data-sector-key="${escapeHtml(key)}" data-sector-name="${escapeHtml(sector)}" rows="4" placeholder="Recado exibido ao volunt&aacute;rio deste setor">${escapeHtml(messages[key] || '')}</textarea></label>`;
+  }).join('');
+
+  layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Recado &agrave; equipe</h1><p>${escapeHtml(retreat.nome)} - Cadastre uma mensagem espec&iacute;fica para cada setor no link p&uacute;blico de ades&atilde;o.</p></div></section>
+  <form class="panel team-message-form" id="team-message-form">
+    <div class="panel-heading"><div><h2>Mensagens por setor</h2><p>Ao clicar em Acessar cadastro, o volunt&aacute;rio ver&aacute; o recado do setor selecionado. Campos vazios mant&ecirc;m o recado padr&atilde;o.</p></div></div>
+    <div class="team-message-list">${messageFields || '<p class="empty-state">Nenhum setor configurado para este retiro.</p>'}</div>
+    <p class="form-message" id="team-message-status"></p>
+    <div class="form-actions"><p>Os recados s&atilde;o salvos para o retiro ativo.</p><button type="submit" ${sectors.length ? '' : 'disabled'}>Salvar recados <span>→</span></button></div>
+  </form>`, 'recado-equipe');
+
+  const form = app.querySelector('#team-message-form');
+  const status = app.querySelector('#team-message-status');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!canAccess('retiros.editar')) {
+      status.textContent = 'Seu usuario nao tem permissao para salvar os recados.';
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    const mensagens = {};
+    form.querySelectorAll('[data-sector-key]').forEach((field) => {
+      const text = field.value.trim();
+      if (text) mensagens[field.dataset.sectorKey] = text;
+    });
+    button.disabled = true;
+    status.textContent = 'Salvando...';
+    try {
+      await dataService.saveConfiguracao({ id: settingId, retiroId: retreat.id, mensagens, updatedAt: new Date().toISOString() });
+      status.textContent = 'Recados salvos.';
+    } catch (error) {
+      status.textContent = `Nao foi possivel salvar os recados. ${error.message || 'Atualize a pagina e tente novamente.'}`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 async function renderQuadrante() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
@@ -4212,7 +4265,7 @@ async function route() {
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     await loadData();
-    if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
+    if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
     if (target === 'cursista') {
       await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;
