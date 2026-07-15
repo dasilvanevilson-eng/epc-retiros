@@ -2297,6 +2297,7 @@ async function renderCrachas() {
   let blankPreview = false;
   let selectedCommunityId = badgeCommunities[0]?.id || '';
   let activePrintMode = 'all';
+  let activeBadgeView = '';
   let sectorPickerOpen = false;
   let personPickerOpen = false;
   const profileOptions = () => `<option value="">Selecione um modelo</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`).join('')}`;
@@ -2402,6 +2403,7 @@ async function renderCrachas() {
   };
   tabButtons.forEach((button) => button.addEventListener('click', () => openBadgePanel(button.dataset.badgeTab)));
   const showBadgeView = (view) => {
+    activeBadgeView = view;
     activeArea.hidden = false;
     startPanel.hidden = true;
     const isPrint = view === 'print';
@@ -2409,6 +2411,7 @@ async function renderCrachas() {
     form.hidden = isPrint;
     printPanel.hidden = !isPrint;
     if (!isPrint) openBadgePanel('logo');
+    renderBadges();
   };
   const syncTextTargetControls = (source = settings) => {
     const target = form.elements.textTarget?.value || 'name';
@@ -2587,7 +2590,8 @@ async function renderCrachas() {
     syncColorCaptions(next);
     const selected = selectedEntries();
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
-    preview.innerHTML = blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
+    const printModelSelected = Boolean(printModelSelect?.value);
+    preview.innerHTML = activeBadgeView === 'print' && !printModelSelected ? '' : blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
     badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'individual' ? `Crach\u00e1 - ${first?.entry?.nome || ''}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
