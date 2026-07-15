@@ -2280,6 +2280,18 @@ const blankBadgeCard = (settings) => {
     <footer>${escapeHtml(settings.slogan || '')}</footer>
   </article>`;
 };
+const sampleBadgeCard = (settings) => {
+  const logo = logoById(settings.logo);
+  const showLogo = logo.id !== 'none' && logo.src;
+  const watermark = settings.watermark && settings.watermark !== 'none' ? (settings.watermark === 'custom' ? settings.watermarkUrl : logoById(settings.watermark)?.src) : '';
+  return `<article class="badge-card" style="${escapeHtml(badgeInlineStyle(settings))}">
+    ${badgeWallpaperStyle(settings) ? `<div class="badge-wallpaper"${badgeWallpaperStyle(settings)}></div>` : ''}
+    ${watermark ? `<img class="badge-watermark" src="${escapeHtml(watermark)}" alt="">` : ''}
+    ${showLogo ? `<img class="badge-logo" src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.name)}">` : ''}
+    <div class="badge-main"><strong>Nome</strong><span>Setor</span></div>
+    <footer>${escapeHtml(settings.slogan || '')}</footer>
+  </article>`;
+};
 
 async function renderCrachas() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
@@ -2591,7 +2603,7 @@ async function renderCrachas() {
     const selected = selectedEntries();
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
     const printModelSelected = Boolean(printModelSelect?.value);
-    preview.innerHTML = activeBadgeView === 'print' && !printModelSelected ? '' : blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
+    preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? sampleBadgeCard(next) : '') : blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
     badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'individual' ? `Crach\u00e1 - ${first?.entry?.nome || ''}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
