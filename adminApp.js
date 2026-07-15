@@ -2910,10 +2910,15 @@ async function renderCrachas() {
 }
 
 async function renderRecadoEquipe() {
-  const sectors = knownSectors(retreats.flatMap((retreat) => retreat.setores || []));
   const settingId = teamMessageConfigId;
   const setting = await dataService.getConfiguracao(settingId).catch(() => null);
   const messages = setting?.mensagens || {};
+  const knownTeamSectors = knownSectors(retreats.flatMap((retreat) => retreat.setores || []));
+  const sectorByKey = new Map(knownTeamSectors.map((sector) => [normalizeText(sector), sector]));
+  const sectors = sortSectors(uniqueSectors([
+    ...knownTeamSectors,
+    ...Object.keys(messages).map((key) => sectorByKey.get(normalizeText(key)) || key),
+  ]));
   const canEditTeamMessage = canAccess('recado-equipe.editar');
   const messageFields = sectors.map((sector) => {
     const key = normalizeText(sector);
