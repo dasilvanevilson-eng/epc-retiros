@@ -2587,7 +2587,7 @@ async function renderCrachas() {
     syncColorCaptions(next);
     const selected = selectedEntries();
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
-    preview.innerHTML = blankPreview ? blankBadgeCard(next) : first ? badgeCard(first.entry, next, first.sector) : '<p class="empty-state">Nenhum volunt&aacute;rio validado para crach&aacute;.</p>';
+    preview.innerHTML = blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
     badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'individual' ? `Crach\u00e1 - ${first?.entry?.nome || ''}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
