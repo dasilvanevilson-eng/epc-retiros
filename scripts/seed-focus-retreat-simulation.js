@@ -40,7 +40,7 @@ const adultFemale = ['Aline', 'Camila', 'Daniela', 'Eliane', 'Fernanda', 'Gabrie
 const lastNames = ['Almeida', 'Bauer', 'Cardoso', 'Costa', 'Fischer', 'Freitas', 'Goncalves', 'Krause', 'Lima', 'Muller', 'Oliveira', 'Pereira', 'Ribeiro', 'Schmidt', 'Silva', 'Souza', 'Weber'];
 const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Taschinha', 'Eis-me aqui'];
 const shirtSizes = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG'];
-const defaultSectors = ['Animacao', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligacao', 'Pegue e Pague', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria'];
+const defaultSectors = ['Animacao', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao de jovens', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligacao', 'Pegue e Pague', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria'];
 
 const pick = (items, index) => items[index % items.length];
 const normalizeName = (name) => name.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
@@ -129,7 +129,7 @@ function createEnrolment(retreat, person, index, sector, casalId = null, papelNo
     pessoaId: person.id,
     nome: person.nome,
     dadosPessoais: personalDataSnapshot(person),
-    dias: index % 6 === 0 ? ['Sabado', 'Domingo'] : ['Sexta-feira', 'Sabado', 'Domingo'],
+    dias: index % 6 === 0 ? ['Sábado', 'Domingo'] : ['Sexta-feira', 'Sábado', 'Domingo'],
     setores: [sector],
     retirosAnteriores: index % 4 === 0 ? [] : [pick(retreatsDone, index), pick(retreatsDone, index + 2)],
     quadrante: index % 7 === 0 ? 'Nao' : 'Sim',
@@ -223,7 +223,7 @@ async function ensureFocusRetreat(retreats) {
     setores: sectors,
     setoresPublicos: sectors,
     ordemQuadrante: sectors,
-    dias: ['Sexta-feira', 'Sabado', 'Domingo'],
+    dias: ['Sexta-feira', 'Sábado', 'Domingo'],
     contribuicoes: ['R$ 60,00 se o voluntario for o unico da familia', 'R$ 55,00 se o voluntario tiver mais pessoas da mesma familia trabalhando no retiro'],
     linksSetores: sectors.map((setor, index) => ({ setor, token: token(index) })),
     status: 'publicado',

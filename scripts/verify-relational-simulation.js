@@ -49,13 +49,19 @@ async function main() {
   ]);
   const retreat = retreats.find((item) => item.simulation === marker || item.nome === 'Retiro Simulado Relacional 2026');
   const retreatId = retreat?.id;
+  const simulationEnrolments = enrolments.filter((item) => item.retiroId === retreatId);
+  const enrolmentsWithoutWorkDays = simulationEnrolments.filter((item) => !Array.isArray(item.dias) || item.dias.length === 0).length;
+  const validWorkDays = new Set(['Sexta-feira', 'Sábado', 'Domingo']);
+  const enrolmentsWithInvalidWorkDays = simulationEnrolments.filter((item) => (item.dias || []).some((day) => !validWorkDays.has(day))).length;
   const result = {
     ok: Boolean(retreatId),
     database: connection.database,
     retiro: retreat?.nome || null,
     retiroId: retreatId,
     pessoasEquipe: people.filter((item) => item.simulation === marker).length,
-    adesoes: enrolments.filter((item) => item.retiroId === retreatId).length,
+    adesoes: simulationEnrolments.length,
+    adesoesSemDiasConfirmados: enrolmentsWithoutWorkDays,
+    adesoesComDiasInvalidos: enrolmentsWithInvalidWorkDays,
     cursistas: students.filter((item) => item.retiroId === retreatId).length,
     comunidades: communities.filter((item) => item.retiroId === retreatId).length,
     legacyEpcStoreRows: await legacyCount(),
@@ -65,6 +71,8 @@ async function main() {
   result.ok = result.ok
     && result.pessoasEquipe === 190
     && result.adesoes === 190
+    && result.adesoesSemDiasConfirmados === 0
+    && result.adesoesComDiasInvalidos === 0
     && result.cursistas === 60
     && result.comunidades === 10
     && result.legacyEpcStoreRows === 0

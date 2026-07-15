@@ -37,6 +37,7 @@ const sectors = [
   'Animacao',
   'Camareiros(as)',
   'Casal Bem-estar',
+  'Coordenacao de jovens',
   'Coordenacao do retiro',
   'Coordenacao geral',
   'Cozinha',
@@ -57,7 +58,7 @@ const sectors = [
   'Zeladoria',
 ];
 const publicSectors = sectors.filter((sector) => !['Coordenacao do retiro', 'Tios de comunidade', 'Monitores'].includes(sector));
-const days = ['Sexta-feira', 'Sabado', 'Domingo'];
+const days = ['Sexta-feira', 'Sábado', 'Domingo'];
 const cities = [
   { cidade: 'Blumenau', cep: '89010-000' },
   { cidade: 'Indaial', cep: '89130-000' },
@@ -167,7 +168,7 @@ function createEnrolment(retreat, person, index, sector, casalId = '', papelNoCa
     pessoaId: person.id,
     nome: person.nome,
     dadosPessoais: personalDataSnapshot(person),
-    dias: index % 6 === 0 ? ['Sabado', 'Domingo'] : index % 7 === 0 ? ['Sexta-feira', 'Sabado'] : [...days],
+    dias: index % 6 === 0 ? ['Sábado', 'Domingo'] : index % 7 === 0 ? ['Sexta-feira', 'Sábado'] : [...days],
     setores: [sector],
     retirosAnteriores: index % 6 === 0 ? [] : [pick(retreatsDone, index), pick(retreatsDone, index + 2)],
     quadrante: index % 8 === 0 ? 'Nao' : 'Sim',

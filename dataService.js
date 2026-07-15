@@ -131,7 +131,7 @@ async function remove(storeName, id) {
 }
 
 export const retreatDefaults = {
-  setores: ['Animação', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligação', 'Pegue e Pague', 'Recreação', 'Refeitório', 'Secretaria', 'Zeladoria'],
+  setores: ['Animação', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação de jovens', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligação', 'Pegue e Pague', 'Recreação', 'Refeitório', 'Secretaria', 'Zeladoria'],
   dias: ['Sexta-feira', 'Sábado', 'Domingo'],
   contribuicoes: ['R$ 60,00 se o voluntário for o único da família', 'R$ 55,00 se o voluntário tiver mais pessoas da mesma família trabalhando no retiro'],
 };

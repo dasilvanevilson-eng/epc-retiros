@@ -10,6 +10,7 @@ const sectors = [
   'Animação',
   'Camareiros(as)',
   'Casal Bem-estar',
+  'Coordenação de jovens',
   'Coordenação do retiro',
   'Coordenação geral',
   'Cozinha',
