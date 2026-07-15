@@ -29,7 +29,7 @@ const viewPermissions = {
   'validacao-inscricoes': 'validacao-inscricoes.ver',
   cursista: 'cursista.ver',
   comunidades: 'comunidades.ver',
-  'recado-equipe': 'retiros.editar',
+  'recado-equipe': 'recado-equipe.ver',
   crachas: 'crachas.ver',
   quadrante: 'quadrante.ver',
   recebedor: 'recebedor.ver',
@@ -1657,6 +1657,7 @@ async function renderValidacaoInscricoes() {
   const groupValidated = isEnrolmentGroupValidated;
   const pendingCount = validationGroups.filter((group) => !groupValidated(group)).length;
   const validatedCount = validationGroups.length - pendingCount;
+  const canValidateEntries = canAccess('validacao-inscricoes.validar');
   const validationGroupHtml = (group) => {
     const representative = group[0];
     const validated = groupValidated(group);
@@ -1666,7 +1667,7 @@ async function renderValidacaoInscricoes() {
       const cpf = normalizeCpf(person?.cpf || entry.pessoaId);
       return `<div class="validation-person"><div><strong>${escapeHtml(entry.nome || person?.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF n\u00e3o informado'} · ${escapeHtml((entry.setores || []).join(', ') || 'Sem setor')}</span><small class="personal-history-notice">${escapeHtml(personalHistoryNotice(entry))}</small></div><a href="#pessoas/${entry.pessoaId}/${entry.retiroId}/validacao-inscricoes">Consultar</a></div>`;
     }).join('');
-    return `<article class="${group.length > 1 ? 'is-couple-validation' : ''}"><div class="validation-people"><small class="validation-group-label">${label}</small>${peopleHtml}</div><span class="validation-status ${validated ? 'is-valid' : 'is-pending'}">${validated ? 'Validada' : 'Pendente'}</span><div class="registration-actions"><button type="button" data-validate-entry="${representative.id}" ${validated ? 'disabled' : ''}>Validar</button></div></article>`;
+    return `<article class="${group.length > 1 ? 'is-couple-validation' : ''}"><div class="validation-people"><small class="validation-group-label">${label}</small>${peopleHtml}</div><span class="validation-status ${validated ? 'is-valid' : 'is-pending'}">${validated ? 'Validada' : 'Pendente'}</span>${canValidateEntries ? `<div class="registration-actions"><button type="button" data-validate-entry="${representative.id}" ${validated ? 'disabled' : ''}>Validar</button></div>` : ''}</article>`;
   };
   layout(`<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>${escapeHtml(retreat.nome)} · Confira os cadastros recebidos e registre a ciência da coordenação.</p></div></section><section class="receiver-summary validation-summary"><article><span>Pendentes</span><strong>${pendingCount}</strong><small>ficha(s)</small></article><article><span>Validadas</span><strong>${validatedCount}</strong><small>ficha(s)</small></article><article><span>Total recebido</span><strong>${validationGroups.length}</strong><small>ficha(s)</small></article></section><section class="panel validation-list">${validationGroups.length ? validationGroups.map(validationGroupHtml).join('') : '<p class="empty-state">Nenhuma inscrição da equipe foi recebida para este retiro.</p>'}</section>`, 'validacao-inscricoes');
   app.querySelectorAll('[data-validate-entry]').forEach((button) => button.addEventListener('click', async () => {
@@ -1983,7 +1984,14 @@ async function renderComunidades() {
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
   layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os cursistas.</p><div class="community-overview"><article><span>Cursistas sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir cursistas</button></div></section><section class="community-grid">${communities.map((community, index) => { const memberIds = new Set(community.membroIds || []); const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id))).sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>Cursistas</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${ageInYearsAndMonths(student.nascimento)}</small></span><select data-move-student="${student.id}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${student.id}">Remover</button></div>`).join('') : '<p>Nenhum cursista alocado.</p>'}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${members.length ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
-  app.querySelector('#add-community').addEventListener('click', async () => {
+  if (!canAccess('comunidades.criar')) app.querySelector('#add-community')?.remove();
+  if (!canAccess('comunidades.editar')) {
+    app.querySelector('#distribute-students')?.remove();
+    app.querySelectorAll('[data-community-name], [data-community-order], [data-community-leader], [data-community-monitor], [data-move-student]').forEach((control) => { control.disabled = true; });
+    app.querySelectorAll('[data-remove-community-leader], [data-remove-community-monitor], [data-remove-member]').forEach((button) => button.remove());
+  }
+  if (!canAccess('comunidades.excluir')) app.querySelectorAll('[data-delete-community]').forEach((button) => button.remove());
+  app.querySelector('#add-community')?.addEventListener('click', async () => {
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
     await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
@@ -2010,7 +2018,7 @@ async function renderComunidades() {
   }));
   app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.removeMember); community.membroIds = (community.membroIds || []).filter((id) => id !== button.dataset.student); await dataService.saveComunidade(community); renderComunidades(); }));
   app.querySelectorAll('[data-delete-community]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.deleteCommunity); if (!confirm(`Excluir ${community.nome}?`)) return; await dataService.deleteComunidade(community.id); renderComunidades(); }));
-  app.querySelector('#distribute-students').addEventListener('click', () => {
+  app.querySelector('#distribute-students')?.addEventListener('click', () => {
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
     const communityOptions = (selected = '') => `<option value="">Sem comunidade</option>${communities.map((community) => `<option value="${community.id}" ${community.id === selected ? 'selected' : ''}>${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
     overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de cursistas</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada cursista e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => (community.membroIds || []).includes(student.id)); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${ageInYearsAndMonths(student.nascimento)}</span><select data-student-community="${student.id}">${communityOptions(current?.id)}</select></div>`; }).join('') || '<p>Nenhum cursista cadastrado.</p>'}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
@@ -2316,6 +2324,9 @@ async function renderCrachas() {
   let activeBadgeView = '';
   let sectorPickerOpen = false;
   let personPickerOpen = false;
+  const canConfigureBadges = canAccess('crachas.editar');
+  const canPrintBadges = canAccess('crachas.imprimir');
+  const canDeleteBadges = canAccess('crachas.excluir');
   const profileOptions = () => `<option value="">Selecione um modelo</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`).join('')}`;
   const logoOptions = badgeLogoOptions.map((logo) => `<label class="badge-logo-option"><input type="radio" name="logo" value="${escapeHtml(logo.id)}" ${settings.logo === logo.id ? 'checked' : ''}><span>${logo.src ? `<img src="${escapeHtml(logo.src)}" alt="">` : '<i aria-hidden="true">--</i>'}<b>${escapeHtml(logo.name)}</b></span></label>`).join('');
   const watermarkOptions = [
@@ -2332,12 +2343,13 @@ async function renderCrachas() {
   const stepper = (label, name, min, max, step, value, hideValue = false) => `<label class="badge-stepper${hideValue ? ' is-value-hidden' : ''}"><span>${label}<button type="button" data-step-target="${name}" data-step="-${step}">-</button><button type="button" data-step-target="${name}" data-step="${step}">+</button></span><input name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${escapeHtml(value)}"></label>`;
   layout(`<section class="page-heading badge-page-heading"><div><p class="eyebrow">Modelos de identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>${escapeHtml(retreat.nome)} - Configure modelos ou selecione um modelo salvo para impress&atilde;o.</p></div></section>
   <section class="panel badge-start-panel" id="badge-start-panel">
-    <button type="button" class="primary-button" data-badge-view="config">Configurar crach&aacute;s</button>
-    <button type="button" class="secondary-button" data-badge-view="print">Imprimir crach&aacute;s</button>
+    ${canConfigureBadges ? '<button type="button" class="primary-button" data-badge-view="config">Configurar crach&aacute;s</button>' : ''}
+    ${canPrintBadges ? '<button type="button" class="secondary-button" data-badge-view="print">Imprimir crach&aacute;s</button>' : ''}
+    ${!canConfigureBadges && !canPrintBadges ? '<p class="empty-state">Seu usuario pode visualizar a tela, mas nao possui permissao para configurar ou imprimir crachas.</p>' : ''}
   </section>
   <section class="badge-active-area" id="badge-active-area" hidden>
     <section class="panel badge-view-toolbar" id="badge-config-toolbar" hidden>
-      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div><button type="button" class="secondary-button badge-view-switch" data-badge-view="print">Imprimir crach&aacute;s</button></div>
+      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div>${canPrintBadges ? '<button type="button" class="secondary-button badge-view-switch" data-badge-view="print">Imprimir crach&aacute;s</button>' : ''}</div>
       <div class="badge-heading-tools">
       <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-config-select">${profileOptions()}</select></label>
       <div class="badge-config-controls" hidden>
@@ -2347,7 +2359,7 @@ async function renderCrachas() {
         <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
       <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo editável</button></div>
-      <div class="badge-model-toolbar"><button class="primary-button" id="badge-new-config" type="button">Novo modelo</button></div>
+      <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button>' : ''}</div>
     </div></section>
   <section class="badge-workbench">
     <section class="panel badge-preview-panel">
@@ -2361,8 +2373,8 @@ async function renderCrachas() {
         <button type="button" data-badge-tab="wallpaper">Papel de parede</button>
         <button type="button" data-badge-tab="watermark">Marca d'agua</button>
         <button type="button" data-badge-tab="text">Texto/tamanho</button>
-        <button type="button" id="badge-save-tab">Salvar</button>
-        <button type="button" class="badge-delete-tab" id="badge-delete-tab">Excluir</button>
+        ${canConfigureBadges ? '<button type="button" id="badge-save-tab">Salvar</button>' : ''}
+        ${canDeleteBadges ? '<button type="button" class="badge-delete-tab" id="badge-delete-tab">Excluir</button>' : ''}
       </div>
       <input id="badge-config-name" type="hidden">
       <fieldset data-badge-panel="logo"><legend>Logo</legend><div class="badge-logo-picker">${logoOptions}</div><div class="badge-range-grid">${stepper('Tamanho', 'logoSize', 10, 32, 0.5, settings.logoSize)}${stepper('Horizontal', 'logoX', 0, 100, 1, settings.logoX)}${stepper('Vertical', 'logoY', 0, 100, 1, settings.logoY)}</div></fieldset>
@@ -2371,7 +2383,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
-      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div><button type="button" class="secondary-button badge-view-switch" data-badge-view="config">Configurar crach&aacute;s</button></div>
+      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div>${canConfigureBadges ? '<button type="button" class="secondary-button badge-view-switch" data-badge-view="config">Configurar crach&aacute;s</button>' : ''}</div>
       <div class="badge-heading-tools">
         <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
         <div class="badge-print-controls">
@@ -2380,7 +2392,7 @@ async function renderCrachas() {
           <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
           <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
         </div>
-        <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo edit&aacute;vel</button></div>
+        <div class="badge-print-actions">${canPrintBadges ? '<button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo edit&aacute;vel</button>' : ''}</div>
       </div>
     </section>
   </section></section><section class="badge-print-area" id="badge-print-area"></section>`, 'crachas');
@@ -2419,6 +2431,8 @@ async function renderCrachas() {
   };
   tabButtons.forEach((button) => button.addEventListener('click', () => openBadgePanel(button.dataset.badgeTab)));
   const showBadgeView = (view) => {
+    if (view === 'config' && !canConfigureBadges) return;
+    if (view === 'print' && !canPrintBadges) return;
     activeBadgeView = view;
     activeArea.hidden = false;
     startPanel.hidden = true;
@@ -2686,6 +2700,7 @@ async function renderCrachas() {
     setActiveProfile(profile);
   };
   const saveCurrentProfile = async (profileName) => {
+    if (!canConfigureBadges) return;
     const name = String(profileName || '').trim();
     if (!name) {
       if (configMessage) configMessage.textContent = 'Informe um nome para salvar esta configura\u00e7\u00e3o.';
@@ -2705,6 +2720,7 @@ async function renderCrachas() {
     if (configMessage) configMessage.textContent = isUpdatingLoadedProfile ? `Modelo "${name}" alterado.` : `Novo modelo "${name}" salvo.`;
   };
   const openSaveBadgeDialog = () => {
+    if (!canConfigureBadges) return;
     const selected = badgeProfiles.find((profile) => profile.id === selectedProfileId || profile.id === configSelect?.value);
     const suggestedName = selected?.name || configName?.value || '';
     const overlay = document.createElement('section');
@@ -2743,6 +2759,7 @@ async function renderCrachas() {
     input.select();
   };
   const deleteCurrentProfile = async () => {
+    if (!canDeleteBadges) return;
     const profile = badgeProfiles.find((item) => item.id === selectedProfileId || item.id === configSelect?.value);
     if (!profile) {
       if (configMessage) configMessage.textContent = 'Selecione um modelo salvo para excluir.';
@@ -2813,6 +2830,7 @@ async function renderCrachas() {
     return { printContent, title: badgePrintTitle || 'Crach\u00e1s' };
   };
   const printBadges = () => {
+    if (!canPrintBadges) return;
     const payload = badgePrintPayload();
     if (!payload) return;
     const printWindow = window.open('', '_blank');
@@ -2837,6 +2855,7 @@ async function renderCrachas() {
     }, { once: true });
   };
   const generateBadgeWordFile = () => {
+    if (!canPrintBadges) return;
     const payload = badgePrintPayload();
     if (!payload) return;
     const documentHtml = badgePrintDocument(payload.printContent, payload.title);
@@ -2891,8 +2910,8 @@ async function renderCrachas() {
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
-  printPanel.querySelector('#badge-print').addEventListener('click', printBadges);
-  printPanel.querySelector('#badge-word').addEventListener('click', generateBadgeWordFile);
+  printPanel.querySelector('#badge-print')?.addEventListener('click', printBadges);
+  printPanel.querySelector('#badge-word')?.addEventListener('click', generateBadgeWordFile);
   openBadgePanel('logo');
   syncTextTargetControls(settings);
   renderBadges();
@@ -2903,9 +2922,10 @@ async function renderRecadoEquipe() {
   const settingId = teamMessageConfigId;
   const setting = await dataService.getConfiguracao(settingId).catch(() => null);
   const messages = setting?.mensagens || {};
+  const canEditTeamMessage = canAccess('recado-equipe.editar');
   const messageFields = sectors.map((sector) => {
     const key = normalizeText(sector);
-    return `<label class="field team-message-field"><span>${escapeHtml(sector)}</span><textarea data-sector-key="${escapeHtml(key)}" data-sector-name="${escapeHtml(sector)}" rows="4" placeholder="Recado exibido ao volunt&aacute;rio deste setor">${escapeHtml(messages[key] || '')}</textarea></label>`;
+    return `<label class="field team-message-field"><span>${escapeHtml(sector)}</span><textarea data-sector-key="${escapeHtml(key)}" data-sector-name="${escapeHtml(sector)}" rows="4" placeholder="Recado exibido ao volunt&aacute;rio deste setor" ${canEditTeamMessage ? '' : 'readonly'}>${escapeHtml(messages[key] || '')}</textarea></label>`;
   }).join('');
 
   layout(`<section class="page-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o do sistema</p><h1>Recado &agrave; equipe</h1><p>Cadastre uma mensagem espec&iacute;fica para cada setor no link p&uacute;blico de ades&atilde;o.</p></div></section>
@@ -2913,14 +2933,14 @@ async function renderRecadoEquipe() {
     <div class="panel-heading"><div><h2>Mensagens por setor</h2><p>Ao clicar em Acessar cadastro, o volunt&aacute;rio ver&aacute; o recado do setor selecionado. Campos vazios mant&ecirc;m o recado padr&atilde;o.</p></div></div>
     <div class="team-message-list">${messageFields || '<p class="empty-state">Nenhum setor configurado no sistema.</p>'}</div>
     <p class="form-message" id="team-message-status"></p>
-    <div class="form-actions"><p>Os recados s&atilde;o salvos como informa&ccedil;&atilde;o geral do sistema.</p><button type="submit" ${sectors.length ? '' : 'disabled'}>Salvar recados <span>→</span></button></div>
+    <div class="form-actions"><p>Os recados s&atilde;o salvos como informa&ccedil;&atilde;o geral do sistema.</p><button type="submit" ${sectors.length && canEditTeamMessage ? '' : 'disabled'}>Salvar recados <span>→</span></button></div>
   </form>`, 'recado-equipe');
 
   const form = app.querySelector('#team-message-form');
   const status = app.querySelector('#team-message-status');
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!canAccess('retiros.editar')) {
+    if (!canAccess('recado-equipe.editar')) {
       status.textContent = 'Seu usuario nao tem permissao para salvar os recados.';
       return;
     }
@@ -3027,8 +3047,12 @@ async function renderQuadrante() {
     return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tr><td colspan="4">Nenhum cursista alocado.</td></tr>' : '')}</tbody></table></article>`;
   }).join('');
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
-  layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div><div class="detail-actions"><button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button><button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button></div></section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
-  app.querySelector('#order-quadrante').addEventListener('click', () => {
+  const quadranteActions = [
+    canAccess('quadrante.editar') ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
+    canAccess('quadrante.imprimir') ? '<button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button>' : '',
+  ].join('');
+  layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div>${quadranteActions ? `<div class="detail-actions">${quadranteActions}</div>` : ''}</section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
+  app.querySelector('#order-quadrante')?.addEventListener('click', () => {
     const sectors = orderableSectors;
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
@@ -3056,7 +3080,7 @@ async function renderQuadrante() {
     });
     app.append(overlay);
   });
-  app.querySelector('#print-quadrante').addEventListener('click', () => window.print());
+  app.querySelector('#print-quadrante')?.addEventListener('click', () => window.print());
 }
 
 function choices(name, options, multiple = true) { const visibleOptions = options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }

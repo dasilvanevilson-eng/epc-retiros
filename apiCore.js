@@ -115,12 +115,17 @@ function permissionForRequest(resource, id, req) {
   }
   if (resource === 'configuracoes') {
     if (String(id || '') === 'recado-equipe') {
-      if (req.method === 'GET') return 'retiros.editar';
-      if (req.method === 'PUT') return 'retiros.editar';
+      if (req.method === 'GET') return 'recado-equipe.ver';
+      if (req.method === 'PUT') return 'recado-equipe.editar';
+      if (req.method === 'DELETE') return 'usuarios.editar';
+    }
+    if (String(id || '') === 'quadrante-order') {
+      if (req.method === 'GET') return 'quadrante.ver';
+      if (req.method === 'PUT') return 'quadrante.editar';
       if (req.method === 'DELETE') return 'usuarios.editar';
     }
     if (req.method === 'GET') return 'quadrante.ver';
-    if (req.method === 'PUT') return 'quadrante.imprimir';
+    if (req.method === 'PUT') return 'quadrante.editar';
     if (req.method === 'DELETE') return 'usuarios.editar';
   }
   return null;
