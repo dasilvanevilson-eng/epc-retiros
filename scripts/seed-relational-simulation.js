@@ -49,6 +49,7 @@ const sectors = [
   'Jovem de sala',
   'Ligacao',
   'Monitores',
+  'Pegue e Pague',
   'Recreacao',
   'Refeitorio',
   'Secretaria',

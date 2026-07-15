@@ -184,7 +184,7 @@ const retreatServiceDays = (retreat = {}) => {
   return generated.length ? generated : (retreat.dias?.length ? retreat.dias : retreatDefaults.dias);
 };
 const sortSectors = (sectors = []) => [...sectors].sort((first, second) => first.localeCompare(second, 'pt-BR', { sensitivity: 'base' }));
-const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaço kids', 'espiritual', 'externo', 'refeitório', 'secretaria', 'zeladoria']);
+const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaço kids', 'espiritual', 'externo', 'pegue e pague', 'refeitório', 'secretaria', 'zeladoria']);
 const sectorArea = (sector) => hiddenTeamSectors.has(String(sector).toLocaleLowerCase('pt-BR')) ? 'escondida' : 'sala';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
 const uniqueSectors = (sectors = []) => {

@@ -40,7 +40,7 @@ const adultFemale = ['Aline', 'Camila', 'Daniela', 'Eliane', 'Fernanda', 'Gabrie
 const lastNames = ['Almeida', 'Bauer', 'Cardoso', 'Costa', 'Fischer', 'Freitas', 'Goncalves', 'Krause', 'Lima', 'Muller', 'Oliveira', 'Pereira', 'Ribeiro', 'Schmidt', 'Silva', 'Souza', 'Weber'];
 const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Taschinha', 'Eis-me aqui'];
 const shirtSizes = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG'];
-const defaultSectors = ['Animacao', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligacao', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria'];
+const defaultSectors = ['Animacao', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligacao', 'Pegue e Pague', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria'];
 
 const pick = (items, index) => items[index % items.length];
 const normalizeName = (name) => name.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
