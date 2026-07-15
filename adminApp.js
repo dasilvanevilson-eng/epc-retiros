@@ -2323,7 +2323,7 @@ async function renderCrachas() {
         <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
         <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
-      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar Arquivo Word</button></div>
+      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo editável</button></div>
       <div class="badge-model-toolbar"><button class="primary-button" id="badge-new-config" type="button">Novo modelo</button></div>
     </div></section>
   <section class="badge-workbench">
@@ -2741,7 +2741,7 @@ async function renderCrachas() {
     link.click();
     URL.revokeObjectURL(link.href);
     link.remove();
-    app.querySelector('#badge-print-summary').textContent = 'Arquivo Word gerado.';
+    app.querySelector('#badge-print-summary').textContent = 'Arquivo editável gerado.';
   };
   form.elements.textTarget?.addEventListener('change', () => {
     syncTextTargetControls(settings);
