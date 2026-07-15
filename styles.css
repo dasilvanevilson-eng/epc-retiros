@@ -201,6 +201,8 @@
 .badge-print-comment { grid-column:1/-1; min-height:16px; margin:-4px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
 .badge-print-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
 .badge-print-actions .secondary-button,.badge-print-actions .primary-button { width:100%; min-height:38px; padding:9px 10px; font-size:13px; }
+.badge-selection-tools { display:flex; justify-content:flex-end; margin:14px 0 -4px; }
+.badge-selection-tools button { min-height:34px; padding:7px 11px; border:1px solid #9bb49c; background:#fff; color:#285130; box-shadow:none; font-size:12px; }
 .badge-print-member-list { max-height:min(52vh,520px); overflow:auto; margin:18px 0; border-top:1px solid var(--line); }
 .badge-print-member-list label { display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
 .badge-print-member-list input { width:18px; height:18px; accent-color:var(--leaf); }
