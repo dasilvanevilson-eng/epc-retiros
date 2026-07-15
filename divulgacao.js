@@ -2,7 +2,7 @@ const params = new URLSearchParams(location.search);
 const legacyAdesao = params.get('adesao');
 
 if (legacyAdesao && (location.pathname.endsWith('/index.html') || location.pathname === '/')) {
-  location.replace(`epc-retiros.html?adesao=${encodeURIComponent(legacyAdesao)}`);
+  location.replace(`familiaepcindaial.html?adesao=${encodeURIComponent(legacyAdesao)}`);
 }
 
 const movements = {
@@ -147,7 +147,7 @@ function openRestrictedLogin() {
     message.textContent = 'Validando acesso...';
     try {
       await publicApi('/auth/login', { method: 'POST', body: JSON.stringify({ username: form.elements.username.value.trim(), password: form.elements.password.value }) });
-      location.href = 'epc-retiros.html?v=20260709-restrita-timeout#inicio';
+      location.href = 'familiaepcindaial.html?v=20260709-restrita-timeout#inicio';
     } catch (error) {
       message.textContent = error.message || 'Login ou senha invalidos.';
       button.disabled = false;
@@ -158,13 +158,13 @@ function openRestrictedLogin() {
 }
 
 function setupRestrictedAccessLinks() {
-  document.querySelectorAll('a[href^="epc-retiros.html"]').forEach((link) => {
+  document.querySelectorAll('a[href^="familiaepcindaial.html"]').forEach((link) => {
     link.addEventListener('click', async (event) => {
       event.preventDefault();
       try {
         const session = await publicApi('/auth/session');
         if (session.authenticated) {
-          location.href = 'epc-retiros.html?v=20260709-restrita-timeout#inicio';
+          location.href = 'familiaepcindaial.html?v=20260709-restrita-timeout#inicio';
           return;
         }
       } catch {}

@@ -6,7 +6,7 @@
   ],
   "headers": [
     {
-      "source": "/(epc-retiros\\.html|adminApp\\.js|styles\\.css|index\\.html|divulgacao\\.js|divulgacao\\.css)",
+      "source": "/(familiaepcindaial\\.html|adminApp\\.js|styles\\.css|index\\.html|divulgacao\\.js|divulgacao\\.css)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
       ]
@@ -21,7 +21,7 @@
     { "src": "/recebedor/([^/]+)", "dest": "/api/recebedor.js?token=$1" },
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "src": "/", "dest": "/index.html" },
-    { "src": "/epc-retiros", "dest": "/epc-retiros.html" },
+    { "src": "/familiaepcindaial", "dest": "/familiaepcindaial.html" },
     { "src": "/movimento", "dest": "/movimento.html" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/$1" }

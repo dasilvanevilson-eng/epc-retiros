@@ -3,7 +3,7 @@ const { sendPublicReceiverPage } = require('../publicReceiverPage');
 
 module.exports = async function handler(req, res) {
   try {
-    const url = new URL(req.url || '/', 'https://epc-retiros.local');
+    const url = new URL(req.url || '/', 'https://familiaepcindaial.local');
     const token = url.searchParams.get('token') || '';
     await sendPublicReceiverPage(req, res, token);
   } catch (error) {
