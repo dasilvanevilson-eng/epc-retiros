@@ -2608,6 +2608,7 @@ async function renderCrachas() {
     }
   };
   const loadSelectedProfile = () => {
+    showBadgeView('config');
     const profile = badgeProfiles.find((item) => item.id === configSelect.value);
     if (!profile) {
       selectedProfileId = '';
