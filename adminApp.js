@@ -2203,12 +2203,10 @@ const nativeBadgeWallpapers = [
 const wallpaperById = (id) => nativeBadgeWallpapers.find(([key]) => key === id) || nativeBadgeWallpapers[0];
 const firstName = (name = '') => String(name).trim().split(/\s+/)[0] || 'Voluntario';
 const personForBadge = (entry) => people.find((person) => person.id === entry.pessoaId) || entry.dadosPessoais || entry;
-const entryNeedsUnclePrefix = (entry) => Boolean(entry.casalId || enrolments.some((item) => item.pessoaId === entry.pessoaId && item.casalId));
 const genderedLabel = (person, feminine, masculine) => normalizeText(person?.genero) === 'feminino' ? feminine : masculine;
 const badgeDisplayName = (entry) => {
   const person = personForBadge(entry);
-  const name = firstName(person.nome || entry.nome);
-  return entryNeedsUnclePrefix(entry) ? `${genderedLabel(person, 'Tia', 'Tio')} ${name}` : name;
+  return firstName(person.nome || entry.nome);
 };
 const badgeSectorText = (entry, sector = '') => {
   const person = personForBadge(entry);
@@ -2367,6 +2365,7 @@ async function renderCrachas() {
     sector: { font: 'sectorFont', align: 'sectorAlign', size: 'sectorSize', color: 'muted' },
     slogan: { font: 'sloganFont', align: 'sloganAlign', size: 'sloganSize', color: 'sloganColor' },
   };
+  let activeTextTarget = settings.textTarget || 'name';
   const openBadgePanel = (panel) => {
     tabButtons.forEach((button) => {
       const active = button.dataset.badgeTab === panel;
@@ -2399,6 +2398,7 @@ async function renderCrachas() {
       control.value = value ?? '';
     });
     if (form.elements.textTarget) form.elements.textTarget.value = source.textTarget || 'name';
+    activeTextTarget = form.elements.textTarget?.value || 'name';
     syncTextTargetControls(source);
     syncColorCaptions(source);
   };
@@ -2428,7 +2428,7 @@ async function renderCrachas() {
       if (data.has(key)) next[key] = ['logoSize', 'logoX', 'logoY', 'nameSize', 'sectorSize', 'sloganSize', 'watermarkOpacity', 'watermarkSize', 'watermarkX', 'watermarkY', 'corner', 'borderWidth'].includes(key) ? Number(data.get(key)) : data.get(key);
     });
     const target = data.get('textTarget') || next.textTarget || 'name';
-    const keys = textTargetKeys[target] || textTargetKeys.name;
+    const keys = textTargetKeys[activeTextTarget] || textTargetKeys.name;
     next.textTarget = target;
     if (data.has('font')) next[keys.font] = data.get('font');
     if (data.has('align')) next[keys.align] = data.get('align');
@@ -2576,7 +2576,7 @@ async function renderCrachas() {
       renderBadges();
       return;
     }
-    setActiveProfile(profile);
+    setActiveProfile(profile, true);
   };
   const saveCurrentProfile = async (profileName) => {
     const name = String(profileName || '').trim();
@@ -2745,6 +2745,7 @@ async function renderCrachas() {
   };
   form.elements.textTarget?.addEventListener('change', () => {
     syncTextTargetControls(settings);
+    activeTextTarget = form.elements.textTarget?.value || 'name';
   });
   form.addEventListener('click', (event) => {
     const button = event.target.closest('[data-step-target]');
