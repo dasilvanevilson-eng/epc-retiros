@@ -2705,9 +2705,10 @@ async function renderCrachas() {
     renderBadges();
   };
   const startNewProfile = () => {
+    showBadgeView('config');
     selectedProfileId = '';
     blankPreview = true;
-    settings = { ...defaultBadgeSettings };
+    settings = { ...defaultBadgeSettings, logo: 'none', slogan: '' };
     applySettingsToForm(settings);
     refreshProfileOptions('');
     if (configName) configName.value = '';
