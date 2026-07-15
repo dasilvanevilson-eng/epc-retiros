@@ -1,5 +1,5 @@
 const { stores } = require('./storeConfig');
-const { authStatus, clearSessionCookie, createSession, deleteAccessUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
+const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
 const { checkDatabaseConnection, getRecord, importDatabase, listRecords, readDatabase, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 
@@ -162,6 +162,12 @@ async function handleApi(req, res, pathname) {
   const session = readSession(req);
   if (await handlePublicReceiverRequest(req, res, resource, id)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
+
+  if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {
+    const { currentPassword, newPassword } = await readBody(req);
+    await changeOwnPassword(session, String(currentPassword || ''), String(newPassword || ''));
+    return sendNoContent(res);
+  }
 
   if (resource === 'access' && req.method === 'GET') {
     if (denyIfMissingPermission(res, session, 'usuarios.ver')) return;

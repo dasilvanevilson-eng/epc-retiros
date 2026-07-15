@@ -220,6 +220,19 @@ async function saveAccessUser(incoming = {}) {
   return safeUser(record);
 }
 
+async function changeOwnPassword(session = {}, currentPassword = '', newPassword = '') {
+  await ensureDefaultAccessData();
+  const users = await listRecords('usuarios');
+  const user = users.find((item) => item.id === session.id) || users.find((item) => item.login === session.sub);
+  if (!user) throw new Error('Usuario nao encontrado no banco de dados.');
+  if (!verifyPassword(currentPassword, user)) throw new Error('Senha atual invalida.');
+  const password = String(newPassword || '');
+  if (password.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
+  const record = { ...user, ...hashPassword(password), updatedAt: new Date().toISOString() };
+  await saveRecord('usuarios', record);
+  return safeUser(record);
+}
+
 async function deleteAccessUser(id) {
   await deleteRecord('usuarios', id);
   const [overrides, retreats] = await Promise.all([listRecords('usuario_permissoes'), listRecords('usuario_retiros')]);
@@ -231,6 +244,7 @@ async function deleteAccessUser(id) {
 
 module.exports = {
   authStatus,
+  changeOwnPassword,
   clearSessionCookie,
   createSession,
   deleteAccessUser,

@@ -33,6 +33,7 @@ const viewPermissions = {
   crachas: 'crachas.ver',
   quadrante: 'quadrante.ver',
   recebedor: 'recebedor.ver',
+  'alterar-senha': null,
   usuarios: 'usuarios.ver',
 };
 
@@ -518,8 +519,9 @@ function layout(content, active = 'inicio') {
     ['crachas', 'Crach&aacute;s', '▣'],
     ['quadrante', 'Quadrante', '✣'],
     ['recebedor', 'Recebedor', '▱'],
+    ['alterar-senha', 'Alterar senha', '••'],
     ['usuarios', 'Usuarios e permissoes', 'UP'],
-  ].filter(([id]) => canView(id));
+  ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id));
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
       <aside class="admin-sidebar" aria-label="Identidade EPC">
@@ -2963,6 +2965,44 @@ async function renderRecadoEquipe() {
   });
 }
 
+function renderAlterarSenha() {
+  layout(`<section class="page-heading"><div><p class="eyebrow">Seguranca</p><h1>Alterar senha</h1><p>Atualize a senha do usuario conectado.</p></div></section>
+  <form class="panel access-user-form" id="change-password-form">
+    <div class="fields two-columns">
+      <label class="field"><span>Senha atual <b>*</b></span><input name="currentPassword" type="password" autocomplete="current-password" required></label>
+      <label class="field"><span>Nova senha <b>*</b></span><input name="newPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label class="field"><span>Confirmar nova senha <b>*</b></span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+    </div>
+    <p id="change-password-message" class="form-message"></p>
+    <div class="form-actions"><p>A nova senha ser&aacute; usada no pr&oacute;ximo login.</p><button type="submit">Alterar senha <span>→</span></button></div>
+  </form>`, 'alterar-senha');
+  const form = app.querySelector('#change-password-form');
+  const message = app.querySelector('#change-password-message');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const currentPassword = form.elements.currentPassword.value;
+    const newPassword = form.elements.newPassword.value;
+    const confirmPassword = form.elements.confirmPassword.value;
+    if (newPassword !== confirmPassword) {
+      message.textContent = 'A confirmacao da nova senha nao confere.';
+      form.elements.confirmPassword.focus();
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    message.textContent = 'Alterando senha...';
+    try {
+      await dataService.changePassword(currentPassword, newPassword);
+      form.reset();
+      message.textContent = 'Senha alterada com sucesso.';
+    } catch (error) {
+      message.textContent = error.message || 'Nao foi possivel alterar a senha.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 async function renderQuadrante() {
   const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
@@ -4142,7 +4182,7 @@ async function renderUsuarios() {
   const profileOptions = perfis.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.nome)}</option>`).join('');
   const retreatChecks = allRetreats.map((retreat) => `<label class="access-check"><input type="checkbox" name="retiroIds" value="${escapeHtml(retreat.id)}"><span>${escapeHtml(retreat.nome)}</span></label>`).join('');
   const permissionGroups = Object.entries(groupedPermissions).map(([moduleName, items]) => `<section class="access-permission-group"><h3>${escapeHtml(moduleName)}</h3>${items.map((permission) => `<label class="access-check"><input type="checkbox" name="permission" value="${escapeHtml(permission.id)}"><span><strong>${escapeHtml(permission.id)}</strong><small>${escapeHtml(permission.descricao || '')}</small></span></label>`).join('')}</section>`).join('');
-  layout(`<section class="page-heading"><div><p class="eyebrow">Seguranca</p><h1>Usuarios e permissoes</h1><p>Gerencie perfis, acessos por tela e acoes permitidas para cada usuario.</p></div></section>
+  layout(`<section class="page-heading"><div><p class="eyebrow">Seguranca</p><h1>Usuarios e permissoes</h1><p>Gerencie perfis, acessos por tela e acoes permitidas para cada usuario.</p></div><div class="detail-actions"><a class="primary-button" href="#alterar-senha">Alterar senha</a></div></section>
   <section class="access-layout">
     <article class="panel access-list-panel"><div class="panel-heading"><div><h2>Usuarios</h2><p>${usuarios.length} usuario(s) cadastrado(s) no banco.</p></div><button type="button" id="new-access-user" ${canAccess('usuarios.criar') ? '' : 'disabled'}>Novo usuario</button></div><div class="access-user-list">${userRows || '<p class="empty-state">Nenhum usuario cadastrado no banco.</p>'}</div></article>
     <form id="access-user-form" class="panel access-user-form"><div class="panel-heading"><div><p class="eyebrow">Cadastro</p><h2 id="access-form-title">Novo usuario</h2><p>Senhas sao armazenadas com hash no servidor.</p></div></div><input type="hidden" name="id"><div class="fields two-columns"><label class="field"><span>Nome <b>*</b></span><input name="nome" required></label><label class="field"><span>Login <b>*</b></span><input name="login" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" placeholder="Obrigatoria para novo usuario"></label><label class="field"><span>Perfil <b>*</b></span><select name="perfilId" required>${profileOptions}</select></label><label class="access-active-option"><input type="checkbox" name="ativo" checked> Usuario ativo</label></div><section class="access-retreats"><h3>Retiros vinculados</h3><p class="hint">Use para Coordenador do retiro. Admin e Coordenador Geral podem ficar sem restricao.</p><div class="access-check-grid">${retreatChecks || '<p class="empty-state">Nenhum retiro cadastrado.</p>'}</div></section><section class="access-permissions"><div class="panel-heading compact-heading"><div><h3>Permissoes do usuario</h3><p>Marque exatamente o que este usuario pode acessar e executar.</p></div><button type="button" id="apply-profile-permissions">Aplicar perfil</button></div><div class="access-permission-grid">${permissionGroups}</div></section><p id="access-message" class="form-message"></p><div class="form-actions"><p>As permissoes sao aplicadas no menu e validadas na API.</p><button type="submit" ${canAccess('usuarios.criar') || canAccess('usuarios.editar') ? '' : 'disabled'}>Salvar usuario <span>→</span></button></div></form>
@@ -4284,7 +4324,7 @@ async function route() {
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     await loadData();
-    if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
+    if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'alterar-senha') return renderAlterarSenha(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
     if (target === 'cursista') {
       await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;

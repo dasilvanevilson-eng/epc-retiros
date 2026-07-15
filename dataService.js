@@ -139,6 +139,7 @@ export const retreatDefaults = {
 export const dataService = {
   getSession: () => api('/auth/session'),
   login: (username, password) => api('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  changePassword: (currentPassword, newPassword) => api('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   logout: () => api('/auth/logout', { method: 'POST' }),
   getAccessData: () => api('/access'),
   saveAccessUser: (user) => api('/access/users', { method: 'POST', body: JSON.stringify(user) }),
