@@ -2449,7 +2449,7 @@ async function renderCrachas() {
   };
   const setActiveProfile = (profile, openEditor = false) => {
     if (!profile) return;
-    blankPreview = false;
+    blankPreview = openEditor;
     selectedProfileId = profile.id;
     settings = { ...defaultBadgeSettings, ...profile.settings, version: badgeSettingsVersion };
     applySettingsToForm(settings);
