@@ -2603,7 +2603,7 @@ async function renderCrachas() {
     const selected = selectedEntries();
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
     const printModelSelected = Boolean(printModelSelect?.value);
-    preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? sampleBadgeCard(next) : '') : blankPreview || !first ? blankBadgeCard(next) : badgeCard(first.entry, next, first.sector);
+    preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? sampleBadgeCard(next) : '') : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
     badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'individual' ? `Crach\u00e1 - ${first?.entry?.nome || ''}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
