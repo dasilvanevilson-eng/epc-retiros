@@ -114,7 +114,7 @@ function permissionForRequest(resource, id, req) {
     if (req.method === 'DELETE') return 'crachas.excluir';
   }
   if (resource === 'configuracoes') {
-    if (String(id || '').startsWith('recado-equipe:')) {
+    if (String(id || '') === 'recado-equipe') {
       if (req.method === 'GET') return 'retiros.editar';
       if (req.method === 'PUT') return 'retiros.editar';
       if (req.method === 'DELETE') return 'usuarios.editar';

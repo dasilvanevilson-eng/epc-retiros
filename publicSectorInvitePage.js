@@ -17,7 +17,7 @@ const normalizeText = (value = '') => String(value)
 
 const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaco kids', 'espiritual', 'externo', 'refeitorio', 'secretaria', 'zeladoria']);
 const sectorArea = (sector = '') => hiddenTeamSectors.has(normalizeText(sector)) ? 'escondida' : 'sala';
-const teamMessageConfigId = (retreatId) => `recado-equipe:${retreatId}`;
+const teamMessageConfigId = 'recado-equipe';
 const messageHtml = (value = '') => escapeHtml(value).replace(/\r?\n/g, '<br>');
 
 function invitePageHtml({ retreat, sector, retreatId, token, origin = '', teamMessage = '' }) {
@@ -124,7 +124,7 @@ async function sendPublicSectorInvitePage(req, res, retreatId, token) {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
-  const setting = await getRecord('configuracoes', teamMessageConfigId(result.retreatId)).catch(() => null);
+  const setting = await getRecord('configuracoes', teamMessageConfigId).catch(() => null);
   const teamMessage = setting?.mensagens?.[normalizeText(result.sector)] || '';
   res.end(invitePageHtml({ retreat: result.retreat, sector: result.sector, retreatId: result.retreatId, token: result.link.token, origin, teamMessage }));
 }
