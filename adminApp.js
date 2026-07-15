@@ -2323,7 +2323,7 @@ async function renderCrachas() {
         <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
         <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
-      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-pdf" type="button">Gerar PDF</button></div>
+      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar Arquivo Word</button></div>
       <div class="badge-model-toolbar"><button class="primary-button" id="badge-new-config" type="button">Novo modelo</button></div>
     </div></section>
   <section class="badge-workbench">
@@ -2695,20 +2695,23 @@ async function renderCrachas() {
 </head>
 <body>${content}</body>
 </html>`;
-  const printBadges = (pdf = false) => {
+  const badgePrintPayload = () => {
     const profile = badgeProfiles.find((item) => item.id === configSelect?.value);
-    if (!profile) { alert('Selecione o modelo do crach\u00e1 que ser\u00e1 usado na impress\u00e3o.'); configSelect?.focus(); return; }
+    if (!profile) { alert('Selecione o modelo do crach\u00e1 que ser\u00e1 usado.'); configSelect?.focus(); return null; }
     setActiveProfile(profile);
     if (!badgePrintEntries.length) { alert('Nenhum crach\u00e1 selecionado para gerar.'); return; }
     const printContent = printArea.innerHTML.trim();
-    if (!printContent) { alert('Nenhuma p\u00e1gina de crach\u00e1 foi montada para impress\u00e3o.'); return; }
+    if (!printContent) { alert('Nenhuma p\u00e1gina de crach\u00e1 foi montada para gerar.'); return null; }
+    return { printContent, title: badgePrintTitle || 'Crach\u00e1s' };
+  };
+  const printBadges = () => {
+    const payload = badgePrintPayload();
+    if (!payload) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('O navegador bloqueou a janela de impress\u00e3o. Permita pop-ups para este site e tente novamente.'); return; }
-    const title = badgePrintTitle || 'Crach\u00e1s';
     printWindow.document.open();
-    printWindow.document.write(badgePrintDocument(printContent, title));
+    printWindow.document.write(badgePrintDocument(payload.printContent, payload.title));
     printWindow.document.close();
-    if (pdf) app.querySelector('#badge-print-summary').textContent = 'Na janela de impress\u00e3o, escolha "Salvar como PDF".';
     const triggerPrint = () => {
       printWindow.focus();
       printWindow.print();
@@ -2724,6 +2727,21 @@ async function renderCrachas() {
         image.addEventListener('error', resolve, { once: true });
       }))).then(() => setTimeout(triggerPrint, 150));
     }, { once: true });
+  };
+  const generateBadgeWordFile = () => {
+    const payload = badgePrintPayload();
+    if (!payload) return;
+    const documentHtml = badgePrintDocument(payload.printContent, payload.title);
+    const blob = new Blob([`\uFEFF${documentHtml}`], { type: 'application/msword;charset=utf-8' });
+    const link = document.createElement('a');
+    const fileName = normalizeText(payload.title).replace(/\s+/g, '-') || 'crachas';
+    link.href = URL.createObjectURL(blob);
+    link.download = `${fileName}.doc`;
+    document.body.append(link);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    link.remove();
+    app.querySelector('#badge-print-summary').textContent = 'Arquivo Word gerado.';
   };
   form.elements.textTarget?.addEventListener('change', () => {
     syncTextTargetControls(settings);
@@ -2762,8 +2780,8 @@ async function renderCrachas() {
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
-  app.querySelector('#badge-print').addEventListener('click', () => printBadges(false));
-  app.querySelector('#badge-pdf').addEventListener('click', () => printBadges(true));
+  app.querySelector('#badge-print').addEventListener('click', printBadges);
+  app.querySelector('#badge-word').addEventListener('click', generateBadgeWordFile);
   openBadgePanel('logo');
   syncTextTargetControls(settings);
   renderBadges();
@@ -2904,7 +2922,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
   }
   const requestedSectorToken = !embedded ? String(sectorToken || '').trim() : '';
-  const sectorLink = requestedSectorToken ? (retreat.linksSetores || retreat.setorLinks || []).find((item) => item.token === requestedSectorToken) : null;
+  const sectorLink = requestedSectorToken ? (retreat.linksSetores || retreat.setorLinks || []).find((item) => item.cadastroToken === requestedSectorToken || item.token === requestedSectorToken) : null;
   const activeSectorByKey = new Map((retreat.setores || []).map((sector) => [normalizeText(sector), sector]));
   const forcedSector = sectorLink ? activeSectorByKey.get(normalizeText(sectorLink.setor || sectorLink.sector)) : '';
   if (requestedSectorToken && !forcedSector) {

@@ -33,6 +33,14 @@ const communityId = crypto.randomUUID();
 const badgeId = crypto.randomUUID();
 const userId = crypto.randomUUID();
 const settingId = `smoke:${suffix}`;
+const publicToken = () => crypto.randomBytes(24).toString('hex');
+const receiverToken = publicToken();
+const secretariaLegacyToken = publicToken();
+const secretariaRegistrationToken = publicToken();
+const secretariaFollowupToken = publicToken();
+const cozinhaLegacyToken = publicToken();
+const cozinhaRegistrationToken = publicToken();
+const cozinhaFollowupToken = publicToken();
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -77,21 +85,21 @@ async function main() {
     valorFoto: 15,
     descontoParentesco: 5,
     idadeMaximaEspacoKids: 10,
-    recebedorToken: `recebedor-${suffix}`,
+    recebedorToken: receiverToken,
     setores: ['Secretaria', 'Cozinha', 'Espaco Kids'],
     setoresPublicos: ['Secretaria', 'Cozinha'],
     ordemQuadrante: ['Cozinha', 'Secretaria', 'Espaco Kids'],
     dias: ['Sexta-feira', 'Sabado', 'Domingo'],
     contribuicoes: ['R$ 60,00 teste', 'R$ 55,00 teste'],
     linksSetores: [
-      { setor: 'Secretaria', token: `legacy-sec-${suffix}`, cadastroToken: `cad-sec-${suffix}`, acompanhamentoToken: `aco-sec-${suffix}` },
-      { setor: 'Cozinha', token: `legacy-coz-${suffix}`, cadastroToken: `cad-coz-${suffix}`, acompanhamentoToken: `aco-coz-${suffix}` },
+      { setor: 'Secretaria', token: secretariaLegacyToken, cadastroToken: secretariaRegistrationToken, acompanhamentoToken: secretariaFollowupToken },
+      { setor: 'Cozinha', token: cozinhaLegacyToken, cadastroToken: cozinhaRegistrationToken, acompanhamentoToken: cozinhaFollowupToken },
     ],
     status: 'preparacao',
     createdAt: new Date().toISOString(),
   });
   assert(retreat.setores.length === 3, 'Retiro nao retornou setores.');
-  assert(retreat.linksSetores.some((item) => item.cadastroToken === `cad-sec-${suffix}`), 'Links de setor nao retornaram.');
+  assert(retreat.linksSetores.some((item) => item.cadastroToken === secretariaRegistrationToken), 'Links de setor nao retornaram.');
 
   const retreatUpdated = await db.saveRecord('retiros', {
     ...retreat,
@@ -224,11 +232,11 @@ async function main() {
   assert(community.monitorIds.includes(personCpf), 'Monitor da comunidade nao retornou.');
   assert(community.membroIds.includes(studentCpf), 'Cursista da comunidade nao retornou.');
 
-  const registrationLink = await findPublicSectorLink({ token: `cad-sec-${suffix}`, type: 'cadastro' });
+  const registrationLink = await findPublicSectorLink({ token: secretariaRegistrationToken, type: 'cadastro' });
   assert(registrationLink?.retreatId === retreatId && registrationLink.sector === 'Secretaria', 'Resolucao do link publico de cadastro falhou.');
-  const followupLink = await findPublicSectorLink({ token: `aco-sec-${suffix}`, type: 'acompanhamento' });
+  const followupLink = await findPublicSectorLink({ token: secretariaFollowupToken, type: 'acompanhamento' });
   assert(followupLink?.retreatId === retreatId && followupLink.sector === 'Secretaria', 'Resolucao do link publico de acompanhamento falhou.');
-  const receiverLink = await findPublicReceiverRetreat(`recebedor-${suffix}`);
+  const receiverLink = await findPublicReceiverRetreat(receiverToken);
   assert(receiverLink?.retreatId === retreatId, 'Resolucao do link publico do recebedor falhou.');
 
   const badge = await db.saveRecord('crachas', {

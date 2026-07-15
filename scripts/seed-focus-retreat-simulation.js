@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomBytes, randomUUID } = require('crypto');
 
 const root = path.join(__dirname, '..');
 
@@ -48,7 +48,7 @@ const money = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', cur
 const phone = (index) => `(47) 9${String(7100 + index).padStart(4, '0')}-${String(1000 + index).padStart(4, '0')}`;
 const birthDate = (year, index) => `${year}-${String((index % 12) + 1).padStart(2, '0')}-${String((index % 27) + 1).padStart(2, '0')}`;
 const fullName = (firstNames, index, suffix = '') => `${pick(firstNames, index)} ${pick(lastNames, index)} ${pick(lastNames, index + 7)}${suffix}`;
-const token = (index) => `girassol26setor${String(index).padStart(2, '0')}`;
+const publicToken = () => randomBytes(24).toString('hex');
 
 function cpfFromIndex(index) {
   const base = String(910000000 + index).padStart(9, '0').slice(0, 9);
@@ -225,7 +225,7 @@ async function ensureFocusRetreat(retreats) {
     ordemQuadrante: sectors,
     dias: ['Sexta-feira', 'Sábado', 'Domingo'],
     contribuicoes: ['R$ 60,00 se o voluntario for o unico da familia', 'R$ 55,00 se o voluntario tiver mais pessoas da mesma familia trabalhando no retiro'],
-    linksSetores: sectors.map((setor, index) => ({ setor, token: token(index) })),
+    linksSetores: sectors.map((setor) => ({ setor, token: publicToken(), cadastroToken: publicToken(), acompanhamentoToken: publicToken() })),
     status: 'publicado',
     simulation: marker,
     createdAt: now,

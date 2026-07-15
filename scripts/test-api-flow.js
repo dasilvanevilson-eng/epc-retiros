@@ -27,6 +27,11 @@ const retreatId = crypto.randomUUID();
 const personCpf = `90200${suffix.replace(/\D/g, '').padEnd(6, '2')}`.slice(0, 11);
 const enrolmentId = crypto.randomUUID();
 const studentCpf = `90300${suffix.replace(/\D/g, '').padEnd(6, '3')}`.slice(0, 11);
+const publicToken = () => crypto.randomBytes(24).toString('hex');
+const receiverToken = publicToken();
+const legacySectorToken = publicToken();
+const registrationToken = publicToken();
+const followupToken = publicToken();
 let cookie = '';
 
 const assert = (condition, message) => {
@@ -89,13 +94,13 @@ async function main() {
       valorInscricaoVoluntario: 60,
       valorFoto: 15,
       idadeMaximaEspacoKids: 9,
-      recebedorToken: `api-recebedor-${suffix}`,
+      recebedorToken: receiverToken,
       setores: ['Secretaria', 'Cozinha'],
       setoresPublicos: ['Secretaria'],
       ordemQuadrante: ['Secretaria', 'Cozinha'],
       dias: ['Sexta-feira', 'Sabado'],
       contribuicoes: ['R$ 60,00'],
-      linksSetores: [{ setor: 'Secretaria', token: `api-legacy-${suffix}`, cadastroToken: `api-cad-${suffix}`, acompanhamentoToken: `api-aco-${suffix}` }],
+      linksSetores: [{ setor: 'Secretaria', token: legacySectorToken, cadastroToken: registrationToken, acompanhamentoToken: followupToken }],
       status: 'publicado',
       createdAt: new Date().toISOString(),
     }),
@@ -168,13 +173,13 @@ async function main() {
   assert(student.id === studentCpf && student.valorInscricao === 180, 'API nao salvou cursista relacional.');
 
   const receiverRows = await api('/api/adesoes', {
-    headers: { 'X-Public-Receiver-Token': `api-recebedor-${suffix}` },
+    headers: { 'X-Public-Receiver-Token': receiverToken },
   });
   assert(receiverRows.some((item) => item.id === enrolmentId), 'API publica do recebedor nao listou adesao.');
 
   const receiverUpdate = await api(`/api/adesoes/${encodeURIComponent(enrolmentId)}`, {
     method: 'PUT',
-    headers: { 'X-Public-Receiver-Token': `api-recebedor-${suffix}` },
+    headers: { 'X-Public-Receiver-Token': receiverToken },
     body: JSON.stringify({ valorPago: 60, taxaPaga: true, formaPagamento: 'Pix', recebedorObservacao: 'Recebedor API' }),
   });
   assert(receiverUpdate.taxaPaga === true && receiverUpdate.valorPago === 60, 'API publica do recebedor nao atualizou pagamento.');

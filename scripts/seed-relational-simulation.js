@@ -32,6 +32,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 const { checkDatabaseConnection, deleteRecord, listRecords, saveRecord } = require('../databaseAdapter');
 const stores = require('../storeConfig').stores;
+const publicToken = () => crypto.randomBytes(24).toString('hex');
 
 const sectors = [
   'Animacao',
@@ -262,17 +263,17 @@ function createRetreat() {
     valorFoto: 15,
     descontoParentesco: 5,
     idadeMaximaEspacoKids: 10,
-    recebedorToken: `recebedor-${marker}`,
+    recebedorToken: publicToken(),
     setores: sectors,
     setoresPublicos: publicSectors,
     ordemQuadrante: sectors,
     dias: days,
     contribuicoes: ['R$ 60,00 se o voluntario for o unico da familia', 'R$ 55,00 se o voluntario tiver mais pessoas da mesma familia trabalhando no retiro'],
-    linksSetores: sectors.map((setor, index) => ({
+    linksSetores: sectors.map((setor) => ({
       setor,
-      token: `${marker}-legacy-${index}`,
-      cadastroToken: `${marker}-cadastro-${index}`,
-      acompanhamentoToken: `${marker}-setor-${index}`,
+      token: publicToken(),
+      cadastroToken: publicToken(),
+      acompanhamentoToken: publicToken(),
     })),
     status: 'publicado',
     simulation: marker,

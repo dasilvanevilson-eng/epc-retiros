@@ -1,11 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomBytes, randomUUID } = require('crypto');
 
 const root = path.join(__dirname, '..');
 const outputDir = path.join(root, 'supabase-import');
 const now = new Date().toISOString();
 const marker = 'simulacao_girassol_2026_csv';
+const publicToken = () => randomBytes(24).toString('hex');
 
 const cities = [
   { cidade: 'Timbo', cep: '89120-000' },
@@ -196,7 +197,7 @@ function createRetreat() {
     ordemQuadrante: sectors,
     dias: ['Sexta-feira', 'Sábado', 'Domingo'],
     contribuicoes: ['R$ 60,00 se o voluntario for o unico da familia', 'R$ 55,00 se o voluntario tiver mais pessoas da mesma familia trabalhando no retiro'],
-    linksSetores: sectors.map((setor, index) => ({ setor, token: `girassol26setor${String(index).padStart(2, '0')}` })),
+    linksSetores: sectors.map((setor) => ({ setor, token: publicToken(), cadastroToken: publicToken(), acompanhamentoToken: publicToken() })),
     status: 'publicado',
     simulation: marker,
     createdAt: now,
