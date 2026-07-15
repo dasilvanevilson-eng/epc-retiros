@@ -2309,6 +2309,7 @@ async function renderCrachas() {
   let blankPreview = false;
   let selectedCommunityId = badgeCommunities[0]?.id || '';
   let activePrintMode = '';
+  let badgeManualSelection = null;
   let activeBadgeView = '';
   let sectorPickerOpen = false;
   let personPickerOpen = false;
@@ -2492,8 +2493,8 @@ async function renderCrachas() {
     return next;
   };
   const selectedEntries = () => {
+    if (Array.isArray(badgeManualSelection)) return badgeManualSelection;
     if (activePrintMode === 'sector') return entries.filter((entry) => entryHasSector(entry, sectorSelect.value)).map((entry) => ({ entry, sector: sectorSelect.value }));
-    if (activePrintMode === 'individual') return entries.filter((entry) => entry.id === personSelect.value).map((entry) => ({ entry, sector: (entry.setores || [])[0] || '' }));
     if (activePrintMode === 'community') return communityBadgeEntries(selectedCommunityId);
     return [];
   };
@@ -2530,18 +2531,36 @@ async function renderCrachas() {
     sectorPickerOpen = true;
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por setor</p><h2>Selecione o setor</h2><p>Escolha qual setor ser&aacute; usado na impress&atilde;o dos crach&aacute;s.</p></div></div><div class="receiver-sector-list">${sectors.map((sector) => `<button type="button" data-badge-sector-choice="${escapeHtml(sector)}"><strong>${escapeHtml(sector)}</strong><span>${badgeSectorCount(sector)} crach&aacute;(s)</span></button>`).join('')}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
     const close = () => {
       sectorPickerOpen = false;
       overlay.remove();
     };
-    overlay.querySelector('.close-sector-view').addEventListener('click', close);
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-    overlay.querySelectorAll('[data-badge-sector-choice]').forEach((button) => button.addEventListener('click', () => {
-      sectorSelect.value = button.dataset.badgeSectorChoice;
+    const printSelection = (items) => {
+      badgeManualSelection = items;
       close();
       renderBadges();
-    }));
+      printBadges();
+    };
+    const renderEntries = (sector) => {
+      sectorSelect.value = sector;
+      const items = entries.filter((entry) => entryHasSector(entry, sector)).map((entry) => ({ entry, sector }));
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><button type="button" class="receiver-sector-back" data-badge-back>← Escolher outro setor</button><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por setor</p><h2>${escapeHtml(sector)}</h2><p>Marque os integrantes que deseja imprimir.</p></div></div><div class="badge-print-member-list">${items.map(({ entry }, index) => `<label><input type="checkbox" data-badge-print-entry="${index}" checked><span><strong>${escapeHtml(entry.nome)}</strong><small>${escapeHtml((entry.setores || []).join(', ') || sector)}</small></span></label>`).join('') || '<p class="empty-state">Nenhum integrante neste setor.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="button" data-badge-print-selected ${items.length ? '' : 'disabled'}>Imprimir selecionados</button><button type="button" class="is-couple-continue" data-badge-print-all ${items.length ? '' : 'disabled'}>Imprimir todos</button></div></div>`;
+      overlay.querySelector('[data-badge-back]').addEventListener('click', renderSectorList);
+      overlay.querySelector('.close-sector-view').addEventListener('click', close);
+      overlay.querySelector('[data-badge-print-all]').addEventListener('click', () => printSelection(items));
+      overlay.querySelector('[data-badge-print-selected]').addEventListener('click', () => {
+        const selected = [...overlay.querySelectorAll('[data-badge-print-entry]:checked')].map((input) => items[Number(input.dataset.badgePrintEntry)]).filter(Boolean);
+        if (!selected.length) { alert('Selecione ao menos um integrante.'); return; }
+        printSelection(selected);
+      });
+    };
+    const renderSectorList = () => {
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por setor</p><h2>Selecione o setor</h2><p>Escolha o setor para revisar os integrantes antes da impress&atilde;o.</p></div></div><div class="receiver-sector-list">${sectors.map((sector) => `<button type="button" data-badge-sector-choice="${escapeHtml(sector)}"><strong>${escapeHtml(sector)}</strong><span>${badgeSectorCount(sector)} crach&aacute;(s)</span></button>`).join('')}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
+      overlay.querySelector('.close-sector-view').addEventListener('click', close);
+      overlay.querySelectorAll('[data-badge-sector-choice]').forEach((button) => button.addEventListener('click', () => renderEntries(button.dataset.badgeSectorChoice)));
+    };
+    renderSectorList();
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
     app.append(overlay);
   };
   const openBadgePersonPicker = () => {
@@ -2568,21 +2587,40 @@ async function renderCrachas() {
     communityPickerOpen = true;
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por comunidade</p><h2>Selecione a comunidade</h2><p>Ser&atilde;o impressos os crach&aacute;s dos cursistas, tios e monitores definidos na comunidade.</p></div></div><div class="receiver-sector-list">${badgeCommunities.map((community) => {
-      const count = communityBadgeEntries(community.id).length;
-      return `<button type="button" data-badge-community-choice="${escapeHtml(community.id)}"><strong>${escapeHtml(communityName(community))}</strong><span>${count} crach&aacute;(s) de cursistas/tios/monitores</span></button>`;
-    }).join('')}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
     const close = () => {
       communityPickerOpen = false;
       overlay.remove();
     };
-    overlay.querySelector('.close-sector-view').addEventListener('click', close);
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-    overlay.querySelectorAll('[data-badge-community-choice]').forEach((button) => button.addEventListener('click', () => {
-      selectedCommunityId = button.dataset.badgeCommunityChoice;
+    const printSelection = (items) => {
+      badgeManualSelection = items;
       close();
       renderBadges();
-    }));
+      printBadges();
+    };
+    const renderEntries = (communityId) => {
+      selectedCommunityId = communityId;
+      const community = badgeCommunities.find((item) => item.id === communityId);
+      const items = communityBadgeEntries(communityId);
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><button type="button" class="receiver-sector-back" data-badge-back>← Escolher outra comunidade</button><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por comunidade</p><h2>${escapeHtml(communityName(community))}</h2><p>Marque os integrantes que deseja imprimir.</p></div></div><div class="badge-print-member-list">${items.map(({ entry, sector }, index) => `<label><input type="checkbox" data-badge-print-entry="${index}" checked><span><strong>${escapeHtml(entry.nome)}</strong><small>${escapeHtml(sector)}</small></span></label>`).join('') || '<p class="empty-state">Nenhum integrante nesta comunidade.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="button" data-badge-print-selected ${items.length ? '' : 'disabled'}>Imprimir selecionados</button><button type="button" class="is-couple-continue" data-badge-print-all ${items.length ? '' : 'disabled'}>Imprimir todos</button></div></div>`;
+      overlay.querySelector('[data-badge-back]').addEventListener('click', renderCommunityList);
+      overlay.querySelector('.close-sector-view').addEventListener('click', close);
+      overlay.querySelector('[data-badge-print-all]').addEventListener('click', () => printSelection(items));
+      overlay.querySelector('[data-badge-print-selected]').addEventListener('click', () => {
+        const selected = [...overlay.querySelectorAll('[data-badge-print-entry]:checked')].map((input) => items[Number(input.dataset.badgePrintEntry)]).filter(Boolean);
+        if (!selected.length) { alert('Selecione ao menos um integrante.'); return; }
+        printSelection(selected);
+      });
+    };
+    const renderCommunityList = () => {
+      overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por comunidade</p><h2>Selecione a comunidade</h2><p>Revise os integrantes antes da impress&atilde;o.</p></div></div><div class="receiver-sector-list">${badgeCommunities.map((community) => {
+        const count = communityBadgeEntries(community.id).length;
+        return `<button type="button" data-badge-community-choice="${escapeHtml(community.id)}"><strong>${escapeHtml(communityName(community))}</strong><span>${count} crach&aacute;(s) de cursistas/tios/monitores</span></button>`;
+      }).join('')}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
+      overlay.querySelector('.close-sector-view').addEventListener('click', close);
+      overlay.querySelectorAll('[data-badge-community-choice]').forEach((button) => button.addEventListener('click', () => renderEntries(button.dataset.badgeCommunityChoice)));
+    };
+    renderCommunityList();
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
     app.append(overlay);
   };
   const syncColorCaptions = (source = settings) => {
@@ -2634,6 +2672,7 @@ async function renderCrachas() {
     setActiveProfile(profile, true);
   };
   const loadPrintProfile = () => {
+    badgeManualSelection = null;
     const profile = badgeProfiles.find((item) => item.id === printModelSelect.value);
     if (!profile) {
       selectedProfileId = '';
@@ -2836,6 +2875,7 @@ async function renderCrachas() {
   mode.addEventListener('change', () => {
     if (!mode.value) return;
     activePrintMode = mode.value;
+    badgeManualSelection = null;
     renderBadges();
     if (activePrintMode === 'sector') openBadgeSectorPicker();
     if (activePrintMode === 'community') openBadgeCommunityPicker();
