@@ -137,6 +137,7 @@
 .badge-view-toolbar { display:grid; gap:12px; max-width:1180px; margin:0 auto; }
 .badge-view-toolbar .badge-heading-tools { width:100%; grid-template-columns:minmax(220px,1fr) auto; }
 .badge-view-toolbar .badge-config-controls,.badge-view-toolbar .badge-print-actions { display:none; }
+.badge-view-switch { align-self:center; min-height:38px; padding:9px 13px; font-size:13px; }
 .badge-print-panel .badge-heading-tools { width:100%; grid-template-columns:1fr; }
 .badge-heading-tools .field { min-width:0; gap:5px; font-size:12px; }
 .badge-heading-tools .field span { font-size:11px; color:var(--muted); }

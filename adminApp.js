@@ -2320,7 +2320,7 @@ async function renderCrachas() {
   </section>
   <section class="badge-active-area" id="badge-active-area" hidden>
     <section class="panel badge-view-toolbar" id="badge-config-toolbar" hidden>
-      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div></div>
+      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div><button type="button" class="secondary-button badge-view-switch" data-badge-view="print">Imprimir crach&aacute;s</button></div>
       <div class="badge-heading-tools">
       <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-config-select">${profileOptions()}</select></label>
       <div class="badge-config-controls" hidden>
@@ -2354,7 +2354,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
-      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div></div>
+      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div><button type="button" class="secondary-button badge-view-switch" data-badge-view="config">Configurar crach&aacute;s</button></div>
       <div class="badge-heading-tools">
         <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
         <div class="badge-print-controls">
