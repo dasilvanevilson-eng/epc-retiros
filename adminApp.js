@@ -4180,18 +4180,25 @@ async function renderUsuarios() {
     return `<article class="access-user-row" data-user-row="${escapeHtml(user.id)}"><div><strong>${escapeHtml(user.nome || user.login)}</strong><span>${escapeHtml(user.login)} · ${escapeHtml(profile?.nome || 'Sem perfil')} · ${user.ativo === false ? 'Inativo' : 'Ativo'}${retreatCount ? ` · ${retreatCount} retiro(s)` : ''}</span></div><div class="registration-actions"><button type="button" data-edit-user="${escapeHtml(user.id)}">Editar</button>${canAccess('usuarios.excluir') ? `<button type="button" data-delete-user="${escapeHtml(user.id)}">Excluir</button>` : ''}</div></article>`;
   }).join('');
   const profileOptions = perfis.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.nome)}</option>`).join('');
+  const duplicateUserOptions = usuarios.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.nome || user.login)} (${escapeHtml(user.login)})</option>`).join('');
   const retreatChecks = allRetreats.map((retreat) => `<label class="access-check"><input type="checkbox" name="retiroIds" value="${escapeHtml(retreat.id)}"><span>${escapeHtml(retreat.nome)}</span></label>`).join('');
   const permissionGroups = Object.entries(groupedPermissions).map(([moduleName, items]) => `<section class="access-permission-group"><h3>${escapeHtml(moduleName)}</h3>${items.map((permission) => `<label class="access-check"><input type="checkbox" name="permission" value="${escapeHtml(permission.id)}"><span><strong>${escapeHtml(permission.id)}</strong><small>${escapeHtml(permission.descricao || '')}</small></span></label>`).join('')}</section>`).join('');
+  const duplicatePermissionsBlock = `<section class="access-duplicate"><div class="panel-heading compact-heading"><div><h3>Duplicar permiss&otilde;es</h3><p>Copie perfil, permiss&otilde;es e retiros vinculados de um usu&aacute;rio existente.</p></div></div><div class="fields two-columns"><label class="field"><span>Usu&aacute;rio modelo</span><select id="duplicate-user-permissions"><option value="">Selecione um usu&aacute;rio</option>${duplicateUserOptions}</select></label><div class="form-actions compact-actions"><button type="button" id="apply-user-permissions" ${usuarios.length ? '' : 'disabled'}>Duplicar permiss&otilde;es</button></div></div></section>`;
   layout(`<section class="page-heading"><div><p class="eyebrow">Seguranca</p><h1>Usuarios e permissoes</h1><p>Gerencie perfis, acessos por tela e acoes permitidas para cada usuario.</p></div><div class="detail-actions"><a class="primary-button" href="#alterar-senha">Alterar senha</a></div></section>
   <section class="access-layout">
     <article class="panel access-list-panel"><div class="panel-heading"><div><h2>Usuarios</h2><p>${usuarios.length} usuario(s) cadastrado(s) no banco.</p></div><button type="button" id="new-access-user" ${canAccess('usuarios.criar') ? '' : 'disabled'}>Novo usuario</button></div><div class="access-user-list">${userRows || '<p class="empty-state">Nenhum usuario cadastrado no banco.</p>'}</div></article>
     <form id="access-user-form" class="panel access-user-form"><div class="panel-heading"><div><p class="eyebrow">Cadastro</p><h2 id="access-form-title">Novo usuario</h2><p>Senhas sao armazenadas com hash no servidor.</p></div></div><input type="hidden" name="id"><div class="fields two-columns"><label class="field"><span>Nome <b>*</b></span><input name="nome" required></label><label class="field"><span>Login <b>*</b></span><input name="login" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" placeholder="Obrigatoria para novo usuario"></label><label class="field"><span>Perfil <b>*</b></span><select name="perfilId" required>${profileOptions}</select></label><label class="access-active-option"><input type="checkbox" name="ativo" checked> Usuario ativo</label></div><section class="access-retreats"><h3>Retiros vinculados</h3><p class="hint">Use para Coordenador do retiro. Admin e Coordenador Geral podem ficar sem restricao.</p><div class="access-check-grid">${retreatChecks || '<p class="empty-state">Nenhum retiro cadastrado.</p>'}</div></section><section class="access-permissions"><div class="panel-heading compact-heading"><div><h3>Permissoes do usuario</h3><p>Marque exatamente o que este usuario pode acessar e executar.</p></div><button type="button" id="apply-profile-permissions">Aplicar perfil</button></div><div class="access-permission-grid">${permissionGroups}</div></section><p id="access-message" class="form-message"></p><div class="form-actions"><p>As permissoes sao aplicadas no menu e validadas na API.</p><button type="submit" ${canAccess('usuarios.criar') || canAccess('usuarios.editar') ? '' : 'disabled'}>Salvar usuario <span>→</span></button></div></form>
   </section>`, 'usuarios');
+  app.querySelector('.access-permissions')?.insertAdjacentHTML('beforebegin', duplicatePermissionsBlock);
   const form = app.querySelector('#access-user-form');
   const message = app.querySelector('#access-message');
   const applyPermissions = (permissionIds = []) => {
     const selected = new Set(permissionIds);
     form.querySelectorAll('input[name="permission"]').forEach((input) => { input.checked = selected.has(input.value); });
+  };
+  const applyLinkedRetreats = (retreatIds = []) => {
+    const selected = new Set(retreatIds);
+    form.querySelectorAll('input[name="retiroIds"]').forEach((input) => { input.checked = selected.has(input.value); });
   };
   const profilePermissionIds = (profileId) => perfilPermissoes.filter((item) => item.perfilId === profileId && item.permitido !== false).map((item) => item.permissaoId);
   const clearForm = () => {
@@ -4199,6 +4206,7 @@ async function renderUsuarios() {
     form.elements.id.value = '';
     form.elements.ativo.checked = true;
     form.elements.password.required = true;
+    app.querySelector('#duplicate-user-permissions').value = '';
     app.querySelector('#access-form-title').textContent = 'Novo usuario';
     applyPermissions(profilePermissionIds(form.elements.perfilId.value));
     message.textContent = '';
@@ -4222,6 +4230,17 @@ async function renderUsuarios() {
   clearForm();
   app.querySelector('#new-access-user')?.addEventListener('click', clearForm);
   app.querySelector('#apply-profile-permissions')?.addEventListener('click', () => applyPermissions(profilePermissionIds(form.elements.perfilId.value)));
+  app.querySelector('#apply-user-permissions')?.addEventListener('click', () => {
+    const sourceUser = usuarios.find((item) => item.id === app.querySelector('#duplicate-user-permissions')?.value);
+    if (!sourceUser) {
+      message.textContent = 'Selecione um usuario para duplicar as permissoes.';
+      return;
+    }
+    form.elements.perfilId.value = sourceUser.perfilId || perfis[0]?.id || '';
+    applyPermissions([...effectivePermissions(sourceUser)]);
+    applyLinkedRetreats(usuarioRetiros.filter((item) => item.usuarioId === sourceUser.id).map((item) => item.retiroId));
+    message.textContent = `Permissoes de ${sourceUser.nome || sourceUser.login} copiadas para este cadastro.`;
+  });
   form.elements.perfilId.addEventListener('change', () => applyPermissions(profilePermissionIds(form.elements.perfilId.value)));
   app.querySelectorAll('[data-edit-user]').forEach((button) => button.addEventListener('click', () => {
     const user = usuarios.find((item) => item.id === button.dataset.editUser);
