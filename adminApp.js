@@ -794,12 +794,11 @@ async function renderRetiros() {
   <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
 }
 
-const sectorOptionHtml = (sector, selected = false, publicSelected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label><label class="sector-public-option"><input type="checkbox" name="setoresPublicos" value="${escapeHtml(sector)}" ${publicSelected ? 'checked' : ''}> Público</label></div>`;
+const sectorOptionHtml = (sector, selected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label></div>`;
 
 function sectorGroups(sectors, selectedSectors = sectors, publicSectors = sectors) {
   const selected = new Set(selectedSectors.map(normalizeText));
-  const publicSelected = new Set(publicSectors.map(normalizeText));
-  const group = (area, title) => `<section class="sector-area"><h3>${title}</h3><div class="sector-checks" data-area="${area}">${sortSectors(sectors.filter((sector) => sectorArea(sector) === area)).map((sector) => sectorOptionHtml(sector, selected.has(normalizeText(sector)), publicSelected.has(normalizeText(sector)))).join('')}</div></section>`;
+  const group = (area, title) => `<section class="sector-area"><h3>${title}</h3><div class="sector-checks" data-area="${area}">${sortSectors(sectors.filter((sector) => sectorArea(sector) === area)).map((sector) => sectorOptionHtml(sector, selected.has(normalizeText(sector)))).join('')}</div></section>`;
   return `${group('escondida', 'Equipe escondida')}${group('sala', 'Equipe Sala')}`;
 }
 
@@ -831,9 +830,6 @@ function structureOptions(retreat) {
 }
 
 function wirePublicSectorToggles(form) {
-  const sync = (sectorInput) => { const publicInput = sectorInput.closest('.sector-option')?.querySelector('input[name="setoresPublicos"]'); if (!publicInput) return; if (!sectorInput.checked) { publicInput.checked = false; publicInput.disabled = true; } else publicInput.disabled = false; };
-  form.addEventListener('change', (event) => { if (event.target.name === 'setores') sync(event.target); });
-  form.querySelectorAll('input[name="setores"]').forEach(sync);
 }
 
 function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = null) {
@@ -910,7 +906,7 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
 async function renderNewRetreat() {
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Novo evento</p><h1>Criar retiro</h1><p>Os voluntários começam sempre vazios. Você só pode reaproveitar a estrutura.</p></div><a class="text-link" href="#retiros">← Voltar</a></section>
   <form id="retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required placeholder="Ex.: Retiro de Casais 2027"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date"></label><label class="field"><span>Local</span><input name="local" placeholder="Ex.: Casa de Retiros"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 10"></label></div></div>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p><div class="sector-groups" id="sector-checks">${sectorGroups(knownSectors(), [], [])}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p><div class="sector-groups" id="sector-checks">${sectorGroups(knownSectors(), [], [])}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#retreat-form');
   let sourceRetreatId = '';
   wireCurrencyInputs(form);
@@ -973,7 +969,7 @@ async function renderNewRetreat() {
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
@@ -1202,7 +1198,7 @@ async function renderEditRetreat(id) {
   if (!retreat) return renderRetiros();
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="#retiros/${retreat.id}">← Voltar</a></section>
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}"></label><label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Marque <b>Público</b> somente nos setores que podem aparecer no link de cadastro. Os demais ficam disponíveis apenas em acesso restrito.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
@@ -1218,18 +1214,12 @@ async function renderEditRetreat(id) {
       volunteers: enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, sector)).map((entry) => entry.nome).filter(Boolean),
     })).filter((item) => item.volunteers.length);
     if (blockedRemovals.length) {
-      const publicSectorKeys = new Set((retreat.setoresPublicos ?? retreat.setores ?? []).map(normalizeText));
       blockedRemovals.forEach(({ sector }) => {
         const sectorKey = normalizeText(sector);
         const sectorInput = [...form.querySelectorAll('input[name="setores"]')].find((input) => normalizeText(input.value) === sectorKey);
         if (sectorInput) {
           sectorInput.checked = true;
           sectorInput.closest('.sector-option')?.classList.add('field-warning');
-        }
-        const publicInput = [...form.querySelectorAll('input[name="setoresPublicos"]')].find((input) => normalizeText(input.value) === sectorKey);
-        if (publicInput) {
-          publicInput.disabled = false;
-          publicInput.checked = publicSectorKeys.has(sectorKey);
         }
       });
       alert(`Setor já tem voluntário(s) cadastrados\n\n${blockedRemovals.map(({ sector, volunteers }) => `${sector}:\n${volunteers.map((name) => `- ${name}`).join('\n')}`).join('\n\n')}`);
@@ -1240,7 +1230,7 @@ async function renderEditRetreat(id) {
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortSectors(values.getAll('setoresPublicos').filter((sector) => selectedSectors.includes(sector))), dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
     const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
     for (const [from, to] of renames) {
       const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
