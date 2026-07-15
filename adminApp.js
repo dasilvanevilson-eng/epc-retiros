@@ -2308,7 +2308,7 @@ async function renderCrachas() {
   let selectedProfileId = '';
   let blankPreview = false;
   let selectedCommunityId = badgeCommunities[0]?.id || '';
-  let activePrintMode = 'all';
+  let activePrintMode = '';
   let activeBadgeView = '';
   let sectorPickerOpen = false;
   let personPickerOpen = false;
@@ -2337,7 +2337,7 @@ async function renderCrachas() {
       <div class="badge-heading-tools">
       <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-config-select">${profileOptions()}</select></label>
       <div class="badge-config-controls" hidden>
-        <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode-unused"><option value="">Selecione...</option><option value="all">Todos</option><option value="sector">Por setor</option><option value="individual">Individual</option><option value="community">Comunidade</option></select></label>
+        <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode-unused"><option value="">Selecione...</option><option value="sector">Por setor</option><option value="community">Por comunidade</option></select></label>
         <p class="badge-print-comment" id="badge-print-comment-unused"></p>
         <select id="badge-sector-unused" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
         <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
@@ -2371,7 +2371,7 @@ async function renderCrachas() {
       <div class="badge-heading-tools">
         <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
         <div class="badge-print-controls">
-          <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode"><option value="">Selecione...</option><option value="all">Todos</option><option value="sector">Por setor</option><option value="individual">Individual</option><option value="community">Comunidade</option></select></label>
+          <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode"><option value="">Selecione...</option><option value="sector">Por setor</option><option value="community">Por comunidade</option></select></label>
           <p class="badge-print-comment" id="badge-print-comment"></p>
           <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
           <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
@@ -2495,7 +2495,7 @@ async function renderCrachas() {
     if (activePrintMode === 'sector') return entries.filter((entry) => entryHasSector(entry, sectorSelect.value)).map((entry) => ({ entry, sector: sectorSelect.value }));
     if (activePrintMode === 'individual') return entries.filter((entry) => entry.id === personSelect.value).map((entry) => ({ entry, sector: (entry.setores || [])[0] || '' }));
     if (activePrintMode === 'community') return communityBadgeEntries(selectedCommunityId);
-    return entries.map((entry) => ({ entry, sector: '' }));
+    return [];
   };
   const communityName = (community) => community?.nome || `Comunidade ${community?.ordem || ''}`.trim() || 'Comunidade';
   const communityBadgeEntries = (communityId) => {
@@ -2607,7 +2607,7 @@ async function renderCrachas() {
     preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? sampleBadgeCard(next) : '') : activeBadgeView === 'config' && !configModelSelected ? '' : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
-    badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'individual' ? `Crach\u00e1 - ${first?.entry?.nome || ''}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
+    badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
     const pages = [];
     for (let index = 0; index < selected.length; index += 8) pages.push(selected.slice(index, index + 8));
     printArea.innerHTML = pages.map((page) => `<div class="badge-print-sheet">${page.map(({ entry, sector }) => badgeCard(entry, next, sector)).join('')}</div>`).join('');
@@ -2617,11 +2617,9 @@ async function renderCrachas() {
     if (printComment) {
       printComment.textContent = activePrintMode === 'sector'
         ? `Selecionado: ${sectorSelect.value || 'Setor'}`
-        : activePrintMode === 'individual'
-          ? `Selecionado: ${personSelect.options[personSelect.selectedIndex]?.textContent || 'Volunt\u00e1rio'}`
-          : activePrintMode === 'community'
+        : activePrintMode === 'community'
             ? `Selecionado: ${communityName(selectedCommunity)}`
-            : 'Selecionado: Todos';
+            : 'Selecione uma op\u00e7\u00e3o de impress\u00e3o.';
     }
   };
   const loadSelectedProfile = () => {
@@ -2840,7 +2838,6 @@ async function renderCrachas() {
     activePrintMode = mode.value;
     renderBadges();
     if (activePrintMode === 'sector') openBadgeSectorPicker();
-    if (activePrintMode === 'individual') openBadgePersonPicker();
     if (activePrintMode === 'community') openBadgeCommunityPicker();
     mode.value = '';
   });
