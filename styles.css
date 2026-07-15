@@ -131,6 +131,13 @@
 /* Crachas */
 .badge-page-heading { align-items:stretch; gap:18px; }
 .badge-heading-tools { display:grid; grid-template-columns:minmax(170px,1fr) minmax(260px,1.4fr) auto; gap:10px; align-items:end; width:min(720px,100%); }
+.badge-start-panel { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; max-width:720px; margin:0 auto 22px; }
+.badge-start-panel button { min-height:56px; font-size:16px; }
+.badge-active-area { display:grid; gap:18px; }
+.badge-view-toolbar { display:grid; gap:12px; max-width:1180px; margin:0 auto; }
+.badge-view-toolbar .badge-heading-tools { width:100%; grid-template-columns:minmax(220px,1fr) auto; }
+.badge-view-toolbar .badge-config-controls,.badge-view-toolbar .badge-print-actions { display:none; }
+.badge-print-panel .badge-heading-tools { width:100%; grid-template-columns:1fr; }
 .badge-heading-tools .field { min-width:0; gap:5px; font-size:12px; }
 .badge-heading-tools .field span { font-size:11px; color:var(--muted); }
 .badge-heading-tools select { width:100%; min-height:36px; padding:8px 10px; border:1px solid #d9cdb7; border-radius:8px; background:#fffef9; color:var(--ink); font:inherit; font-size:13px; }
@@ -208,7 +215,7 @@
 .badge-print-sheet .badge-card { break-inside:avoid; page-break-inside:avoid; box-shadow:none; }
 @media(max-width:1050px) { .badge-page-heading { flex-direction:column; }.badge-heading-tools { width:100%; }.badge-workbench { grid-template-columns:1fr; justify-items:center; }.badge-preview-panel { position:static; }.badge-editor { width:100%; max-width:760px; } }
 @media(max-width:920px) { .badge-heading-tools { grid-template-columns:1fr; }.badge-logo-picker,.badge-range-grid { grid-template-columns:repeat(2,1fr); }.badge-editor .fields.three-columns { grid-template-columns:repeat(2,minmax(0,1fr)); }.badge-color-grid { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:560px) { .badge-editor { grid-template-columns:1fr; }.badge-function-tabs { grid-column:1; grid-template-columns:1fr; }.badge-editor fieldset { grid-column:1; grid-row:auto; }.badge-logo-picker,.badge-range-grid,.badge-print-controls,.badge-editor .fields.three-columns,.badge-save-config { grid-template-columns:1fr; }.badge-color-grid { grid-template-columns:repeat(2,1fr); }.badge-preview .badge-card { transform:scale(.82); transform-origin:center; } }
+@media(max-width:560px) { .badge-editor { grid-template-columns:1fr; }.badge-function-tabs { grid-column:1; grid-template-columns:1fr; }.badge-editor fieldset { grid-column:1; grid-row:auto; }.badge-start-panel,.badge-logo-picker,.badge-range-grid,.badge-print-controls,.badge-editor .fields.three-columns,.badge-save-config { grid-template-columns:1fr; }.badge-color-grid { grid-template-columns:repeat(2,1fr); }.badge-preview .badge-card { transform:scale(.82); transform-origin:center; } }
 @media print {
   @page { size:A4; margin:0; }
   body:has(.badge-print-area) { background:#fff; }

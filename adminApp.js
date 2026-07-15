@@ -2313,13 +2313,21 @@ async function renderCrachas() {
     .map((font) => `<option value="${escapeHtml(font)}" style="font-family:${escapeHtml(fontStack(font))}">${escapeHtml(font)}</option>`).join('');
   const activeTextColor = settings.textTarget === 'sector' ? settings.muted : settings.textTarget === 'slogan' ? settings.sloganColor : settings.text;
   const stepper = (label, name, min, max, step, value, hideValue = false) => `<label class="badge-stepper${hideValue ? ' is-value-hidden' : ''}"><span>${label}<button type="button" data-step-target="${name}" data-step="-${step}">-</button><button type="button" data-step-target="${name}" data-step="${step}">+</button></span><input name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${escapeHtml(value)}"></label>`;
-  layout(`<section class="page-heading badge-page-heading"><div><p class="eyebrow">Modelos de identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>${escapeHtml(retreat.nome)} - Cadastre, altere e consulte modelos de crach&aacute; para usar na impress&atilde;o.</p></div><div class="badge-heading-tools">
+  layout(`<section class="page-heading badge-page-heading"><div><p class="eyebrow">Modelos de identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>${escapeHtml(retreat.nome)} - Configure modelos ou selecione um modelo salvo para impress&atilde;o.</p></div></section>
+  <section class="panel badge-start-panel" id="badge-start-panel">
+    <button type="button" class="primary-button" data-badge-view="config">Configurar crach&aacute;s</button>
+    <button type="button" class="secondary-button" data-badge-view="print">Imprimir crach&aacute;s</button>
+  </section>
+  <section class="badge-active-area" id="badge-active-area" hidden>
+    <section class="panel badge-view-toolbar" id="badge-config-toolbar" hidden>
+      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div></div>
+      <div class="badge-heading-tools">
       <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-config-select">${profileOptions()}</select></label>
-      <div class="badge-print-controls">
-        <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode"><option value="">Selecione...</option><option value="all">Todos</option><option value="sector">Por setor</option><option value="individual">Individual</option><option value="community">Comunidade</option></select></label>
-        <p class="badge-print-comment" id="badge-print-comment"></p>
-        <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
-        <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
+      <div class="badge-config-controls" hidden>
+        <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode-unused"><option value="">Selecione...</option><option value="all">Todos</option><option value="sector">Por setor</option><option value="individual">Individual</option><option value="community">Comunidade</option></select></label>
+        <p class="badge-print-comment" id="badge-print-comment-unused"></p>
+        <select id="badge-sector-unused" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
+        <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
       <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo editável</button></div>
       <div class="badge-model-toolbar"><button class="primary-button" id="badge-new-config" type="button">Novo modelo</button></div>
@@ -2345,16 +2353,34 @@ async function renderCrachas() {
       <fieldset data-badge-panel="watermark" hidden><legend>Marca d'agua</legend><div class="fields two-columns"><label class="field"><span>Imagem</span><select name="watermark">${watermarkOptions}</select></label><label class="field"><span>Caminho/URL da imagem</span><input name="watermarkUrl" value="${escapeHtml(settings.watermarkUrl)}" placeholder="assets/minha-imagem.png"></label></div><div class="badge-range-grid">${stepper('Opacidade', 'watermarkOpacity', 0, 35, 1, settings.watermarkOpacity, true)}${stepper('Tamanho', 'watermarkSize', 30, 110, 1, settings.watermarkSize, true)}${stepper('Horizontal', 'watermarkX', 0, 100, 1, settings.watermarkX, true)}${stepper('Vertical', 'watermarkY', 0, 100, 1, settings.watermarkY, true)}</div></fieldset>
       <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
-  </section><section class="badge-print-area" id="badge-print-area"></section>`, 'crachas');
+    <section class="panel badge-print-panel" id="badge-print-panel" hidden>
+      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div></div>
+      <div class="badge-heading-tools">
+        <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
+        <div class="badge-print-controls">
+          <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode"><option value="">Selecione...</option><option value="all">Todos</option><option value="sector">Por setor</option><option value="individual">Individual</option><option value="community">Comunidade</option></select></label>
+          <p class="badge-print-comment" id="badge-print-comment"></p>
+          <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
+          <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
+        </div>
+        <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo edit&aacute;vel</button></div>
+      </div>
+    </section>
+  </section></section><section class="badge-print-area" id="badge-print-area"></section>`, 'crachas');
 
   const form = app.querySelector('#badge-editor');
   const preview = app.querySelector('#badge-preview');
   const printArea = app.querySelector('#badge-print-area');
-  const mode = app.querySelector('#badge-mode');
-  const sectorSelect = app.querySelector('#badge-sector');
-  const personSelect = app.querySelector('#badge-person');
-  const printComment = app.querySelector('#badge-print-comment');
+  const startPanel = app.querySelector('#badge-start-panel');
+  const activeArea = app.querySelector('#badge-active-area');
+  const configToolbar = app.querySelector('#badge-config-toolbar');
+  const printPanel = app.querySelector('#badge-print-panel');
+  const mode = printPanel.querySelector('#badge-mode');
+  const sectorSelect = printPanel.querySelector('#badge-sector');
+  const personSelect = printPanel.querySelector('#badge-person');
+  const printComment = printPanel.querySelector('#badge-print-comment');
   const configSelect = app.querySelector('#badge-config-select');
+  const printModelSelect = printPanel.querySelector('#badge-print-model-select');
   const configName = app.querySelector('#badge-config-name');
   const configMessage = app.querySelector('#badge-config-message');
   let communityPickerOpen = false;
@@ -2375,6 +2401,15 @@ async function renderCrachas() {
     tabPanels.forEach((item) => { item.hidden = item.dataset.badgePanel !== panel; });
   };
   tabButtons.forEach((button) => button.addEventListener('click', () => openBadgePanel(button.dataset.badgeTab)));
+  const showBadgeView = (view) => {
+    activeArea.hidden = false;
+    startPanel.hidden = true;
+    const isPrint = view === 'print';
+    configToolbar.hidden = isPrint;
+    form.hidden = isPrint;
+    printPanel.hidden = !isPrint;
+    if (!isPrint) openBadgePanel('logo');
+  };
   const syncTextTargetControls = (source = settings) => {
     const target = form.elements.textTarget?.value || 'name';
     const keys = textTargetKeys[target] || textTargetKeys.name;
@@ -2406,6 +2441,10 @@ async function renderCrachas() {
     if (!configSelect) return;
     configSelect.innerHTML = profileOptions();
     configSelect.value = selectedId;
+    if (printModelSelect) {
+      printModelSelect.innerHTML = profileOptions();
+      printModelSelect.value = selectedId;
+    }
     selectedProfileId = selectedId;
   };
   const setActiveProfile = (profile, openEditor = false) => {
@@ -2578,6 +2617,16 @@ async function renderCrachas() {
     }
     setActiveProfile(profile, true);
   };
+  const loadPrintProfile = () => {
+    const profile = badgeProfiles.find((item) => item.id === printModelSelect.value);
+    if (!profile) {
+      selectedProfileId = '';
+      blankPreview = false;
+      renderBadges();
+      return;
+    }
+    setActiveProfile(profile);
+  };
   const saveCurrentProfile = async (profileName) => {
     const name = String(profileName || '').trim();
     if (!name) {
@@ -2696,8 +2745,8 @@ async function renderCrachas() {
 <body>${content}</body>
 </html>`;
   const badgePrintPayload = () => {
-    const profile = badgeProfiles.find((item) => item.id === configSelect?.value);
-    if (!profile) { alert('Selecione o modelo do crach\u00e1 que ser\u00e1 usado.'); configSelect?.focus(); return null; }
+    const profile = badgeProfiles.find((item) => item.id === printModelSelect?.value);
+    if (!profile) { alert('Selecione o modelo do crach\u00e1 que ser\u00e1 usado.'); printModelSelect?.focus(); return null; }
     setActiveProfile(profile);
     if (!badgePrintEntries.length) { alert('Nenhum crach\u00e1 selecionado para gerar.'); return; }
     const printContent = printArea.innerHTML.trim();
@@ -2777,12 +2826,14 @@ async function renderCrachas() {
     mode.value = '';
   });
   [sectorSelect, personSelect].forEach((control) => control.addEventListener('change', renderBadges));
+  app.querySelectorAll('[data-badge-view]').forEach((button) => button.addEventListener('click', () => showBadgeView(button.dataset.badgeView)));
   configSelect?.addEventListener('change', loadSelectedProfile);
+  printModelSelect?.addEventListener('change', loadPrintProfile);
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
-  app.querySelector('#badge-print').addEventListener('click', printBadges);
-  app.querySelector('#badge-word').addEventListener('click', generateBadgeWordFile);
+  printPanel.querySelector('#badge-print').addEventListener('click', printBadges);
+  printPanel.querySelector('#badge-word').addEventListener('click', generateBadgeWordFile);
   openBadgePanel('logo');
   syncTextTargetControls(settings);
   renderBadges();
