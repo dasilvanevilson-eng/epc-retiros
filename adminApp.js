@@ -623,6 +623,23 @@ function setupHomeStatTabs() {
 }
 
 function setupSectorStatDrilldown(root, rows = []) {
+  const groupedSectorPeople = (volunteers = []) => {
+    const grouped = new Map();
+    volunteers.forEach((entry, index) => {
+      const key = entry.casalId ? `casal:${entry.casalId}` : `pessoa:${entry.pessoaId || entry.id || entry.nome || index}`;
+      const group = grouped.get(key) || [];
+      group.push(entry);
+      grouped.set(key, group);
+    });
+    return [...grouped.values()].map((entries) => {
+      const names = entries.map((entry) => String(entry.nome || '').trim()).filter(Boolean).sort((first, second) => first.localeCompare(second, 'pt-BR', { sensitivity: 'base' }));
+      return {
+        name: names.join(' e '),
+        days: uniqueSectors(entries.flatMap((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean))),
+        entries,
+      };
+    }).filter((entry) => entry.name);
+  };
   root.querySelectorAll('[data-stat-sector]').forEach((button) => {
     button.addEventListener('click', () => {
       const sector = button.dataset.statSector;
@@ -631,14 +648,13 @@ function setupSectorStatDrilldown(root, rows = []) {
       const configuredDays = selected?.days?.length
         ? selected.days
         : [...new Set(volunteers.flatMap((entry) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean)))];
-      const people = volunteers
-        .map((entry) => ({ name: String(entry.nome || '').trim(), days: (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean) }))
-        .filter((entry) => entry.name)
+      const people = groupedSectorPeople(volunteers)
         .sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
+      const peopleCount = people.reduce((total, person) => total + person.entries.length, 0);
       const daySummary = configuredDays
-        .map((day) => ({ day, count: people.filter((entry) => entry.days.some((entryDay) => normalizeText(entryDay) === normalizeText(day))).length }))
+        .map((day) => ({ day, count: people.reduce((total, person) => total + person.entries.filter((entry) => entryDays(entry).some((entryDay) => normalizeText(entryDay) === normalizeText(day))).length, 0) }))
         .filter((item) => item.day);
-      root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><section class="sector-public-modal sector-public-modal-inline" role="dialog" aria-modal="true" aria-labelledby="sector-title"><p class="eyebrow">Acompanhamento do setor</p><h1 id="sector-title">${escapeHtml(sector)}</h1><p>${people.length} pessoa(s) inscrita(s) neste setor.</p>${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}</section>`;
+      root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><section class="sector-public-modal sector-public-modal-inline" role="dialog" aria-modal="true" aria-labelledby="sector-title"><p class="eyebrow">Acompanhamento do setor</p><h1 id="sector-title">${escapeHtml(sector)}</h1><p>${peopleCount} pessoa(s) inscrita(s) neste setor.</p>${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}</section>`;
       root.querySelector('[data-sector-stat-back]').addEventListener('click', () => {
         root.innerHTML = root.dataset.sectorListHtml || '';
         setupSectorStatDrilldown(root, rows);
