@@ -3251,7 +3251,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   form.querySelectorAll('[name="setores"]').forEach((input) => {
     input.addEventListener('change', () => {
-      if (input.checked) showSectorTeamAlert(sectorArea(input.value));
+      if (!embedded && input.checked) showSectorTeamAlert(sectorArea(input.value));
     });
   });
   let volunteerTermAccepted = false;
