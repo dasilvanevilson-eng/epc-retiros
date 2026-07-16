@@ -3661,13 +3661,21 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const sectorText = sectors.length ? sectors.join(', ') : 'Sem setor';
     return row.isCouple ? `${cpfText} · Casal · ${sectorText}` : `${cpfText} · ${sectorText}`;
   };
+  let skipNextNameCascade = false;
   if (embedded) {
     const nameInput = form.elements.nome;
     const nameField = nameInput.closest('.field');
     const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
     const renderCascade = () => { const currentName = nameInput.value; const term = normalizeText(currentName); const rows = registrationSearchRows().filter((row) => !term || normalizeText(rowTitle(row)).includes(term)); const selectedType = new FormData(form).get('tipoFicha'); if (term && !rows.length) resetFormForInclusion(currentName); cascade.innerHTML = rows.length ? rows.map((row) => `<button type="button" data-existing-entry="${escapeHtml(row.selectedEntry.id)}"><strong>${escapeHtml(rowTitle(row))}</strong><span>${escapeHtml(rowDetail(row))}</span></button>`).join('') : `<p>${term && !selectedType ? 'Nenhuma pessoa encontrada. Escolha se esta ficha é Individual ou Casal antes de salvar.' : 'Nenhuma pessoa encontrada. Continue para incluir um novo cadastro.'}</p>`; cascade.hidden = false; cascade.querySelectorAll('[data-existing-entry]').forEach((button) => button.addEventListener('click', () => { const entry = enrolments.find((item) => item.id === button.dataset.existingEntry); if (entry) { loadEntryForEdit(entry, { locked: true }); cascade.hidden = true; } })); };
     const closeNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
-    nameInput.addEventListener('focus', renderCascade); nameInput.addEventListener('input', renderCascade);
+    nameInput.addEventListener('focus', () => {
+      if (skipNextNameCascade) {
+        skipNextNameCascade = false;
+        cascade.hidden = true;
+        return;
+      }
+      renderCascade();
+    }); nameInput.addEventListener('input', renderCascade);
     nameField.addEventListener('focusout', (event) => { if (!nameField.contains(event.relatedTarget)) cascade.hidden = true; });
     document.addEventListener('pointerdown', closeNameCascade, true);
     document.addEventListener('focusin', closeNameCascade, true);
@@ -3698,8 +3706,11 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         const entry = enrolments.find((item) => item.id === button.dataset.registrationSelect);
         if (entry) {
           loadEntryForEdit(entry, { locked: true });
+          searchInput.value = rowTitle(registrationSearchRows().find((row) => row.selectedEntry.id === entry.id) || { entries: [entry] });
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           searchResults.hidden = true;
+          skipNextNameCascade = true;
+          form.elements.nome.focus({ preventScroll: true });
         }
       }));
     };
@@ -3718,8 +3729,11 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
           const entry = enrolments.find((item) => item.id === button.dataset.registrationSelect);
           if (entry) {
             loadEntryForEdit(entry, { locked: true });
+            searchInput.value = rowTitle(registrationSearchRows().find((row) => row.selectedEntry.id === entry.id) || { entries: [entry] });
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
             searchResults.hidden = true;
+            skipNextNameCascade = true;
+            form.elements.nome.focus({ preventScroll: true });
           }
         }));
       };
