@@ -1130,7 +1130,6 @@ async function renderRetreat(id) {
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="detail-actions"><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar retiro'}</button></div></section>
     ${retreatStatisticsHtml}
     <section class="detail-grid"></section>
-    <section class="participants-panel panel"><button class="participants-toggle" id="toggle-participants" type="button">${participantsVisible ? 'Fechar visualização da equipe de trabalho' : 'Visualizar equipe de trabalho'}</button>${participantsVisible ? `<div class="participants-content"><h3 class="participants-heading">Equipe de trabalho</h3><div class="participants-column-heading"><button type="button" data-participant-sort="nome">Nome <span>${sortIndicator('nome')}</span></button><button type="button" data-participant-sort="setor">Setor de trabalho <span>${sortIndicator('setor')}</span></button></div><div class="participants-scroll">${retreatEnrolments.length ? sortedParticipants.map((entry) => `<a href="#pessoas/${entry.pessoaId}/${id}/retiro"><strong>${escapeHtml(entry.nome)}</strong><span>${escapeHtml(entry.setores.join(', '))}</span></a>`).join('') : '<p>Nenhum voluntário registrado.</p>'}</div></div>` : ''}</section>
     `, 'retiros');
   setupHomeStatTabs();
   app.querySelectorAll('[data-home-health]').forEach((button) => {
@@ -1204,8 +1203,6 @@ async function renderRetreat(id) {
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
     filterSectorLinks();
   }
-  app.querySelector('#toggle-participants')?.addEventListener('click', () => { participantsVisible = !participantsVisible; renderRetreat(id); });
-  app.querySelectorAll('[data-participant-sort]').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.participantSort; participantSort = { key, direction: participantSort.key === key && participantSort.direction === 'asc' ? 'desc' : 'asc' }; renderRetreat(id); }));
 }
 
 async function renderEditRetreat(id) {
