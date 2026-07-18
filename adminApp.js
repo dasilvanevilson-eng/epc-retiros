@@ -1309,15 +1309,25 @@ function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', c
       }
       finish({ method: selectedMethod, observation });
     };
-    const close = () => finish(null);
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-    overlay.querySelector('.close-sector-view').addEventListener('click', close);
-    overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
+    const selectPaymentMethod = (method) => {
+      const radio = [...overlay.querySelectorAll('input[name="receiverPaymentMethod"]')].find((input) => input.value === method);
+      if (radio) radio.checked = true;
       overlay.querySelector('#confirm-receiver-payment').disabled = false;
       message.textContent = '';
       toggleObservation();
-      if (!observationField.hidden) observationInput.focus();
-      else confirmSelection();
+      if (paymentMethodsWithObservation.has(method)) {
+        observationInput.focus();
+        return;
+      }
+      finish({ method, observation: '' });
+    };
+    const close = () => finish(null);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => selectPaymentMethod(radio.value)));
+    overlay.querySelectorAll('.payment-method-options .choice').forEach((choice) => choice.addEventListener('click', () => {
+      const method = choice.querySelector('input[name="receiverPaymentMethod"]')?.value || '';
+      if (method) selectPaymentMethod(method);
     }));
     toggleObservation();
     overlay.querySelector('#confirm-receiver-payment').addEventListener('click', confirmSelection);
