@@ -4503,7 +4503,7 @@ async function route() {
     form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
     form.elements.valorPago.readOnly = true;
-    form.elements.valorPago.closest('.field')?.insertAdjacentHTML('beforeend', '<div class="student-payment-actions"><button type="button" id="set-student-payment">Pago</button><button type="button" id="clear-student-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small>');
+    form.elements.valorPago.closest('.field')?.insertAdjacentHTML('beforeend', '<div class="student-payment-actions"><button type="button" id="set-student-payment">Informar pagamento</button><button type="button" id="clear-student-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small>');
     const recalculateBalance = () => { const value = Math.max(0, parseCurrency(form.elements.valorInscricao.value) - parseCurrency(form.elements.valorPago.value)); form.elements.saldoPagar.value = currency(value); };
     const setStudentPaymentDetails = ({ method = '', observation = '', paidAmount = parseCurrency(form.elements.valorPago.value) } = {}) => {
       form.elements.recebedorValorPago.value = paidAmount > 0 ? paidAmount : 0;
