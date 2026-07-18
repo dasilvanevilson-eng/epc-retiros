@@ -1308,6 +1308,20 @@ function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', c
     app.append(overlay);
   });
 }
+function renderStudentPaymentComment(form) {
+  const comment = form?.querySelector('.student-payment-comment');
+  if (!comment) return;
+  const paidAmount = parseCurrency(form.elements.valorPago?.value);
+  const method = form.elements.recebedorFormaPagamento?.value || '';
+  const observation = form.elements.recebedorObservacao?.value || '';
+  if (paidAmount > 0 && method) {
+    comment.textContent = observation ? `Forma de pagamento: ${method}. Observação: ${observation}` : `Forma de pagamento: ${method}`;
+    comment.hidden = false;
+    return;
+  }
+  comment.textContent = '';
+  comment.hidden = true;
+}
 function volunteerContributionAmount(retreat = {}, entry = {}) {
   const baseAmount = Number(retreat.valorInscricaoVoluntario) || 0;
   const photoAmount = normalizeText(entry.foto) === 'sim' ? Number(retreat.valorFoto ?? 10) || 0 : 0;
@@ -1943,10 +1957,13 @@ async function renderCursista() {
         app.querySelector('#student-message').textContent = 'Selecione a forma de pagamento para salvar o valor pago.';
         return;
       }
-      values.set('recebedorFormaPagamento', paymentDetails.method);
-      values.set('recebedorObservacao', paymentDetails.observation || '');
       if (form.elements.recebedorFormaPagamento) form.elements.recebedorFormaPagamento.value = paymentDetails.method;
       if (form.elements.recebedorObservacao) form.elements.recebedorObservacao.value = paymentDetails.observation || '';
+      if (form.elements.recebedorValorPago) form.elements.recebedorValorPago.value = paidAmount;
+      if (form.elements.recebedorTaxaPaga) form.elements.recebedorTaxaPaga.value = 'true';
+      renderStudentPaymentComment(form);
+      app.querySelector('#student-message').textContent = 'Forma de pagamento informada. Clique em Salvar alterações para gravar.';
+      return;
     }
     values.set('recebedorValorPago', paidAmount > 0 ? paidAmount : 0);
     values.set('recebedorTaxaPaga', paidAmount > 0 ? 'true' : '');
@@ -4395,12 +4412,14 @@ async function route() {
     form.noValidate = true; form.reportValidity = () => true;
     form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
+    form.elements.valorPago.closest('.field')?.insertAdjacentHTML('beforeend', '<small class="student-payment-comment" hidden></small>');
     const recalculateBalance = () => { const value = Math.max(0, parseCurrency(form.elements.valorInscricao.value) - parseCurrency(form.elements.valorPago.value)); form.elements.saldoPagar.value = currency(value); };
     const setStudentPaymentDetails = ({ method = '', observation = '', paidAmount = parseCurrency(form.elements.valorPago.value) } = {}) => {
       form.elements.recebedorValorPago.value = paidAmount > 0 ? paidAmount : 0;
       form.elements.recebedorTaxaPaga.value = paidAmount > 0 ? 'true' : '';
       form.elements.recebedorFormaPagamento.value = paidAmount > 0 ? method : '';
       form.elements.recebedorObservacao.value = paidAmount > 0 ? observation : '';
+      renderStudentPaymentComment(form);
     };
     const promptStudentPaymentMethod = async () => {
       const paidAmount = parseCurrency(form.elements.valorPago.value);
@@ -4419,7 +4438,10 @@ async function route() {
     };
     ['valorInscricao', 'valorPago'].forEach((name) => {
       form.elements[name].addEventListener('focus', () => { form.elements[name].value = parseCurrency(form.elements[name].value) || ''; });
-      form.elements[name].addEventListener('input', recalculateBalance);
+      form.elements[name].addEventListener('input', () => {
+        recalculateBalance();
+        if (name === 'valorPago') setStudentPaymentDetails({ paidAmount: parseCurrency(form.elements.valorPago.value) });
+      });
       form.elements[name].addEventListener('change', async () => {
         form.elements[name].value = currency(parseCurrency(form.elements[name].value));
         recalculateBalance();
