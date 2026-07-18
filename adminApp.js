@@ -1273,6 +1273,41 @@ function parseCurrency(value) {
   }
   return Number(raw) || 0;
 }
+const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
+function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', currentObservation = '' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    const observationMethods = new Set(['Pix', 'Acerto']);
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><label class="field receiver-payment-observation" ${observationMethods.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    const observationField = overlay.querySelector('.receiver-payment-observation');
+    const observationInput = overlay.querySelector('#receiver-payment-observation');
+    const toggleObservation = () => {
+      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
+      observationField.hidden = !observationMethods.has(selectedMethod);
+      if (observationField.hidden) observationInput.value = '';
+    };
+    const close = () => { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
+      overlay.querySelector('#confirm-receiver-payment').disabled = false;
+      overlay.querySelector('[data-payment-method-message]').textContent = '';
+      toggleObservation();
+    }));
+    toggleObservation();
+    overlay.querySelector('#confirm-receiver-payment').addEventListener('click', () => {
+      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
+      if (!selectedMethod) {
+        overlay.querySelector('[data-payment-method-message]').textContent = 'Selecione uma forma de pagamento para confirmar.';
+        return;
+      }
+      overlay.remove();
+      resolve({ method: selectedMethod, observation: observationInput.value.trim() });
+    });
+    app.append(overlay);
+  });
+}
 function volunteerContributionAmount(retreat = {}, entry = {}) {
   const baseAmount = Number(retreat.valorInscricaoVoluntario) || 0;
   const photoAmount = normalizeText(entry.foto) === 'sim' ? Number(retreat.valorFoto ?? 10) || 0 : 0;
@@ -1291,7 +1326,6 @@ async function renderRecebedor() {
     ? retreats.find((item) => item.id === publicReceiverRetreatId)
     : retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
-  const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
   const students = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id));
   const entries = [
     ...mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
@@ -1526,40 +1560,6 @@ async function renderRecebedor() {
       return { entry, value: suggestedTotal ? total * (suggested / suggestedTotal) : total / row.entries.length };
     });
   };
-  const askPaymentMethod = (row, total) => new Promise((resolve) => {
-    const overlay = document.createElement('section');
-    overlay.className = 'receiver-sector-overlay';
-    const currentMethod = rowPaymentMethod(row);
-    const currentObservation = rowPaymentObservation(row);
-    const observationMethods = new Set(['Pix', 'Acerto']);
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(row.nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><label class="field receiver-payment-observation" ${observationMethods.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
-    const observationField = overlay.querySelector('.receiver-payment-observation');
-    const observationInput = overlay.querySelector('#receiver-payment-observation');
-    const toggleObservation = () => {
-      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
-      observationField.hidden = !observationMethods.has(selectedMethod);
-      if (observationField.hidden) observationInput.value = '';
-    };
-    const close = () => { overlay.remove(); resolve(null); };
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-    overlay.querySelector('.close-sector-view').addEventListener('click', close);
-    overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
-      overlay.querySelector('#confirm-receiver-payment').disabled = false;
-      overlay.querySelector('[data-payment-method-message]').textContent = '';
-      toggleObservation();
-    }));
-    toggleObservation();
-    overlay.querySelector('#confirm-receiver-payment').addEventListener('click', () => {
-      const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
-      if (!selectedMethod) {
-        overlay.querySelector('[data-payment-method-message]').textContent = 'Selecione uma forma de pagamento para confirmar.';
-        return;
-      }
-      overlay.remove();
-      resolve({ method: selectedMethod, observation: observationInput.value.trim() });
-    });
-    app.append(overlay);
-  });
   const askDeletePayment = (row) => new Promise((resolve) => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
@@ -1606,7 +1606,7 @@ async function renderRecebedor() {
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
     const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
-    const paymentDetails = input.checked ? await askPaymentMethod(row, total) : null;
+    const paymentDetails = input.checked ? await askPaymentMethod({ nome: row.nome, total, currentMethod: rowPaymentMethod(row), currentObservation: rowPaymentObservation(row) }) : null;
     if (input.checked && !paymentDetails?.method) {
       input.checked = false;
       return;
@@ -1935,6 +1935,24 @@ async function renderCursista() {
       app.querySelector('#student-message').textContent = duplicateStudentCpfMessage;
       focusStudentIssue(form.elements.cpf);
       return;
+    }
+    const paidAmount = parseCurrency(values.get('valorPago'));
+    if (paidAmount > 0 && !values.get('recebedorFormaPagamento')) {
+      const paymentDetails = await askPaymentMethod({ nome: values.get('nome') || 'Cursista', total: paidAmount });
+      if (!paymentDetails?.method) {
+        app.querySelector('#student-message').textContent = 'Selecione a forma de pagamento para salvar o valor pago.';
+        return;
+      }
+      values.set('recebedorFormaPagamento', paymentDetails.method);
+      values.set('recebedorObservacao', paymentDetails.observation || '');
+      if (form.elements.recebedorFormaPagamento) form.elements.recebedorFormaPagamento.value = paymentDetails.method;
+      if (form.elements.recebedorObservacao) form.elements.recebedorObservacao.value = paymentDetails.observation || '';
+    }
+    values.set('recebedorValorPago', paidAmount > 0 ? paidAmount : 0);
+    values.set('recebedorTaxaPaga', paidAmount > 0 ? 'true' : '');
+    if (paidAmount <= 0) {
+      values.set('recebedorFormaPagamento', '');
+      values.set('recebedorObservacao', '');
     }
     const currentStudent = previousId && currentStudents.find((student) => student.id === previousId);
     const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
@@ -4375,10 +4393,39 @@ async function route() {
     if (target === 'cursista') {
       await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;
-    form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}">`);
+    form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
     const recalculateBalance = () => { const value = Math.max(0, parseCurrency(form.elements.valorInscricao.value) - parseCurrency(form.elements.valorPago.value)); form.elements.saldoPagar.value = currency(value); };
-    ['valorInscricao', 'valorPago'].forEach((name) => { form.elements[name].addEventListener('focus', () => { form.elements[name].value = parseCurrency(form.elements[name].value) || ''; }); form.elements[name].addEventListener('input', recalculateBalance); form.elements[name].addEventListener('change', () => { form.elements[name].value = currency(parseCurrency(form.elements[name].value)); recalculateBalance(); }); });
+    const setStudentPaymentDetails = ({ method = '', observation = '', paidAmount = parseCurrency(form.elements.valorPago.value) } = {}) => {
+      form.elements.recebedorValorPago.value = paidAmount > 0 ? paidAmount : 0;
+      form.elements.recebedorTaxaPaga.value = paidAmount > 0 ? 'true' : '';
+      form.elements.recebedorFormaPagamento.value = paidAmount > 0 ? method : '';
+      form.elements.recebedorObservacao.value = paidAmount > 0 ? observation : '';
+    };
+    const promptStudentPaymentMethod = async () => {
+      const paidAmount = parseCurrency(form.elements.valorPago.value);
+      if (paidAmount <= 0) {
+        setStudentPaymentDetails({ paidAmount });
+        return;
+      }
+      const paymentDetails = await askPaymentMethod({
+        nome: form.elements.nome.value || 'Cursista',
+        total: paidAmount,
+        currentMethod: form.elements.recebedorFormaPagamento.value,
+        currentObservation: form.elements.recebedorObservacao.value,
+      });
+      if (!paymentDetails?.method) return;
+      setStudentPaymentDetails({ method: paymentDetails.method, observation: paymentDetails.observation || '', paidAmount });
+    };
+    ['valorInscricao', 'valorPago'].forEach((name) => {
+      form.elements[name].addEventListener('focus', () => { form.elements[name].value = parseCurrency(form.elements[name].value) || ''; });
+      form.elements[name].addEventListener('input', recalculateBalance);
+      form.elements[name].addEventListener('change', async () => {
+        form.elements[name].value = currency(parseCurrency(form.elements[name].value));
+        recalculateBalance();
+        if (name === 'valorPago') await promptStudentPaymentMethod();
+      });
+    });
     recalculateBalance();
     const actions = form.querySelector('.form-actions'); actions.insertAdjacentHTML('beforeend', '<button type="button" class="delete-student" hidden>Excluir cursista</button>');
     const studentHeadingActions = app.querySelector('.student-heading-actions');
@@ -4391,10 +4438,10 @@ async function route() {
       });
       form.querySelector('button[type="submit"]').disabled = locked;
     };
-    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
+    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
     const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
     const studentNameInput = form.elements.nome; const nameField = studentNameInput.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
+    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; setStudentPaymentDetails({ method: student.recebedorFormaPagamento || '', observation: student.recebedorObservacao || '', paidAmount: parseCurrency(student.valorPago) }); form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
     const renderCascade = () => { const term = studentNameInput.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
     const closeStudentNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
     studentNameInput.addEventListener('focus', renderCascade); studentNameInput.addEventListener('input', renderCascade);
