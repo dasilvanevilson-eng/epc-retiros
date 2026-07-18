@@ -2141,6 +2141,8 @@ async function renderCursista() {
       if (control.type !== 'hidden') control.disabled = true;
     });
     form.querySelector('button[type="submit"]').disabled = true;
+    form.querySelector('#set-student-payment').disabled = true;
+    form.querySelector('#clear-student-payment').disabled = true;
     app.querySelector('#student-message').textContent = 'Cadastro do cursista salvo com sucesso.';
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -4579,6 +4581,7 @@ async function route() {
       renderStudentPaymentComment(form);
     };
     const promptStudentPayment = async () => {
+      if (app.querySelector('#set-student-payment')?.disabled || form.querySelector('button[type="submit"]')?.disabled) return;
       const paidAmount = parseCurrency(form.elements.valorPago.value);
       const paymentDetails = await askStudentPayment({
         nome: form.elements.nome.value || 'Cursista',
