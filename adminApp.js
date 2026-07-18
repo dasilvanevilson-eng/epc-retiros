@@ -1544,8 +1544,8 @@ async function renderRecebedor() {
   const rowAdvanceAmount = (row) => row.entries.reduce((sum, entry) => sum + entryAdvanceAmount(entry), 0);
   const receiverPaymentNote = (row) => [
     rowAdvanceAmount(row) > 0 ? `Valor antecipado: ${currency(rowAdvanceAmount(row))}` : '',
-    rowPaymentMethod(row) ? `Forma: ${rowPaymentMethod(row)}` : '',
-    rowPaymentObservation(row) ? `Obs.: ${rowPaymentObservation(row)}` : '',
+    rowPaymentMethod(row) || '',
+    rowPaymentObservation(row) || '',
   ].filter(Boolean).join(' · ');
   const receiverNameCell = (row) => `<div class="receiver-name-cell"><strong>${escapeHtml(row.nome)}</strong>${receiverPaymentNote(row) ? `<small>${escapeHtml(receiverPaymentNote(row))}</small>` : ''}</div>`;
   const paymentFilterLabel = paymentFilterOptions.find((option) => option.id === receiverPaymentFilter)?.label || '';
@@ -1589,7 +1589,7 @@ async function renderRecebedor() {
   const reportIndicator = (sort, key) => sort.key === key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportHeader = (label, key, sort, interactive) => interactive ? `<button type="button" data-receiver-report-sort="${key}">${label} <span>${reportIndicator(sort, key)}</span></button>` : `${label}`;
   const receiverReportNameCell = (row) => {
-    const note = [row.formaPagamento ? `Forma: ${row.formaPagamento}` : '', row.observacao ? `Obs.: ${row.observacao}` : ''].filter(Boolean).join(' · ');
+    const note = [row.formaPagamento || '', row.observacao || ''].filter(Boolean).join(' · ');
     return `<strong>${escapeHtml(row.nome)}</strong>${note ? `<small class="receiver-report-payment-note">${escapeHtml(note)}</small>` : ''}`;
   };
   const receiverReportTable = (sort = reportInitialSort, interactive = false, sector = '') => `<div class="receiver-report-preview"><table><thead><tr><th>${receiverReportHeader('Nome', 'nome', sort, interactive)}</th><th>${receiverReportHeader('Valor sugerido', 'sugerido', sort, interactive)}</th><th>${receiverReportHeader('Valor pago', 'pago', sort, interactive)}</th></tr></thead><tbody>${sortReceiverReportRows(sort, sector).map((row) => `<tr><td>${receiverReportNameCell(row)}</td><td>${currency(row.valorSugerido)}</td><td>${currency(row.valorPago)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum registro encontrado.</td></tr>'}</tbody></table></div>`;
