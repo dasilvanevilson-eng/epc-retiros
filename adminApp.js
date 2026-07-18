@@ -1447,7 +1447,8 @@ async function renderRecebedor() {
   const entryPaidStatus = (entry) => {
     if (entry.tipoFinanceiro !== 'cursista') return Boolean(entry.taxaPaga);
     const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
-    return inscription <= 0 ? Boolean(entry.recebedorTaxaPaga) : parseCurrency(entry.recebedorValorPago) >= inscription;
+    const advanceBalance = Math.max(0, inscription - entryAdvanceAmount(entry));
+    return advanceBalance <= 0 || (inscription <= 0 ? Boolean(entry.recebedorTaxaPaga) : parseCurrency(entry.recebedorValorPago) >= inscription);
   };
   const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.recebedorFormaPagamento || '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
   const entryPaymentObservation = (entry) => entry.recebedorObservacao || '';
