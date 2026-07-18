@@ -1510,6 +1510,14 @@ async function renderRecebedor() {
     }
     return row.entries.reduce((sum, entry) => sum + effectiveSuggested(entry), 0);
   };
+  const entryOriginalSuggested = (entry) => {
+    if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
+    return parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
+  };
+  const rowOriginalSuggested = (row) => {
+    if (isVolunteerCoupleRow(row)) return volunteerContributionAmount(retreat, { casalId: row.id, foto: row.entries.some((entry) => normalizeText(entry.foto) === 'sim') ? 'Sim' : 'Não' });
+    return row.entries.reduce((sum, entry) => sum + entryOriginalSuggested(entry), 0);
+  };
   const rowPaid = (row) => {
     const values = row.entries.map(entryPaidAmount);
     const sum = values.reduce((total, value) => total + value, 0);
@@ -1598,11 +1606,16 @@ async function renderRecebedor() {
   const indicator = (key) => receiverSort.key === key ? (receiverSort.direction === 'asc' ? '↑' : '↓') : '↕';
   const receiverReportRows = rows.map((row) => ({
     nome: row.nome,
+    setor: (row.setores || []).join(', '),
     setores: row.setores || [],
     valorSugerido: rowSuggested(row),
+    valorSugeridoOriginal: rowOriginalSuggested(row),
+    valorPagoAntecipado: rowAdvanceAmount(row),
+    formaPagamentoAntecipado: rowAdvancePaymentMethod(row),
+    observacaoAntecipado: rowAdvancePaymentObservation(row),
     valorPago: rowPaid(row),
-    pagoMais: Math.max(0, rowPaid(row) - rowSuggested(row)),
-    pagoMenos: Math.max(0, rowSuggested(row) - rowPaid(row)),
+    pagoMais: Math.max(0, rowAdvanceAmount(row) + rowPaid(row) - rowOriginalSuggested(row)),
+    pagoMenos: Math.max(0, rowOriginalSuggested(row) - rowAdvanceAmount(row) - rowPaid(row)),
     formaPagamento: rowPaymentMethod(row),
     observacao: rowPaymentObservation(row),
   }));
@@ -1636,11 +1649,11 @@ async function renderRecebedor() {
     }, 250);
   };
   const downloadReceiverSpreadsheet = () => {
-    const headers = ['Nome', 'Valor sugerido', 'Valor pago', 'Pago a mais', 'Pago a menos', 'Forma de pagamento', 'Observação'];
+    const headers = ['Nome completo', 'Setor', 'Valor sugerido', 'Valor pago antecipado', 'Forma de pagamento antecipado (ficha cursista)', 'Observação da forma de pagamento antecipado', 'Valor pago (valor informado no modulo recebedor)', 'Valor pago a mais', 'Valor pago a menos', 'Forma de pagamento (modulo recebedor)', 'Observação forma de pagamento (modulo recebedor)'];
     const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       headers.map(csvValue).join(';'),
-      ...receiverReportRows.map((row) => [row.nome, currency(row.valorSugerido), currency(row.valorPago), currency(row.pagoMais), currency(row.pagoMenos), row.formaPagamento, row.observacao].map(csvValue).join(';')),
+      ...receiverReportRows.map((row) => [row.nome, row.setor, currency(row.valorSugeridoOriginal), currency(row.valorPagoAntecipado), row.formaPagamentoAntecipado, row.observacaoAntecipado, currency(row.valorPago), currency(row.pagoMais), currency(row.pagoMenos), row.formaPagamento, row.observacao].map(csvValue).join(';')),
     ];
     const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
