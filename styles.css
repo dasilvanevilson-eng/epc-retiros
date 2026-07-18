@@ -91,6 +91,7 @@
 .receiver-summary .receiver-balance-diff b { color:#b94137; font-weight:900; }
 .receiver-summary article.is-negative { border-color:#dc938b; background:#fff1ee; }.receiver-summary article.is-negative strong { color:#b94137; }
 .receiver-payment-heading { margin:3px 0 12px; }.receiver-payment-heading h3 { margin:0; color:var(--ink); font-size:17px; }
+.receiver-payment-origin { margin-top:14px; }.receiver-payment-origin h4 { margin:0 0 8px; color:var(--muted); font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
 .receiver-payment-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:24px; }.receiver-payment-summary article { padding:13px 15px; border:1px solid var(--line); border-radius:9px; background:#fff; }.receiver-payment-summary span { display:block; color:var(--muted); font-size:12px; }.receiver-payment-summary strong { display:block; margin-top:6px; color:var(--leaf); font:700 21px 'Fraunces',serif; }
 .receiver-payment-dialog .payment-method-options { display:grid; gap:9px; margin:22px 0 8px; }.receiver-payment-dialog .choice { justify-content:flex-start; min-height:46px; }
 .receiver-report-payment-note { display:block; margin-top:3px; color:var(--muted); font-size:11px; font-weight:500; line-height:1.3; }

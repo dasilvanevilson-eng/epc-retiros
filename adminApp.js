@@ -1570,15 +1570,22 @@ async function renderRecebedor() {
   const totalPeopleCount = receiverRows.reduce((total, row) => total + row.entries.length, 0);
   const paidPeopleCount = receiverRows.reduce((total, row) => total + row.entries.filter(entryPaidStatus).length, 0);
   const paidCount = receiverRows.filter(rowPaidStatus).length;
-  const totalPaid = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowPaid(row) : 0), 0);
+  const totalAdvancePaid = receiverRows.reduce((sum, row) => sum + rowAdvanceAmount(row), 0);
+  const totalReceiverPaid = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowPaid(row) : 0), 0);
+  const totalPaid = totalReceiverPaid;
   const paidSuggested = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowSuggested(row) : 0), 0);
   const balance = totalPaid - paidSuggested;
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
-  const totalsByPaymentMethod = paymentMethods.map((method) => ({
+  const totalsByAdvancePaymentMethod = paymentMethods.map((method) => ({
+    method,
+    total: receiverRows.reduce((sum, row) => rowAdvancePaymentMethod(row) === method ? sum + rowAdvanceAmount(row) : sum, 0),
+  }));
+  const totalAdvanceWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowAdvanceAmount(row) > 0 && !rowAdvancePaymentMethod(row) ? sum + rowAdvanceAmount(row) : sum, 0);
+  const totalsByReceiverPaymentMethod = paymentMethods.map((method) => ({
     method,
     total: receiverRows.reduce((sum, row) => rowPaidStatus(row) && rowPaymentMethod(row) === method ? sum + rowPaid(row) : sum, 0),
   }));
-  const totalWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowPaidStatus(row) && !rowPaymentMethod(row) ? sum + rowPaid(row) : sum, 0);
+  const totalReceiverWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowPaidStatus(row) && !rowPaymentMethod(row) ? sum + rowPaid(row) : sum, 0);
   const rows = receiverRows
     .filter(rowMatchesSectorFilter)
     .filter((row) => rowMatchesPaymentFilter(row, receiverPaymentFilter))
@@ -1641,8 +1648,9 @@ async function renderRecebedor() {
     URL.revokeObjectURL(link.href);
     link.remove();
   };
-  const paymentMethodSummaryHtml = `<section class="receiver-payment-summary">${totalsByPaymentMethod.map(({ method, total }) => `<article><span>${escapeHtml(method)}</span><strong>${currency(total)}</strong></article>`).join('')}${totalWithoutPaymentMethod ? `<article><span>Sem forma informada</span><strong>${currency(totalWithoutPaymentMethod)}</strong></article>` : ''}</section>`;
-  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
+  const paymentMethodArticles = (items, missingTotal = 0) => `${items.map(({ method, total }) => `<article><span>${escapeHtml(method)}</span><strong>${currency(total)}</strong></article>`).join('')}${missingTotal ? `<article><span>Sem forma informada</span><strong>${currency(missingTotal)}</strong></article>` : ''}`;
+  const paymentMethodSummaryHtml = `<div class="receiver-payment-origin"><h4>Ficha do cursista</h4><section class="receiver-payment-summary">${paymentMethodArticles(totalsByAdvancePaymentMethod, totalAdvanceWithoutPaymentMethod)}</section></div><div class="receiver-payment-origin"><h4>Recebedor</h4><section class="receiver-payment-summary">${paymentMethodArticles(totalsByReceiverPaymentMethod, totalReceiverWithoutPaymentMethod)}</section></div>`;
+  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Total das contribuições</span><strong>${currency(totalAdvancePaid)}</strong><small>Ficha do cursista</small><strong>${currency(totalReceiverPaid)}</strong><small>Recebedor</small><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   const sectorFilterLabel = receiverSectorFilter ? `: ${escapeHtml(receiverSectorFilter)}` : '';
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
   const receiverUrl = `${location.origin}/recebedor/${encodeURIComponent(retreat.recebedorToken || '')}`;
