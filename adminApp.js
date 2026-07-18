@@ -1275,19 +1275,22 @@ function parseCurrency(value) {
   return Number(raw) || 0;
 }
 const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
+const studentPaymentMethods = paymentMethods.filter((method) => method !== 'Acerto');
 const paymentMethodsWithObservation = new Set(['Pix', 'Acerto']);
+const paymentObservationPlaceholder = (method) => method === 'Pix' ? 'Digite o nome completo de quem está enviando o Pix' : 'Informe a observação do pagamento';
 function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', currentObservation = '' } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
     let settled = false;
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<button type="button" class="choice${currentMethod === method ? ' is-selected' : ''}" data-payment-method="${escapeHtml(method)}"><span>${escapeHtml(method)}</span></button>`).join('')}</div><label class="field receiver-payment-observation" ${paymentMethodsWithObservation.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<button type="button" class="choice${currentMethod === method ? ' is-selected' : ''}" data-payment-method="${escapeHtml(method)}"><span>${escapeHtml(method)}</span></button>`).join('')}</div><label class="field receiver-payment-observation" ${paymentMethodsWithObservation.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="${escapeHtml(paymentObservationPlaceholder(currentMethod))}">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
     const observationField = overlay.querySelector('.receiver-payment-observation');
     const observationInput = overlay.querySelector('#receiver-payment-observation');
     const message = overlay.querySelector('[data-payment-method-message]');
     let selectedPaymentMethod = currentMethod;
     const toggleObservation = () => {
       observationField.hidden = !paymentMethodsWithObservation.has(selectedPaymentMethod);
+      observationInput.placeholder = paymentObservationPlaceholder(selectedPaymentMethod);
       if (observationField.hidden) observationInput.value = '';
     };
     const finish = (result) => {
@@ -1353,7 +1356,7 @@ function askStudentPayment({ nome = 'Cursista', paidAmount = 0, currentMethod = 
     overlay.className = 'receiver-sector-overlay';
     let settled = false;
     let selectedPaymentMethod = currentMethod;
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Pagamento do cursista</h2><p>${escapeHtml(nome)}</p></div></div><label class="field"><span>Valor pago</span><input id="student-payment-amount" type="text" inputmode="decimal" value="${paidAmount > 0 ? currency(paidAmount) : ''}" placeholder="R$ 0,00"></label><div class="payment-method-options">${paymentMethods.map((method) => `<button type="button" class="choice${currentMethod === method ? ' is-selected' : ''}" data-payment-method="${escapeHtml(method)}"><span>${escapeHtml(method)}</span></button>`).join('')}</div><label class="field receiver-payment-observation" ${paymentMethodsWithObservation.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Pagamento do cursista</h2><p>${escapeHtml(nome)}</p></div></div><label class="field"><span>Valor pago</span><input id="student-payment-amount" type="text" inputmode="decimal" value="${paidAmount > 0 ? currency(paidAmount) : ''}" placeholder="R$ 0,00"></label><div class="payment-method-options">${studentPaymentMethods.map((method) => `<button type="button" class="choice${currentMethod === method ? ' is-selected' : ''}" data-payment-method="${escapeHtml(method)}"><span>${escapeHtml(method)}</span></button>`).join('')}</div><label class="field receiver-payment-observation" ${paymentMethodsWithObservation.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="${escapeHtml(paymentObservationPlaceholder(currentMethod))}">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
     const amountInput = overlay.querySelector('#student-payment-amount');
     const observationField = overlay.querySelector('.receiver-payment-observation');
     const observationInput = overlay.querySelector('#receiver-payment-observation');
@@ -1367,6 +1370,7 @@ function askStudentPayment({ nome = 'Cursista', paidAmount = 0, currentMethod = 
     };
     const toggleObservation = () => {
       observationField.hidden = !paymentMethodsWithObservation.has(selectedPaymentMethod);
+      observationInput.placeholder = paymentObservationPlaceholder(selectedPaymentMethod);
       if (observationField.hidden) observationInput.value = '';
     };
     const confirmSelection = () => {
