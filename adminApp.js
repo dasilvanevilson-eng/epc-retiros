@@ -1274,36 +1274,50 @@ function parseCurrency(value) {
   return Number(raw) || 0;
 }
 const paymentMethods = ['Cartão de crédito', 'Cartão de débito', 'Pix', 'Dinheiro', 'Acerto'];
+const paymentMethodsWithObservation = new Set(['Pix', 'Acerto']);
 function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', currentObservation = '' } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
-    const observationMethods = new Set(['Pix', 'Acerto']);
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><label class="field receiver-payment-observation" ${observationMethods.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
+    let settled = false;
+    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-payment-dialog"><div class="panel-heading"><div><p class="eyebrow">Confirmar pagamento</p><h2>Forma de pagamento</h2><p>${escapeHtml(nome)} · ${currency(total)}</p></div></div><div class="payment-method-options">${paymentMethods.map((method) => `<label class="choice"><input type="radio" name="receiverPaymentMethod" value="${escapeHtml(method)}" ${currentMethod === method ? 'checked' : ''}><span>${escapeHtml(method)}</span></label>`).join('')}</div><label class="field receiver-payment-observation" ${paymentMethodsWithObservation.has(currentMethod) ? '' : 'hidden'}><span>Observação</span><textarea id="receiver-payment-observation" rows="3" placeholder="Informe a observação do pagamento">${escapeHtml(currentObservation)}</textarea></label><p class="form-message" data-payment-method-message></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" id="confirm-receiver-payment" class="is-couple-continue" ${currentMethod ? '' : 'disabled'}>Confirmar</button></div></div>`;
     const observationField = overlay.querySelector('.receiver-payment-observation');
     const observationInput = overlay.querySelector('#receiver-payment-observation');
+    const message = overlay.querySelector('[data-payment-method-message]');
     const toggleObservation = () => {
       const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
-      observationField.hidden = !observationMethods.has(selectedMethod);
+      observationField.hidden = !paymentMethodsWithObservation.has(selectedMethod);
       if (observationField.hidden) observationInput.value = '';
     };
-    const close = () => { overlay.remove(); resolve(null); };
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      overlay.remove();
+      resolve(result);
+    };
+    const close = () => finish(null);
     overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', close);
     overlay.querySelectorAll('input[name="receiverPaymentMethod"]').forEach((radio) => radio.addEventListener('change', () => {
       overlay.querySelector('#confirm-receiver-payment').disabled = false;
-      overlay.querySelector('[data-payment-method-message]').textContent = '';
+      message.textContent = '';
       toggleObservation();
+      if (!observationField.hidden) observationInput.focus();
     }));
     toggleObservation();
     overlay.querySelector('#confirm-receiver-payment').addEventListener('click', () => {
       const selectedMethod = overlay.querySelector('input[name="receiverPaymentMethod"]:checked')?.value || '';
+      const observation = observationInput.value.trim();
       if (!selectedMethod) {
-        overlay.querySelector('[data-payment-method-message]').textContent = 'Selecione uma forma de pagamento para confirmar.';
+        message.textContent = 'Selecione uma forma de pagamento para confirmar.';
         return;
       }
-      overlay.remove();
-      resolve({ method: selectedMethod, observation: observationInput.value.trim() });
+      if (paymentMethodsWithObservation.has(selectedMethod) && !observation) {
+        message.textContent = 'Informe a observação do pagamento para confirmar.';
+        observationInput.focus();
+        return;
+      }
+      finish({ method: selectedMethod, observation });
     });
     app.append(overlay);
   });
@@ -1951,8 +1965,10 @@ async function renderCursista() {
       return;
     }
     const paidAmount = parseCurrency(values.get('valorPago'));
-    if (paidAmount > 0 && !values.get('recebedorFormaPagamento')) {
-      const paymentDetails = await askPaymentMethod({ nome: values.get('nome') || 'Cursista', total: paidAmount });
+    const currentPaymentMethod = values.get('recebedorFormaPagamento') || '';
+    const currentPaymentObservation = values.get('recebedorObservacao') || '';
+    if (paidAmount > 0 && (!currentPaymentMethod || (paymentMethodsWithObservation.has(currentPaymentMethod) && !currentPaymentObservation.trim()))) {
+      const paymentDetails = await askPaymentMethod({ nome: values.get('nome') || 'Cursista', total: paidAmount, currentMethod: currentPaymentMethod, currentObservation: currentPaymentObservation });
       if (!paymentDetails?.method) {
         app.querySelector('#student-message').textContent = 'Selecione a forma de pagamento para salvar o valor pago.';
         return;
