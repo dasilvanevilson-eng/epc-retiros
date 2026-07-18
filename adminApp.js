@@ -1559,7 +1559,7 @@ async function renderRecebedor() {
     const suggested = rowSuggested(row);
     if (suggested <= 0) return 'payment-ok';
     if (paid <= 0) return 'payment-open';
-    return paid >= suggested ? 'payment-ok' : 'payment-partial';
+    return 'payment-ok';
   };
   const rowAdvanceAmount = (row) => row.entries.reduce((sum, entry) => sum + entryAdvanceAmount(entry), 0);
   const rowAdvancePaymentMethod = (row) => row.entries.map(entryAdvancePaymentMethod).find(Boolean) || '';
@@ -1672,7 +1672,8 @@ async function renderRecebedor() {
     if (missingTotal > 0) rows.push(`<article><span>Sem forma informada</span><strong>${currency(missingTotal)}</strong></article>`);
     return rows.join('') || '<p class="receiver-payment-empty">Nenhuma entrada registrada.</p>';
   };
-  const paymentMethodSummaryHtml = `<div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebimento antecipado de cursistas</h4><strong>${currency(totalAdvancePaid)}</strong></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByAdvancePaymentMethod, totalAdvanceWithoutPaymentMethod)}</section></div><div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebedor</h4><div><strong>${currency(totalReceiverPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></div></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByReceiverPaymentMethod, totalReceiverWithoutPaymentMethod)}</section></div>`;
+  const balanceClass = balance >= 0 ? 'is-positive' : 'is-negative';
+  const paymentMethodSummaryHtml = `<div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebimento antecipado de cursistas</h4><strong>${currency(totalAdvancePaid)}</strong></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByAdvancePaymentMethod, totalAdvanceWithoutPaymentMethod)}</section></div><div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebedor</h4><div><strong>${currency(totalReceiverPaid)}</strong><small class="receiver-balance-diff ${balanceClass}">Diferença: <b>${currency(balance)}</b></small></div></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByReceiverPaymentMethod, totalReceiverWithoutPaymentMethod)}</section></div>`;
   const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   const sectorFilterLabel = receiverSectorFilter ? `: ${escapeHtml(receiverSectorFilter)}` : '';
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
