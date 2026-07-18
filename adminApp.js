@@ -1336,8 +1336,8 @@ function renderStudentPaymentComment(form) {
   const comment = form?.querySelector('.student-payment-comment');
   if (!comment) return;
   const paidAmount = parseCurrency(form.elements.valorPago?.value);
-  const method = form.elements.recebedorFormaPagamento?.value || '';
-  const observation = form.elements.recebedorObservacao?.value || '';
+  const method = form.elements.formaPagamento?.value || '';
+  const observation = form.elements.observacaoPagamento?.value || '';
   if (paidAmount > 0 && method) {
     comment.textContent = observation ? `Forma de pagamento: ${method}. Observação: ${observation}` : `Forma de pagamento: ${method}`;
     comment.hidden = false;
@@ -1444,16 +1444,21 @@ async function renderRecebedor() {
   };
   const entryAdvanceAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.valorPago) : 0;
   const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? Math.max(0, parseCurrency(entry.recebedorValorPago) - entryAdvanceAmount(entry)) : parseCurrency(entry.valorPago);
+  const entryHasReceiverPayment = (entry) => entryPaidAmount(entry) > 0;
+  const entryAdvancePaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.formaPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorFormaPagamento : '') || '') : '';
+  const entryAdvancePaymentObservation = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.observacaoPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorObservacao : '') || '') : '';
   const entryPaidStatus = (entry) => {
     if (entry.tipoFinanceiro !== 'cursista') return Boolean(entry.taxaPaga);
     const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
     const advanceBalance = Math.max(0, inscription - entryAdvanceAmount(entry));
     return advanceBalance <= 0 || (inscription <= 0 ? Boolean(entry.recebedorTaxaPaga) : parseCurrency(entry.recebedorValorPago) >= inscription);
   };
-  const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.recebedorFormaPagamento || '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
-  const entryPaymentObservation = (entry) => entry.recebedorObservacao || '';
+  const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entryHasReceiverPayment(entry) ? (entry.recebedorFormaPagamento || '') : '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
+  const entryPaymentObservation = (entry) => entry.tipoFinanceiro === 'cursista' ? (entryHasReceiverPayment(entry) ? (entry.recebedorObservacao || '') : '') : (entry.recebedorObservacao || '');
   const setEntryPayment = (entry, value, checked, paymentMethod = '', observation) => {
     if (entry.tipoFinanceiro === 'cursista') {
+      if (!entry.formaPagamento && entryAdvancePaymentMethod(entry)) entry.formaPagamento = entryAdvancePaymentMethod(entry);
+      if (!entry.observacaoPagamento && entryAdvancePaymentObservation(entry)) entry.observacaoPagamento = entryAdvancePaymentObservation(entry);
       entry.recebedorValorPago = entryAdvanceAmount(entry) + value;
       entry.recebedorTaxaPaga = checked;
       entry.recebedorFormaPagamento = checked ? paymentMethod : '';
@@ -1544,12 +1549,22 @@ async function renderRecebedor() {
     return paid >= suggested ? 'payment-ok' : 'payment-partial';
   };
   const rowAdvanceAmount = (row) => row.entries.reduce((sum, entry) => sum + entryAdvanceAmount(entry), 0);
-  const receiverPaymentNote = (row) => [
-    rowAdvanceAmount(row) > 0 ? `Valor antecipado: ${currency(rowAdvanceAmount(row))}` : '',
-    rowPaymentMethod(row) || '',
-    rowPaymentObservation(row) || '',
-  ].filter(Boolean).join(' · ');
-  const receiverNameCell = (row) => `<div class="receiver-name-cell"><strong>${escapeHtml(row.nome)}</strong>${receiverPaymentNote(row) ? `<small>${escapeHtml(receiverPaymentNote(row))}</small>` : ''}</div>`;
+  const rowAdvancePaymentMethod = (row) => row.entries.map(entryAdvancePaymentMethod).find(Boolean) || '';
+  const rowAdvancePaymentObservation = (row) => row.entries.map(entryAdvancePaymentObservation).find(Boolean) || '';
+  const receiverPaymentNotes = (row) => {
+    const advanceNote = [
+      rowAdvanceAmount(row) > 0 ? `Valor antecipado: ${currency(rowAdvanceAmount(row))}` : '',
+      rowAdvancePaymentMethod(row),
+      rowAdvancePaymentObservation(row),
+    ].filter(Boolean).join(' · ');
+    const receiverNote = [
+      rowPaid(row) > 0 ? `Recebedor: ${currency(rowPaid(row))}` : '',
+      rowPaymentMethod(row),
+      rowPaymentObservation(row),
+    ].filter(Boolean).join(' · ');
+    return [advanceNote, receiverNote].filter(Boolean);
+  };
+  const receiverNameCell = (row) => `<div class="receiver-name-cell"><strong>${escapeHtml(row.nome)}</strong>${receiverPaymentNotes(row).map((note) => `<small>${escapeHtml(note)}</small>`).join('')}</div>`;
   const paymentFilterLabel = paymentFilterOptions.find((option) => option.id === receiverPaymentFilter)?.label || '';
   const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
   const totalPeopleCount = receiverRows.reduce((total, row) => total + row.entries.length, 0);
@@ -2058,8 +2073,8 @@ async function renderCursista() {
       return;
     }
     const paidAmount = parseCurrency(values.get('valorPago'));
-    const currentPaymentMethod = values.get('recebedorFormaPagamento') || '';
-    const currentPaymentObservation = values.get('recebedorObservacao') || '';
+    const currentPaymentMethod = values.get('formaPagamento') || '';
+    const currentPaymentObservation = values.get('observacaoPagamento') || '';
     if (paidAmount > 0 && !currentPaymentMethod) {
       app.querySelector('#student-message').textContent = 'Clique em Pago para informar a forma de pagamento antes de salvar.';
       return;
@@ -2071,6 +2086,8 @@ async function renderCursista() {
     values.set('recebedorValorPago', paidAmount > 0 ? paidAmount : 0);
     values.set('recebedorTaxaPaga', paidAmount > 0 && paidAmount >= parseCurrency(values.get('valorInscricao')) ? 'true' : '');
     if (paidAmount <= 0) {
+      values.set('formaPagamento', '');
+      values.set('observacaoPagamento', '');
       values.set('recebedorFormaPagamento', '');
       values.set('recebedorObservacao', '');
     }
@@ -4515,7 +4532,7 @@ async function route() {
     if (target === 'cursista') {
       await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
     form.noValidate = true; form.reportValidity = () => true;
-    form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
+    form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="formaPagamento"><input type="hidden" name="observacaoPagamento"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
     form.elements.valorPago.readOnly = true;
     form.elements.valorPago.closest('.field')?.insertAdjacentHTML('beforeend', '<div class="student-payment-actions"><button type="button" id="set-student-payment">Informar pagamento</button><button type="button" id="clear-student-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small>');
@@ -4523,8 +4540,12 @@ async function route() {
     const setStudentPaymentDetails = ({ method = '', observation = '', paidAmount = parseCurrency(form.elements.valorPago.value) } = {}) => {
       form.elements.recebedorValorPago.value = paidAmount > 0 ? paidAmount : 0;
       form.elements.recebedorTaxaPaga.value = paidAmount > 0 ? 'true' : '';
-      form.elements.recebedorFormaPagamento.value = paidAmount > 0 ? method : '';
-      form.elements.recebedorObservacao.value = paidAmount > 0 ? observation : '';
+      form.elements.formaPagamento.value = paidAmount > 0 ? method : '';
+      form.elements.observacaoPagamento.value = paidAmount > 0 ? observation : '';
+      if (paidAmount <= 0) {
+        form.elements.recebedorFormaPagamento.value = '';
+        form.elements.recebedorObservacao.value = '';
+      }
       form.elements.valorPago.value = paidAmount > 0 ? currency(paidAmount) : '';
       app.querySelector('#clear-student-payment').hidden = paidAmount <= 0;
       recalculateBalance();
@@ -4535,8 +4556,8 @@ async function route() {
       const paymentDetails = await askStudentPayment({
         nome: form.elements.nome.value || 'Cursista',
         paidAmount,
-        currentMethod: form.elements.recebedorFormaPagamento.value,
-        currentObservation: form.elements.recebedorObservacao.value,
+        currentMethod: form.elements.formaPagamento.value,
+        currentObservation: form.elements.observacaoPagamento.value,
       });
       if (!paymentDetails?.method) return;
       setStudentPaymentDetails({ method: paymentDetails.method, observation: paymentDetails.observation || '', paidAmount: paymentDetails.amount });
@@ -4575,7 +4596,7 @@ async function route() {
     const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
     const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
     const studentNameInput = form.elements.nome; const nameField = studentNameInput.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; setStudentPaymentDetails({ method: student.recebedorFormaPagamento || '', observation: student.recebedorObservacao || '', paidAmount: parseCurrency(student.valorPago) }); form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
+    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
     const renderCascade = () => { if (selectedStudentId) { cascade.hidden = true; return; } const term = studentNameInput.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
     const closeStudentNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
     studentNameInput.addEventListener('focus', renderCascade); studentNameInput.addEventListener('input', renderCascade);
