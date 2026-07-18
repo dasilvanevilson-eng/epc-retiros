@@ -1580,13 +1580,14 @@ async function renderRecebedor() {
   const receiverNameCell = (row) => `<div class="receiver-name-cell"><strong>${escapeHtml(row.nome)}</strong>${receiverPaymentNotes(row).map((note) => `<small>${escapeHtml(note)}</small>`).join('')}</div>`;
   const paymentFilterLabel = paymentFilterOptions.find((option) => option.id === receiverPaymentFilter)?.label || '';
   const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
+  const rowHasReceiverContribution = (row) => rowPaid(row) > 0;
   const totalPeopleCount = receiverRows.reduce((total, row) => total + row.entries.length, 0);
-  const paidPeopleCount = receiverRows.reduce((total, row) => total + row.entries.filter(entryPaidStatus).length, 0);
+  const paidPeopleCount = receiverRows.reduce((total, row) => total + (rowHasReceiverContribution(row) || rowPaidStatus(row) ? row.entries.length : 0), 0);
   const paidCount = receiverRows.filter(rowPaidStatus).length;
   const totalAdvancePaid = receiverRows.reduce((sum, row) => sum + rowAdvanceAmount(row), 0);
-  const totalReceiverPaid = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowPaid(row) : 0), 0);
+  const totalReceiverPaid = receiverRows.reduce((sum, row) => sum + rowPaid(row), 0);
   const totalPaid = totalReceiverPaid;
-  const paidSuggested = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? rowSuggested(row) : 0), 0);
+  const paidSuggested = receiverRows.reduce((sum, row) => sum + (rowHasReceiverContribution(row) || rowPaidStatus(row) ? rowSuggested(row) : 0), 0);
   const balance = totalPaid - paidSuggested;
   const remaining = receiverRows.reduce((sum, row) => sum + (rowPaidStatus(row) ? 0 : rowSuggested(row)), 0);
   const totalsByAdvancePaymentMethod = paymentMethods.map((method) => ({
@@ -1596,9 +1597,9 @@ async function renderRecebedor() {
   const totalAdvanceWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowAdvanceAmount(row) > 0 && !rowAdvancePaymentMethod(row) ? sum + rowAdvanceAmount(row) : sum, 0);
   const totalsByReceiverPaymentMethod = paymentMethods.map((method) => ({
     method,
-    total: receiverRows.reduce((sum, row) => rowPaidStatus(row) && rowPaymentMethod(row) === method ? sum + rowPaid(row) : sum, 0),
+    total: receiverRows.reduce((sum, row) => rowPaid(row) > 0 && rowPaymentMethod(row) === method ? sum + rowPaid(row) : sum, 0),
   }));
-  const totalReceiverWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowPaidStatus(row) && !rowPaymentMethod(row) ? sum + rowPaid(row) : sum, 0);
+  const totalReceiverWithoutPaymentMethod = receiverRows.reduce((sum, row) => rowPaid(row) > 0 && !rowPaymentMethod(row) ? sum + rowPaid(row) : sum, 0);
   const rows = receiverRows
     .filter(rowMatchesSectorFilter)
     .filter((row) => rowMatchesPaymentFilter(row, receiverPaymentFilter))
@@ -1672,7 +1673,7 @@ async function renderRecebedor() {
     return rows.join('') || '<p class="receiver-payment-empty">Nenhuma entrada registrada.</p>';
   };
   const paymentMethodSummaryHtml = `<div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebimento antecipado de cursistas</h4><strong>${currency(totalAdvancePaid)}</strong></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByAdvancePaymentMethod, totalAdvanceWithoutPaymentMethod)}</section></div><div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebedor</h4><div><strong>${currency(totalReceiverPaid)}</strong><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></div></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByReceiverPaymentMethod, totalReceiverWithoutPaymentMethod)}</section></div>`;
-  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram integralmente</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
+  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   const sectorFilterLabel = receiverSectorFilter ? `: ${escapeHtml(receiverSectorFilter)}` : '';
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
   const receiverUrl = `${location.origin}/recebedor/${encodeURIComponent(retreat.recebedorToken || '')}`;
