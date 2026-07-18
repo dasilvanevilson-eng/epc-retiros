@@ -1439,15 +1439,21 @@ async function renderRecebedor() {
   ];
   const effectiveSuggested = (entry) => {
     if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
-    return parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
+    const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
+    return Math.max(0, inscription - parseCurrency(entry.valorPago));
   };
-  const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.recebedorValorPago) : parseCurrency(entry.valorPago);
-  const entryPaidStatus = (entry) => entry.tipoFinanceiro === 'cursista' ? Boolean(entry.recebedorTaxaPaga) : Boolean(entry.taxaPaga);
+  const entryAdvanceAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.valorPago) : 0;
+  const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? Math.max(0, parseCurrency(entry.recebedorValorPago) - entryAdvanceAmount(entry)) : parseCurrency(entry.valorPago);
+  const entryPaidStatus = (entry) => {
+    if (entry.tipoFinanceiro !== 'cursista') return Boolean(entry.taxaPaga);
+    const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
+    return inscription <= 0 ? Boolean(entry.recebedorTaxaPaga) : parseCurrency(entry.recebedorValorPago) >= inscription;
+  };
   const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.recebedorFormaPagamento || '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
   const entryPaymentObservation = (entry) => entry.recebedorObservacao || '';
   const setEntryPayment = (entry, value, checked, paymentMethod = '', observation) => {
     if (entry.tipoFinanceiro === 'cursista') {
-      entry.recebedorValorPago = value;
+      entry.recebedorValorPago = entryAdvanceAmount(entry) + value;
       entry.recebedorTaxaPaga = checked;
       entry.recebedorFormaPagamento = checked ? paymentMethod : '';
       if (!checked) entry.recebedorObservacao = '';
@@ -1502,7 +1508,7 @@ async function renderRecebedor() {
     return duplicatedCoupleTotal ? max : sum;
   };
   const rowPaidStatus = (row) => row.entries.every(entryPaidStatus);
-  const rowHasPayment = (row) => rowPaid(row) > 0;
+  const rowHasPayment = (row) => rowPaid(row) > 0 || row.entries.some((entry) => entryAdvanceAmount(entry) > 0);
   const rowPaymentMethod = (row) => row.entries.map(entryPaymentMethod).find(Boolean) || '';
   const rowPaymentObservation = (row) => row.entries.map(entryPaymentObservation).find(Boolean) || '';
   const rowHasSector = (row, sector) => row.entries.some((entry) => entryHasSector(entry, sector));
@@ -1520,8 +1526,8 @@ async function renderRecebedor() {
     const suggested = rowSuggested(row);
     if (filter === 'overpaid') return paid > suggested;
     if (filter === 'underpaid') return paid > 0 && paid < suggested;
-    if (filter === 'open') return paid === 0;
-    if (filter === 'open-or-underpaid') return paid === 0 || paid < suggested;
+    if (filter === 'open') return suggested > 0 && paid === 0;
+    if (filter === 'open-or-underpaid') return suggested > 0 && (paid === 0 || paid < suggested);
     return true;
   };
   const peopleCountForPaymentFilter = (filter) => receiverRows
@@ -1530,10 +1536,17 @@ async function renderRecebedor() {
     .reduce((total, row) => total + row.entries.length, 0);
   const rowPaymentState = (row) => {
     const paid = rowPaid(row);
+    const suggested = rowSuggested(row);
+    if (suggested <= 0) return 'payment-ok';
     if (paid <= 0) return 'payment-open';
-    return paid >= rowSuggested(row) ? 'payment-ok' : 'payment-partial';
+    return paid >= suggested ? 'payment-ok' : 'payment-partial';
   };
-  const receiverPaymentNote = (row) => [rowPaymentMethod(row) ? `Forma: ${rowPaymentMethod(row)}` : '', rowPaymentObservation(row) ? `Obs.: ${rowPaymentObservation(row)}` : ''].filter(Boolean).join(' · ');
+  const rowAdvanceAmount = (row) => row.entries.reduce((sum, entry) => sum + entryAdvanceAmount(entry), 0);
+  const receiverPaymentNote = (row) => [
+    rowAdvanceAmount(row) > 0 ? `Valor antecipado: ${currency(rowAdvanceAmount(row))}` : '',
+    rowPaymentMethod(row) ? `Forma: ${rowPaymentMethod(row)}` : '',
+    rowPaymentObservation(row) ? `Obs.: ${rowPaymentObservation(row)}` : '',
+  ].filter(Boolean).join(' · ');
   const receiverNameCell = (row) => `<div class="receiver-name-cell"><strong>${escapeHtml(row.nome)}</strong>${receiverPaymentNote(row) ? `<small>${escapeHtml(receiverPaymentNote(row))}</small>` : ''}</div>`;
   const paymentFilterLabel = paymentFilterOptions.find((option) => option.id === receiverPaymentFilter)?.label || '';
   const values = (row, key) => ({ nome: row.sortName || row.nome, setor: row.setores.join(', '), sugerido: rowSuggested(row), pago: rowPaid(row), taxa: rowPaidStatus(row) ? 1 : 0 })[key];
@@ -2054,7 +2067,7 @@ async function renderCursista() {
       return;
     }
     values.set('recebedorValorPago', paidAmount > 0 ? paidAmount : 0);
-    values.set('recebedorTaxaPaga', paidAmount > 0 ? 'true' : '');
+    values.set('recebedorTaxaPaga', paidAmount > 0 && paidAmount >= parseCurrency(values.get('valorInscricao')) ? 'true' : '');
     if (paidAmount <= 0) {
       values.set('recebedorFormaPagamento', '');
       values.set('recebedorObservacao', '');
