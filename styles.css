@@ -1762,6 +1762,19 @@ button:hover,
   font-size:14px;
 }
 
+.student-health-person {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+
+.student-health-person small {
+  color:#7b6a3e;
+  font-size:12px;
+  line-height:1.35;
+}
+
 .student-health-list span {
   color:#5e6874;
   font-size:14px;

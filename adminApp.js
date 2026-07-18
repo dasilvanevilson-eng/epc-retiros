@@ -116,6 +116,34 @@ const sortCommunitiesByPosition = (communities = []) => communities
   })
   .map(({ community }, index) => ({ ...community, ordem: Number(community.ordem) || index + 1 }));
 
+const communityLabel = (community, fallbackIndex = 0) => community?.nome || `Comunidade ${community?.ordem || fallbackIndex + 1}`;
+const communityStudentKey = (student = {}) => String(student.id || student.cpf || '').trim();
+const studentCommunityDetails = (communities = []) => {
+  const details = new Map();
+  sortCommunitiesByPosition(communities).forEach((community, index) => {
+    const detail = {
+      name: communityLabel(community, index),
+      order: Number(community.ordem) || index + 1,
+    };
+    (community.membroIds || []).forEach((memberId) => {
+      const key = String(memberId || '').trim();
+      if (!key) return;
+      details.set(key, detail);
+      const cpfKey = normalizeCpf(key);
+      if (cpfKey) details.set(cpfKey, detail);
+    });
+  });
+  return details;
+};
+const studentCommunityDetail = (student, details) => {
+  const keys = [student?.id, student?.cpf, communityStudentKey(student)].map((value) => String(value || '').trim()).filter(Boolean);
+  for (const key of keys) {
+    const detail = details.get(key) || details.get(normalizeCpf(key));
+    if (detail) return detail;
+  }
+  return { name: 'Sem comunidade', order: Number.MAX_SAFE_INTEGER };
+};
+
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 const passwordToggleHtml = '<button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">👁</button>';
 const passwordFieldHtml = (inputAttributes) => `<div class="password-field"><input name="password" type="password" ${inputAttributes}>${passwordToggleHtml}</div>`;
@@ -679,7 +707,8 @@ function wireSectorStatWindows(rows = []) {
 
 async function renderHome() {
   const active = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
-  const allStudents = await dataService.listCursistas();
+  const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
+  const activeCommunityDetails = active ? studentCommunityDetails(allCommunities.filter((community) => community.retiroId === active.id)) : new Map();
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
   const activeEnrolments = active ? mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
@@ -703,7 +732,14 @@ async function renderHome() {
   });
   const intoleranceStudents = activeStudents
     .filter((student) => normalizeText(student.intoleranciaAlimentos) === 'sim' || String(student.qualIntolerancia || '').trim())
-    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, activeCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, activeCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const allergyStudents = activeStudents
     .filter((student) => normalizeText(student.alergiaMedicamento) === 'sim' || String(student.qualAlergia || '').trim())
     .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
@@ -764,7 +800,10 @@ async function renderHome() {
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
-  const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const healthRows = (students, field, fallback, options = {}) => students.length ? `<div class="student-health-list">${students.map((student) => {
+    const community = options.showCommunity ? studentCommunityDetail(student, options.communityDetails) : null;
+    return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong>${community ? `<small>Comunidade: ${escapeHtml(community.name)}</small>` : ''}</div><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`;
+  }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
   const cityRowsHtml = (rows) => rows.length ? `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
@@ -790,7 +829,7 @@ async function renderHome() {
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
   setupHomeStatTabs();
   const healthContent = {
-    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada')}`,
+    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado')}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
@@ -1007,7 +1046,9 @@ async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   const canDeleteRetreat = canAccess('retiros.excluir');
-  const registeredStudents = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === id));
+  const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
+  const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
+  const retreatCommunityDetails = studentCommunityDetails(allCommunities.filter((community) => community.retiroId === id));
   const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
@@ -1030,7 +1071,14 @@ async function renderRetreat(id) {
     .filter(([sector, count]) => count > 0 || retreat.setores?.includes(sector));
   const intoleranceStudents = registeredStudents
     .filter((student) => normalizeText(student.intoleranciaAlimentos) === 'sim' || String(student.qualIntolerancia || '').trim())
-    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, retreatCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, retreatCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const allergyStudents = registeredStudents
     .filter((student) => normalizeText(student.alergiaMedicamento) === 'sim' || String(student.qualAlergia || '').trim())
     .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
@@ -1091,7 +1139,10 @@ async function renderRetreat(id) {
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
-  const healthRows = (students, field, fallback) => students.length ? `<div class="student-health-list">${students.map((student) => `<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const healthRows = (students, field, fallback, options = {}) => students.length ? `<div class="student-health-list">${students.map((student) => {
+    const community = options.showCommunity ? studentCommunityDetail(student, options.communityDetails) : null;
+    return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong>${community ? `<small>Comunidade: ${escapeHtml(community.name)}</small>` : ''}</div><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`;
+  }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
   const cityRowsHtml = (rows) => rows.length ? `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
@@ -1114,7 +1165,7 @@ async function renderRetreat(id) {
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
     </section>`;
   const healthContent = {
-    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada')}`,
+    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado')}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
