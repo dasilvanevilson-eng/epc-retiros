@@ -742,7 +742,14 @@ async function renderHome() {
     });
   const allergyStudents = activeStudents
     .filter((student) => normalizeText(student.alergiaMedicamento) === 'sim' || String(student.qualAlergia || '').trim())
-    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, activeCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, activeCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const groupedPreferenceRows = (entries, field) => {
     const usedCouples = new Set();
     return entries.reduce((rows, entry) => {
@@ -751,7 +758,7 @@ async function renderHome() {
         const couple = entries.filter((item) => item.casalId === entry.casalId);
         usedCouples.add(entry.casalId);
         if (!couple.some((item) => normalizeText(item[field]) === 'sim')) return rows;
-        rows.push({ name: couple.map((item) => item.nome).filter(Boolean).join(' e '), detail: 'Ficha de casal' });
+        rows.push({ name: couple.map((item) => item.nome).filter(Boolean).join(' e '), detail: uniqueSectors(couple.flatMap((item) => item.setores || [])).join(', ') || 'Setor não informado' });
         return rows;
       }
       if (normalizeText(entry[field]) !== 'sim') return rows;
@@ -830,7 +837,7 @@ async function renderHome() {
   setupHomeStatTabs();
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
-    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado')}`,
+    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
@@ -1081,7 +1088,14 @@ async function renderRetreat(id) {
     });
   const allergyStudents = registeredStudents
     .filter((student) => normalizeText(student.alergiaMedicamento) === 'sim' || String(student.qualAlergia || '').trim())
-    .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, retreatCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, retreatCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const groupedPreferenceRows = (entries, field) => {
     const usedCouples = new Set();
     return entries.reduce((rows, entry) => {
@@ -1090,7 +1104,7 @@ async function renderRetreat(id) {
         const couple = entries.filter((item) => item.casalId === entry.casalId);
         usedCouples.add(entry.casalId);
         if (!couple.some((item) => normalizeText(item[field]) === 'sim')) return rows;
-        rows.push({ name: couple.map((item) => item.nome).filter(Boolean).join(' e '), detail: 'Ficha de casal' });
+        rows.push({ name: couple.map((item) => item.nome).filter(Boolean).join(' e '), detail: uniqueSectors(couple.flatMap((item) => item.setores || [])).join(', ') || 'Setor não informado' });
         return rows;
       }
       if (normalizeText(entry[field]) !== 'sim') return rows;
@@ -1166,7 +1180,7 @@ async function renderRetreat(id) {
     </section>`;
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
-    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado')}`,
+    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
