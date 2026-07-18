@@ -16,6 +16,7 @@ let participantsVisible = false;
 let receiverSort = { key: 'nome', direction: 'asc' };
 let receiverSectorFilter = '';
 let receiverPaymentFilter = '';
+let openReceiverPanelAfterRender = false;
 let badgePrintEntries = [];
 let badgePrintTitle = '';
 let currentUser = null;
@@ -1654,7 +1655,7 @@ async function renderRecebedor() {
     return rows.join('') || '<p class="receiver-payment-empty">Nenhuma entrada registrada.</p>';
   };
   const paymentMethodSummaryHtml = `<div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Ficha do cursista</h4><strong>${currency(totalAdvancePaid)}</strong></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByAdvancePaymentMethod, totalAdvanceWithoutPaymentMethod)}</section></div><div class="receiver-payment-origin"><div class="receiver-payment-origin-heading"><h4>Recebedor</h4><strong>${currency(totalReceiverPaid)}</strong></div><section class="receiver-payment-summary">${paymentMethodArticles(totalsByReceiverPaymentMethod, totalReceiverWithoutPaymentMethod)}</section></div>`;
-  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article class="receiver-total-card"><span>Total das contribuições</span><div><small>Ficha do cursista</small><strong>${currency(totalAdvancePaid)}</strong></div><div><small>Recebedor</small><strong>${currency(totalReceiverPaid)}</strong></div><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
+  const receiverSummaryHtml = `<section class="receiver-summary"><article><span>Já contribuíram integralmente</span><strong>${paidPeopleCount}</strong><small>pessoa(s)</small></article><article><span>Falta contribuir</span><strong>${totalPeopleCount - paidPeopleCount}</strong><small>pessoa(s)</small></article><article class="receiver-total-card"><span>Total das contribuições</span><div><small>Ficha do cursista</small><strong>${currency(totalAdvancePaid)}</strong></div><div><small>Recebedor</small><strong>${currency(totalReceiverPaid)}</strong></div><small class="receiver-balance-diff">Diferença: <b>${currency(balance)}</b></small></article><article><span>Valor a receber</span><strong>${currency(remaining)}</strong></article></section><div class="receiver-payment-heading"><h3>Entradas por forma de pagamento</h3></div>${paymentMethodSummaryHtml}`;
   const sectorFilterLabel = receiverSectorFilter ? `: ${escapeHtml(receiverSectorFilter)}` : '';
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
   const receiverUrl = `${location.origin}/recebedor/${encodeURIComponent(retreat.recebedorToken || '')}`;
@@ -1664,13 +1665,19 @@ async function renderRecebedor() {
     await navigator.clipboard.writeText(event.currentTarget.dataset.copyReceiverLink);
     event.currentTarget.textContent = 'Copiado!';
   });
-  app.querySelector('#receiver-show-panel').addEventListener('click', () => {
+  const openReceiverPanel = () => {
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
     overlay.innerHTML = `<div class="receiver-sector-dialog receiver-panel-dialog"><div class="panel-heading"><div><p class="eyebrow">Painel financeiro</p><h2>Resumo do recebedor</h2><p>${escapeHtml(retreat.nome)}</p></div></div>${receiverSummaryHtml}<button type="button" class="close-sector-view">Fechar painel</button></div>`;
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
     app.append(overlay);
+  };
+  app.querySelector('#receiver-show-panel').addEventListener('click', async (event) => {
+    event.currentTarget.disabled = true;
+    openReceiverPanelAfterRender = true;
+    await loadData();
+    await renderRecebedor();
   });
   app.querySelector('#receiver-by-payment').addEventListener('click', () => {
     const overlay = document.createElement('section');
@@ -1686,6 +1693,10 @@ async function renderRecebedor() {
     app.append(overlay);
   });
   app.querySelector('#receiver-download-sheet').addEventListener('click', downloadReceiverSpreadsheet);
+  if (openReceiverPanelAfterRender) {
+    openReceiverPanelAfterRender = false;
+    openReceiverPanel();
+  }
   app.querySelector('#receiver-by-sector').addEventListener('click', () => {
     const sectors = [...new Set(receiverRows.flatMap((row) => row.setores))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
