@@ -1851,6 +1851,13 @@ button:hover,
   text-align:right;
 }
 
+.city-health-list .city-health-total {
+  margin-top:4px;
+  border-top:2px solid rgba(198,154,69,.34);
+  background:rgba(255,248,236,.72);
+  font-weight:800;
+}
+
 .presence-stat-panel,
 .shirt-stat-panel {
   min-height:100%;
