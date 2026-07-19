@@ -599,7 +599,7 @@ function layout(content, active = 'inicio') {
 function statusLabel(status) { return ({ preparacao: 'Em preparação', publicado: 'Publicado', encerrado: 'Encerrado' })[status] || status; }
 
 function homeInfoPrintDocument(label, content) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.city-health-list .city-health-total{grid-template-columns:1fr repeat(3,95px);margin-top:4px;border-top:2px solid #c69a45;background:#fff8ec;font-weight:700}.shirt-community-list>div{grid-template-columns:minmax(0,1fr) 100px}.shirt-community-list .shirt-community-heading{display:block;padding:12px 0 6px;border-bottom:2px solid #c69a45;color:#1f2c3f;font-size:14px;font-weight:700}.shirt-community-list>div:not(.shirt-community-heading) strong,.shirt-community-list>div:not(.shirt-community-heading) span{font-size:24px}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.city-health-list .city-health-total{grid-template-columns:1fr repeat(3,95px);margin-top:4px;border-top:2px solid #c69a45;background:#fff8ec;font-weight:700}.shirt-community-list>div{grid-template-columns:minmax(0,1fr) 100px}.shirt-community-list .shirt-community-heading{display:block;padding:12px 0 6px;border-bottom:2px solid #c69a45;color:#1f2c3f;font-size:14px;font-weight:700}.shirt-community-list>div:not(.shirt-community-heading) strong,.shirt-community-list>div:not(.shirt-community-heading) span,.sector-public-list strong,.sector-public-list span{font-size:24px}.sector-public-list{margin:18px 0 0;padding:0;list-style:none;border-top:1px solid #d9d1c3}.sector-public-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.75fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}.receiver-sector-back,.sector-public-summary{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
 }
 
 function printHomeInfoWindow(label, content) {
@@ -612,6 +612,19 @@ function printHomeInfoWindow(label, content) {
     printWindow.focus();
     printWindow.print();
   }, 250);
+}
+
+function setHomeStatPrintOptions(dialog, printOptions = []) {
+  const actions = dialog?.querySelector('.home-stat-actions');
+  if (!actions) return;
+  const options = printOptions.length ? printOptions : [{ label: 'Impressão', title: dialog.getAttribute('aria-label') || 'Visualização', content: dialog.querySelector('.home-stat-scroll')?.innerHTML || '' }];
+  actions.innerHTML = options.map((option, index) => `<button type="button" data-home-stat-print="${index}">${escapeHtml(option.label)}</button>`).join('');
+  actions.querySelectorAll('[data-home-stat-print]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const option = options[Number(button.dataset.homeStatPrint)] || options[0];
+      printHomeInfoWindow(option.title || dialog.getAttribute('aria-label') || 'Visualização', option.content || dialog.querySelector('.home-stat-scroll')?.innerHTML || '');
+    });
+  });
 }
 
 function shirtCommunityPrintContent(students = [], communityDetails = new Map()) {
@@ -637,16 +650,11 @@ function openHomeInfoWindow(label, content, options = {}) {
   const overlay = document.createElement('section');
   overlay.className = 'home-stat-overlay';
   const printOptions = options.printOptions?.length ? options.printOptions : [{ label: 'Impressão', title: label, content }];
-  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div><div class="home-stat-actions">${printOptions.map((option, index) => `<button type="button" data-home-stat-print="${index}">${escapeHtml(option.label)}</button>`).join('')}</div></div>`;
+  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div><div class="home-stat-actions"></div></div>`;
   overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
   overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') overlay.remove(); });
   overlay.querySelector('.home-stat-close').addEventListener('click', () => overlay.remove());
-  overlay.querySelectorAll('[data-home-stat-print]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const option = printOptions[Number(button.dataset.homeStatPrint)] || printOptions[0];
-      printHomeInfoWindow(option.title || label, option.content || content);
-    });
-  });
+  setHomeStatPrintOptions(overlay.querySelector('.home-stat-dialog'), printOptions);
   app.append(overlay);
   overlay.querySelector('.home-stat-close').focus();
 }
@@ -729,8 +737,10 @@ function setupSectorStatDrilldown(root, rows = []) {
         .map((day) => ({ day, count: people.reduce((total, person) => total + person.entries.filter((entry) => entryDays(entry).some((entryDay) => normalizeText(entryDay) === normalizeText(day))).length, 0) }))
         .filter((item) => item.day);
       root.innerHTML = `<button type="button" class="receiver-sector-back" data-sector-stat-back>← Todos os setores</button><section class="sector-public-modal sector-public-modal-inline" role="dialog" aria-modal="true" aria-labelledby="sector-title"><p class="eyebrow">Acompanhamento do setor</p><h1 id="sector-title">${escapeHtml(sector)}</h1><p>${peopleCount} pessoa(s) inscrita(s) neste setor.</p>${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}</section>`;
+      setHomeStatPrintOptions(root.closest('.home-stat-dialog'), [{ label: 'Impressão', title: `Pessoas por setor - ${sector}`, content: root.innerHTML }]);
       root.querySelector('[data-sector-stat-back]').addEventListener('click', () => {
         root.innerHTML = root.dataset.sectorListHtml || '';
+        setHomeStatPrintOptions(root.closest('.home-stat-dialog'), [{ label: 'Impressão', title: 'Pessoas por setor', content: root.innerHTML }]);
         setupSectorStatDrilldown(root, rows);
       });
     });
