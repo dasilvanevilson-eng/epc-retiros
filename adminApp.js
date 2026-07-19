@@ -1038,6 +1038,7 @@ async function renderNewRetreat() {
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p><div class="sector-groups" id="sector-checks">${sectorGroups(knownSectors(), [], [])}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#retreat-form');
   let sourceRetreatId = '';
+  ensureOfficialShirtValueField(form);
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
   const applySourceRetreat = (source = null) => {
@@ -1050,6 +1051,7 @@ async function renderNewRetreat() {
     form.elements.valorInscricaoCursista.value = source ? currency(source.valorInscricaoCursista) : '';
     form.elements.valorInscricaoVoluntario.value = source ? currency(source.valorInscricaoVoluntario) : '';
     form.elements.valorFoto.value = source ? currency(source.valorFoto ?? 10) : '';
+    form.elements.valorCamisetaOficial.value = source ? currency(source.valorCamisetaOficial) : '';
     form.elements.idadeMaximaEspacoKids.value = source?.idadeMaximaEspacoKids ?? '';
     app.querySelector('#sector-checks').innerHTML = source
       ? sectorGroups(knownSectors(source.setores), source.setores, source.setoresPublicos ?? source.setores)
@@ -1098,7 +1100,7 @@ async function renderNewRetreat() {
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
@@ -1354,6 +1356,7 @@ async function renderEditRetreat(id) {
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}"></label><label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
+  ensureOfficialShirtValueField(form, currency(retreat.valorCamisetaOficial));
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
   form.addEventListener('submit', async (event) => {
@@ -1384,7 +1387,7 @@ async function renderEditRetreat(id) {
     const serviceDays = values.get('dataInicio') && values.get('dataTermino') ? retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino')) : [];
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
     const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
     for (const [from, to] of renames) {
       const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
@@ -1565,6 +1568,12 @@ function volunteerContributionAmount(retreat = {}, entry = {}) {
   const photoAmount = normalizeText(entry.foto) === 'sim' ? Number(retreat.valorFoto ?? 10) || 0 : 0;
   if (entry.casalId) return (baseAmount * 2) + photoAmount;
   return baseAmount + photoAmount;
+}
+function ensureOfficialShirtValueField(form, value = '') {
+  if (!form || form.elements.valorCamisetaOficial) return;
+  const ageField = form.elements.idadeMaximaEspacoKids?.closest('.field');
+  if (!ageField) return;
+  ageField.insertAdjacentHTML('beforebegin', `<label class="field"><span>Valor da camiseta oficial do retiro</span><input name="valorCamisetaOficial" type="text" inputmode="decimal" data-currency-input value="${escapeHtml(value)}" placeholder="R$ 0,00"></label>`);
 }
 function wireCurrencyInputs(root) {
   root.querySelectorAll('[data-currency-input]').forEach((input) => {

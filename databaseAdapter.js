@@ -188,6 +188,7 @@ function mapRetreat(row, children = {}) {
     valorInscricaoCursista: Number(row.valor_inscricao_cursista || 0),
     valorInscricaoVoluntario: Number(row.valor_inscricao_voluntario || 0),
     valorFoto: Number(row.valor_foto || 0),
+    valorCamisetaOficial: Number(row.valor_camiseta_oficial || 0),
     descontoParentesco: Number(row.desconto_parentesco || 0),
     idadeMaximaEspacoKids: Number(row.idade_maxima_espaco_kids || 0),
     recebedorToken: row.recebedor_token || '',
@@ -234,7 +235,7 @@ async function getRetreat(id) {
 }
 
 async function saveRetreat(record) {
-  const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
+  const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'valorCamisetaOficial', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
   await upsert('retiros', compact({
     id: record.id,
     nome: record.nome || 'Retiro sem nome',
@@ -246,6 +247,7 @@ async function saveRetreat(record) {
     valor_inscricao_cursista: numberOrZero(record.valorInscricaoCursista),
     valor_inscricao_voluntario: numberOrZero(record.valorInscricaoVoluntario),
     valor_foto: numberOrZero(record.valorFoto),
+    valor_camiseta_oficial: numberOrZero(record.valorCamisetaOficial),
     desconto_parentesco: numberOrZero(record.descontoParentesco),
     idade_maxima_espaco_kids: Number(record.idadeMaximaEspacoKids || 0),
     recebedor_token: textOrNull(record.recebedorToken),

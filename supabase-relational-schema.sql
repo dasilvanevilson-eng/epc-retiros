@@ -25,6 +25,7 @@ create table if not exists public.retiros (
   valor_inscricao_cursista numeric(10,2) not null default 0,
   valor_inscricao_voluntario numeric(10,2) not null default 0,
   valor_foto numeric(10,2) not null default 0,
+  valor_camiseta_oficial numeric(10,2) not null default 0,
   desconto_parentesco numeric(10,2) not null default 0,
   idade_maxima_espaco_kids integer not null default 0,
   recebedor_token text unique,
