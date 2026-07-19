@@ -782,7 +782,7 @@ async function renderHome() {
       rows.push({ name: entry.nome || 'Sem nome', detail: entry.setores?.join(', ') || 'Ficha individual' });
       return rows;
     }, []).sort((first, second) => {
-      if (field === 'quadrante') {
+      if (field === 'quadrante' || field === 'foto') {
         const sectorResult = first.detail.localeCompare(second.detail, 'pt-BR', { sensitivity: 'base' });
         if (sectorResult) return sectorResult;
       }
@@ -1134,7 +1134,7 @@ async function renderRetreat(id) {
       rows.push({ name: entry.nome || 'Sem nome', detail: entry.setores?.join(', ') || 'Ficha individual' });
       return rows;
     }, []).sort((first, second) => {
-      if (field === 'quadrante') {
+      if (field === 'quadrante' || field === 'foto') {
         const sectorResult = first.detail.localeCompare(second.detail, 'pt-BR', { sensitivity: 'base' });
         if (sectorResult) return sectorResult;
       }
