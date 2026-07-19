@@ -781,7 +781,13 @@ async function renderHome() {
       if (normalizeText(entry[field]) !== 'sim') return rows;
       rows.push({ name: entry.nome || 'Sem nome', detail: entry.setores?.join(', ') || 'Ficha individual' });
       return rows;
-    }, []).sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
+    }, []).sort((first, second) => {
+      if (field === 'quadrante') {
+        const sectorResult = first.detail.localeCompare(second.detail, 'pt-BR', { sensitivity: 'base' });
+        if (sectorResult) return sectorResult;
+      }
+      return first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' });
+    });
   };
   const quadranteRows = groupedPreferenceRows(activeEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(activeEnrolments, 'foto');
@@ -1127,7 +1133,13 @@ async function renderRetreat(id) {
       if (normalizeText(entry[field]) !== 'sim') return rows;
       rows.push({ name: entry.nome || 'Sem nome', detail: entry.setores?.join(', ') || 'Ficha individual' });
       return rows;
-    }, []).sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
+    }, []).sort((first, second) => {
+      if (field === 'quadrante') {
+        const sectorResult = first.detail.localeCompare(second.detail, 'pt-BR', { sensitivity: 'base' });
+        if (sectorResult) return sectorResult;
+      }
+      return first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' });
+    });
   };
   const quadranteRows = groupedPreferenceRows(retreatEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(retreatEnrolments, 'foto');
