@@ -598,14 +598,31 @@ function layout(content, active = 'inicio') {
 
 function statusLabel(status) { return ({ preparacao: 'Em preparação', publicado: 'Publicado', encerrado: 'Encerrado' })[status] || status; }
 
+function homeInfoPrintDocument(label, content) {
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
+}
+
+function printHomeInfoWindow(label, content) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+  printWindow.document.open();
+  printWindow.document.write(homeInfoPrintDocument(label, content));
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+  }, 250);
+}
+
 function openHomeInfoWindow(label, content) {
   app.querySelector('.home-stat-overlay')?.remove();
   const overlay = document.createElement('section');
   overlay.className = 'home-stat-overlay';
-  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div></div>`;
+  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div><div class="home-stat-actions"><button type="button" data-home-stat-print>Impressão</button></div></div>`;
   overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
   overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') overlay.remove(); });
   overlay.querySelector('.home-stat-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('[data-home-stat-print]').addEventListener('click', () => printHomeInfoWindow(label, content));
   app.append(overlay);
   overlay.querySelector('.home-stat-close').focus();
 }

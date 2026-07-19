@@ -1609,6 +1609,25 @@ button:hover,
   padding:4px 2px 2px;
 }
 
+.home-stat-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:18px;
+  margin-top:18px;
+  border-top:1px solid rgba(198,154,69,.22);
+}
+
+.home-stat-actions button {
+  padding:11px 18px;
+  border:0;
+  border-radius:999px;
+  background:linear-gradient(135deg, var(--gold), #e8c47b);
+  color:#352409;
+  font-weight:800;
+  box-shadow:0 10px 24px rgba(151,106,28,.20);
+}
+
 .home-stat-close {
   position:absolute;
   top:14px;
