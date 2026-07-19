@@ -1613,6 +1613,7 @@ button:hover,
   display:flex;
   justify-content:flex-end;
   gap:10px;
+  flex-wrap:wrap;
   padding-top:18px;
   margin-top:18px;
   border-top:1px solid rgba(198,154,69,.22);
@@ -1857,6 +1858,12 @@ button:hover,
   border-top:2px solid rgba(198,154,69,.34);
   background:rgba(255,248,236,.72);
   font-weight:800;
+}
+
+.shirt-community-list .shirt-community-heading {
+  display:block;
+  padding:14px 0 6px;
+  border-bottom:2px solid rgba(198,154,69,.34);
 }
 
 .presence-stat-panel,

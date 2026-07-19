@@ -599,7 +599,7 @@ function layout(content, active = 'inicio') {
 function statusLabel(status) { return ({ preparacao: 'Em preparação', publicado: 'Publicado', encerrado: 'Encerrado' })[status] || status; }
 
 function homeInfoPrintDocument(label, content) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.city-health-list .city-health-total{grid-template-columns:1fr repeat(3,95px);margin-top:4px;border-top:2px solid #c69a45;background:#fff8ec;font-weight:700}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.city-health-list .city-health-total{grid-template-columns:1fr repeat(3,95px);margin-top:4px;border-top:2px solid #c69a45;background:#fff8ec;font-weight:700}.shirt-community-list>div{grid-template-columns:minmax(0,1fr) 100px}.shirt-community-list .shirt-community-heading{display:block;padding:12px 0 6px;border-bottom:2px solid #c69a45;color:#1f2c3f;font-size:14px;font-weight:700}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
 }
 
 function printHomeInfoWindow(label, content) {
@@ -614,20 +614,44 @@ function printHomeInfoWindow(label, content) {
   }, 250);
 }
 
-function openHomeInfoWindow(label, content) {
+function shirtCommunityPrintContent(students = [], communityDetails = new Map()) {
+  const rows = [...students].sort((first, second) => {
+    const firstCommunity = studentCommunityDetail(first, communityDetails);
+    const secondCommunity = studentCommunityDetail(second, communityDetails);
+    if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+    const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+    if (communityResult) return communityResult;
+    return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+  });
+  if (!rows.length) return '<p class="empty-state">Nenhum cursista informado.</p>';
+  let currentCommunity = '';
+  return `<div class="student-health-list shirt-community-list">${rows.map((student) => {
+    const community = studentCommunityDetail(student, communityDetails);
+    const heading = community.name !== currentCommunity ? (currentCommunity = community.name, `<div class="shirt-community-heading"><strong>${escapeHtml(community.name)}</strong></div>`) : '';
+    return `${heading}<div><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${escapeHtml(String(student.camiseta || student.camisetaOutro || '').trim() || 'Não informado')}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function openHomeInfoWindow(label, content, options = {}) {
   app.querySelector('.home-stat-overlay')?.remove();
   const overlay = document.createElement('section');
   overlay.className = 'home-stat-overlay';
-  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div><div class="home-stat-actions"><button type="button" data-home-stat-print>Impressão</button></div></div>`;
+  const printOptions = options.printOptions?.length ? options.printOptions : [{ label: 'Impressão', title: label, content }];
+  overlay.innerHTML = `<div class="home-stat-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}"><button type="button" class="home-stat-close" aria-label="Fechar">×</button><div class="home-stat-scroll">${content}</div><div class="home-stat-actions">${printOptions.map((option, index) => `<button type="button" data-home-stat-print="${index}">${escapeHtml(option.label)}</button>`).join('')}</div></div>`;
   overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
   overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') overlay.remove(); });
   overlay.querySelector('.home-stat-close').addEventListener('click', () => overlay.remove());
-  overlay.querySelector('[data-home-stat-print]').addEventListener('click', () => printHomeInfoWindow(label, content));
+  overlay.querySelectorAll('[data-home-stat-print]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const option = printOptions[Number(button.dataset.homeStatPrint)] || printOptions[0];
+      printHomeInfoWindow(option.title || label, option.content || content);
+    });
+  });
   app.append(overlay);
   overlay.querySelector('.home-stat-close').focus();
 }
 
-function setupHomeStatTabs() {
+function setupHomeStatTabs(options = {}) {
   const grid = app.querySelector('.retreat-stats-grid');
   if (!grid) return;
   const panels = [
@@ -648,7 +672,11 @@ function setupHomeStatTabs() {
     const item = panels.find(([panelKey]) => panelKey === key);
     if (!item) return;
     const [, label, panel] = item;
-    openHomeInfoWindow(label, panel.innerHTML);
+    const printOptions = key === 'shirts' ? [
+      { label: 'Por tamanho da camiseta', title: 'Camisetas dos cursistas por tamanho', content: panel.innerHTML },
+      { label: 'Por comunidade', title: 'Camisetas dos cursistas por comunidade', content: shirtCommunityPrintContent(options.shirtStudents || [], options.communityDetails || new Map()) },
+    ] : null;
+    openHomeInfoWindow(label, panel.innerHTML, { printOptions });
   };
   panels.forEach(([key, , panel]) => {
     panel.classList.add('home-stat-panel');
@@ -861,7 +889,7 @@ async function renderHome() {
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
     </section>
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
-  setupHomeStatTabs();
+  setupHomeStatTabs({ shirtStudents: activeStudents, communityDetails: activeCommunityDetails });
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
@@ -1234,7 +1262,7 @@ async function renderRetreat(id) {
     ${retreatStatisticsHtml}
     <section class="detail-grid"></section>
     `, 'retiros');
-  setupHomeStatTabs();
+  setupHomeStatTabs({ shirtStudents: registeredStudents, communityDetails: retreatCommunityDetails });
   app.querySelectorAll('[data-home-health]').forEach((button) => {
     button.addEventListener('click', () => {
       const key = button.dataset.homeHealth;
