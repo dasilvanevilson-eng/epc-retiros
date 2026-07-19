@@ -1852,6 +1852,7 @@ button:hover,
 }
 
 .city-health-list .city-health-total {
+  grid-template-columns:minmax(0, 1fr) repeat(3, minmax(92px, .35fr));
   margin-top:4px;
   border-top:2px solid rgba(198,154,69,.34);
   background:rgba(255,248,236,.72);
