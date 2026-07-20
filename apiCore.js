@@ -28,6 +28,38 @@ function sendError(res, status, message) {
   sendJson(res, status, { error: message });
 }
 
+const dataLossBypassField = '__allowRegistrationDataLoss';
+const protectedRegistrationStores = new Set(['adesoes', 'cursistas']);
+const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+const isEmptyProtectedValue = (value) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return !value.trim();
+  if (Array.isArray(value)) return !value.length;
+  if (isPlainObject(value)) return !Object.keys(value).length;
+  return false;
+};
+const wouldLoseProtectedValue = (current, next) => {
+  if (isEmptyProtectedValue(current)) return false;
+  if (isEmptyProtectedValue(next)) return true;
+  if (typeof current === 'number' && current !== 0 && Number(next) === 0) return true;
+  if (current === true && next === false) return true;
+  return false;
+};
+const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current)
+  .filter((field) => !['updatedAt', 'atualizadoEm'].includes(field))
+  .filter((field) => wouldLoseProtectedValue(current[field], next[field]));
+
+async function assertNoRegistrationDataLoss(resource, record) {
+  const allowDataLoss = record[dataLossBypassField] === true;
+  delete record[dataLossBypassField];
+  if (!protectedRegistrationStores.has(resource) || !record.id || allowDataLoss) return;
+  const current = await getRecord(resource, record.id).catch(() => null);
+  const fields = current ? protectedDataLossFields(current, record) : [];
+  if (fields.length) {
+    throw new Error(`Salvamento bloqueado para proteger dados ja cadastrados em ${resource}. Campos em risco: ${fields.join(', ')}. Se a alteracao for intencional, faca backup, audite o impacto e use autorizacao explicita no codigo.`);
+  }
+}
+
 function isPublicRegistrationRequest(resource, id, req) {
   if (req.method === 'GET' && resource === 'retiros' && id) return true;
   if (req.method === 'PUT' && ['pessoas', 'adesoes'].includes(resource) && id) return true;
@@ -203,6 +235,7 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === 'PUT' && id) {
     const record = { ...(await readBody(req)), id: decodeURIComponent(id) };
+    await assertNoRegistrationDataLoss(resource, record);
     return sendJson(res, 200, await saveRecord(resource, record));
   }
 

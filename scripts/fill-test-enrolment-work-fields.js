@@ -24,13 +24,12 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 const { checkDatabaseConnection, listRecords, saveRecord } = require('../databaseAdapter');
 
 const fallbackSectors = [
-  'Animacao',
+  'Animacao/Jovem de sala',
   'Camareiros(as)',
   'Cozinha',
   'Espiritual',
   'Externo',
   'Folclore',
-  'Jovem de sala',
   'Refeitorio',
   'Secretaria',
   'Zeladoria',

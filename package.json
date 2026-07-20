@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node localServer.js",
-    "seed:demo": "node scripts/seed-demo-data.js"
+    "seed:demo": "node scripts/seed-demo-data.js",
+    "audit:registrations": "node scripts/audit-registration-integrity.js"
   }
 }

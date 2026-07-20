@@ -130,8 +130,42 @@ async function remove(storeName, id) {
     : legacyStore.delete(storeName, id);
 }
 
+const dataLossBypassField = '__allowRegistrationDataLoss';
+const protectedRegistrationStores = new Set(['adesoes', 'cursistas']);
+const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+const isEmptyProtectedValue = (value) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return !value.trim();
+  if (Array.isArray(value)) return !value.length;
+  if (isPlainObject(value)) return !Object.keys(value).length;
+  return false;
+};
+const wouldLoseProtectedValue = (current, next) => {
+  if (isEmptyProtectedValue(current)) return false;
+  if (isEmptyProtectedValue(next)) return true;
+  if (typeof current === 'number' && current !== 0 && Number(next) === 0) return true;
+  if (current === true && next === false) return true;
+  return false;
+};
+const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current)
+  .filter((field) => !['updatedAt', 'atualizadoEm'].includes(field))
+  .filter((field) => wouldLoseProtectedValue(current[field], next[field]));
+
+async function saveProtectedRegistration(storeName, record) {
+  const nextRecord = { ...record };
+  const allowDataLoss = nextRecord[dataLossBypassField] === true;
+  delete nextRecord[dataLossBypassField];
+  if (!protectedRegistrationStores.has(storeName) || !nextRecord.id || allowDataLoss) return save(storeName, nextRecord);
+  const current = await get(storeName, nextRecord.id).catch(() => null);
+  const fields = current ? protectedDataLossFields(current, nextRecord) : [];
+  if (fields.length) {
+    throw new Error(`Salvamento bloqueado para proteger dados ja cadastrados em ${storeName}. Campos em risco: ${fields.join(', ')}. Se a alteracao for intencional, faca backup, audite o impacto e use autorizacao explicita no codigo.`);
+  }
+  return save(storeName, nextRecord);
+}
+
 export const retreatDefaults = {
-  setores: ['Animação', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação de jovens', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Jovem de sala', 'Ligação', 'Pegue e Pague', 'Recebedor(es)', 'Recreação', 'Refeitório', 'Secretaria', 'Zeladoria'],
+  setores: ['Animação/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligação', 'Pegue e Pague', 'Recebedor(es)', 'Recreação', 'Refeitório', 'Secretaria', 'Zeladoria'],
   dias: ['Sexta-feira', 'Sábado', 'Domingo'],
   contribuicoes: ['R$ 60,00 se o voluntário for o único da família', 'R$ 55,00 se o voluntário tiver mais pessoas da mesma família trabalhando no retiro'],
 };
@@ -149,13 +183,13 @@ export const dataService = {
   saveRetiro: (retreat) => save('retiros', retreat),
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: () => list('adesoes'),
-  saveAdesao: (enrolment) => save('adesoes', enrolment),
+  saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),
   deleteAdesao: (id) => remove('adesoes', id),
   listPessoas: () => list('pessoas'),
   savePessoa: (person) => save('pessoas', person),
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: () => list('cursistas'),
-  saveCursista: (student) => save('cursistas', student),
+  saveCursista: (student) => saveProtectedRegistration('cursistas', student),
   deleteCursista: (id) => remove('cursistas', id),
   listComunidades: () => list('comunidades'),
   saveComunidade: (community) => save('comunidades', community),

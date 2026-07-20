@@ -7,10 +7,9 @@ const databaseDir = path.join(root, 'database');
 const databaseFile = path.join(databaseDir, 'db.json');
 
 const sectors = [
-  'Animação',
+  'Animação/Jovem de sala',
   'Camareiros(as)',
   'Casal Bem-estar',
-  'Coordenação de jovens',
   'Coordenação do retiro',
   'Coordenação geral',
   'Cozinha',
@@ -20,7 +19,6 @@ const sectors = [
   'Espiritual',
   'Externo',
   'Folclore',
-  'Jovem de sala',
   'Ligação',
   'Monitores',
   'Recreação',

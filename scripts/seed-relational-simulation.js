@@ -35,10 +35,9 @@ const stores = require('../storeConfig').stores;
 const publicToken = () => crypto.randomBytes(24).toString('hex');
 
 const sectors = [
-  'Animacao',
+  'Animacao/Jovem de sala',
   'Camareiros(as)',
   'Casal Bem-estar',
-  'Coordenacao de jovens',
   'Coordenacao do retiro',
   'Coordenacao geral',
   'Cozinha',
@@ -48,7 +47,6 @@ const sectors = [
   'Espiritual',
   'Externo',
   'Folclore',
-  'Jovem de sala',
   'Ligacao',
   'Monitores',
   'Pegue e Pague',
