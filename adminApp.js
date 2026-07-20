@@ -3687,9 +3687,12 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const form = mount.querySelector('#public-form');
   if (!embedded) {
     form.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((control) => {
-      control.setAttribute('autocomplete', 'off');
+      control.setAttribute('autocomplete', 'new-password');
       control.setAttribute('autocapitalize', 'off');
       control.setAttribute('spellcheck', 'false');
+      control.setAttribute('aria-autocomplete', 'none');
+      control.setAttribute('data-lpignore', 'true');
+      control.setAttribute('data-1p-ignore', 'true');
     });
   }
   syncChoiceStates(form);
@@ -3738,6 +3741,23 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     input.addEventListener('change', () => {
       if (!embedded && input.checked) showSectorTeamAlert(sectorArea(input.value));
     });
+  });
+  form.addEventListener('click', (event) => {
+    const choice = event.target.closest?.('label.choice');
+    if (!choice || !form.contains(choice)) return;
+    const input = choice.querySelector('input');
+    if (!input || input.disabled || input.readOnly) return;
+    if (event.target !== input) {
+      event.preventDefault();
+      if (input.type === 'radio') {
+        form.querySelectorAll(`input[type="radio"][name="${input.name}"]`).forEach((item) => { item.checked = false; });
+        input.checked = true;
+      } else if (input.type === 'checkbox') {
+        input.checked = !input.checked;
+      }
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    queueMicrotask(() => syncChoiceStates(form));
   });
   let volunteerTermAccepted = false;
   const syncVolunteerTermState = () => {
@@ -3801,6 +3821,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = selected.has(input.value); });
     syncChoiceStates(form);
   };
+  const checkedValues = (source, name) => [...source.querySelectorAll(`[name="${name}"]:checked`)]
+    .filter((input) => !input.disabled)
+    .map((input) => input.value);
+  const checkedValue = (source, name) => checkedValues(source, name)[0] || new FormData(source).get(name) || '';
   const dayConfirmationInputs = (name, source = form) => {
     const data = new FormData(source);
     return serviceDays.map((day, index) => {
@@ -3811,7 +3835,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   const selectedConfirmedDays = (name, source = form) => dayConfirmationInputs(name, source).filter((item) => item.value === 'Sim' || item.input?.value === 'Sim').map((item) => item.day);
   const allDaysAnswered = (name, source = form) => dayConfirmationInputs(name, source).every((item) => Boolean(item.value || item.input));
-  const selectedRegistrationSectors = (source = form) => forcedSector ? [forcedSector] : sortSectors(new FormData(source).getAll('setores'));
+  const selectedRegistrationSectors = (source = form) => forcedSector ? [forcedSector] : sortSectors(checkedValues(source, 'setores'));
   const firstUnansweredDay = (name, source = form) => {
     const index = dayConfirmationInputs(name, source).findIndex((item) => !item.value && !item.input);
     return index >= 0 ? source.querySelector(`[name="${dayConfirmationName(name, index)}"]`) : null;
@@ -3825,10 +3849,9 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     });
     syncChoiceStates(form);
   };
-  const isCouple = () => new FormData(form).get('tipoFicha') === 'Casal';
+  const isCouple = () => checkedValue(form, 'tipoFicha') === 'Casal';
   const syncContributionAmount = () => {
-    const data = new FormData(form);
-    const amount = volunteerContributionAmount(retreat, { casalId: isCouple() ? 'casal' : '', foto: data.get('foto') });
+    const amount = volunteerContributionAmount(retreat, { casalId: isCouple() ? 'casal' : '', foto: checkedValue(form, 'foto') });
     form.elements.contribuicao.value = currency(amount);
     form.querySelector('[data-contribution-label]').textContent = isCouple() ? 'Valor da inscrição do casal' : 'Valor da inscrição';
   };
@@ -3837,7 +3860,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     form.querySelector('button[type="submit"]').innerHTML = `${isCouple() && embedded ? `${label} do casal` : label} <span>→</span>`;
   };
   const syncSpouseGender = () => {
-    const selected = new FormData(form).get('genero');
+    const selected = checkedValue(form, 'genero');
     const opposite = selected === 'Masculino' ? 'Feminino' : selected === 'Feminino' ? 'Masculino' : '';
     form.querySelectorAll('[name="spouseGenero"]').forEach((input) => {
       input.checked = Boolean(opposite) && input.value === opposite;
@@ -3845,8 +3868,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     });
   };
   const spouseGenderValue = () => {
-    const selected = new FormData(form).get('genero');
-    return selected === 'Masculino' ? 'Feminino' : selected === 'Feminino' ? 'Masculino' : new FormData(form).get('spouseGenero');
+    const selected = checkedValue(form, 'genero');
+    return selected === 'Masculino' ? 'Feminino' : selected === 'Feminino' ? 'Masculino' : checkedValue(form, 'spouseGenero');
   };
   const setCoupleMode = (enabled) => {
     const spouseSection = form.querySelector('.couple-only');
@@ -3912,7 +3935,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     syncTypeSelectionLock();
   };
   const resetFormForInclusion = (nome = form.elements.nome.value, cpf = form.elements.cpf.value) => {
-    const selectedType = new FormData(form).get('tipoFicha');
+    const selectedType = checkedValue(form, 'tipoFicha');
     form.querySelector('.inline-partner-registration')?.remove();
     form.reset();
     volunteerTermAccepted = false;
@@ -4439,7 +4462,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       control.setCustomValidity(normalizeDateInput(control.value) ? '' : 'Digite a data no formato dd/mm/aaaa.');
     }
   };
-  const syncAutofilledPublicForm = async () => {
+  const syncAutofilledPublicForm = async ({ loadExistingPerson = false } = {}) => {
     [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
       if (control.value) control.value = formatCpf(control.value);
     });
@@ -4454,9 +4477,9 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     syncTypeSelectionLock();
     syncChoiceStates(form);
     syncContributionAmount();
-    if (!embedded && isValidCpf(form.elements.cpf?.value)) await loadPersonByCpf();
+    if (loadExistingPerson && !embedded && isValidCpf(form.elements.cpf?.value)) await loadPersonByCpf();
   };
-  form.cpf.addEventListener('change', loadPersonByCpf);
+  form.cpf.addEventListener('change', () => loadPersonByCpf());
   [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
     control.addEventListener('focus', () => {
       if (form.querySelector('.cpf-duplicate-message')) clearDuplicateCpfMessage();
@@ -4525,14 +4548,14 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         ['spouseNascimento', () => !normalizeDateInput(data.get('spouseNascimento'))],
         ['spouseTelefone', () => !String(data.get('spouseTelefone') || '').trim()],
         ['genero', () => !spouseGenderValue()],
-        ['spouseRetiros', () => !data.getAll('spouseRetiros').length],
+        ['spouseRetiros', () => !checkedValues(source, 'spouseRetiros').length],
       ].find(([, missing]) => missing())?.[0];
       if (missingField) return missingField;
       if (!allDaysAnswered('spouseDias', source)) return firstUnansweredDay('spouseDias', source)?.name;
       if (!selectedConfirmedDays('spouseDias', source).length) return dayConfirmationName('spouseDias', 0);
       return null;
     };
-    if (embedded && !editingEntry && requireType && !data.get('tipoFicha')) {
+    if (embedded && !editingEntry && requireType && !checkedValue(source, 'tipoFicha')) {
       source.querySelector('#form-message')?.replaceChildren('Escolha se esta ficha é Individual ou Casal antes de salvar.');
       focusControl(firstByName('tipoFicha'));
       return false;
@@ -4549,10 +4572,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
     const ageLimitViolation = !kidsNotNeeded ? kidAgeLimitViolation(source) : null;
     const blocksKidAgeLimit = !embedded && ageLimitViolation;
-    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && data.getAll('spouseRetiros').length && spouseDaysComplete && spouseDays.length);
+    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && checkedValues(source, 'spouseRetiros').length && spouseDaysComplete && spouseDays.length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
-    const missingRequired = required.filter((name) => !data.get(name));
+    const missingRequired = required.filter((name) => {
+      if (['genero', 'retiros', 'quadrante', 'foto', 'tipoFicha'].includes(name)) return !checkedValues(source, name).length;
+      return !data.get(name);
+    });
     const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !blocksKidAgeLimit && spouseValid && volunteerTermAccepted;
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', quadrante: 'quadrante impresso', foto: 'foto oficial do retiro', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
@@ -4603,13 +4629,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     if (!person && existingEntry) person = people.find((item) => item.id === existingEntry.pessoaId);
     if (!person) person = { createdAt: new Date().toISOString() };
     const previousPersonId = existingEntry?.pessoaId && existingEntry.pessoaId !== cpf ? existingEntry.pessoaId : null;
-    Object.assign(person, { id: cpf, cpf, nome, nomeNormalizado: nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, ' '), nascimento: normalizeDateInput(data.get(fieldName('nascimento'))), genero: prefix === 'spouse' ? spouseGenderValue() : data.get(fieldName('genero')), telefone: data.get(fieldName('telefone')), endereco: data.get('endereco'), numero: data.get('numero'), bairro: data.get('bairro'), cep: data.get('cep'), cidade: data.get('cidade'), estado: String(data.get('estado') || '').toUpperCase(), updatedAt: new Date().toISOString() });
+    Object.assign(person, { id: cpf, cpf, nome, nomeNormalizado: nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, ' '), nascimento: normalizeDateInput(data.get(fieldName('nascimento'))), genero: prefix === 'spouse' ? spouseGenderValue() : checkedValue(source, fieldName('genero')), telefone: data.get(fieldName('telefone')), endereco: data.get('endereco'), numero: data.get('numero'), bairro: data.get('bairro'), cep: data.get('cep'), cidade: data.get('cidade'), estado: String(data.get('estado') || '').toUpperCase(), updatedAt: new Date().toISOString() });
     await dataService.savePessoa(person);
     const coordenacaoSetor = embedded ? data.get('coordenacaoSetor') === 'sim' : Boolean(existingEntry?.coordenacaoSetor);
-    const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
-    const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
+    const quadrante = checkedValue(source, 'quadrante') === 'Sim' ? 'Sim' : 'Não';
+    const foto = checkedValue(source, 'foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true });
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: checkedValues(source, fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
