@@ -368,6 +368,16 @@ async function ensureRetreatSector(retiroId, nome) {
   return row;
 }
 
+async function ensureCouple(record) {
+  if (!isUuid(record.casalId)) return null;
+  return upsert('casais', {
+    id: record.casalId,
+    retiro_id: record.retiroId || null,
+    nome: record.nome || '',
+    extras: {},
+  });
+}
+
 function mapEnrolment(row, lookups = {}) {
   const person = lookups.personByDbId?.get(row.pessoa_id);
   const dias = array(lookups.diasByAdesao?.get(row.id)).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((item) => item.nome);
@@ -457,12 +467,13 @@ async function getEnrolment(id) {
 
 async function saveEnrolment(record) {
   const person = await findPersonRow(record.pessoaId);
+  const couple = await ensureCouple(record);
   const mappedKeys = new Set(['id', 'retiroId', 'pessoaId', 'nome', 'dias', 'setores', 'retirosAnteriores', 'quadrante', 'foto', 'contribuicao', 'coordenacao', 'coordenacaoSetor', 'espacoKids', 'espacoKidsNaoNecessito', 'observacao', 'termoVoluntariadoAceito', 'termoVoluntariadoAceitoEm', 'tipoFicha', 'casalId', 'papelNoCasal', 'tipoFinanceiro', 'taxaPaga', 'valorPago', 'formaPagamento', 'recebedorObservacao', 'status', 'validada', 'validadoEm', 'enviadoEm', 'atualizadoEm', 'dadosPessoais', 'createdAt', 'updatedAt']);
   await upsert('adesoes', compact({
     id: record.id,
     retiro_id: record.retiroId,
     pessoa_id: person?.id || null,
-    casal_id: isUuid(record.casalId) ? record.casalId : null,
+    casal_id: couple?.id || null,
     nome: record.nome || person?.nome || '',
     tipo_ficha: record.tipoFicha || 'Individual',
     papel_no_casal: record.papelNoCasal || '',
@@ -503,6 +514,7 @@ async function saveEnrolment(record) {
     setores.length ? upsert('adesao_setores', setores.map((setor) => ({ adesao_id: record.id, setor_id: setor.id })), 'adesao_id,setor_id') : null,
     array(record.retirosAnteriores).length ? upsert('adesao_retiros_anteriores', array(record.retirosAnteriores).map((nome, index) => ({ adesao_id: record.id, nome, ordem: index + 1 }))) : null,
     array(record.espacoKids).length ? upsert('adesao_espaco_kids', array(record.espacoKids).map((kid, index) => ({ adesao_id: record.id, nome: kid.nome || '', nascimento: dateOrNull(kid.nascimento), ordem: index + 1 }))) : null,
+    couple ? upsert('casal_membros', { casal_id: couple.id, adesao_id: record.id, papel: record.papelNoCasal || '' }, 'casal_id,adesao_id') : null,
   ]);
   return getEnrolment(record.id);
 }

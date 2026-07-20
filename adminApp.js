@@ -4666,7 +4666,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     } catch (error) {
       console.error(error);
       const messageTarget = form.querySelector('#form-message');
-      messageTarget?.replaceChildren('Não foi possível salvar a inscrição. Confira os dados e tente novamente.');
+      messageTarget?.replaceChildren(`Não foi possível salvar a inscrição. ${error.message || 'Confira os dados e tente novamente.'}`);
     } finally {
       setPublicSubmitting(false);
     }
