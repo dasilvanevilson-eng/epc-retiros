@@ -317,6 +317,49 @@ const mergeEnrolmentsByParticipant = (items = []) => {
     };
   });
 };
+const firstCoupleEnrolment = (entries = []) => [...entries].sort((first, second) => {
+  const firstPriority = normalizeText(first.papelNoCasal) === 'primeira pessoa' ? 0 : 1;
+  const secondPriority = normalizeText(second.papelNoCasal) === 'primeira pessoa' ? 0 : 1;
+  if (firstPriority !== secondPriority) return firstPriority - secondPriority;
+  return recordTime(first) - recordTime(second);
+})[0] || entries[0] || {};
+const sortSpaceKidsRows = (rows = []) => rows.sort((first, second) => {
+  const firstBirth = Date.parse(`${first.nascimento || ''}T12:00:00`);
+  const secondBirth = Date.parse(`${second.nascimento || ''}T12:00:00`);
+  if (Number.isFinite(firstBirth) && Number.isFinite(secondBirth) && firstBirth !== secondBirth) return secondBirth - firstBirth;
+  if (Number.isFinite(firstBirth) !== Number.isFinite(secondBirth)) return Number.isFinite(firstBirth) ? -1 : 1;
+  return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+});
+const spaceKidsRowsForEnrolments = (items = [], peopleById = new Map()) => {
+  const usedCouples = new Set();
+  const rows = [];
+  const addRows = (kids = [], responsibleEntry = {}) => {
+    const responsible = peopleById.get(responsibleEntry.pessoaId) || responsibleEntry.dadosPessoais || {};
+    kids.forEach((kid) => rows.push({
+      ...kid,
+      volunteer: responsibleEntry.nome || responsible.nome || 'Não informado',
+      contact: responsible.telefone || responsibleEntry.dadosPessoais?.telefone || '',
+    }));
+  };
+  items.forEach((entry) => {
+    if (entry.casalId) {
+      const coupleKey = `${entry.retiroId || ''}:${entry.casalId}`;
+      if (usedCouples.has(coupleKey)) return;
+      usedCouples.add(coupleKey);
+      const couple = items.filter((item) => item.casalId === entry.casalId && item.retiroId === entry.retiroId);
+      const responsibleEntry = firstCoupleEnrolment(couple);
+      const kidsByIdentity = new Map();
+      [responsibleEntry, ...couple.filter((item) => item !== responsibleEntry)].flatMap((item) => item.espacoKids || []).forEach((kid) => {
+        const key = normalizeText(`${kid.nome || ''}:${kid.nascimento || ''}`);
+        if (key && !kidsByIdentity.has(key)) kidsByIdentity.set(key, kid);
+      });
+      addRows([...kidsByIdentity.values()], responsibleEntry);
+      return;
+    }
+    addRows(entry.espacoKids || [], entry);
+  });
+  return sortSpaceKidsRows(rows);
+};
 const entryHasSector = (entry, sector) => entrySectors(entry).some((item) => normalizeText(item) === normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
 const enrolmentValidationGroups = (items = []) => {
@@ -876,20 +919,7 @@ async function renderHome() {
   const quadranteRows = groupedPreferenceRows(activeEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(activeEnrolments, 'foto');
   const peopleById = new Map(people.map((person) => [person.id, person]));
-  const spaceKidsRows = activeEnrolments.flatMap((entry) => {
-    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
-    return (entry.espacoKids || []).map((kid) => ({
-      ...kid,
-      volunteer: entry.nome || responsible.nome || 'Não informado',
-      contact: responsible.telefone || entry.dadosPessoais?.telefone || '',
-    }));
-  }).sort((first, second) => {
-    const firstBirth = Date.parse(`${first.nascimento || ''}T12:00:00`);
-    const secondBirth = Date.parse(`${second.nascimento || ''}T12:00:00`);
-    if (Number.isFinite(firstBirth) && Number.isFinite(secondBirth) && firstBirth !== secondBirth) return secondBirth - firstBirth;
-    if (Number.isFinite(firstBirth) !== Number.isFinite(secondBirth)) return Number.isFinite(firstBirth) ? -1 : 1;
-    return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
-  });
+  const spaceKidsRows = spaceKidsRowsForEnrolments(activeEnrolments, peopleById);
   const cityStats = new Map();
   const addCityCount = (city, type) => {
     const label = String(city || '').trim();
@@ -1237,20 +1267,7 @@ async function renderRetreat(id) {
   const quadranteRows = groupedPreferenceRows(retreatEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(retreatEnrolments, 'foto');
   const peopleById = new Map(people.map((person) => [person.id, person]));
-  const spaceKidsRows = retreatEnrolments.flatMap((entry) => {
-    const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
-    return (entry.espacoKids || []).map((kid) => ({
-      ...kid,
-      volunteer: entry.nome || responsible.nome || 'Não informado',
-      contact: responsible.telefone || entry.dadosPessoais?.telefone || '',
-    }));
-  }).sort((first, second) => {
-    const firstBirth = Date.parse(`${first.nascimento || ''}T12:00:00`);
-    const secondBirth = Date.parse(`${second.nascimento || ''}T12:00:00`);
-    if (Number.isFinite(firstBirth) && Number.isFinite(secondBirth) && firstBirth !== secondBirth) return secondBirth - firstBirth;
-    if (Number.isFinite(firstBirth) !== Number.isFinite(secondBirth)) return Number.isFinite(firstBirth) ? -1 : 1;
-    return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
-  });
+  const spaceKidsRows = spaceKidsRowsForEnrolments(retreatEnrolments, peopleById);
   const cityStats = new Map();
   const addCityCount = (city, type) => {
     const label = String(city || '').trim();
@@ -3784,12 +3801,20 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = selected.has(input.value); });
     syncChoiceStates(form);
   };
-  const dayConfirmationInputs = (name) => serviceDays.map((day, index) => ({ day, input: form.querySelector(`[name="${dayConfirmationName(name, index)}"]:checked`) }));
-  const selectedConfirmedDays = (name) => dayConfirmationInputs(name).filter((item) => item.input?.value === 'Sim').map((item) => item.day);
-  const allDaysAnswered = (name) => dayConfirmationInputs(name).every((item) => Boolean(item.input));
-  const firstUnansweredDay = (name) => {
-    const index = dayConfirmationInputs(name).findIndex((item) => !item.input);
-    return index >= 0 ? form.querySelector(`[name="${dayConfirmationName(name, index)}"]`) : null;
+  const dayConfirmationInputs = (name, source = form) => {
+    const data = new FormData(source);
+    return serviceDays.map((day, index) => {
+      const fieldName = dayConfirmationName(name, index);
+      const value = data.get(fieldName);
+      return { day, value, input: source.querySelector(`[name="${fieldName}"]:checked`) };
+    });
+  };
+  const selectedConfirmedDays = (name, source = form) => dayConfirmationInputs(name, source).filter((item) => item.value === 'Sim' || item.input?.value === 'Sim').map((item) => item.day);
+  const allDaysAnswered = (name, source = form) => dayConfirmationInputs(name, source).every((item) => Boolean(item.value || item.input));
+  const selectedRegistrationSectors = (source = form) => forcedSector ? [forcedSector] : sortSectors(new FormData(source).getAll('setores'));
+  const firstUnansweredDay = (name, source = form) => {
+    const index = dayConfirmationInputs(name, source).findIndex((item) => !item.value && !item.input);
+    return index >= 0 ? source.querySelector(`[name="${dayConfirmationName(name, index)}"]`) : null;
   };
   const setDayConfirmations = (name, selectedDays = []) => {
     const selected = new Set(selectedDays || []);
@@ -4503,8 +4528,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         ['spouseRetiros', () => !data.getAll('spouseRetiros').length],
       ].find(([, missing]) => missing())?.[0];
       if (missingField) return missingField;
-      if (!allDaysAnswered('spouseDias')) return firstUnansweredDay('spouseDias')?.name;
-      if (!selectedConfirmedDays('spouseDias').length) return dayConfirmationName('spouseDias', 0);
+      if (!allDaysAnswered('spouseDias', source)) return firstUnansweredDay('spouseDias', source)?.name;
+      if (!selectedConfirmedDays('spouseDias', source).length) return dayConfirmationName('spouseDias', 0);
       return null;
     };
     if (embedded && !editingEntry && requireType && !data.get('tipoFicha')) {
@@ -4512,11 +4537,11 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       focusControl(firstByName('tipoFicha'));
       return false;
     }
-    const sectors = data.getAll('setores');
-    const days = selectedConfirmedDays('dias');
-    const daysComplete = allDaysAnswered('dias');
-    const spouseDays = selectedConfirmedDays('spouseDias');
-    const spouseDaysComplete = !isCouple() || allDaysAnswered('spouseDias');
+    const sectors = selectedRegistrationSectors(source);
+    const days = selectedConfirmedDays('dias', source);
+    const daysComplete = allDaysAnswered('dias', source);
+    const spouseDays = selectedConfirmedDays('spouseDias', source);
+    const spouseDaysComplete = !isCouple() || allDaysAnswered('spouseDias', source);
     const required = ['cpf', 'genero', 'retiros', 'quadrante', 'foto', 'contribuicao', ...(requireType ? ['tipoFicha'] : [])].filter((name) => source.elements[name]);
     const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
     const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
@@ -4551,7 +4576,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       const candidateControls = [
         firstInvalid,
         ...missingRequired.map(firstByName),
-        !daysComplete ? firstUnansweredDay('dias') : null,
+        !daysComplete ? firstUnansweredDay('dias', source) : null,
         daysComplete && !days.length ? firstByName(dayConfirmationName('dias', 0)) : null,
         requireSector && !sectors.length ? firstByName('setores') : null,
         !hasKidsChoice ? firstByName('kidsNotNeeded') || firstByName('kidNome1') : null,
@@ -4584,7 +4609,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const quadrante = data.get('quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = data.get('foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias')), setores: sortSectors(data.getAll('setores')), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true });
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: data.getAll(fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
@@ -4649,8 +4674,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
         await linkCouplePeople(first, second, casalId);
         await finishSave([
-          { nome: first.nome, dias: selectedConfirmedDays('dias') },
-          { nome: second.nome, dias: selectedConfirmedDays('spouseDias') },
+          { nome: first.nome, dias: selectedConfirmedDays('dias', form) },
+          { nome: second.nome, dias: selectedConfirmedDays('spouseDias', form) },
         ]);
         return;
       }
@@ -4661,7 +4686,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         }
       }
       const person = await saveForm(form, null, null, editingEntry);
-      await finishSave([{ nome: person.nome, dias: selectedConfirmedDays('dias') }]);
+      await finishSave([{ nome: person.nome, dias: selectedConfirmedDays('dias', form) }]);
       return;
     } catch (error) {
       console.error(error);
