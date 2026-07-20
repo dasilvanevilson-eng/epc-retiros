@@ -228,6 +228,17 @@ const uniqueSectors = (sectors = []) => {
     return true;
   });
 };
+const replacementWorkSector = 'Animação/Jovem de sala';
+const removedWorkSectorKeys = new Set(['coordenacao de jovens']);
+const renamedWorkSectorKeys = new Set(['animacao', 'jovem de sala']);
+const normalizeConfiguredSector = (sector = '') => {
+  const label = String(sector || '').trim();
+  const key = normalizeText(label);
+  if (!key || removedWorkSectorKeys.has(key)) return '';
+  if (renamedWorkSectorKeys.has(key)) return replacementWorkSector;
+  return label;
+};
+const configuredSectors = (sectors = []) => uniqueSectors(sectors.map(normalizeConfiguredSector).filter(Boolean));
 const normalizeCpf = (value = '') => String(value).replace(/\D/g, '').slice(0, 11);
 const publicBadgeLogos = [
   { id: 'epc', name: 'EPC', src: 'assets/clean/epc.png' },
@@ -350,14 +361,31 @@ function standardSectors() {
   try {
     const saved = JSON.parse(localStorage.getItem(standardSectorsKey) || 'null');
     if (Array.isArray(saved) && saved.length) {
-      const normalized = uniqueSectors(saved);
+      const normalized = configuredSectors(saved);
       if (normalized.length !== saved.length) saveStandardSectors(normalized);
       return normalized;
     }
   } catch {}
-  return uniqueSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
+  return configuredSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
 }
-const saveStandardSectors = (sectors) => localStorage.setItem(standardSectorsKey, JSON.stringify(uniqueSectors(sectors)));
+const saveStandardSectors = (sectors) => localStorage.setItem(standardSectorsKey, JSON.stringify(configuredSectors(sectors)));
+async function normalizeStoredRetreatSectors() {
+  const changedRetreats = retreats.filter((retreat) => {
+    const sectors = configuredSectors(retreat.setores || []);
+    const publicSectors = configuredSectors(retreat.setoresPublicos ?? sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
+    const quadranteOrder = configuredSectors(retreat.ordemQuadrante || sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
+    const linksSetores = syncSectorLinks({ linksSetores: retreat.linksSetores || retreat.setorLinks || [] }, sectors);
+    const changed = JSON.stringify(retreat.setores || []) !== JSON.stringify(sectors)
+      || JSON.stringify(retreat.setoresPublicos || []) !== JSON.stringify(publicSectors)
+      || JSON.stringify(retreat.ordemQuadrante || []) !== JSON.stringify(quadranteOrder)
+      || JSON.stringify(retreat.linksSetores || []) !== JSON.stringify(linksSetores);
+    if (!changed) return false;
+    Object.assign(retreat, { setores: sectors, setoresPublicos: publicSectors, ordemQuadrante: quadranteOrder, linksSetores, updatedAt: new Date().toISOString() });
+    return true;
+  });
+  if (changedRetreats.length) await Promise.all(changedRetreats.map((retreat) => dataService.saveRetiro(retreat)));
+  saveStandardSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
+}
 const stateDatalist = () => `<datalist id="state-options">${brazilianStates.map(([uf, name]) => `<option value="${uf}">${name}</option>`).join('')}</datalist>`;
 function wireStateFields(root) {
   root.querySelectorAll('[name="estado"]').forEach((input) => {
@@ -460,6 +488,7 @@ function wireTypedBirthDates(root) {
 async function loadData() {
   [retreats, enrolments, people] = await Promise.all([dataService.listRetiros(), dataService.listAdesoes(), dataService.listPessoas()]);
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  await normalizeStoredRetreatSectors();
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const entriesWithoutPersonalSnapshot = enrolments.filter((entry) => !entry.dadosPessoais && peopleById.has(entry.pessoaId));
   if (entriesWithoutPersonalSnapshot.length) {
@@ -948,7 +977,7 @@ const quadranteOrderForSectors = (sectors = [], savedOrder = []) => {
   return uniqueSectors([...orderedSectors, ...sortSectors(sectors.filter((sector) => !orderedKeys.has(normalizeText(sector))))]);
 };
 
-const knownSectors = (extra = []) => uniqueSectors([...standardSectors(), ...extra]);
+const knownSectors = (extra = []) => configuredSectors([...standardSectors(), ...extra]);
 const quadranteOrderSettingId = 'quadrante-order';
 const retreatQuadranteOrderFallback = () => retreats.find((retreat) => retreat.ordemQuadrante?.length)?.ordemQuadrante || retreatDefaults.setores;
 const loadQuadranteOrderSetting = async () => (await dataService.getConfiguracao(quadranteOrderSettingId).catch(() => null))?.setores || null;
@@ -956,8 +985,8 @@ const allQuadranteSectors = (extra = []) => knownSectors([...retreats.flatMap((r
 
 function structureOptions(retreat) {
   const sectors = knownSectors(retreat?.setores || []);
-  const selected = retreat ? retreat.setores : retreatDefaults.setores;
-  return sectorGroups(sectors, selected, retreat?.setoresPublicos ?? selected);
+  const selected = retreat ? configuredSectors(retreat.setores) : configuredSectors(retreatDefaults.setores);
+  return sectorGroups(sectors, selected, configuredSectors(retreat?.setoresPublicos ?? selected));
 }
 
 function wirePublicSectorToggles(form) {
@@ -1056,7 +1085,7 @@ async function renderNewRetreat() {
     form.elements.valorCamisetaOficial.value = source ? currency(source.valorCamisetaOficial) : '';
     form.elements.idadeMaximaEspacoKids.value = source?.idadeMaximaEspacoKids ?? '';
     app.querySelector('#sector-checks').innerHTML = source
-      ? sectorGroups(knownSectors(source.setores), source.setores, source.setoresPublicos ?? source.setores)
+      ? sectorGroups(knownSectors(source.setores), configuredSectors(source.setores), configuredSectors(source.setoresPublicos ?? source.setores))
       : sectorGroups(knownSectors(), [], []);
     wirePublicSectorToggles(form);
   };
@@ -1358,7 +1387,7 @@ async function renderEditRetreat(id) {
   if (!retreat) return renderRetiros();
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="#retiros/${retreat.id}">← Voltar</a></section>
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}"></label><label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), retreat.setores, retreat.setoresPublicos ?? retreat.setores)}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores))}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
   ensureOfficialShirtValueField(form, currency(retreat.valorCamisetaOficial));
   wireCurrencyInputs(form);
