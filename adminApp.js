@@ -22,6 +22,7 @@ let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
 let closeAdminMenuOnOutsidePointer = null;
+const selectedRetreatStorageKey = 'epc-selected-retreat-id';
 
 const viewPermissions = {
   inicio: 'inicio.ver',
@@ -41,6 +42,19 @@ const viewPermissions = {
 const canAccess = (permission) => !permission || currentUser?.role === 'admin' || currentUser?.perfilCodigo === 'admin' || (currentUser?.permissions || []).includes(permission);
 const canView = (section) => canAccess(viewPermissions[section]);
 const firstAllowedSection = () => Object.keys(viewPermissions).find((section) => canView(section)) || 'inicio';
+const setSelectedRetreatId = (id = '') => {
+  if (id) localStorage.setItem(selectedRetreatStorageKey, id);
+};
+const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey) || '';
+const fallbackRetreat = () => retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao') || retreats.find((retreat) => retreat.status === 'concluido') || retreats[0] || null;
+const selectedRetreat = () => retreats.find((retreat) => retreat.id === selectedRetreatId()) || fallbackRetreat();
+const isRetreatConcluded = (retreat = {}) => retreat?.status === 'concluido';
+const canModifyRetreat = (retreat = {}) => Boolean(retreat) && !isRetreatConcluded(retreat);
+const ensureRetreatCanBeChanged = (retreat, action = 'alterar este retiro') => {
+  if (canModifyRetreat(retreat)) return true;
+  alert(`Este retiro esta concluido. Nao e mais possivel ${action}; apenas consultas, relatorios e impressoes estao disponiveis.`);
+  return false;
+};
 const ensureViewPermission = (section) => {
   if (canView(section)) return true;
   layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem permissao</h1><p>Seu usuario nao tem permissao para acessar esta area.</p></div></section>', firstAllowedSection());
@@ -626,7 +640,7 @@ function layout(content, active = 'inicio') {
   if (active === 'cursista') app.querySelector('#student-message')?.insertAdjacentHTML('beforebegin', '<section class="form-section student-registration-value"><div class="section-heading"><span>06</span><div><h2>Inscrição</h2><p>Informe os valores financeiros do cursista.</p></div></div><div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricao" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPago" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagar" type="text" readonly placeholder="R$ 0,00"></label></div></section>');
 }
 
-function statusLabel(status) { return ({ preparacao: 'Em preparação', publicado: 'Publicado', encerrado: 'Encerrado' })[status] || status; }
+function statusLabel(status) { return ({ preparacao: 'Em preparação', publicado: 'Publicado', concluido: 'Concluído', encerrado: 'Encerrado' })[status] || status; }
 
 function homeInfoPrintDocument(label, content) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(label)}</title><style>@page{size:A4;margin:12mm}body{margin:0;color:#253528;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px;color:#1f2c3f}h2{margin:0 0 6px;font-size:18px;color:#1f2c3f}.panel-heading{margin-bottom:18px}.panel-heading p{margin:0;color:#667268;font-size:12px}.panel-heading h2+p{margin-top:4px}.student-health-list{border-top:1px solid #d9d1c3}.student-health-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);gap:14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.student-health-list strong{display:block;color:#1f2c3f;font-size:12px}.student-health-person{display:flex;flex-direction:column;gap:3px;min-width:0}.student-health-person small,.student-health-list small{color:#6f765f;font-size:10px;line-height:1.3}.student-health-list span{color:#4d5964;font-size:12px;line-height:1.35}.city-health-list>div{grid-template-columns:1fr 110px 130px}.city-health-list span b{display:block;color:#1f2c3f;font-size:14px}.city-health-list span small{display:block;color:#6f765f;font-size:10px}.city-health-list .city-health-total{grid-template-columns:1fr repeat(3,95px);margin-top:4px;border-top:2px solid #c69a45;background:#fff8ec;font-weight:700}.shirt-community-list>div{grid-template-columns:minmax(0,1fr) 100px}.shirt-community-list .shirt-community-heading{display:block;padding:12px 0 6px;border-bottom:2px solid #c69a45;color:#1f2c3f;font-size:14px;font-weight:700}.shirt-community-list>div:not(.shirt-community-heading) strong,.shirt-community-list>div:not(.shirt-community-heading) span,.sector-public-list strong,.sector-public-list span{font-size:24px}.sector-public-list{margin:18px 0 0;padding:0;list-style:none;border-top:1px solid #d9d1c3}.sector-public-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.75fr);gap:4px 14px;padding:10px 0;border-bottom:1px solid #d9d1c3;break-inside:avoid}.sector-public-list small{display:block;grid-column:1;color:#6f765f;font-size:13px;line-height:1.3}.sector-public-list span{grid-column:2;grid-row:1 / span 2}.stat-tile-grid,.sector-simple-list{display:grid;gap:8px}.stat-tile-grid{grid-template-columns:repeat(3,1fr)}.stat-tile-grid>div,.sector-simple-list button{padding:10px;border:1px solid #d9d1c3;background:#fff;text-align:left;break-inside:avoid}.stat-tile-grid span,.sector-simple-list span{display:block;color:#4d5964;font-size:11px}.stat-tile-grid strong,.sector-simple-list strong{display:block;margin-top:4px;color:#1f2c3f;font-size:18px}.stat-tile-grid small{display:block;color:#6f765f;font-size:10px}.sector-simple-list button{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;font:inherit;color:inherit}button{border:0;background:transparent}.empty-state{padding:12px 0;color:#667268}footer{display:none}.receiver-sector-back,.sector-public-summary{display:none}</style></head><body><h1>${escapeHtml(label)}</h1><p style="margin:0 0 18px;color:#667268;font-size:12px">Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${content}</body></html>`;
@@ -792,7 +806,7 @@ function wireSectorStatWindows(rows = []) {
 }
 
 async function renderHome() {
-  const active = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
+  const active = selectedRetreat();
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const activeCommunityDetails = active ? studentCommunityDetails(allCommunities.filter((community) => community.retiroId === active.id)) : new Map();
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
@@ -1151,6 +1165,7 @@ async function renderNewRetreat() {
 async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
+  setSelectedRetreatId(retreat.id);
   const canDeleteRetreat = canAccess('retiros.excluir');
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
@@ -1159,7 +1174,7 @@ async function renderRetreat(id) {
   const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
   const retreatStatEntries = retreatEntries.length ? retreatEntries : retreatEnrolments;
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
-  const sectorLinks = canAccess('retiros.editar')
+  const sectorLinks = canAccess('retiros.editar') && canModifyRetreat(retreat)
     ? await ensureSectorLinks(retreat)
     : syncSectorLinks({ linksSetores: storedSectorLinks }, knownSectors(retreat.setores || [])).filter((link) => storedSectorLinks.some((stored) => stored.token === link.token));
   const activeSectorKeys = new Set((retreat.setores || []).map(normalizeText));
@@ -1304,7 +1319,11 @@ async function renderRetreat(id) {
     return participantSort.direction === 'asc' ? result : -result;
   });
   const sortIndicator = (key) => participantSort.key === key ? (participantSort.direction === 'asc' ? '↑' : '↓') : '↕';
-  layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="detail-actions"><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar retiro'}</button></div></section>
+  const concluded = isRetreatConcluded(retreat);
+  const retreatActions = concluded
+    ? '<span class="status concluido">Somente consulta</span>'
+    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar retiro'}</button><button class="secondary-button" id="conclude-retreat" type="button">Encerrar retiro</button>`;
+  layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions">${retreatActions}</div></section>
     ${retreatStatisticsHtml}
     <section class="detail-grid"></section>
     `, 'retiros');
@@ -1316,7 +1335,7 @@ async function renderRetreat(id) {
     });
   });
   wireSectorStatWindows(sectorStatRows);
-  if (canDeleteRetreat) {
+  if (canDeleteRetreat && !concluded) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'delete-retreat';
     deleteButton.id = 'delete-retreat';
@@ -1335,8 +1354,27 @@ async function renderRetreat(id) {
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
   if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
-  if (!canAccess('retiros.publicar')) app.querySelector('#publish-retreat')?.remove();
-  app.querySelector('#publish-retreat')?.addEventListener('click', async () => { if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); } });
+  if (!canAccess('retiros.publicar')) {
+    app.querySelector('#publish-retreat')?.remove();
+    app.querySelector('#conclude-retreat')?.remove();
+  }
+  app.querySelector('#publish-retreat')?.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'publicar este retiro')) return;
+    if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); }
+  });
+  app.querySelector('#conclude-retreat')?.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'encerrar este retiro')) return;
+    const first = confirm(`Encerrar o retiro "${retreat.nome}"?\n\nDepois de concluido, este retiro ficara disponivel apenas para consultas, relatorios e impressoes.`);
+    if (!first) return;
+    const second = confirm('Confirme novamente: apos encerrar, nao sera mais possivel fazer ajustes neste retiro, incluindo configuracoes, fichas, cursistas, comunidades, crachas, financeiro e validacoes.');
+    if (!second) return;
+    retreat.status = 'concluido';
+    retreat.concluidoEm = retreat.concluidoEm || new Date().toISOString();
+    retreat.updatedAt = new Date().toISOString();
+    await dataService.saveRetiro(retreat);
+    await loadData();
+    renderRetreat(id);
+  });
   app.querySelector('#delete-retreat')?.addEventListener('click', async () => {
     const totalEnrolments = enrolments.filter((entry) => entry.retiroId === id).length;
     if (!confirm(`Excluir o retiro "${retreat.nome}"?\n\nEsta acao remove a estrutura deste retiro e ${totalEnrolments} adesao(oes). Os cadastros dos voluntarios serao preservados.`)) return;
@@ -1385,6 +1423,11 @@ async function renderRetreat(id) {
 async function renderEditRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
+  setSelectedRetreatId(retreat.id);
+  if (isRetreatConcluded(retreat)) {
+    alert('Este retiro esta concluido. A configuracao esta disponivel apenas para consulta.');
+    return renderRetreat(retreat.id);
+  }
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="#retiros/${retreat.id}">← Voltar</a></section>
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}"></label><label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores))}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
@@ -1618,8 +1661,9 @@ function wireCurrencyInputs(root) {
 async function renderRecebedor() {
   const retreat = publicReceiverRetreatId
     ? retreats.find((item) => item.id === publicReceiverRetreatId)
-    : retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+    : selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
+  const canEditReceiver = canAccess('recebedor.editar') && canModifyRetreat(retreat);
   const students = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id));
   const entries = [
     ...mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
@@ -1661,6 +1705,7 @@ async function renderRecebedor() {
     else if (observation !== undefined) entry.recebedorObservacao = observation;
   };
   const saveFinancialEntry = async (entry) => {
+    if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
     if (entry.tipoFinanceiro === 'cursista') {
       await dataService.saveCursista(entry);
       return;
@@ -1862,7 +1907,7 @@ async function renderRecebedor() {
   const receiverEmptyMessage = receiverSectorFilter || receiverPaymentFilter ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum voluntário para este retiro.';
   const receiverUrl = `${location.origin}/recebedor/${encodeURIComponent(retreat.recebedorToken || '')}`;
   const receiverLinkPanel = publicReceiverToken ? '' : `<section class="panel receiver-link-panel"><div class="panel-heading"><div><h2>Link de acesso do recebedor</h2><p>Compartilhe este link somente com quem far&aacute; o controle financeiro deste retiro.</p></div></div><label class="copy-field receiver-retreat-link"><span>Recebedor</span><input readonly value="${escapeHtml(receiverUrl)}"><button type="button" data-copy-receiver-link="${escapeHtml(receiverUrl)}" ${retreat.recebedorToken ? '' : 'disabled'}>Copiar</button></label>${retreat.recebedorToken ? '' : '<p class="form-message">Este retiro ainda nao possui link do recebedor gerado.</p>'}</section>`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · Registre as contribuições recebidas.</p></div></section>${receiverLinkPanel}<div class="receiver-view-options"><button type="button" id="receiver-by-sector" class="${receiverSectorFilter ? 'is-selected' : ''}">Buscar setor${sectorFilterLabel}</button><button type="button" id="receiver-by-payment" class="${receiverPaymentFilter ? 'is-selected' : ''}">Pagamentos${paymentFilterLabel ? `: ${escapeHtml(paymentFilterLabel)}` : ''}</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-download-sheet">Gerar planilha</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Saldo devedor <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}">${receiverNameCell(row)}<span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input class="${rowPaymentState(row)}" data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check${rowHasPayment(row) ? ' has-payment' : ''}"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''} ${rowHasPayment(row) && !rowPaidStatus(row) && !isStudentRow(row) ? 'data-partial-payment="true"' : ''}><span>Pago</span></label></div>`).join('') : `<p class="empty-state">${receiverEmptyMessage}</p>`}</div></section>`, 'recebedor');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>${escapeHtml(retreat.nome)} · ${canEditReceiver ? 'Registre as contribuições recebidas.' : 'Consulta financeira do retiro.'}</p>${isRetreatConcluded(retreat) ? '<p class="hint">Retiro concluído: alterações financeiras bloqueadas.</p>' : ''}</div></section>${receiverLinkPanel}<div class="receiver-view-options"><button type="button" id="receiver-by-sector" class="${receiverSectorFilter ? 'is-selected' : ''}">Buscar setor${sectorFilterLabel}</button><button type="button" id="receiver-by-payment" class="${receiverPaymentFilter ? 'is-selected' : ''}">Pagamentos${paymentFilterLabel ? `: ${escapeHtml(paymentFilterLabel)}` : ''}</button><button type="button" id="receiver-show-panel">Mostrar Painel</button><button type="button" id="receiver-download-sheet">Gerar planilha</button></div><section class="panel receiver-panel"><div class="receiver-table"><div class="receiver-head"><button data-receiver-sort="nome">Nome completo <span>${indicator('nome')}</span></button><button data-receiver-sort="setor">Setor <span>${indicator('setor')}</span></button><button data-receiver-sort="sugerido">Saldo devedor <span>${indicator('sugerido')}</span></button><button data-receiver-sort="pago">Valor pago <span>${indicator('pago')}</span></button><button data-receiver-sort="taxa">Contribuição <span>${indicator('taxa')}</span></button></div>${rows.length ? rows.map((row) => `<div class="receiver-row${row.isCouple ? ' receiver-couple-row' : ''}">${receiverNameCell(row)}<span>${escapeHtml(row.setores.join(', '))}</span><span>${currency(rowSuggested(row))}</span><input class="${rowPaymentState(row)}" data-paid-entry="${row.id}" type="text" inputmode="decimal" value="${currency(rowPaid(row))}" ${!canEditReceiver || rowPaidStatus(row) ? 'disabled' : ''} aria-label="Valor pago de ${escapeHtml(row.nome)}"><label class="payment-check${rowHasPayment(row) ? ' has-payment' : ''}"><input data-fee-entry="${row.id}" type="checkbox" ${rowPaidStatus(row) ? 'checked' : ''} ${!canEditReceiver ? 'disabled' : ''} ${rowHasPayment(row) && !rowPaidStatus(row) && !isStudentRow(row) ? 'data-partial-payment="true"' : ''}><span>Pago</span></label></div>`).join('') : `<p class="empty-state">${receiverEmptyMessage}</p>`}</div></section>`, 'recebedor');
   app.querySelector('[data-copy-receiver-link]')?.addEventListener('click', async (event) => {
     await navigator.clipboard.writeText(event.currentTarget.dataset.copyReceiverLink);
     event.currentTarget.textContent = 'Copiado!';
@@ -1943,6 +1988,7 @@ async function renderRecebedor() {
       input.value = row ? rowPaid(row) || '' : '';
     });
     input.addEventListener('change', async () => {
+      if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
       const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
       if (!row) return;
       const total = parseCurrency(input.value);
@@ -1957,6 +2003,7 @@ async function renderRecebedor() {
   });
   app.querySelectorAll('[data-partial-payment]').forEach((input) => { input.indeterminate = true; });
   app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
     const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
     if (!row) return;
     if (!input.checked && !(await askDeletePayment(row))) {
@@ -1983,7 +2030,7 @@ async function renderRecebedor() {
 async function renderPessoas() { layout(`<section class="page-heading"><div><p class="eyebrow">Histórico reutilizável</p><h1>Pessoas</h1><p>Dados pessoais são reaproveitados; a participação é sempre nova em cada retiro.</p></div></section><section class="panel">${people.length ? `<div class="simple-list">${people.map((person) => `<div><strong>${escapeHtml(person.nome)}</strong><span>Nascimento: ${date(person.nascimento)} · ${escapeHtml(person.telefone || 'Sem telefone')}</span><small>${enrolments.filter((entry) => entry.pessoaId === person.id).length} retiro(s)</small></div>`).join('')}</div>` : '<div class="empty-state">O histórico de pessoas será formado quando chegarem os primeiros cadastros.</div>'}</section>`, 'pessoas'); }
 
 async function renderValidacaoInscricoes() {
-  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Equipe de trabalho</p><h1>Valida\u00e7\u00e3o das inscri\u00e7\u00f5es</h1><p>Crie ou publique um retiro para validar as inscri\u00e7\u00f5es da equipe.</p></div></section>', 'validacao-inscricoes'); return; }
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const entryName = (entry) => entry.nome || peopleById.get(entry.pessoaId)?.nome || '';
@@ -2028,7 +2075,7 @@ async function renderValidacaoInscricoes() {
   const groupValidated = isEnrolmentGroupValidated;
   const pendingCount = validationGroups.filter((group) => !groupValidated(group)).length;
   const validatedCount = validationGroups.length - pendingCount;
-  const canValidateEntries = canAccess('validacao-inscricoes.validar');
+  const canValidateEntries = canAccess('validacao-inscricoes.validar') && canModifyRetreat(retreat);
   const validationGroupHtml = (group) => {
     const representative = group[0];
     const validated = groupValidated(group);
@@ -2044,6 +2091,7 @@ async function renderValidacaoInscricoes() {
   app.querySelectorAll('[data-validate-entry]').forEach((button) => button.addEventListener('click', async () => {
     const entry = enrolments.find((item) => item.id === button.dataset.validateEntry);
     if (!entry) return;
+    if (!ensureRetreatCanBeChanged(retreat, 'validar inscrições')) return;
     const validatedAt = new Date().toISOString();
     const entriesToValidate = entry.casalId
       ? enrolments.filter((item) => item.retiroId === entry.retiroId && item.casalId === entry.casalId)
@@ -2065,10 +2113,11 @@ async function renderPessoa(id, retreatId, source = '') {
   const field = (label, value) => `<div><strong>${label}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const backHref = source === 'validacao-inscricoes' ? '#validacao-inscricoes' : (source === 'equipe' ? '#pessoas' : (retreat ? `#retiros/${retreat.id}` : '#pessoas'));
   const sourceSuffix = source ? `/${source}` : '';
-  const canDeleteConsultedRegistration = entry && source !== 'retiro';
+  const canDeleteConsultedRegistration = entry && source !== 'retiro' && canModifyRetreat(retreat);
   const address = (item) => [[item.endereco, item.numero].filter(Boolean).join(', '), item.bairro, item.cidade, item.estado].filter(Boolean).join(' · ');
   layout(`<section class="page-heading compact"><div><a class="back-link" href="${backHref}">← Voltar</a><p class="eyebrow">${entry?.casalId ? 'Cadastro individual vinculado a casal' : 'Cadastro individual'}</p><h1>${escapeHtml(person.nome)}</h1><p>${retreat ? `Ficha enviada para ${escapeHtml(retreat.nome)}` : 'Cadastro no histórico'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('Nascimento', date(person.nascimento))}${field('Telefone', person.telefone)}${field('Endereço', address(person))}</div></section>${entry ? `<section class="panel"><h2>Participação neste retiro</h2><div class="simple-list">${field('Setor de trabalho', entry.setores.join(', '))}${field('Dias disponíveis', entry.dias.join(', '))}${field('Retiros que fez', entry.retirosAnteriores?.join(', '))}${field('Quadrante impresso', entry.quadrante)}${field('Foto', entry.foto)}${field('Contribuição', entry.contribuicao)}${field('Coordenação informada', entry.coordenacao)}${field('Observação', entry.observacao)}</div>${entry.espacoKids?.length ? `<h3 class="participants-heading">Espaço Kids</h3><div class="simple-list">${entry.espacoKids.map((kid) => field(kid.nome, date(kid.nascimento))).join('')}</div>` : ''}${spouse ? `<h3 class="participants-heading">Cônjuge neste retiro</h3><div class="simple-list"><div><strong>${escapeHtml(spouse.nome)}</strong><span>${escapeHtml(spouseEntry.setores.join(', '))}</span><a href="#pessoas/${spouse.id}/${entry.retiroId}${sourceSuffix}">Abrir ficha do cônjuge</a></div></div>` : ''}</section>` : ''}<section class="panel"><h2>Histórico de retiros</h2><div class="simple-list">${entries.map((item) => `<div><strong>${escapeHtml(retreats.find((retreat) => retreat.id === item.retiroId)?.nome || 'Retiro')}</strong><span>${escapeHtml(item.setores.join(', '))}</span></div>`).join('') || '<p class="empty-state">Sem participações registradas.</p>'}</div></section>${canDeleteConsultedRegistration ? '<section class="panel"><div class="form-actions"><p>Esta ação remove apenas a participação neste retiro.</p><button type="button" id="delete-consulted-registration" class="delete-registration">Excluir participação no retiro</button></div></section>' : ''}`, 'pessoas');
   app.querySelector('#delete-consulted-registration')?.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'excluir participação')) return;
     if (!confirm(`Excluir a participação de ${entry.nome} neste retiro?`)) return;
     const entriesToDelete = [entry, spouseEntry].filter(Boolean);
     for (const entryToDelete of entriesToDelete) {
@@ -2080,9 +2129,14 @@ async function renderPessoa(id, retreatId, source = '') {
 }
 async function renderCursista() {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
-  const focusStudentRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
+  const focusStudentRetreat = selectedRetreat();
+  const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
   layout(`<section class="page-heading student-page-heading"><div><h1>Cursista</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
+  if (!canEditStudentRetreat) {
+    app.querySelector('#new-student')?.remove();
+    app.querySelector('#student-message').textContent = 'Retiro concluido: cadastro de cursistas disponivel apenas para consulta.';
+  }
   wireStateFields(form);
   wireCepLookup(form);
   wireCpfFields(form);
@@ -2271,6 +2325,7 @@ async function renderCursista() {
   form.elements.cpf.addEventListener('change', () => checkStudentCpf(true));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!ensureRetreatCanBeChanged(focusStudentRetreat, 'salvar cursistas')) return;
     syncStudentConditionalRequired();
     const values = new FormData(form);
     const submitCpf = normalizeCpf(values.get('cpf'));
@@ -2350,10 +2405,13 @@ async function renderCursistaDetalhe(id) {
   const student = students.find((item) => item.id === id);
   if (!student) { location.hash = '#cursista'; return; }
   const retreat = allRetreats.find((item) => item.id === student.retiroId);
+  const canDeleteStudentDetail = canModifyRetreat(retreat);
   const field = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const address = [student.rua, student.numero, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ');
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('CPF', formatCpf(student.cpf || student.id))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
-  app.querySelector('#delete-consulted-student').addEventListener('click', async () => {
+  if (!canDeleteStudentDetail) app.querySelector('#delete-consulted-student')?.closest('.panel')?.remove();
+  app.querySelector('#delete-consulted-student')?.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'excluir cursistas')) return;
     if (!confirm('Excluir este cursista?')) return;
     await removeStudentFromCommunities(student);
     await dataService.deleteCursista(student.id);
@@ -2361,7 +2419,7 @@ async function renderCursistaDetalhe(id) {
   });
 }
 async function renderComunidades() {
-  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
   const [students, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
@@ -2370,6 +2428,7 @@ async function renderComunidades() {
   const monitorCandidates = [...new Set(entries.filter((entry) => entry.casalId && (entry.setores || []).some((sector) => normalizeText(sector).includes('monitor'))).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
   const retreatStudents = uniqueByParticipant(retreatStudentRecords);
+  const canEditCommunities = canModifyRetreat(retreat);
   const assignedStudentIds = new Set(communities.flatMap((community) => community.membroIds || []));
   const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
   const studentsWithoutCommunity = retreatStudents.filter((student) => !assignedStudentKeys.has(participantIdentity(student))).length;
@@ -2379,26 +2438,28 @@ async function renderComunidades() {
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
   layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os cursistas.</p><div class="community-overview"><article><span>Cursistas sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir cursistas</button></div></section><section class="community-grid">${communities.map((community, index) => { const memberIds = new Set(community.membroIds || []); const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id))).sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>Cursistas</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${ageInYearsAndMonths(student.nascimento)}</small></span><select data-move-student="${student.id}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${student.id}">Remover</button></div>`).join('') : '<p>Nenhum cursista alocado.</p>'}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${members.length ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
-  if (!canAccess('comunidades.criar')) app.querySelector('#add-community')?.remove();
-  if (!canAccess('comunidades.editar')) {
+  if (!canAccess('comunidades.criar') || !canEditCommunities) app.querySelector('#add-community')?.remove();
+  if (!canAccess('comunidades.editar') || !canEditCommunities) {
     app.querySelector('#distribute-students')?.remove();
     app.querySelectorAll('[data-community-name], [data-community-order], [data-community-leader], [data-community-monitor], [data-move-student]').forEach((control) => { control.disabled = true; });
     app.querySelectorAll('[data-remove-community-leader], [data-remove-community-monitor], [data-remove-member]').forEach((button) => button.remove());
   }
-  if (!canAccess('comunidades.excluir')) app.querySelectorAll('[data-delete-community]').forEach((button) => button.remove());
+  if (!canAccess('comunidades.excluir') || !canEditCommunities) app.querySelectorAll('[data-delete-community]').forEach((button) => button.remove());
   app.querySelector('#add-community')?.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'incluir comunidades')) return;
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
     await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
     renderComunidades();
   });
-  app.querySelectorAll('[data-community-name]').forEach((input) => input.addEventListener('change', async () => { const community = communities.find((item) => item.id === input.dataset.communityName); community.nome = input.value.trim() || `Comunidade ${community.ordem}`; await dataService.saveComunidade(community); input.value = community.nome; }));
-  app.querySelectorAll('[data-community-order]').forEach((input) => input.addEventListener('change', async () => { const community = communities.find((item) => item.id === input.dataset.communityOrder); const ordem = Number(input.value); if (!community || !Number.isInteger(ordem) || ordem <= 0) { input.value = Number(community?.ordem) || 1; return; } community.ordem = ordem; await dataService.saveComunidade(community); renderComunidades(); }));
-  app.querySelectorAll('[data-community-leader]').forEach((select) => select.addEventListener('change', async () => { const community = communities.find((item) => item.id === select.dataset.communityLeader); community.liderCasalId = select.value; await dataService.saveComunidade(community); }));
-  app.querySelectorAll('[data-community-monitor]').forEach((select) => select.addEventListener('change', async () => { const community = communities.find((item) => item.id === select.dataset.communityMonitor); community.monitorCasalId = select.value; community.monitorIds = []; await dataService.saveComunidade(community); }));
-  app.querySelectorAll('[data-remove-community-leader]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.removeCommunityLeader); community.liderCasalId = ''; await dataService.saveComunidade(community); renderComunidades(); }));
-  app.querySelectorAll('[data-remove-community-monitor]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.removeCommunityMonitor); community.monitorCasalId = ''; community.monitorIds = []; await dataService.saveComunidade(community); renderComunidades(); }));
+  app.querySelectorAll('[data-community-name]').forEach((input) => input.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === input.dataset.communityName); community.nome = input.value.trim() || `Comunidade ${community.ordem}`; await dataService.saveComunidade(community); input.value = community.nome; }));
+  app.querySelectorAll('[data-community-order]').forEach((input) => input.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === input.dataset.communityOrder); const ordem = Number(input.value); if (!community || !Number.isInteger(ordem) || ordem <= 0) { input.value = Number(community?.ordem) || 1; return; } community.ordem = ordem; await dataService.saveComunidade(community); renderComunidades(); }));
+  app.querySelectorAll('[data-community-leader]').forEach((select) => select.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === select.dataset.communityLeader); community.liderCasalId = select.value; await dataService.saveComunidade(community); }));
+  app.querySelectorAll('[data-community-monitor]').forEach((select) => select.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === select.dataset.communityMonitor); community.monitorCasalId = select.value; community.monitorIds = []; await dataService.saveComunidade(community); }));
+  app.querySelectorAll('[data-remove-community-leader]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === button.dataset.removeCommunityLeader); community.liderCasalId = ''; await dataService.saveComunidade(community); renderComunidades(); }));
+  app.querySelectorAll('[data-remove-community-monitor]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === button.dataset.removeCommunityMonitor); community.monitorCasalId = ''; community.monitorIds = []; await dataService.saveComunidade(community); renderComunidades(); }));
   app.querySelectorAll('[data-move-student]').forEach((select) => select.addEventListener('change', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return;
     const studentId = select.dataset.moveStudent;
     const targetCommunityId = select.value;
     if (!studentId || !targetCommunityId) return;
@@ -2411,9 +2472,10 @@ async function renderComunidades() {
     }
     renderComunidades();
   }));
-  app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.removeMember); community.membroIds = (community.membroIds || []).filter((id) => id !== button.dataset.student); await dataService.saveComunidade(community); renderComunidades(); }));
-  app.querySelectorAll('[data-delete-community]').forEach((button) => button.addEventListener('click', async () => { const community = communities.find((item) => item.id === button.dataset.deleteCommunity); if (!confirm(`Excluir ${community.nome}?`)) return; await dataService.deleteComunidade(community.id); renderComunidades(); }));
+  app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === button.dataset.removeMember); community.membroIds = (community.membroIds || []).filter((id) => id !== button.dataset.student); await dataService.saveComunidade(community); renderComunidades(); }));
+  app.querySelectorAll('[data-delete-community]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'excluir comunidades')) return; const community = communities.find((item) => item.id === button.dataset.deleteCommunity); if (!confirm(`Excluir ${community.nome}?`)) return; await dataService.deleteComunidade(community.id); renderComunidades(); }));
   app.querySelector('#distribute-students')?.addEventListener('click', () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'distribuir cursistas em comunidades')) return;
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
     const communityOptions = (selected = '') => `<option value="">Sem comunidade</option>${communities.map((community) => `<option value="${community.id}" ${community.id === selected ? 'selected' : ''}>${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
     overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de cursistas</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada cursista e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => (community.membroIds || []).includes(student.id)); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${ageInYearsAndMonths(student.nascimento)}</span><select data-student-community="${student.id}">${communityOptions(current?.id)}</select></div>`; }).join('') || '<p>Nenhum cursista cadastrado.</p>'}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
@@ -2429,6 +2491,7 @@ async function renderComunidades() {
         message.textContent = 'Escolha pelo menos uma comunidade antes de exportar.';
         return;
       }
+      if (!ensureRetreatCanBeChanged(retreat, 'distribuir cursistas em comunidades')) return;
       exportButton.disabled = true;
       message.textContent = 'Exportando cursistas...';
       try {
@@ -2700,7 +2763,7 @@ const sampleBadgeCard = (settings) => {
 };
 
 async function renderCrachas() {
-  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>Crie ou publique um retiro para gerar os crach&aacute;s.</p></div></section>', 'crachas'); return; }
   let settings = loadBadgeSettings();
   const [allCommunities, allStudents] = await Promise.all([dataService.listComunidades(), dataService.listCursistas()]);
@@ -2719,9 +2782,9 @@ async function renderCrachas() {
   let activeBadgeView = '';
   let sectorPickerOpen = false;
   let personPickerOpen = false;
-  const canConfigureBadges = canAccess('crachas.editar');
+  const canConfigureBadges = canAccess('crachas.editar') && canModifyRetreat(retreat);
   const canPrintBadges = canAccess('crachas.imprimir');
-  const canDeleteBadges = canAccess('crachas.excluir');
+  const canDeleteBadges = canAccess('crachas.excluir') && canModifyRetreat(retreat);
   const profileOptions = () => `<option value="">Selecione um modelo</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`).join('')}`;
   const logoOptions = badgeLogoOptions.map((logo) => `<label class="badge-logo-option"><input type="radio" name="logo" value="${escapeHtml(logo.id)}" ${settings.logo === logo.id ? 'checked' : ''}><span>${logo.src ? `<img src="${escapeHtml(logo.src)}" alt="">` : '<i aria-hidden="true">--</i>'}<b>${escapeHtml(logo.name)}</b></span></label>`).join('');
   const watermarkOptions = [
@@ -3402,7 +3465,7 @@ function renderAlterarSenha() {
 }
 
 async function renderQuadrante() {
-  const retreat = retreats.find((item) => item.status === 'publicado') || retreats.find((item) => item.status === 'preparacao');
+  const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
   const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(), dataService.listCursistas(), loadQuadranteOrderSetting()]);
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
@@ -3486,11 +3549,12 @@ async function renderQuadrante() {
   }).join('');
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
   const quadranteActions = [
-    canAccess('quadrante.editar') ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
+    canAccess('quadrante.editar') && canModifyRetreat(retreat) ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
     canAccess('quadrante.imprimir') ? '<button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button>' : '',
   ].join('');
   layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div>${quadranteActions ? `<div class="detail-actions">${quadranteActions}</div>` : ''}</section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
   app.querySelector('#order-quadrante')?.addEventListener('click', () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'ordenar o quadrante')) return;
     const sectors = orderableSectors;
     const overlay = document.createElement('section');
     overlay.className = 'receiver-sector-overlay';
@@ -3589,7 +3653,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     return null;
   };
-  const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-registration">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
+  const canEditEmbeddedRegistration = !embedded || canModifyRetreat(retreat);
+  const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions">${canEditEmbeddedRegistration ? '<button type="button" id="new-registration">Incluir novo</button>' : '<span class="status concluido">Somente consulta</span>'}</div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns">${personalFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
@@ -3699,14 +3764,15 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const deleteSelectedRegistration = embedded ? mount.querySelector('#delete-selected-registration') : null;
   const setRegistrationFormLocked = (locked) => {
     if (!embedded) return;
+    const effectiveLocked = locked || !canEditEmbeddedRegistration;
     form.querySelectorAll('input, select, textarea').forEach((control) => {
-      if (control.type !== 'hidden') control.disabled = locked;
+      if (control.type !== 'hidden') control.disabled = effectiveLocked;
     });
-    form.querySelector('button[type="submit"]').disabled = locked;
+    form.querySelector('button[type="submit"]').disabled = effectiveLocked;
   };
   const syncRegistrationActions = () => {
     if (!embedded || !registrationHeadingActions) return;
-    registrationHeadingActions.hidden = !editingEntry;
+    registrationHeadingActions.hidden = !editingEntry || !canEditEmbeddedRegistration;
   };
   const setChoices = (name, values) => {
     const selected = new Set(Array.isArray(values) ? values : [values]);
@@ -3976,6 +4042,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     return true;
   };
   const deleteRegistration = async (entry) => {
+    if (embedded && !ensureRetreatCanBeChanged(retreat, 'excluir fichas da equipe')) return;
     if (!entry || !confirm(`Excluir a participação de ${entry.nome} neste retiro?`)) return;
     const entriesToDelete = [entry, entry.casalId && enrolments.find((item) => item.casalId === entry.casalId && item.retiroId === entry.retiroId && item.pessoaId !== entry.pessoaId)].filter(Boolean);
     for (const entryToDelete of entriesToDelete) {
@@ -4017,7 +4084,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     syncRegistrationActions();
     setRegistrationFormLocked(Boolean(locked));
     syncTypeSelectionLock();
-    form.querySelector('#form-message').textContent = locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
+    form.querySelector('#form-message').textContent = !canEditEmbeddedRegistration ? 'Retiro concluido: cadastro da equipe carregado apenas para consulta.' : locked ? 'Cadastro da equipe carregado. Clique em Editar para alterar.' : 'Editando o cadastro já enviado para este retiro.';
   };
   const orderedRegistrationEntries = (items) => [...items].sort((first, second) => {
     const order = { 'Primeira pessoa': 0, 'Segunda pessoa': 1 };
@@ -4147,16 +4214,19 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       }
     };
     setRegistrationFormLocked(true);
-    form.querySelector('#form-message').textContent = 'Clique em Incluir novo para iniciar um cadastro.';
-    mount.querySelector('#new-registration').addEventListener('click', startNewRegistration);
-    editSelectedRegistration.addEventListener('click', () => {
+    form.querySelector('#form-message').textContent = canEditEmbeddedRegistration ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: fichas da equipe disponiveis apenas para consulta.';
+    mount.querySelector('#new-registration')?.addEventListener('click', () => {
+      if (ensureRetreatCanBeChanged(retreat, 'incluir fichas da equipe')) startNewRegistration();
+    });
+    editSelectedRegistration?.addEventListener('click', () => {
+      if (!ensureRetreatCanBeChanged(retreat, 'editar fichas da equipe')) return;
       if (!editingEntry) return;
       setRegistrationFormLocked(false);
       form.scrollIntoView({ behavior: 'smooth', block: 'start' });
       form.elements.nome.focus({ preventScroll: true });
       form.querySelector('#form-message').textContent = 'Editando cadastro da equipe.';
     });
-    deleteSelectedRegistration.addEventListener('click', () => deleteRegistration(editingEntry));
+    deleteSelectedRegistration?.addEventListener('click', () => deleteRegistration(editingEntry));
     searchInput.addEventListener('focus', openRegistrationSearch);
     searchInput.addEventListener('click', openRegistrationSearch);
     searchInput.addEventListener('input', openRegistrationSearch);
@@ -4523,6 +4593,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) return;
     setPublicSubmitting(true);
     try {
       syncContributionAmount();
@@ -4757,7 +4828,7 @@ async function route() {
     await loadData();
     if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'alterar-senha') return renderAlterarSenha(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
     if (target === 'cursista') {
-      await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao');
+      await renderCursista(); const form = app.querySelector('#student-form'); const activeRetreat = selectedRetreat(); const canEditStudentRetreat = canModifyRetreat(activeRetreat);
     form.noValidate = true; form.reportValidity = () => true;
     form.insertAdjacentHTML('beforeend', `<input type="hidden" name="retiroId" value="${activeRetreat?.id || ''}"><input type="hidden" name="formaPagamento"><input type="hidden" name="observacaoPagamento"><input type="hidden" name="recebedorValorPago"><input type="hidden" name="recebedorTaxaPaga"><input type="hidden" name="recebedorFormaPagamento"><input type="hidden" name="recebedorObservacao">`);
     form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista);
@@ -4812,19 +4883,25 @@ async function route() {
     const studentHeadingActions = app.querySelector('.student-heading-actions');
     const editSelectedStudent = app.querySelector('#edit-selected-student');
     const deleteSelectedStudent = app.querySelector('#delete-selected-student');
+    if (!canEditStudentRetreat) {
+      editSelectedStudent?.remove();
+      deleteSelectedStudent?.remove();
+      form.querySelector('.delete-student')?.remove();
+    }
     let selectedStudentId = '';
     const setStudentFormLocked = (locked) => {
+      const effectiveLocked = locked || !canEditStudentRetreat;
       form.querySelectorAll('input, select, textarea').forEach((control) => {
-        if (control.type !== 'hidden') control.disabled = locked;
+        if (control.type !== 'hidden') control.disabled = effectiveLocked;
       });
-      form.querySelector('button[type="submit"]').disabled = locked;
-      app.querySelector('#set-student-payment').disabled = locked;
-      app.querySelector('#clear-student-payment').disabled = locked;
+      form.querySelector('button[type="submit"]').disabled = effectiveLocked;
+      app.querySelector('#set-student-payment').disabled = effectiveLocked;
+      app.querySelector('#clear-student-payment').disabled = effectiveLocked;
     };
-    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student').hidden = true; form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
-    const deleteStudentRecord = async (id) => { if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
+    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
+    const deleteStudentRecord = async (id) => { if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return; if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
     const studentNameInput = form.elements.nome; const nameField = studentNameInput.closest('.field'); const cascade = document.createElement('div'); cascade.className = 'person-cascade'; cascade.hidden = true; nameField.append(cascade);
-    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student').hidden = true; recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = 'Cadastro de cursista carregado. Clique em Editar para alterar.'; };
+    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
     const renderCascade = () => { if (selectedStudentId) { cascade.hidden = true; return; } const term = studentNameInput.value.trim().toLocaleLowerCase('pt-BR'); dataService.listCursistas().then((students) => { const filtered = students.filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id) && (!term || student.nome.toLocaleLowerCase('pt-BR').includes(term))); cascade.innerHTML = filtered.length ? filtered.map((student) => `<button type="button" data-student-id="${student.id}"><strong>${escapeHtml(student.nome)}</strong><span>${date(student.nascimento)}</span></button>`).join('') : '<p>Nenhum cursista encontrado. Continue para criar um novo cadastro.</p>'; cascade.hidden = false; cascade.querySelectorAll('[data-student-id]').forEach((button) => button.addEventListener('click', async () => { const students = await dataService.listCursistas(); const student = students.find((item) => item.id === button.dataset.studentId); if (student) { loadStudent(student); cascade.hidden = true; } })); }); };
     const closeStudentNameCascade = (event) => { if (!nameField.contains(event.target)) cascade.hidden = true; };
     studentNameInput.addEventListener('focus', renderCascade); studentNameInput.addEventListener('input', renderCascade);
@@ -4859,10 +4936,10 @@ async function route() {
       }));
     };
     setStudentFormLocked(true);
-    form.querySelector('#student-message').textContent = 'Clique em Incluir novo para iniciar um cadastro.';
-    app.querySelector('#new-student').addEventListener('click', () => clearStudentForm());
-    editSelectedStudent.addEventListener('click', () => { if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
-    deleteSelectedStudent.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
+    form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.';
+    app.querySelector('#new-student')?.addEventListener('click', () => { if (ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) clearStudentForm(); });
+    editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
+    deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
     studentSearchInput.addEventListener('focus', renderStudentSearch);
     studentSearchInput.addEventListener('input', renderStudentSearch);
     const studentSearchField = studentSearchInput.closest('.registration-search-field');
@@ -4874,10 +4951,10 @@ async function route() {
     studentSearchResults.addEventListener('focusout', (event) => { if (!studentSearchField.contains(event.relatedTarget) && !studentSearchResults.contains(event.relatedTarget)) hideStudentSearch(); });
     document.addEventListener('pointerdown', closeStudentSearch, true);
     document.addEventListener('focusin', closeStudentSearch, true);
-    form.querySelector('.delete-student').addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
+    form.querySelector('.delete-student')?.addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
       return;
     }
-    if (target === 'pessoas') { const focusRetreat = retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao'); return focusRetreat ? renderPublicForm(focusRetreat.id, true) : renderPessoas(); } if (target.startsWith('pessoas/')) { const [, personId, personRetreatId, source] = target.split('/'); return renderPessoa(personId, personRetreatId, source); } renderHome();
+    if (target === 'pessoas') { const focusRetreat = selectedRetreat(); return focusRetreat ? renderPublicForm(focusRetreat.id, true) : renderPessoas(); } if (target.startsWith('pessoas/')) { const [, personId, personRetreatId, source] = target.split('/'); return renderPessoa(personId, personRetreatId, source); } renderHome();
   } catch (error) {
     console.error(error);
     app.innerHTML = `<main class="login-shell"><section class="login-panel"><a class="brand" href="index.html"><span>EPC</span><strong><small>Familia</small>EPC</strong></a><div class="login-heading"><p class="eyebrow">Area restrita</p><h1>Nao foi possivel abrir a tela</h1><p>${escapeHtml(error.message || 'Atualize a pagina e tente novamente.')}</p></div><button type="button" class="primary-button" onclick="location.reload()">Recarregar</button></section></main>`;
