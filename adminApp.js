@@ -3653,7 +3653,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   const canEditEmbeddedRegistration = !embedded || canModifyRetreat(retreat);
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions">${canEditEmbeddedRegistration ? '<button type="button" id="new-registration">Incluir novo</button>' : '<span class="status concluido">Somente consulta</span>'}</div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
-  mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate>${stateDatalist()}
+  mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate autocomplete="${embedded ? 'on' : 'off'}">${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns">${personalFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
     <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Sua participação</h2><p>Conte-nos quais retiros você já fez na família EPC.</p></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('dias', serviceDays)}</div></section>
@@ -3668,6 +3668,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   mount.querySelector('.hero-copy').textContent = publicLead;
   if (!embedded) document.title = publicHeading;
   const form = mount.querySelector('#public-form');
+  if (!embedded) {
+    form.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((control) => {
+      control.setAttribute('autocomplete', 'off');
+      control.setAttribute('autocapitalize', 'off');
+      control.setAttribute('spellcheck', 'false');
+    });
+  }
   syncChoiceStates(form);
   wireStateFields(form);
   wireCepLookup(form);
@@ -4393,6 +4400,37 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const spouseLoaded = await loadLinkedSpouse(person);
     if (!spouseLoaded) mount.querySelector('#form-message').textContent = 'Encontramos seus dados pelo CPF. Revise antes de enviar este cadastro.';
   };
+  const normalizeAutofilledDate = (control) => {
+    if (!control?.value) return;
+    const normalized = normalizeDateInput(control.value);
+    if (normalized) {
+      control.value = formatDateInput(normalized);
+      control.setCustomValidity('');
+      return;
+    }
+    const digits = String(control.value || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length === 8) {
+      control.value = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+      control.setCustomValidity(normalizeDateInput(control.value) ? '' : 'Digite a data no formato dd/mm/aaaa.');
+    }
+  };
+  const syncAutofilledPublicForm = async () => {
+    [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
+      if (control.value) control.value = formatCpf(control.value);
+    });
+    [form.elements.nascimento, form.elements.spouseNascimento].filter(Boolean).forEach(normalizeAutofilledDate);
+    if (form.elements.estado?.value) form.elements.estado.value = String(form.elements.estado.value).trim().toUpperCase();
+    if (form.elements.spouseTelefone?.value && isCouple()) form.elements.spouseTelefone.value = String(form.elements.spouseTelefone.value).trim();
+    ['nome', 'telefone', 'endereco', 'numero', 'bairro', 'cep', 'cidade', 'spouseNome'].forEach((name) => {
+      if (form.elements[name]?.value) form.elements[name].value = String(form.elements[name].value).trim();
+    });
+    setCoupleMode(isCouple());
+    syncKidsNeed();
+    syncTypeSelectionLock();
+    syncChoiceStates(form);
+    syncContributionAmount();
+    if (!embedded && isValidCpf(form.elements.cpf?.value)) await loadPersonByCpf();
+  };
   form.cpf.addEventListener('change', loadPersonByCpf);
   [form.elements.cpf, form.elements.spouseCpf].filter(Boolean).forEach((control) => {
     control.addEventListener('focus', () => {
@@ -4592,6 +4630,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) return;
+    await syncAutofilledPublicForm();
     setPublicSubmitting(true);
     try {
       syncContributionAmount();

@@ -3627,8 +3627,8 @@ select:focus {
   }
 
   .public-shell .form-actions {
-    margin:16px 0 0;
-    padding:12px 0 0;
+    margin:16px 0 22px;
+    padding:12px 0 6px;
     position:static;
     border-top:1px solid var(--ui-line);
     box-shadow:none;
