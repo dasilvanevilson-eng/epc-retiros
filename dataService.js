@@ -131,6 +131,7 @@ async function remove(storeName, id) {
 }
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
+const userSubmittedRegistrationField = '__userSubmittedRegistration';
 const protectedRegistrationStores = new Set(['adesoes', 'cursistas']);
 const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
 const isEmptyProtectedValue = (value) => {
@@ -154,8 +155,10 @@ const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current
 async function saveProtectedRegistration(storeName, record) {
   const nextRecord = { ...record };
   const allowDataLoss = nextRecord[dataLossBypassField] === true;
+  const userSubmittedRegistration = nextRecord[userSubmittedRegistrationField] === true;
   delete nextRecord[dataLossBypassField];
-  if (!protectedRegistrationStores.has(storeName) || !nextRecord.id || allowDataLoss) return save(storeName, nextRecord);
+  delete nextRecord[userSubmittedRegistrationField];
+  if (!protectedRegistrationStores.has(storeName) || !nextRecord.id || allowDataLoss || userSubmittedRegistration) return save(storeName, nextRecord);
   const current = await get(storeName, nextRecord.id).catch(() => null);
   const fields = current ? protectedDataLossFields(current, nextRecord) : [];
   if (fields.length) {

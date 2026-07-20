@@ -29,6 +29,7 @@ function sendError(res, status, message) {
 }
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
+const userSubmittedRegistrationField = '__userSubmittedRegistration';
 const protectedRegistrationStores = new Set(['adesoes', 'cursistas']);
 const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
 const isEmptyProtectedValue = (value) => {
@@ -51,8 +52,10 @@ const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current
 
 async function assertNoRegistrationDataLoss(resource, record) {
   const allowDataLoss = record[dataLossBypassField] === true;
+  const userSubmittedRegistration = record[userSubmittedRegistrationField] === true;
   delete record[dataLossBypassField];
-  if (!protectedRegistrationStores.has(resource) || !record.id || allowDataLoss) return;
+  delete record[userSubmittedRegistrationField];
+  if (!protectedRegistrationStores.has(resource) || !record.id || allowDataLoss || userSubmittedRegistration) return;
   const current = await getRecord(resource, record.id).catch(() => null);
   const fields = current ? protectedDataLossFields(current, record) : [];
   if (fields.length) {
