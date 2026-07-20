@@ -1354,10 +1354,8 @@ async function renderRetreat(id) {
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
   if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
-  if (!canAccess('retiros.publicar')) {
-    app.querySelector('#publish-retreat')?.remove();
-    app.querySelector('#conclude-retreat')?.remove();
-  }
+  if (!canAccess('retiros.publicar')) app.querySelector('#publish-retreat')?.remove();
+  if (!canAccess('retiros.encerrar')) app.querySelector('#conclude-retreat')?.remove();
   app.querySelector('#publish-retreat')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'publicar este retiro')) return;
     if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); }

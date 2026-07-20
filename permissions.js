@@ -4,6 +4,7 @@ const allPermissions = [
   ['retiros.criar', 'Retiros', 'Criar retiros'],
   ['retiros.editar', 'Retiros', 'Editar retiros'],
   ['retiros.publicar', 'Retiros', 'Publicar link'],
+  ['retiros.encerrar', 'Retiros', 'Encerrar retiro'],
   ['retiros.excluir', 'Retiros', 'Excluir retiros'],
   ['pessoas.ver', 'Equipe de trabalho', 'Ver voluntarios'],
   ['pessoas.criar', 'Equipe de trabalho', 'Cadastrar voluntarios'],

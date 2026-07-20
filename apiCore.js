@@ -163,6 +163,17 @@ function permissionForRequest(resource, id, req) {
   return null;
 }
 
+function isRetreatConcludeUpdate(current = {}, next = {}) {
+  if (!current?.id || next.status !== 'concluido' || current.status === 'concluido') return false;
+  const allowedChangedFields = new Set(['status', 'concluidoEm', 'updatedAt', 'atualizadoEm']);
+  const keys = new Set([...Object.keys(current), ...Object.keys(next)]);
+  for (const key of keys) {
+    if (allowedChangedFields.has(key)) continue;
+    if (JSON.stringify(current[key] ?? null) !== JSON.stringify(next[key] ?? null)) return false;
+  }
+  return true;
+}
+
 function denyIfMissingPermission(res, session, permission) {
   if (!permission || can(session, permission)) return false;
   sendError(res, 403, 'Voce nao tem permissao para esta acao.');
@@ -229,12 +240,20 @@ async function handleApi(req, res, pathname) {
 
   if (!stores.includes(resource)) return sendError(res, 404, 'Recurso nao encontrado.');
   if (accessStores.includes(resource)) return sendError(res, 404, 'Recurso nao encontrado.');
-  if (!publicRegistrationRequest && denyIfMissingPermission(res, session, permissionForRequest(resource, id, req))) return;
+  let requestBody = null;
+  let requestPermission = permissionForRequest(resource, id, req);
+  if (!publicRegistrationRequest && resource === 'retiros' && req.method === 'PUT' && id) {
+    requestBody = await readBody(req);
+    const record = { ...requestBody, id: decodeURIComponent(id) };
+    const current = await getRecord(resource, record.id).catch(() => null);
+    requestPermission = isRetreatConcludeUpdate(current, record) ? 'retiros.encerrar' : 'retiros.editar';
+  }
+  if (!publicRegistrationRequest && denyIfMissingPermission(res, session, requestPermission)) return;
   if (req.method === 'GET' && !id) return sendJson(res, 200, await listRecords(resource));
   if (req.method === 'GET' && id) return sendJson(res, 200, await getRecord(resource, decodeURIComponent(id)));
 
   if (req.method === 'PUT' && id) {
-    const record = { ...(await readBody(req)), id: decodeURIComponent(id) };
+    const record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
     await assertNoRegistrationDataLoss(resource, record);
     return sendJson(res, 200, await saveRecord(resource, record));
   }
