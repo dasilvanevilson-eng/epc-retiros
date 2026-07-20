@@ -255,6 +255,7 @@ const formatCpf = (value = '') => {
 const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.updatedAt || record.enviadoEm || record.criadoEm || record.createdAt || '') || 0;
 const participantIdentity = (record = {}) => normalizeCpf(record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id) || String(record.pessoaId || record.id || record.nome || '').trim();
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
+const entrySectors = (entry = {}) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores || entry.setor]).map((sector) => String(sector || '').trim()).filter(Boolean);
 const uniqueByParticipant = (items = []) => {
   const byIdentity = new Map();
   items.forEach((item) => {
@@ -283,7 +284,7 @@ const mergeEnrolmentsByParticipant = (items = []) => {
     });
     return {
       ...latest,
-      setores: sortSectors(uniqueSectors(group.flatMap((entry) => Array.isArray(entry.setores) ? entry.setores : [entry.setores]).filter(Boolean))),
+      setores: sortSectors(uniqueSectors(group.flatMap(entrySectors))),
       dias: uniqueSectors(group.flatMap(entryDays)),
       espacoKids: [...kidsByIdentity.values()],
       quadrante: group.some((entry) => normalizeText(entry.quadrante) === 'sim') ? 'Sim' : latest.quadrante,
@@ -291,7 +292,7 @@ const mergeEnrolmentsByParticipant = (items = []) => {
     };
   });
 };
-const entryHasSector = (entry, sector) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores]).some((item) => normalizeText(item) === normalizeText(sector));
+const entryHasSector = (entry, sector) => entrySectors(entry).some((item) => normalizeText(item) === normalizeText(sector));
 const isEnrolmentValidated = (entry = {}) => entry.status === 'confirmada' || entry.status === 'validada' || entry.validada === true || Boolean(entry.validadoEm);
 const enrolmentValidationGroups = (items = []) => {
   const groupedCouples = new Set();
@@ -768,12 +769,13 @@ async function renderHome() {
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
   const activeEnrolments = active ? mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
+  const activeStatEntries = activeEntries.length ? activeEntries : activeEnrolments;
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
   const serviceDays = active ? retreatServiceDays(active) : [];
-  const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeEnrolments.flatMap((entry) => entry.setores || [])]))
-    .map((sector) => [sector, activeEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
+  const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeStatEntries.flatMap(entrySectors)]))
+    .map((sector) => [sector, activeStatEntries.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
-  const dayCount = (day) => activeEnrolments.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
+  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
   const shirtCounts = activeStudents.reduce((counts, student) => {
     const size = String(student.camiseta || '').trim();
     if (size) counts[size] = (counts[size] || 0) + 1;
@@ -864,7 +866,7 @@ async function renderHome() {
     sector,
     count,
     days: serviceDays,
-    volunteers: activeEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
+    volunteers: activeStatEntries.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
@@ -1124,7 +1126,9 @@ async function renderRetreat(id) {
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
   const retreatCommunityDetails = studentCommunityDetails(allCommunities.filter((community) => community.retiroId === id));
+  const retreatEntries = enrolments.filter((item) => item.retiroId === id);
   const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
+  const retreatStatEntries = retreatEntries.length ? retreatEntries : retreatEnrolments;
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
   const sectorLinks = canAccess('retiros.editar')
     ? await ensureSectorLinks(retreat)
@@ -1135,14 +1139,14 @@ async function renderRetreat(id) {
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
   const averageAge = ages.length ? `${(ages.reduce((sum, age) => sum + age, 0) / ages.length).toFixed(1).replace('.', ',')} anos` : 'Sem dados';
-  const dayCount = (day) => retreatEnrolments.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length;
+  const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length;
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
   const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
-  const activeEntries = enrolments.filter((item) => item.retiroId === id);
+  const activeEntries = retreatEntries;
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
-  const sectorCounts = sortSectors(uniqueSectors([...(retreat.setores || []), ...retreatEnrolments.flatMap((entry) => entry.setores || [])]))
-    .map((sector) => [sector, retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).length])
+  const sectorCounts = sortSectors(uniqueSectors([...(retreat.setores || []), ...retreatStatEntries.flatMap(entrySectors)]))
+    .map((sector) => [sector, retreatStatEntries.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || retreat.setores?.includes(sector));
   const intoleranceStudents = registeredStudents
     .filter((student) => normalizeText(student.intoleranciaAlimentos) === 'sim' || String(student.qualIntolerancia || '').trim())
@@ -1222,7 +1226,7 @@ async function renderRetreat(id) {
     sector,
     count,
     days: serviceDays,
-    volunteers: retreatEnrolments.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
+    volunteers: retreatStatEntries.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
