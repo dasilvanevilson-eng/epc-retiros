@@ -23,7 +23,7 @@ const adultFemale = ['Aline', 'Camila', 'Daniela', 'Eliane', 'Fernanda', 'Gabrie
 const lastNames = ['Almeida', 'Bauer', 'Cardoso', 'Costa', 'Fischer', 'Freitas', 'Goncalves', 'Krause', 'Lima', 'Muller', 'Oliveira', 'Pereira', 'Ribeiro', 'Schmidt', 'Silva', 'Souza', 'Weber'];
 const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Taschinha', 'Eis-me aqui'];
 const shirtSizes = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G'];
-const sectors = ['Animacao/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligacao', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria']
+const sectors = ['Animacao/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Direcao Espiritual', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligacao', 'Participacoes especiais', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria']
   .sort((first, second) => first.localeCompare(second, 'pt-BR', { sensitivity: 'base' }));
 
 const pick = (items, index) => items[index % items.length];
