@@ -49,18 +49,40 @@ const wouldLoseProtectedValue = (current, next) => {
 const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current)
   .filter((field) => !['updatedAt', 'atualizadoEm'].includes(field))
   .filter((field) => wouldLoseProtectedValue(current[field], next[field]));
+const preservedRegistrationFields = ['dias', 'setores', 'retirosAnteriores'];
+const requestOrigin = (req = {}) => ({
+  method: req.method || '',
+  url: req.url || '',
+  referer: req.headers?.referer || req.headers?.referrer || '',
+  userAgent: req.headers?.['user-agent'] || '',
+});
 
-async function assertNoRegistrationDataLoss(resource, record) {
+async function protectRegistrationWrite(resource, record, req) {
   const allowDataLoss = record[dataLossBypassField] === true;
   const userSubmittedRegistration = record[userSubmittedRegistrationField] === true;
   delete record[dataLossBypassField];
   delete record[userSubmittedRegistrationField];
-  if (!protectedRegistrationStores.has(resource) || !record.id || allowDataLoss || userSubmittedRegistration) return;
+  if (!protectedRegistrationStores.has(resource) || !record.id) return record;
   const current = await getRecord(resource, record.id).catch(() => null);
+  if (current) {
+    const preserved = preservedRegistrationFields.filter((field) => !isEmptyProtectedValue(current[field]) && isEmptyProtectedValue(record[field]));
+    if (preserved.length) {
+      preserved.forEach((field) => { record[field] = current[field]; });
+      console.warn(JSON.stringify({
+        event: 'registration-protected-fields-preserved',
+        resource,
+        id: record.id,
+        fields: preserved,
+        origin: requestOrigin(req),
+      }));
+    }
+  }
+  if (allowDataLoss || userSubmittedRegistration) return record;
   const fields = current ? protectedDataLossFields(current, record) : [];
   if (fields.length) {
     throw new Error(`Salvamento bloqueado para proteger dados ja cadastrados em ${resource}. Campos em risco: ${fields.join(', ')}. Se a alteracao for intencional, faca backup, audite o impacto e use autorizacao explicita no codigo.`);
   }
+  return record;
 }
 
 function isPublicRegistrationRequest(resource, id, req) {
@@ -257,8 +279,8 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === 'PUT' && id) {
     const record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
-    await assertNoRegistrationDataLoss(resource, record);
-    return sendJson(res, 200, await saveRecord(resource, record));
+    const protectedRecord = await protectRegistrationWrite(resource, record, req);
+    return sendJson(res, 200, await saveRecord(resource, protectedRecord));
   }
 
   if (req.method === 'DELETE' && id) {
