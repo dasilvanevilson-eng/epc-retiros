@@ -1462,14 +1462,6 @@ async function renderEditRetreat(id) {
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
     Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
-    const renames = [...(form._sectorRenames || new Map()).entries()].filter(([from, to]) => from !== to);
-    for (const [from, to] of renames) {
-      const affected = enrolments.filter((entry) => entry.retiroId === retreat.id && entryHasSector(entry, from));
-      for (const entry of affected) {
-        entry.setores = (entry.setores || []).map((sector) => normalizeText(sector) === normalizeText(from) ? to : sector);
-        await dataService.saveAdesao(entry);
-      }
-    }
     await dataService.saveRetiro(retreat);
     await loadData();
     location.hash = `#retiros/${retreat.id}`;
