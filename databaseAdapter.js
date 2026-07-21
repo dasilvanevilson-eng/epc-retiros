@@ -177,6 +177,7 @@ function mapRetreat(row, children = {}) {
   const setores = array(children.setores).sort((a, b) => (a.ordem_quadrante ?? 9999) - (b.ordem_quadrante ?? 9999) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
   const dias = array(children.dias).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   const contribuicoes = array(children.contribuicoes).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const closedSectorKeys = new Set(array(row.extras?.setoresInscricoesEncerradas).map(normalizeText));
   return {
     ...(row.extras || {}),
     id: row.id,
@@ -203,6 +204,7 @@ function mapRetreat(row, children = {}) {
       token: item.legacy_token || item.cadastro_token || '',
       cadastroToken: item.cadastro_token || item.legacy_token || '',
       acompanhamentoToken: item.acompanhamento_token || item.legacy_token || '',
+      inscricoesEncerradas: closedSectorKeys.has(normalizeText(item.nome)),
     })),
     status: row.status,
     createdAt: row.created_at,

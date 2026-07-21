@@ -100,10 +100,14 @@ const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
       token: current?.token || sectorToken(),
       cadastroToken: current?.cadastroToken || publicAccessToken(),
       acompanhamentoToken: current?.acompanhamentoToken || publicAccessToken(),
+      inscricoesEncerradas: current?.inscricoesEncerradas === true,
     };
   });
 };
 const preparedSectorLinks = (retreat) => syncSectorLinks(retreat, knownSectors(retreat.setores || []));
+const closedRegistrationSectorKeys = (retreat = {}) => new Set((retreat.setoresInscricoesEncerradas || []).map(normalizeText));
+const sectorRegistrationClosed = (retreat = {}, sector = '') => closedRegistrationSectorKeys(retreat).has(normalizeText(sector))
+  || (retreat.linksSetores || retreat.setorLinks || []).some((link) => normalizeText(link.setor || link.sector) === normalizeText(sector) && link.inscricoesEncerradas === true);
 
 const sortCommunitiesByPosition = (communities = []) => communities
   .map((community, index) => ({ community, index }))
@@ -423,7 +427,8 @@ function normalizeRetreatSectorsForDisplay() {
     const publicSectors = configuredSectors(retreat.setoresPublicos ?? sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
     const quadranteOrder = configuredSectors(retreat.ordemQuadrante || sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
     const linksSetores = (retreat.linksSetores || retreat.setorLinks || []).filter((link) => sectors.some((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector)));
-    Object.assign(retreat, { setores: sectors, setoresPublicos: publicSectors, ordemQuadrante: quadranteOrder, linksSetores });
+    const setoresInscricoesEncerradas = (retreat.setoresInscricoesEncerradas || []).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
+    Object.assign(retreat, { setores: sectors, setoresPublicos: publicSectors, setoresInscricoesEncerradas, ordemQuadrante: quadranteOrder, linksSetores });
   });
   saveStandardSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
 }
@@ -974,11 +979,12 @@ async function renderRetiros() {
   <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
 }
 
-const sectorOptionHtml = (sector, selected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label></div>`;
+const sectorOptionHtml = (sector, selected = false, registrationClosed = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label><label class="sector-closed-option"><input type="checkbox" name="setoresInscricoesEncerradas" value="${escapeHtml(sector)}" ${registrationClosed ? 'checked' : ''}> <span>Inscrições encerradas</span></label></div>`;
 
-function sectorGroups(sectors, selectedSectors = sectors, publicSectors = sectors) {
+function sectorGroups(sectors, selectedSectors = sectors, publicSectors = sectors, closedSectors = []) {
   const selected = new Set(selectedSectors.map(normalizeText));
-  const group = (area, title) => `<section class="sector-area"><h3>${title}</h3><div class="sector-checks" data-area="${area}">${sortSectors(sectors.filter((sector) => sectorArea(sector) === area)).map((sector) => sectorOptionHtml(sector, selected.has(normalizeText(sector)))).join('')}</div></section>`;
+  const closed = new Set(closedSectors.map(normalizeText));
+  const group = (area, title) => `<section class="sector-area"><h3>${title}</h3><div class="sector-checks" data-area="${area}">${sortSectors(sectors.filter((sector) => sectorArea(sector) === area)).map((sector) => sectorOptionHtml(sector, selected.has(normalizeText(sector)), closed.has(normalizeText(sector)))).join('')}</div></section>`;
   return `${group('escondida', 'Equipe escondida')}${group('sala', 'Equipe Sala')}`;
 }
 
@@ -1006,10 +1012,23 @@ const allQuadranteSectors = (extra = []) => knownSectors([...retreats.flatMap((r
 function structureOptions(retreat) {
   const sectors = knownSectors(retreat?.setores || []);
   const selected = retreat ? configuredSectors(retreat.setores) : configuredSectors(retreatDefaults.setores);
-  return sectorGroups(sectors, selected, configuredSectors(retreat?.setoresPublicos ?? selected));
+  return sectorGroups(sectors, selected, configuredSectors(retreat?.setoresPublicos ?? selected), retreat?.setoresInscricoesEncerradas || []);
 }
 
 function wirePublicSectorToggles(form) {
+  const syncClosedOptions = () => {
+    form.querySelectorAll('.sector-option').forEach((option) => {
+      const sectorInput = option.querySelector('input[name="setores"]');
+      const closedInput = option.querySelector('input[name="setoresInscricoesEncerradas"]');
+      if (!sectorInput || !closedInput) return;
+      closedInput.disabled = !sectorInput.checked;
+      if (!sectorInput.checked) closedInput.checked = false;
+    });
+  };
+  syncClosedOptions();
+  form.addEventListener('change', (event) => {
+    if (event.target?.name === 'setores') syncClosedOptions();
+  });
 }
 
 function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = null) {
@@ -1105,7 +1124,7 @@ async function renderNewRetreat() {
     form.elements.valorCamisetaOficial.value = source ? currency(source.valorCamisetaOficial) : '';
     form.elements.idadeMaximaEspacoKids.value = source?.idadeMaximaEspacoKids ?? '';
     app.querySelector('#sector-checks').innerHTML = source
-      ? sectorGroups(knownSectors(source.setores), configuredSectors(source.setores), configuredSectors(source.setoresPublicos ?? source.setores))
+      ? sectorGroups(knownSectors(source.setores), configuredSectors(source.setores), configuredSectors(source.setoresPublicos ?? source.setores), source.setoresInscricoesEncerradas || [])
       : sectorGroups(knownSectors(), [], []);
     wirePublicSectorToggles(form);
   };
@@ -1151,7 +1170,9 @@ async function renderNewRetreat() {
       if (values.get('dataInicio') && values.get('dataTermino') && values.get('dataTermino') < values.get('dataInicio')) { alert('A data de término deve ser igual ou posterior à data de início.'); submitButton.disabled = false; submitButton.innerHTML = 'Criar retiro <span>→</span>'; return; }
       const serviceDays = retreatDaysFromDates(values.get('dataInicio'), values.get('dataTermino'));
       const sortedSectors = sortSectors(selectedSectors);
-      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({}, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
+      const closedKeys = new Set(values.getAll('setoresInscricoesEncerradas').map(normalizeText));
+      const setoresInscricoesEncerradas = sortedSectors.filter((sector) => closedKeys.has(normalizeText(sector)));
+      const retreat = { id: createId(), nome: values.get('nome').trim(), dataInicio: values.get('dataInicio'), dataTermino: values.get('dataTermino'), local: values.get('local').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
@@ -1431,7 +1452,7 @@ async function renderEditRetreat(id) {
   const publishedDateHint = isPublished ? '<p class="hint full">Retiro publicado: as datas de início e término não podem mais ser alteradas.</p>' : '';
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="#retiros/${retreat.id}">← Voltar</a></section>
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}" ${dateLockAttr}></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}" ${dateLockAttr}></label>${publishedDateHint}<label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
-  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores))}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
+  <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro. Marque "Inscrições encerradas" somente quando quiser bloquear novas inscrições pelo link daquele setor.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores), retreat.setoresInscricoesEncerradas || [])}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
   ensureOfficialShirtValueField(form, currency(retreat.valorCamisetaOficial));
   wireCurrencyInputs(form);
@@ -1466,7 +1487,13 @@ async function renderEditRetreat(id) {
     const serviceDays = dataInicio && dataTermino ? retreatDaysFromDates(dataInicio, dataTermino) : [];
     delete retreat.descontoParentesco;
     const sortedSectors = sortSectors(selectedSectors);
-    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio, dataTermino, local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks(retreat, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
+    const closedKeys = new Set(values.getAll('setoresInscricoesEncerradas').map(normalizeText));
+    const setoresInscricoesEncerradas = sortedSectors.filter((sector) => closedKeys.has(normalizeText(sector)));
+    const existingLinks = (retreat.linksSetores || retreat.setorLinks || []).map((link) => ({
+      ...link,
+      inscricoesEncerradas: setoresInscricoesEncerradas.some((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector)),
+    }));
+    Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio, dataTermino, local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
     await dataService.saveRetiro(retreat);
     await loadData();
     location.hash = `#retiros/${retreat.id}`;
@@ -3604,6 +3631,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const forcedSector = sectorLink ? activeSectorByKey.get(normalizeText(sectorLink.setor || sectorLink.sector)) : '';
   if (requestedSectorToken && !forcedSector) {
     mount.innerHTML = '<main class="public-shell"><h1>Link de setor indisponível</h1><p>Confira se este setor está ativo no retiro ou solicite um novo link à coordenação.</p></main>';
+    return;
+  }
+  if (requestedSectorToken && sectorRegistrationClosed(retreat, forcedSector)) {
+    mount.innerHTML = `<main class="public-shell"><h1>Inscrições encerradas</h1><p>Inscrições para o setor ${escapeHtml(forcedSector)} estão encerradas.</p></main>`;
     return;
   }
   const binaryChoices = (name, options) => choices(name, options, false);

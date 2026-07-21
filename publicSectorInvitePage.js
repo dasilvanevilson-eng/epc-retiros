@@ -19,6 +19,38 @@ const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 
 const sectorArea = (sector = '') => hiddenTeamSectors.has(normalizeText(sector)) ? 'escondida' : 'sala';
 const teamMessageConfigId = 'recado-equipe';
 const messageHtml = (value = '') => escapeHtml(value).replace(/\r?\n/g, '<br>');
+const sectorRegistrationClosed = (retreat = {}, link = {}, sector = '') => link.inscricoesEncerradas === true
+  || (retreat.setoresInscricoesEncerradas || []).some((item) => normalizeText(item) === normalizeText(sector));
+
+function closedInvitePageHtml({ retreat, sector }) {
+  const title = `Inscricoes encerradas para o setor ${sector}`;
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      *{box-sizing:border-box}
+      body{min-height:100vh;margin:0;display:grid;place-items:center;padding:18px;background:#eaf2ea;color:#26382c;font-family:Arial,sans-serif}
+      .invite-card{width:min(480px,100%);padding:30px 26px;border:1px solid #d9cdb7;border-radius:18px;background:#fffdf7;box-shadow:0 24px 70px rgba(54,80,57,.2);text-align:center}
+      .invite-card h1{margin:0;color:#203c26;font-family:Georgia,serif;font-size:clamp(26px,7vw,36px);line-height:1.05}
+      .invite-card p{margin:14px 0 0;color:#68746b;font-size:15px;line-height:1.5}
+      .invite-sector{display:block;margin:18px 0 0;padding:13px 14px;border:1px solid #dfe6dc;border-radius:10px;background:#f6faf3;color:#285130;font-size:18px;font-weight:900}
+    </style>
+  </head>
+  <body>
+    <main class="invite-card" aria-labelledby="invite-title">
+      <h1 id="invite-title">Inscrições encerradas</h1>
+      <p>Inscrições para o setor</p>
+      <strong class="invite-sector">${escapeHtml(sector)}</strong>
+      <p>estão encerradas.</p>
+      <p>${escapeHtml(retreat.nome || 'Retiro')}</p>
+    </main>
+  </body>
+</html>`;
+}
 
 function invitePageHtml({ retreat, sector, retreatId, token, origin = '', teamMessage = '' }) {
   const baseOrigin = String(origin || '').replace(/\/$/, '');
@@ -124,6 +156,10 @@ async function sendPublicSectorInvitePage(req, res, retreatId, token) {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
+  if (sectorRegistrationClosed(result.retreat, result.link, result.sector)) {
+    res.end(closedInvitePageHtml({ retreat: result.retreat, sector: result.sector }));
+    return;
+  }
   const setting = await getRecord('configuracoes', teamMessageConfigId).catch(() => null);
   const teamMessage = setting?.mensagens?.[normalizeText(result.sector)] || '';
   res.end(invitePageHtml({ retreat: result.retreat, sector: result.sector, retreatId: result.retreatId, token: result.link.token, origin, teamMessage }));

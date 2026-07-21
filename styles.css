@@ -640,6 +640,17 @@ select:focus {
   border-color:rgba(215,167,82,.55);
 }
 
+.sector-closed-option {
+  justify-self:end;
+  color:var(--muted);
+  font-size:12px !important;
+  font-weight:700;
+}
+
+.sector-closed-option input {
+  width:16px;
+}
+
 button,
 .primary-button,
 .form-actions button[type="submit"],
@@ -2585,7 +2596,7 @@ select:focus {
 .choice.is-selected,
 .choice:has(input:checked),
 .access-check:has(input:checked),
-.sector-option:has(input:checked) {
+.sector-option:has(input[name="setores"]:checked) {
   border-color:var(--ui-green);
   background:var(--ui-green-soft);
   color:#224a2b;
