@@ -235,8 +235,18 @@ async function getRetreat(id) {
   return mapRetreat(row, { setores, dias, contribuicoes });
 }
 
+async function referencedIds(table, column, ids = []) {
+  if (!ids.length) return new Set();
+  const rows = await rowsWhere(table, `${column}=in.(${ids.map(enc).join(',')})`);
+  return new Set(rows.map((row) => row[column]).filter(Boolean));
+}
+
 async function saveRetreat(record) {
   const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'valorCamisetaOficial', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
+  const [existingSectors, existingDays] = await Promise.all([
+    rowsWhere('retiro_setores', `retiro_id=eq.${enc(record.id)}`),
+    rowsWhere('retiro_dias', `retiro_id=eq.${enc(record.id)}`),
+  ]);
   await upsert('retiros', compact({
     id: record.id,
     nome: record.nome || 'Retiro sem nome',
@@ -258,18 +268,18 @@ async function saveRetreat(record) {
     extras: extras(record, mappedKeys),
   }));
 
-  await Promise.all([
-    deleteWhere('retiro_dias', `retiro_id=eq.${enc(record.id)}`),
-    deleteWhere('retiro_setores', `retiro_id=eq.${enc(record.id)}`),
-    deleteWhere('retiro_contribuicoes', `retiro_id=eq.${enc(record.id)}`),
-  ]);
+  await deleteWhere('retiro_contribuicoes', `retiro_id=eq.${enc(record.id)}`);
 
   const publicSet = new Set(array(record.setoresPublicos).map(normalizeText));
   const quadranteOrder = new Map(array(record.ordemQuadrante).map((nome, index) => [normalizeText(nome), index + 1]));
   const links = new Map(array(record.linksSetores || record.setorLinks).map((item) => [normalizeText(item.setor || item.sector), item]));
+  const existingSectorByKey = new Map(existingSectors.map((setor) => [normalizeText(setor.nome_normalizado || setor.nome), setor]));
+  const existingDayByName = new Map(existingDays.map((dia) => [normalizeText(dia.nome), dia]));
   const setores = array(record.setores).filter(Boolean).map((nome, index) => {
     const link = links.get(normalizeText(nome)) || {};
+    const existing = existingSectorByKey.get(normalizeText(nome));
     return {
+      id: existing?.id,
       retiro_id: record.id,
       nome,
       nome_normalizado: normalizeText(nome),
@@ -280,13 +290,28 @@ async function saveRetreat(record) {
       legacy_token: textOrNull(link.token),
     };
   });
-  const dias = array(record.dias).filter(Boolean).map((nome, index) => ({ retiro_id: record.id, nome, ordem: index + 1 }));
+  const dias = array(record.dias).filter(Boolean).map((nome, index) => {
+    const existing = existingDayByName.get(normalizeText(nome));
+    return { id: existing?.id, retiro_id: record.id, nome, ordem: index + 1 };
+  });
   const contribuicoes = array(record.contribuicoes).filter(Boolean).map((descricao, index) => ({ retiro_id: record.id, descricao, valor: numberOrZero(descricao), ordem: index + 1 }));
+  const selectedSectorKeys = new Set(setores.map((setor) => normalizeText(setor.nome)));
+  const selectedDayKeys = new Set(dias.map((dia) => normalizeText(dia.nome)));
+  const removedSectors = existingSectors.filter((setor) => !selectedSectorKeys.has(normalizeText(setor.nome_normalizado || setor.nome)));
+  const removedDays = existingDays.filter((dia) => !selectedDayKeys.has(normalizeText(dia.nome)));
+  const [referencedSectors, referencedDays] = await Promise.all([
+    referencedIds('adesao_setores', 'setor_id', removedSectors.map((setor) => setor.id)),
+    referencedIds('adesao_dias', 'dia_id', removedDays.map((dia) => dia.id)),
+  ]);
+  const removableSectorIds = removedSectors.map((setor) => setor.id).filter((id) => id && !referencedSectors.has(id));
+  const removableDayIds = removedDays.map((dia) => dia.id).filter((id) => id && !referencedDays.has(id));
 
   await Promise.all([
     setores.length ? upsert('retiro_setores', setores) : null,
     dias.length ? upsert('retiro_dias', dias) : null,
     contribuicoes.length ? upsert('retiro_contribuicoes', contribuicoes) : null,
+    removableSectorIds.length ? deleteWhere('retiro_setores', `id=in.(${removableSectorIds.map(enc).join(',')})`) : null,
+    removableDayIds.length ? deleteWhere('retiro_dias', `id=in.(${removableDayIds.map(enc).join(',')})`) : null,
   ]);
   return getRetreat(record.id);
 }
