@@ -2986,8 +2986,33 @@ select:focus {
   }
 
   .receiver-head {
-    display:none;
+    display:grid;
+    grid-template-columns:minmax(0, 1.25fr) minmax(70px, .5fr) minmax(96px, .68fr) minmax(76px, .48fr);
+    grid-template-areas:
+      "name name name name"
+      "sector suggested paid check";
+    min-width:0;
+    gap:6px 8px;
+    align-items:center;
+    margin-bottom:8px;
+    padding:10px 12px;
+    border:1px solid rgba(198,154,69,.24);
+    border-radius:9px;
+    background:#f8f6ef;
   }
+
+  .receiver-head button {
+    min-width:0;
+    font-size:10px;
+    line-height:1.2;
+    white-space:normal;
+  }
+
+  .receiver-head button:nth-child(1) { grid-area:name; }
+  .receiver-head button:nth-child(2) { grid-area:sector; }
+  .receiver-head button:nth-child(3) { grid-area:suggested; }
+  .receiver-head button:nth-child(4) { grid-area:paid; }
+  .receiver-head button:nth-child(5) { grid-area:check; }
 
   .receiver-row {
     display:grid;
