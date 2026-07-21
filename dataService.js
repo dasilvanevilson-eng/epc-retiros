@@ -151,6 +151,15 @@ const wouldLoseProtectedValue = (current, next) => {
 const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current)
   .filter((field) => !['updatedAt', 'atualizadoEm'].includes(field))
   .filter((field) => wouldLoseProtectedValue(current[field], next[field]));
+const preserveExistingRegistrationFields = ['dias', 'setores', 'retirosAnteriores'];
+const preserveExistingRegistrationData = (current = {}, next = {}) => {
+  preserveExistingRegistrationFields.forEach((field) => {
+    if (!isEmptyProtectedValue(current[field]) && isEmptyProtectedValue(next[field])) {
+      next[field] = current[field];
+    }
+  });
+  return next;
+};
 
 async function saveProtectedRegistration(storeName, record) {
   const nextRecord = { ...record };
@@ -158,8 +167,10 @@ async function saveProtectedRegistration(storeName, record) {
   const userSubmittedRegistration = nextRecord[userSubmittedRegistrationField] === true;
   delete nextRecord[dataLossBypassField];
   delete nextRecord[userSubmittedRegistrationField];
-  if (!protectedRegistrationStores.has(storeName) || !nextRecord.id || allowDataLoss || userSubmittedRegistration) return save(storeName, nextRecord);
+  if (!protectedRegistrationStores.has(storeName) || !nextRecord.id) return save(storeName, nextRecord);
   const current = await get(storeName, nextRecord.id).catch(() => null);
+  if (current) preserveExistingRegistrationData(current, nextRecord);
+  if (allowDataLoss || userSubmittedRegistration) return save(storeName, nextRecord);
   const fields = current ? protectedDataLossFields(current, nextRecord) : [];
   if (fields.length) {
     throw new Error(`Salvamento bloqueado para proteger dados ja cadastrados em ${storeName}. Campos em risco: ${fields.join(', ')}. Se a alteracao for intencional, faca backup, audite o impacto e use autorizacao explicita no codigo.`);

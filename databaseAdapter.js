@@ -120,6 +120,7 @@ async function supabaseRequest(pathname, options = {}) {
 const enc = (value) => encodeURIComponent(String(value));
 const compact = (object) => Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
 const array = (value) => Array.isArray(value) ? value : [];
+const nonEmptyArray = (value) => Array.isArray(value) && value.length > 0;
 const dateOrNull = (value) => value ? String(value) : null;
 const textOrNull = (value) => value === undefined || value === null || value === '' ? null : String(value);
 const numberOrZero = (value) => {
@@ -466,6 +467,14 @@ async function getEnrolment(id) {
 }
 
 async function saveEnrolment(record) {
+  const current = record.id ? await getEnrolment(record.id).catch(() => null) : null;
+  const nextRecord = { ...record };
+  ['dias', 'setores', 'retirosAnteriores'].forEach((field) => {
+    if (current && nonEmptyArray(current[field]) && !nonEmptyArray(nextRecord[field])) {
+      nextRecord[field] = current[field];
+    }
+  });
+  record = nextRecord;
   const person = await findPersonRow(record.pessoaId);
   const couple = await ensureCouple(record);
   const mappedKeys = new Set(['id', 'retiroId', 'pessoaId', 'nome', 'dias', 'setores', 'retirosAnteriores', 'quadrante', 'foto', 'contribuicao', 'coordenacao', 'coordenacaoSetor', 'espacoKids', 'espacoKidsNaoNecessito', 'observacao', 'termoVoluntariadoAceito', 'termoVoluntariadoAceitoEm', 'tipoFicha', 'casalId', 'papelNoCasal', 'tipoFinanceiro', 'taxaPaga', 'valorPago', 'formaPagamento', 'recebedorObservacao', 'status', 'validada', 'validadoEm', 'enviadoEm', 'atualizadoEm', 'dadosPessoais', 'createdAt', 'updatedAt']);
