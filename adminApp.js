@@ -2173,7 +2173,6 @@ async function renderCursista() {
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => control.focus({ preventScroll: true }), 180);
   };
-  let studentRequiredReviewActive = false;
   const firstStudentRequiredIssue = () => {
     const values = new FormData(form);
     const requiredChoices = ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro', 'paisMovimento', 'camiseta', 'intoleranciaAlimentos', 'alergiaMedicamento'];
@@ -2192,23 +2191,11 @@ async function renderCursista() {
     form.elements.qualIntolerancia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(intoleranceRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
     form.elements.qualAlergia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(allergyRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
   };
-  const focusNextStudentRequiredIssue = (currentControl) => {
-    if (!studentRequiredReviewActive || !currentControl) return;
-    syncStudentConditionalRequired();
-    const nextIssue = firstStudentRequiredIssue();
-    const currentGroup = currentControl.name ? form.querySelector(`[name="${currentControl.name}"]`) : currentControl;
-    if (nextIssue && nextIssue !== currentGroup && nextIssue !== currentControl) focusStudentIssue(nextIssue);
-    if (!nextIssue) studentRequiredReviewActive = false;
-  };
   form.querySelectorAll('[name="intoleranciaAlimentos"], [name="alergiaMedicamento"]').forEach((input) => {
     input.addEventListener('change', () => {
       syncStudentConditionalRequired();
-      const detailField = input.name === 'intoleranciaAlimentos' ? form.elements.qualIntolerancia : form.elements.qualAlergia;
-      if (input.checked && input.value === 'Sim') focusStudentIssue(detailField);
     });
   });
-  form.addEventListener('change', (event) => focusNextStudentRequiredIssue(event.target));
-  form.addEventListener('blur', (event) => focusNextStudentRequiredIssue(event.target), true);
   syncStudentConditionalRequired();
   const duplicateStudentCpfMessage = 'CPF já cadastrado';
   const studentTeamConflictMessage = 'Este CPF já está cadastrado na equipe de trabalho deste retiro.';
@@ -2341,10 +2328,6 @@ async function renderCursista() {
     if (await warnStudentTeamConflict(focus)) return true;
     return warnDuplicateStudentCpf(focus);
   };
-  form.elements.cpf.addEventListener('input', () => {
-    if (normalizeCpf(form.elements.cpf.value).length === 11) checkStudentCpf();
-  });
-  form.elements.cpf.addEventListener('change', () => checkStudentCpf(true));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!ensureRetreatCanBeChanged(focusStudentRetreat, 'salvar cursistas')) return;
@@ -2354,7 +2337,6 @@ async function renderCursista() {
     if (isValidCpf(submitCpf) && await checkStudentCpf(true)) return;
     const firstIssue = firstStudentRequiredIssue();
     if (!form.checkValidity() || firstIssue) {
-      studentRequiredReviewActive = true;
       app.querySelector('#student-message').textContent = 'Revise os campos obrigatórios antes de salvar.';
       focusStudentIssue(firstIssue);
       return;
