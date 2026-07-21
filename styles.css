@@ -2990,7 +2990,7 @@ select:focus {
     grid-template-columns:minmax(0, 1.25fr) minmax(70px, .5fr) minmax(96px, .68fr) minmax(76px, .48fr);
     grid-template-areas:
       "name name name name"
-      "suggested suggested paid paid";
+      "sector suggested paid paid";
     min-width:0;
     gap:6px 8px;
     align-items:center;
@@ -3009,7 +3009,7 @@ select:focus {
   }
 
   .receiver-head button:nth-child(1) { grid-area:name; }
-  .receiver-head button:nth-child(2) { display:none; }
+  .receiver-head button:nth-child(2) { grid-area:sector; }
   .receiver-head button:nth-child(3) { grid-area:suggested; }
   .receiver-head button:nth-child(4) { grid-area:paid; }
   .receiver-head button:nth-child(5) { display:none; }
