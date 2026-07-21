@@ -103,16 +103,7 @@ const syncSectorLinks = (retreat = {}, sectors = retreat.setores || []) => {
     };
   });
 };
-const ensureSectorLinks = async (retreat) => {
-  const nextLinks = syncSectorLinks(retreat, knownSectors(retreat.setores || []));
-  const current = JSON.stringify(retreat.linksSetores || []);
-  const next = JSON.stringify(nextLinks);
-  if (current === next && retreat.recebedorToken) return nextLinks;
-  retreat.linksSetores = nextLinks;
-  retreat.recebedorToken = retreat.recebedorToken || publicAccessToken();
-  await dataService.saveRetiro(retreat);
-  return nextLinks;
-};
+const preparedSectorLinks = (retreat) => syncSectorLinks(retreat, knownSectors(retreat.setores || []));
 
 const sortCommunitiesByPosition = (communities = []) => communities
   .map((community, index) => ({ community, index }))
@@ -426,21 +417,14 @@ function standardSectors() {
   return configuredSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
 }
 const saveStandardSectors = (sectors) => localStorage.setItem(standardSectorsKey, JSON.stringify(configuredSectors(sectors)));
-async function normalizeStoredRetreatSectors() {
-  const changedRetreats = retreats.filter((retreat) => {
+function normalizeRetreatSectorsForDisplay() {
+  retreats.forEach((retreat) => {
     const sectors = configuredSectors(retreat.setores || []);
     const publicSectors = configuredSectors(retreat.setoresPublicos ?? sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
     const quadranteOrder = configuredSectors(retreat.ordemQuadrante || sectors).filter((sector) => sectors.some((item) => normalizeText(item) === normalizeText(sector)));
-    const linksSetores = syncSectorLinks({ linksSetores: retreat.linksSetores || retreat.setorLinks || [] }, sectors);
-    const changed = JSON.stringify(retreat.setores || []) !== JSON.stringify(sectors)
-      || JSON.stringify(retreat.setoresPublicos || []) !== JSON.stringify(publicSectors)
-      || JSON.stringify(retreat.ordemQuadrante || []) !== JSON.stringify(quadranteOrder)
-      || JSON.stringify(retreat.linksSetores || []) !== JSON.stringify(linksSetores);
-    if (!changed) return false;
-    Object.assign(retreat, { setores: sectors, setoresPublicos: publicSectors, ordemQuadrante: quadranteOrder, linksSetores, updatedAt: new Date().toISOString() });
-    return true;
+    const linksSetores = (retreat.linksSetores || retreat.setorLinks || []).filter((link) => sectors.some((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector)));
+    Object.assign(retreat, { setores: sectors, setoresPublicos: publicSectors, ordemQuadrante: quadranteOrder, linksSetores });
   });
-  if (changedRetreats.length) await Promise.all(changedRetreats.map((retreat) => dataService.saveRetiro(retreat)));
   saveStandardSectors([...retreatDefaults.setores, ...retreats.flatMap((retreat) => retreat.setores || [])]);
 }
 const stateDatalist = () => `<datalist id="state-options">${brazilianStates.map(([uf, name]) => `<option value="${uf}">${name}</option>`).join('')}</datalist>`;
@@ -545,15 +529,7 @@ function wireTypedBirthDates(root) {
 async function loadData() {
   [retreats, enrolments, people] = await Promise.all([dataService.listRetiros(), dataService.listAdesoes(), dataService.listPessoas()]);
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  await normalizeStoredRetreatSectors();
-  const peopleById = new Map(people.map((person) => [person.id, person]));
-  const entriesWithoutPersonalSnapshot = enrolments.filter((entry) => !entry.dadosPessoais && peopleById.has(entry.pessoaId));
-  if (entriesWithoutPersonalSnapshot.length) {
-    await Promise.all(entriesWithoutPersonalSnapshot.map((entry) => {
-      entry.dadosPessoais = personalDataSnapshot(peopleById.get(entry.pessoaId));
-      return dataService.saveAdesao(entry);
-    }));
-  }
+  normalizeRetreatSectorsForDisplay();
 }
 
 function ageFromBirth(dateOfBirth) {
@@ -1204,9 +1180,8 @@ async function renderRetreat(id) {
   const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
   const retreatStatEntries = retreatEntries.length ? retreatEntries : retreatEnrolments;
   const storedSectorLinks = retreat.linksSetores || retreat.setorLinks || [];
-  const sectorLinks = canAccess('retiros.editar') && canModifyRetreat(retreat)
-    ? await ensureSectorLinks(retreat)
-    : syncSectorLinks({ linksSetores: storedSectorLinks }, knownSectors(retreat.setores || [])).filter((link) => storedSectorLinks.some((stored) => stored.token === link.token));
+  const sectorLinks = syncSectorLinks({ linksSetores: storedSectorLinks }, retreat.setores || [])
+    .filter((link) => storedSectorLinks.some((stored) => normalizeText(stored.setor || stored.sector) === normalizeText(link.setor)));
   const activeSectorKeys = new Set((retreat.setores || []).map(normalizeText));
   const activeSectorLinks = sectorLinks.filter((link) => activeSectorKeys.has(normalizeText(link.setor)));
   const serviceDays = retreatServiceDays(retreat);
@@ -1339,7 +1314,7 @@ async function renderRetreat(id) {
   const concluded = isRetreatConcluded(retreat);
   const retreatActions = concluded
     ? '<span class="status concluido">Somente consulta</span>'
-    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a><button class="primary-button" id="publish-retreat">${retreat.status === 'publicado' ? 'Retiro publicado' : 'Publicar retiro'}</button><button class="secondary-button" id="conclude-retreat" type="button">Encerrar retiro</button>`;
+    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a>${retreat.status === 'publicado' ? '<span class="status publicado">Retiro publicado</span>' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar retiro</button>`;
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions">${retreatActions}</div></section>
     ${retreatStatisticsHtml}
     <section class="detail-grid"></section>
@@ -1375,7 +1350,15 @@ async function renderRetreat(id) {
   if (!canAccess('retiros.encerrar')) app.querySelector('#conclude-retreat')?.remove();
   app.querySelector('#publish-retreat')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'publicar este retiro')) return;
-    if (retreat.status !== 'publicado') { retreat.status = 'publicado'; await dataService.saveRetiro(retreat); await loadData(); renderRetreat(id); }
+    if (retreat.status !== 'publicado') {
+      retreat.status = 'publicado';
+      retreat.linksSetores = preparedSectorLinks(retreat);
+      retreat.recebedorToken = retreat.recebedorToken || publicAccessToken();
+      retreat.updatedAt = new Date().toISOString();
+      await dataService.saveRetiro(retreat);
+      await loadData();
+      renderRetreat(id);
+    }
   });
   app.querySelector('#conclude-retreat')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'encerrar este retiro')) return;
