@@ -2384,7 +2384,7 @@ async function renderCursista() {
         values.set('recebedorObservacao', '');
       }
     }
-    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, __userSubmittedRegistration: true, criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
+    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
     await dataService.saveCursista(record);
     if (previousId && previousId !== cpf) {
       const communities = await dataService.listComunidades();
