@@ -124,6 +124,17 @@ async function save(storeName, record) {
     : legacyStore.save(storeName, nextRecord);
 }
 
+async function saveWithTransientControl(storeName, record, control = {}) {
+  const nextRecord = { ...record, id: record.id || createId() };
+  if ((await ensureBackend()) === 'file') {
+    return api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...nextRecord, ...control }),
+    });
+  }
+  return legacyStore.save(storeName, nextRecord);
+}
+
 async function remove(storeName, id) {
   return (await ensureBackend()) === 'file'
     ? api(`/${storeName}/${encodeURIComponent(id)}`, { method: 'DELETE' })
@@ -170,7 +181,8 @@ async function saveProtectedRegistration(storeName, record) {
   if (!protectedRegistrationStores.has(storeName) || !nextRecord.id) return save(storeName, nextRecord);
   const current = await get(storeName, nextRecord.id).catch(() => null);
   if (current) preserveExistingRegistrationData(current, nextRecord);
-  if (allowDataLoss || userSubmittedRegistration) return save(storeName, nextRecord);
+  if (allowDataLoss) return saveWithTransientControl(storeName, nextRecord, { [dataLossBypassField]: true });
+  if (userSubmittedRegistration) return save(storeName, nextRecord);
   const fields = current ? protectedDataLossFields(current, nextRecord) : [];
   if (fields.length) {
     throw new Error(`Salvamento bloqueado para proteger dados ja cadastrados em ${storeName}. Campos em risco: ${fields.join(', ')}. Se a alteracao for intencional, faca backup, audite o impacto e use autorizacao explicita no codigo.`);
