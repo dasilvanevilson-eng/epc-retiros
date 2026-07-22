@@ -3659,6 +3659,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     : `<section class="form-section"><div class="section-heading"><span>05</span><div><h2>Setor de trabalho <b>*</b></h2></div></div><div class="choice-block">${publicSectors}${sectorCoordinatorOption}</div></section>`;
   const kidsAgeLimitHint = Number(retreat.idadeMaximaEspacoKids) > 0 ? ` Idade máxima: ${Number(retreat.idadeMaximaEspacoKids)} ano(s).` : '';
   const kidsAgeLimitMessage = 'A idade da criança supera a idade máxima para ocupar o espaço kids neste retiro. Por gentileza consulte a coordenação';
+  const internalKidsAgeLimitMessage = 'Idade superior á definida para esse retiro';
+  const canUseInternalKidAgeLimitException = embedded && retreat.status === 'publicado';
   const kidAgeLimitViolation = (source) => {
     if (Number(retreat.idadeMaximaEspacoKids) <= 0) return null;
     for (let index = 1; index <= 5; index += 1) {
@@ -3701,6 +3703,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   wireCepLookup(form);
   wireCpfFields(form);
   wireTypedBirthDates(form);
+  let internalKidAgeLimitExceptionAllowed = false;
   form.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' || event.target.matches('textarea, button')) return;
     event.preventDefault();
@@ -3710,6 +3713,36 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const next = controls[current + 1];
     if (next) next.focus();
     else form.querySelector('button[type="submit"]')?.focus();
+  });
+  const showInternalKidAgeLimitDialog = () => new Promise((resolve) => {
+    mount.querySelector('.hidden-team-alert-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.className = 'hidden-team-alert-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'kids-age-limit-title');
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog kids-age-limit-dialog"><p class="eyebrow">Espaço Kids</p><h2 id="kids-age-limit-title">${internalKidsAgeLimitMessage}</h2><label class="kids-age-limit-option"><input type="checkbox" data-allow-kids-age-limit><span>Permitir incluir crianças com idade acima da definida para esse retiro</span></label><div class="spouse-registered-actions"><button type="button" data-kids-age-limit-cancel>Cancelar</button><button type="button" data-kids-age-limit-confirm disabled>Continuar</button></div></div>`;
+    const checkbox = overlay.querySelector('[data-allow-kids-age-limit]');
+    const confirmButton = overlay.querySelector('[data-kids-age-limit-confirm]');
+    const close = (allowed) => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+      resolve(allowed);
+    };
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') close(false);
+    };
+    checkbox.addEventListener('change', () => {
+      confirmButton.disabled = !checkbox.checked;
+    });
+    overlay.querySelector('[data-kids-age-limit-cancel]').addEventListener('click', () => close(false));
+    confirmButton.addEventListener('click', () => close(Boolean(checkbox.checked)));
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) close(false);
+    });
+    document.addEventListener('keydown', onKeydown);
+    mount.append(overlay);
+    checkbox.focus();
   });
   const showSectorTeamAlert = (area) => {
     const isHiddenTeam = area === 'escondida';
@@ -4474,6 +4507,15 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   form.addEventListener('change', async (event) => {
     event.target.closest('.field, .choice-block, .form-section')?.classList.remove('field-warning');
     if (/^kidNascimento\d+$/.test(event.target.name || '') && kidAgeLimitViolation(form)?.control === event.target) {
+      if (canUseInternalKidAgeLimitException) {
+        internalKidAgeLimitExceptionAllowed = await showInternalKidAgeLimitDialog();
+        if (internalKidAgeLimitExceptionAllowed) form.querySelector('#form-message')?.replaceChildren('');
+        return;
+      }
+      if (embedded) {
+        form.querySelector('#form-message')?.replaceChildren(internalKidsAgeLimitMessage);
+        return;
+      }
       alert(kidsAgeLimitMessage);
       if (!embedded) form.querySelector('#form-message')?.replaceChildren(kidsAgeLimitMessage);
       return;
@@ -4551,7 +4593,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
     const ageLimitViolation = !kidsNotNeeded ? kidAgeLimitViolation(source) : null;
-    const blocksKidAgeLimit = !embedded && ageLimitViolation;
+    const blocksKidAgeLimit = ageLimitViolation && (!canUseInternalKidAgeLimitException || !internalKidAgeLimitExceptionAllowed);
     const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && checkedValues(source, 'spouseRetiros').length && spouseDaysComplete && spouseDays.length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
@@ -4575,7 +4617,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       else if (!days.length) message = 'Em Dias confirmados para trabalhar, confirme pelo menos um dia com Sim.';
       else if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
       else if (hasIncompleteKid) message = 'No Espaço Kids, preencha nome e data de nascimento de cada criança informada.';
-      else if (blocksKidAgeLimit) message = kidsAgeLimitMessage;
+      else if (blocksKidAgeLimit) message = embedded ? internalKidsAgeLimitMessage : kidsAgeLimitMessage;
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
       else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
       source.querySelector('#form-message')?.replaceChildren(message);
@@ -4593,7 +4635,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       ].filter(Boolean);
       const nextControl = candidateControls.sort((first, second) => first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1)[0];
       focusControl(nextControl);
-      if (blocksKidAgeLimit) alert(kidsAgeLimitMessage);
+      if (blocksKidAgeLimit && !embedded) alert(kidsAgeLimitMessage);
     }
     return valid;
   };
@@ -4662,14 +4704,19 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     event.preventDefault();
     if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) return;
     await syncAutofilledPublicForm();
+    if (canUseInternalKidAgeLimitException && kidAgeLimitViolation(form) && !internalKidAgeLimitExceptionAllowed) {
+      internalKidAgeLimitExceptionAllowed = await showInternalKidAgeLimitDialog();
+      if (!internalKidAgeLimitExceptionAllowed) {
+        form.querySelector('#form-message')?.replaceChildren(internalKidsAgeLimitMessage);
+        return;
+      }
+      form.querySelector('#form-message')?.replaceChildren('');
+    }
     setPublicSubmitting(true);
     try {
       syncContributionAmount();
       if (!validateForm(form)) {
         return;
-      }
-      if (embedded && kidAgeLimitViolation(form)) {
-        alert(kidsAgeLimitMessage);
       }
       if (await blockPublicCpfIssues()) {
         return;
