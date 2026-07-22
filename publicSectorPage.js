@@ -49,7 +49,15 @@ function sectorPageHtml({ retreat, sector, entries }) {
       .sector-public-summary span{color:#6c7469}
       .sector-public-summary strong{font-weight:800}
       .sector-public-empty{padding:18px 4px;color:#6c7469}
+      .sector-public-actions{display:flex;justify-content:flex-end;gap:10px}
       .sector-public-close{align-self:flex-end;min-height:42px;padding:10px 16px;border:0;border-radius:8px;background:#315c38;color:white;font-weight:800;cursor:pointer}
+      .sector-public-print{align-self:flex-end;min-height:42px;padding:10px 16px;border:1px solid #315c38;border-radius:8px;background:#fff;color:#315c38;font-weight:800;cursor:pointer}
+      @media print{
+        body{display:block;min-height:auto;padding:0;background:#fff}
+        .sector-public-modal{width:auto;max-height:none;padding:0;border:0;border-radius:0;box-shadow:none}
+        .sector-public-list{overflow:visible}
+        .sector-public-actions{display:none}
+      }
     </style>
   </head>
   <body>
@@ -58,9 +66,15 @@ function sectorPageHtml({ retreat, sector, entries }) {
       <h1 id="sector-title">${escapeHtml(sector)}</h1>
       <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
       ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><footer class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</footer>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
-      <button type="button" class="sector-public-close" id="close-sector-view">Fechar visualização</button>
+      <div class="sector-public-actions">
+        <button type="button" class="sector-public-print" id="print-sector-view">Imprimir</button>
+        <button type="button" class="sector-public-close" id="close-sector-view">Fechar visualização</button>
+      </div>
     </section>
     <script>
+      document.getElementById('print-sector-view').addEventListener('click', () => {
+        window.print();
+      });
       document.getElementById('close-sector-view').addEventListener('click', () => {
         if (window.opener) {
           window.close();
