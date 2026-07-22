@@ -2828,7 +2828,7 @@ async function renderCrachas() {
         <select id="badge-sector-unused" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
         <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
-      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo editável</button></div>
+      <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button></div>
       <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button>' : ''}</div>
     </div></section>
   <section class="badge-workbench">
@@ -2862,7 +2862,7 @@ async function renderCrachas() {
           <select id="badge-sector" hidden>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)} (${badgeSectorCount(sector)})</option>`).join('')}</select>
           <select id="badge-person" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
         </div>
-        <div class="badge-print-actions">${canPrintBadges ? '<button class="secondary-button" id="badge-print" type="button">Imprimir</button><button class="primary-button" id="badge-word" type="button">Gerar arquivo edit&aacute;vel</button>' : ''}</div>
+        <div class="badge-print-actions">${canPrintBadges ? '<button class="secondary-button" id="badge-print" type="button">Imprimir</button>' : ''}</div>
       </div>
     </section>
   </section></section><section class="badge-print-area" id="badge-print-area"></section>`, 'crachas');
@@ -3324,22 +3324,6 @@ async function renderCrachas() {
       }))).then(() => setTimeout(triggerPrint, 150));
     }, { once: true });
   };
-  const generateBadgeWordFile = () => {
-    if (!canPrintBadges) return;
-    const payload = badgePrintPayload();
-    if (!payload) return;
-    const documentHtml = badgePrintDocument(payload.printContent, payload.title);
-    const blob = new Blob([`\uFEFF${documentHtml}`], { type: 'application/msword;charset=utf-8' });
-    const link = document.createElement('a');
-    const fileName = normalizeText(payload.title).replace(/\s+/g, '-') || 'crachas';
-    link.href = URL.createObjectURL(blob);
-    link.download = `${fileName}.doc`;
-    document.body.append(link);
-    link.click();
-    URL.revokeObjectURL(link.href);
-    link.remove();
-    app.querySelector('#badge-print-summary').textContent = 'Arquivo editável gerado.';
-  };
   form.elements.textTarget?.addEventListener('change', () => {
     syncTextTargetControls(settings);
     activeTextTarget = form.elements.textTarget?.value || 'name';
@@ -3381,7 +3365,6 @@ async function renderCrachas() {
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
   printPanel.querySelector('#badge-print')?.addEventListener('click', printBadges);
-  printPanel.querySelector('#badge-word')?.addEventListener('click', generateBadgeWordFile);
   openBadgePanel('logo');
   syncTextTargetControls(settings);
   renderBadges();
