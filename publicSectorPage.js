@@ -11,6 +11,18 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character)
 
 const entryHasSector = (entry = {}, sector = '') => (entry.setores || []).some((item) => normalizeText(item) === normalizeText(sector));
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
+const registrationRetreatOrder = ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
+const registrationRetreatOrderIndex = new Map(registrationRetreatOrder.map((retreat, index) => [normalizeText(retreat), index]));
+const entryRetreatsDone = (entry = {}) => (Array.isArray(entry.retirosAnteriores) ? entry.retirosAnteriores : [entry.retirosAnteriores])
+  .map((retreat, index) => ({ name: String(retreat || '').trim(), index }))
+  .filter((retreat) => retreat.name)
+  .sort((first, second) => {
+    const firstOrder = registrationRetreatOrderIndex.has(normalizeText(first.name)) ? registrationRetreatOrderIndex.get(normalizeText(first.name)) : registrationRetreatOrder.length + first.index;
+    const secondOrder = registrationRetreatOrderIndex.has(normalizeText(second.name)) ? registrationRetreatOrderIndex.get(normalizeText(second.name)) : registrationRetreatOrder.length + second.index;
+    return firstOrder - secondOrder;
+  })
+  .map((retreat) => retreat.name);
+const personRetreatsDoneText = (person = {}) => person.retreatsDone?.length ? person.retreatsDone.join(', ') : 'nao informado';
 const scriptJson = (value) => JSON.stringify(value).replace(/</g, '\\u003C');
 
 function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
@@ -44,7 +56,7 @@ function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
     <p class="eyebrow">Acompanhamento do setor</p>
     <h1>${escapeHtml(sector)}</h1>
     <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
-    ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
+    ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Retiros que fez: ${escapeHtml(personRetreatsDoneText(person))}</span><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
     <script>
       window.addEventListener('load', () => setTimeout(() => window.print(), 150), { once: true });
     </script>
@@ -55,7 +67,7 @@ function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
 function sectorPageHtml({ retreat, sector, entries }) {
   const title = `Inscritos do setor ${sector} - ${retreat.nome}`;
   const people = entries
-    .map((entry) => ({ name: String(entry.nome || '').trim(), days: entryDays(entry) }))
+    .map((entry) => ({ name: String(entry.nome || '').trim(), days: entryDays(entry), retreatsDone: entryRetreatsDone(entry) }))
     .filter((entry) => entry.name)
     .sort((first, second) => first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' }));
   const configuredDays = Array.isArray(retreat.dias) && retreat.dias.length
@@ -107,7 +119,7 @@ function sectorPageHtml({ retreat, sector, entries }) {
       <p class="eyebrow">Acompanhamento do setor</p>
       <h1 id="sector-title">${escapeHtml(sector)}</h1>
       <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
-      ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
+      ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Retiros que fez: ${escapeHtml(personRetreatsDoneText(person))}</span><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
       <div class="sector-public-actions">
         <button type="button" class="sector-public-print" id="print-sector-view">Imprimir</button>
         <button type="button" class="sector-public-close" id="close-sector-view">Fechar visualização</button>
