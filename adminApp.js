@@ -276,6 +276,29 @@ const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.upd
 const participantIdentity = (record = {}) => normalizeCpf(record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id) || String(record.pessoaId || record.id || record.nome || '').trim();
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
 const entrySectors = (entry = {}) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores || entry.setor]).map((sector) => String(sector || '').trim()).filter(Boolean);
+const participationGroupOrder = ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
+const participationGroupOrderIndex = new Map(participationGroupOrder.map((group, index) => [normalizeText(group), index]));
+const entryPreviousRetreats = (entry = {}) => (Array.isArray(entry.retirosAnteriores) ? entry.retirosAnteriores : [entry.retirosAnteriores])
+  .map((retreat) => String(retreat || '').trim())
+  .filter(Boolean);
+const sortedPreviousRetreats = (retreats = []) => retreats
+  .map((retreat, index) => ({ retreat, index }))
+  .sort((first, second) => {
+    const firstOrder = participationGroupOrderIndex.has(normalizeText(first.retreat)) ? participationGroupOrderIndex.get(normalizeText(first.retreat)) : participationGroupOrder.length + first.index;
+    const secondOrder = participationGroupOrderIndex.has(normalizeText(second.retreat)) ? participationGroupOrderIndex.get(normalizeText(second.retreat)) : participationGroupOrder.length + second.index;
+    return firstOrder - secondOrder;
+  })
+  .map((item) => item.retreat);
+const entryParticipationGroup = (entry = {}) => {
+  const previousRetreats = entryPreviousRetreats(entry);
+  if (!previousRetreats.length) return '';
+  const normalized = new Set(previousRetreats.map(normalizeText));
+  if (previousRetreats.length === 1) {
+    return participationGroupOrder.find((group) => normalized.has(normalizeText(group))) || '';
+  }
+  const withoutEisMeAqui = new Set([...normalized].filter((retreat) => retreat !== normalizeText('Eis-me aqui')));
+  return [...participationGroupOrder].reverse().find((group) => withoutEisMeAqui.has(normalizeText(group))) || '';
+};
 const uniqueByParticipant = (items = []) => {
   const byIdentity = new Map();
   items.forEach((item) => {
@@ -734,6 +757,7 @@ function setupHomeStatTabs(options = {}) {
     ['shirts', 'Camisetas dos cursistas', grid.querySelector('.shirt-stat-panel')],
     ['presence', 'Presen\u00e7a por dia', grid.querySelector('.presence-stat-panel')],
     ['sectors', 'Pessoas por setor', grid.querySelector('.sector-stat-panel')],
+    ['groups', 'Pessoas por grupo', grid.querySelector('.participation-group-stat-panel')],
   ].filter(([, , panel]) => panel);
   if (!panels.length) return;
   grid.classList.add('home-stat-tabs');
@@ -824,6 +848,39 @@ function wireSectorStatWindows(rows = []) {
         if (!root) return;
         root.dataset.sectorListHtml = root.innerHTML;
         setupSectorStatDrilldown(root, rows);
+      }, 0);
+    });
+  });
+}
+
+function setupParticipationGroupStatDrilldown(root, rows = []) {
+  root.querySelectorAll('[data-stat-participation-group]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const group = button.dataset.statParticipationGroup;
+      const selected = rows.find((row) => normalizeText(row.group) === normalizeText(group));
+      const volunteers = selected?.volunteers || [];
+      root.innerHTML = `<button type="button" class="receiver-sector-back" data-participation-group-stat-back>← Todos os grupos</button><section class="sector-public-modal sector-public-modal-inline" role="dialog" aria-modal="true" aria-labelledby="participation-group-title"><p class="eyebrow">Pessoas por grupo</p><h1 id="participation-group-title">${escapeHtml(group)}</h1><p>${volunteers.length} pessoa(s) classificada(s) neste grupo.</p>${volunteers.length ? `<ul class="sector-public-list">${volunteers.map((entry) => {
+        const previousRetreats = sortedPreviousRetreats(entryPreviousRetreats(entry));
+        return `<li><strong>${escapeHtml(entry.nome || 'Sem nome')}</strong><small>Setor de trabalho: ${escapeHtml(entrySectors(entry).length ? entrySectors(entry).join(', ') : 'Setor nao informado')}</small><span>Retiros que fez: ${escapeHtml(previousRetreats.length ? previousRetreats.join(', ') : 'nao informado')}</span><span>Dias de trabalho: ${escapeHtml(entryDays(entry).length ? entryDays(entry).join(', ') : 'dias nao informados')}</span></li>`;
+      }).join('')}</ul>` : '<div class="sector-public-empty">Nenhuma pessoa classificada neste grupo.</div>'}</section>`;
+      setHomeStatPrintOptions(root.closest('.home-stat-dialog'), [{ label: 'Impressão', title: `Pessoas por grupo - ${group}`, content: root.innerHTML }]);
+      root.querySelector('[data-participation-group-stat-back]').addEventListener('click', () => {
+        root.innerHTML = root.dataset.participationGroupListHtml || '';
+        setHomeStatPrintOptions(root.closest('.home-stat-dialog'), [{ label: 'Impressão', title: 'Pessoas por grupo', content: root.innerHTML }]);
+        setupParticipationGroupStatDrilldown(root, rows);
+      });
+    });
+  });
+}
+
+function wireParticipationGroupStatWindows(rows = []) {
+  app.querySelectorAll('[data-home-stat="groups"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      setTimeout(() => {
+        const root = app.querySelector('.home-stat-scroll');
+        if (!root) return;
+        root.dataset.participationGroupListHtml = root.innerHTML;
+        setupParticipationGroupStatDrilldown(root, rows);
       }, 0);
     });
   });
@@ -922,7 +979,14 @@ async function renderHome() {
     days: serviceDays,
     volunteers: activeStatEntries.filter((entry) => entryHasSector(entry, sector)).sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' })),
   }));
+  const participationGroupStatRows = participationGroupOrder.map((group) => {
+    const volunteers = activeStatEntries
+      .filter((entry) => normalizeText(entryParticipationGroup(entry)) === normalizeText(group))
+      .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
+    return { group, count: volunteers.length, volunteers };
+  });
   const sectorRows = sectorStatRows.length ? sectorStatRows.map(({ sector, count }) => `<button type="button" data-stat-sector="${escapeHtml(sector)}"><span>${escapeHtml(sector)}</span><strong>${count}</strong></button>`).join('') : '<p class="empty-state">Nenhum setor com equipe inscrita.</p>';
+  const participationGroupRows = participationGroupStatRows.map(({ group, count }) => `<button type="button" data-stat-participation-group="${escapeHtml(group)}"><span>${escapeHtml(group)}</span><strong>${count}</strong></button>`).join('');
   const dayRows = serviceDays.length ? serviceDays.map((day) => `<div><span>${escapeHtml(day)}</span><strong>${dayCount(day)}</strong><small>pessoa(s)</small></div>`).join('') : '<p class="empty-state">Nenhum dia configurado.</p>';
   const shirtGrid = shirtRows.length ? shirtRows.map(([size, count]) => `<div><span>${escapeHtml(size)}</span><strong>${count}</strong><small>camiseta(s)</small></div>`).join('') : '<p class="empty-state">Nenhum tamanho informado.</p>';
   const healthRows = (students, field, fallback, options = {}) => students.length ? `<div class="student-health-list">${students.map((student) => {
@@ -954,6 +1018,7 @@ async function renderHome() {
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
       <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
+      <article class="panel dashboard-panel participation-group-stat-panel"><div class="panel-heading"><div><h2>Pessoas por grupo</h2><p>Equipe de trabalho classificada pelos retiros anteriores.</p></div></div><div class="sector-simple-list">${participationGroupRows}</div></article>
     </section>
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
   setupHomeStatTabs({ shirtStudents: activeStudents, communityDetails: activeCommunityDetails });
@@ -972,6 +1037,7 @@ async function renderHome() {
     });
   });
   wireSectorStatWindows(sectorStatRows);
+  wireParticipationGroupStatWindows(participationGroupStatRows);
 }
 
 async function renderRetiros() {

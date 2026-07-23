@@ -1553,7 +1553,7 @@ button:hover,
 
 .home-stat-buttons {
   display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:16px;
   width:100%;
 }
@@ -2036,9 +2036,9 @@ button:hover,
   }
 
   .home-stat-buttons button:last-child {
-    grid-column:1 / -1;
-    justify-self:center;
-    width:calc(50% - 8px);
+    grid-column:auto;
+    justify-self:stretch;
+    width:100%;
   }
 
   .dashboard-grid,
@@ -4030,7 +4030,7 @@ select:focus {
 
 .home-stat-buttons {
   gap:8px;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
 }
 
 .home-stat-buttons button {
@@ -4114,7 +4114,7 @@ select:focus {
   }
 
   .home-stat-buttons {
-    grid-template-columns:repeat(3, minmax(0, 1fr));
+    grid-template-columns:repeat(2, minmax(0, 1fr));
   }
 
   .home-stat-buttons button:last-child {
