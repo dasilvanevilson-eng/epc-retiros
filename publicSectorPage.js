@@ -11,6 +11,46 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character)
 
 const entryHasSector = (entry = {}, sector = '') => (entry.setores || []).some((item) => normalizeText(item) === normalizeText(sector));
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
+const scriptJson = (value) => JSON.stringify(value).replace(/</g, '\\u003C');
+
+function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      @page{size:A4;margin:12mm}
+      *{box-sizing:border-box}
+      body{margin:0;color:#203c26;background:#fff;font-family:Arial,sans-serif}
+      h1{margin:0 0 6px;font-size:24px;line-height:1.12}
+      p{margin:0 0 16px;color:#5f685f;font-size:13px;line-height:1.35}
+      .eyebrow{margin:0 0 5px;color:#2b76b7;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+      .sector-public-list{margin:16px 0 18px;padding:0;list-style:none;border-top:1px solid #e1d6c5}
+      .sector-public-list li{padding:10px 0;border-bottom:1px solid #e1d6c5;break-inside:avoid;page-break-inside:avoid}
+      .sector-public-list strong{display:block;font-size:15px;line-height:1.2}
+      .sector-public-list span{display:block;margin-top:4px;color:#5f685f;font-size:12px;line-height:1.35}
+      .sector-public-summary{margin-top:18px;padding:14px;border:1px solid #d9cdb7;border-radius:8px;background:#fff8ec;break-inside:avoid;page-break-inside:avoid}
+      .sector-public-summary h2{margin:0 0 10px;font-size:17px;line-height:1.2}
+      .sector-public-summary div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:7px 0;border-top:1px solid #eadcc5}
+      .sector-public-summary div:first-of-type{border-top:0}
+      .sector-public-summary span{color:#5f685f}
+      .sector-public-summary strong{font-weight:800}
+      .sector-public-empty{padding:18px 0;color:#5f685f}
+    </style>
+  </head>
+  <body>
+    <p class="eyebrow">Acompanhamento do setor</p>
+    <h1>${escapeHtml(sector)}</h1>
+    <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
+    ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
+    <script>
+      window.addEventListener('load', () => setTimeout(() => window.print(), 150), { once: true });
+    </script>
+  </body>
+</html>`;
+}
 
 function sectorPageHtml({ retreat, sector, entries }) {
   const title = `Inscritos do setor ${sector} - ${retreat.nome}`;
@@ -24,6 +64,7 @@ function sectorPageHtml({ retreat, sector, entries }) {
   const daySummary = configuredDays
     .map((day) => ({ day, count: people.filter((entry) => entry.days.some((entryDay) => normalizeText(entryDay) === normalizeText(day))).length }))
     .filter((item) => item.day);
+  const printableReport = sectorPrintPageHtml({ title, retreat, sector, people, daySummary });
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -73,8 +114,16 @@ function sectorPageHtml({ retreat, sector, entries }) {
       </div>
     </section>
     <script>
+      const printableReport = ${scriptJson(printableReport)};
       document.getElementById('print-sector-view').addEventListener('click', () => {
-        window.print();
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          window.print();
+          return;
+        }
+        printWindow.document.open();
+        printWindow.document.write(printableReport);
+        printWindow.document.close();
       });
       document.getElementById('close-sector-view').addEventListener('click', () => {
         if (window.opener) {
