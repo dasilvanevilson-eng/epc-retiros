@@ -3834,6 +3834,7 @@ select:focus {
   .student-form .student-questions fieldset:has(input[name="fezRetiro"]),
   .student-form .student-questions fieldset:has(input[name="intoleranciaAlimentos"]),
   .student-form .student-questions fieldset:has(input[name="alergiaMedicamento"]),
+  .student-form .student-questions fieldset:has(input[name="medicamentoContinuo"]),
   .student-form .student-fieldset {
     grid-column:1 / -1;
   }
@@ -3845,6 +3846,7 @@ select:focus {
   .student-form fieldset:has(input[name="qualRetiro"]) .field,
   .student-form fieldset:has(input[name="qualIntolerancia"]) .field,
   .student-form fieldset:has(input[name="qualAlergia"]) .field,
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) .field,
   .student-form fieldset:has(input[name="qualMovimento"]) .field {
     margin-top:8px;
   }
@@ -3852,7 +3854,8 @@ select:focus {
   .student-form fieldset:has(input[name="qualRetiro"]),
   .student-form fieldset:has(input[name="qualMovimento"]),
   .student-form fieldset:has(input[name="qualIntolerancia"]),
-  .student-form fieldset:has(input[name="qualAlergia"]) {
+  .student-form fieldset:has(input[name="qualAlergia"]),
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) {
     display:grid;
     grid-template-columns:minmax(0, .95fr) minmax(128px, 1.05fr);
     gap:6px 8px;
@@ -3862,21 +3865,24 @@ select:focus {
   .student-form fieldset:has(input[name="qualRetiro"]) legend,
   .student-form fieldset:has(input[name="qualMovimento"]) legend,
   .student-form fieldset:has(input[name="qualIntolerancia"]) legend,
-  .student-form fieldset:has(input[name="qualAlergia"]) legend {
+  .student-form fieldset:has(input[name="qualAlergia"]) legend,
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) legend {
     grid-column:1 / -1;
   }
 
   .student-form fieldset:has(input[name="qualRetiro"]) .inline-choices,
   .student-form fieldset:has(input[name="qualMovimento"]) .inline-choices,
   .student-form fieldset:has(input[name="qualIntolerancia"]) .inline-choices,
-  .student-form fieldset:has(input[name="qualAlergia"]) .inline-choices {
+  .student-form fieldset:has(input[name="qualAlergia"]) .inline-choices,
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) .inline-choices {
     margin:0;
   }
 
   .student-form fieldset:has(input[name="qualRetiro"]) .field,
   .student-form fieldset:has(input[name="qualMovimento"]) .field,
   .student-form fieldset:has(input[name="qualIntolerancia"]) .field,
-  .student-form fieldset:has(input[name="qualAlergia"]) .field {
+  .student-form fieldset:has(input[name="qualAlergia"]) .field,
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) .field {
     margin-top:0;
   }
 
@@ -3911,7 +3917,8 @@ select:focus {
   .student-form fieldset:has(input[name="qualRetiro"]),
   .student-form fieldset:has(input[name="qualMovimento"]),
   .student-form fieldset:has(input[name="qualIntolerancia"]),
-  .student-form fieldset:has(input[name="qualAlergia"]) {
+  .student-form fieldset:has(input[name="qualAlergia"]),
+  .student-form fieldset:has(input[name="qualMedicamentoContinuo"]) {
     grid-template-columns:minmax(88px, .85fr) minmax(0, 1.15fr);
   }
 

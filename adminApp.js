@@ -2221,6 +2221,7 @@ async function renderCursista() {
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
   layout(`<section class="page-heading student-page-heading"><div><h1>Cursista</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
+  form.querySelector('input[name="qualAlergia"]')?.closest('fieldset')?.insertAdjacentHTML('afterend', `<fieldset><legend>Toma medicamento de forma contínua? <b>*</b></legend>${yesNo('medicamentoContinuo')}<label class="field"><span>Qual?</span><input name="qualMedicamentoContinuo"></label></fieldset>`);
   if (!canEditStudentRetreat) {
     app.querySelector('#new-student')?.remove();
     app.querySelector('#student-message').textContent = 'Retiro concluido: cadastro de cursistas disponivel apenas para consulta.';
@@ -2241,28 +2242,39 @@ async function renderCursista() {
   };
   const firstStudentRequiredIssue = () => {
     const values = new FormData(form);
-    const requiredChoices = ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro', 'paisMovimento', 'camiseta', 'intoleranciaAlimentos', 'alergiaMedicamento'];
+    const requiredChoices = ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro', 'paisMovimento', 'camiseta', 'intoleranciaAlimentos', 'alergiaMedicamento', 'medicamentoContinuo'];
     const missingChoice = requiredChoices.find((name) => !values.get(name));
     if (missingChoice) return form.querySelector(`[name="${missingChoice}"]`);
     if (values.get('intoleranciaAlimentos') === 'Sim' && !String(values.get('qualIntolerancia') || '').trim()) return form.elements.qualIntolerancia;
     if (values.get('alergiaMedicamento') === 'Sim' && !String(values.get('qualAlergia') || '').trim()) return form.elements.qualAlergia;
+    if (values.get('medicamentoContinuo') === 'Sim' && !String(values.get('qualMedicamentoContinuo') || '').trim()) return form.elements.qualMedicamentoContinuo;
     return form.querySelector(':invalid');
   };
   const syncStudentConditionalRequired = () => {
     const values = new FormData(form);
     const intoleranceRequired = values.get('intoleranciaAlimentos') === 'Sim';
     const allergyRequired = values.get('alergiaMedicamento') === 'Sim';
+    const continuousMedicationRequired = values.get('medicamentoContinuo') === 'Sim';
     form.elements.qualIntolerancia.required = intoleranceRequired;
     form.elements.qualAlergia.required = allergyRequired;
+    form.elements.qualMedicamentoContinuo.required = continuousMedicationRequired;
     form.elements.qualIntolerancia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(intoleranceRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
     form.elements.qualAlergia.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(allergyRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
+    form.elements.qualMedicamentoContinuo.closest('.field')?.querySelector('span')?.replaceChildren(document.createTextNode('Qual?'), ...(continuousMedicationRequired ? [document.createTextNode(' '), Object.assign(document.createElement('b'), { textContent: '*' })] : []));
   };
-  form.querySelectorAll('[name="intoleranciaAlimentos"], [name="alergiaMedicamento"]').forEach((input) => {
+  form.querySelectorAll('[name="intoleranciaAlimentos"], [name="alergiaMedicamento"], [name="medicamentoContinuo"]').forEach((input) => {
     input.addEventListener('change', () => {
       syncStudentConditionalRequired();
     });
   });
   syncStudentConditionalRequired();
+  const ensureStudentMedicationDefault = (student = {}) => {
+    if (['Sim', 'Não'].includes(student.medicamentoContinuo)) return;
+    form.querySelectorAll('[name="medicamentoContinuo"]').forEach((input) => {
+      input.checked = input.value === 'Não';
+    });
+    syncStudentConditionalRequired();
+  };
   const duplicateStudentCpfMessage = 'CPF já cadastrado';
   const studentTeamConflictMessage = 'Este CPF já está cadastrado na equipe de trabalho deste retiro.';
   const studentArchiveMessage = 'Dados encontrados no acervo da equipe. Revise antes de salvar.';
@@ -2487,6 +2499,8 @@ async function renderCursistaDetalhe(id) {
   const field = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const address = [student.rua, student.numero, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ');
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('CPF', formatCpf(student.cpf || student.id))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
+  const studentHealthItems = [...app.querySelectorAll('.panel')].find((panel) => panel.querySelector('h2')?.textContent === 'Saúde e inscrição')?.querySelectorAll('.simple-list > div');
+  studentHealthItems?.[3]?.insertAdjacentHTML('afterend', `${field('Toma medicamento contínuo', student.medicamentoContinuo || 'Não')}${field('Qual medicamento contínuo?', student.qualMedicamentoContinuo)}`);
   if (!canDeleteStudentDetail) app.querySelector('#delete-consulted-student')?.closest('.panel')?.remove();
   app.querySelector('#delete-consulted-student')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'excluir cursistas')) return;
@@ -5090,6 +5104,7 @@ async function route() {
         const student = students.find((item) => item.id === button.dataset.studentSelect);
         if (student) {
           loadStudent(student);
+          ensureStudentMedicationDefault(student);
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           studentSearchResults.hidden = true;
         }
