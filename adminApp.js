@@ -2473,6 +2473,12 @@ async function renderCursista() {
       await dataService.deleteCursista(previousId);
     }
     form.reset();
+    ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro'].forEach((name) => {
+      form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = false; });
+    });
+    ['serie', 'escola', 'qualRetiro'].forEach((name) => {
+      if (form.elements[name]) form.elements[name].value = '';
+    });
     form.querySelector('.student-payment-comment')?.setAttribute('hidden', '');
     form.querySelector('#clear-student-payment')?.setAttribute('hidden', '');
     form.querySelector('input[name="id"]')?.remove();
