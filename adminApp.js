@@ -5125,7 +5125,10 @@ async function route() {
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           suppressNextStudentSearchRender = true;
           closeStudentSearchResults();
-          requestAnimationFrame(closeStudentSearchResults);
+          requestAnimationFrame(() => {
+            closeStudentSearchResults();
+            editSelectedStudent?.focus({ preventScroll: true });
+          });
         }
       }));
     };
