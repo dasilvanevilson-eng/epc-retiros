@@ -5112,7 +5112,9 @@ async function route() {
           loadStudent(student);
           ensureStudentMedicationDefault(student);
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          studentSearchInput.value = '';
           studentSearchResults.hidden = true;
+          studentSearchResults.innerHTML = '';
         }
       }));
     };
