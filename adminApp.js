@@ -984,6 +984,29 @@ async function renderHome() {
   const quadranteRows = groupedPreferenceRows(activeEnrolments, 'quadrante');
   const photoRows = groupedPreferenceRows(activeEnrolments, 'foto');
   const peopleById = new Map(people.map((person) => [person.id, person]));
+  const teamBirthdayRows = activeEnrolments
+    .map((entry) => {
+      const person = peopleById.get(entry.pessoaId) || {};
+      const historicalData = entry.dadosPessoais || {};
+      return {
+        name: person.nome || historicalData.nome || entry.nome || 'Sem nome',
+        nascimento: [person.nascimento, historicalData.nascimento, entry.nascimento].map(normalizeDateInput).find(Boolean) || '',
+        sectors: entrySectors(entry),
+      };
+    })
+    .filter((row) => {
+      const birthDate = parseLocalDate(row.nascimento);
+      return birthDate && retreatBirthdayMonths.has(birthDate.getMonth());
+    })
+    .sort((first, second) => {
+      const firstBirth = parseLocalDate(first.nascimento);
+      const secondBirth = parseLocalDate(second.nascimento);
+      const monthResult = firstBirth.getMonth() - secondBirth.getMonth();
+      if (monthResult) return monthResult;
+      const dayResult = firstBirth.getDate() - secondBirth.getDate();
+      if (dayResult) return dayResult;
+      return first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' });
+    });
   const spaceKidsRows = spaceKidsRowsForEnrolments(activeEnrolments, peopleById);
   const cityStats = new Map();
   const addCityCount = (city, type) => {
@@ -1026,6 +1049,7 @@ async function renderHome() {
     const community = studentCommunityDetail(student, activeCommunityDetails);
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(date(student.nascimento))}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista aniversariante nos meses deste retiro.</p>';
+  const teamBirthdayRowsHtml = (rows) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><div class="student-health-person"><strong>${escapeHtml(row.name)}</strong><small>Setor: ${escapeHtml(row.sectors.length ? row.sectors.join(', ') : 'Setor não informado')}</small></div><span>${escapeHtml(date(row.nascimento))}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma pessoa da equipe de trabalho aniversariante nos meses deste retiro.</p>';
   const cityRowsHtml = (rows) => {
     if (!rows.length) return '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
     const totals = rows.reduce((sum, row) => ({ students: sum.students + row.students, team: sum.team + row.team }), { students: 0, team: 0 });
@@ -1045,6 +1069,7 @@ async function renderHome() {
       <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
       <article class="student-health-card"><div><span>Cursistas aniversariantes do mês</span><strong>${birthdayStudents.length}</strong></div><button type="button" data-home-health="birthdays">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Equipe de trabalho aniversariantes do mês</span><strong>${teamBirthdayRows.length}</strong></div><button type="button" data-home-health="team-birthdays">Visualizar</button></article>
     </section>
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
@@ -1062,6 +1087,7 @@ async function renderHome() {
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
     cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
     birthdays: `<div class="panel-heading"><div><h2>Cursistas aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
+    'team-birthdays': `<div class="panel-heading"><div><h2>Equipe de trabalho aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {
     button.addEventListener('click', () => {
