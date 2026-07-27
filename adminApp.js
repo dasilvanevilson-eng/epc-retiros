@@ -2280,6 +2280,47 @@ async function renderCursista() {
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
   layout(`<section class="page-heading student-page-heading"><div><h1>Cursista</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
+  const studentMain = app.querySelector('.admin-main');
+  studentMain?.classList.add('student-screen');
+  const studentHeadingIntro = app.querySelector('.student-page-heading>div');
+  if (focusStudentRetreat && studentHeadingIntro) {
+    studentHeadingIntro.insertAdjacentHTML('beforeend', `<small class="student-retreat-context">Retiro em foco: <strong>${escapeHtml(focusStudentRetreat.nome || 'Retiro')}</strong></small>`);
+  }
+  const studentStepLabels = ['Dados pessoais', 'Endereço', 'Formação e vivência', 'Família e convite', 'Saúde e cuidados', 'Inscrição'];
+  const studentSections = [...form.querySelectorAll(':scope > .form-section')];
+  const studentWorkspace = document.createElement('div');
+  studentWorkspace.className = 'student-form-workspace';
+  form.before(studentWorkspace);
+  studentWorkspace.append(form);
+  const studentStepper = document.createElement('nav');
+  studentStepper.className = 'student-form-stepper';
+  studentStepper.setAttribute('aria-label', 'Etapas do cadastro de cursista');
+  studentStepper.innerHTML = studentSections.map((section, index) => {
+    const label = studentStepLabels[index] || section.querySelector('h2')?.textContent || `Etapa ${index + 1}`;
+    section.id = `student-form-step-${index + 1}`;
+    section.dataset.studentFormStep = String(index);
+    return `<button type="button" data-student-step="${index}" class="${index === 0 ? 'is-active' : ''}" ${index === 0 ? 'aria-current="step"' : ''}><span>${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(label)}</strong></button>`;
+  }).join('');
+  studentWorkspace.prepend(studentStepper);
+  const setActiveStudentStep = (index) => {
+    studentStepper.querySelectorAll('[data-student-step]').forEach((button) => {
+      const active = Number(button.dataset.studentStep) === index;
+      button.classList.toggle('is-active', active);
+      if (active) button.setAttribute('aria-current', 'step');
+      else button.removeAttribute('aria-current');
+    });
+  };
+  studentStepper.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-student-step]');
+    if (!button) return;
+    const index = Number(button.dataset.studentStep);
+    setActiveStudentStep(index);
+    studentSections[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  form.addEventListener('focusin', (event) => {
+    const section = event.target.closest('[data-student-form-step]');
+    if (section) setActiveStudentStep(Number(section.dataset.studentFormStep));
+  });
   form.querySelector('input[name="qualAlergia"]')?.closest('fieldset')?.insertAdjacentHTML('afterend', `<fieldset><legend>Toma medicamento de forma contínua? <b>*</b></legend>${yesNo('medicamentoContinuo')}<label class="field"><span>Qual?</span><input name="qualMedicamentoContinuo"></label></fieldset>`);
   if (!canEditStudentRetreat) {
     app.querySelector('#new-student')?.remove();

@@ -4329,6 +4329,417 @@ body:has(.login-shell) {
   color:#15537a;
 }
 
+/* Cursista: fluxo guiado sem alterar a estrutura ou o envio do formulario */
+.student-screen {
+  max-width:1280px;
+}
+
+.student-screen .student-page-heading {
+  align-items:center;
+  margin-bottom:14px;
+}
+
+.student-screen .student-page-heading h1 {
+  color:#15324a;
+  font-size:34px;
+  line-height:1.1;
+}
+
+.student-screen .student-page-heading p {
+  max-width:620px;
+  margin:6px 0 0;
+}
+
+.student-retreat-context {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-top:10px;
+  padding:5px 8px;
+  border:1px solid #cde8f5;
+  border-radius:6px;
+  background:#f4fbff;
+  color:#5d7184;
+  font-size:12px;
+}
+
+.student-retreat-context strong {
+  color:#1f7fb8;
+}
+
+.student-screen .student-registration-tools {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr);
+  gap:12px;
+  margin-bottom:14px;
+  padding:16px 18px;
+  border-color:#cde8f5;
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 8px 20px rgba(43, 145, 207, .08);
+}
+
+.student-screen .student-registration-tools .panel-heading {
+  align-items:center;
+  gap:16px;
+  margin:0;
+}
+
+.student-screen .student-registration-tools .panel-heading h2 {
+  color:#15324a;
+  font-size:18px;
+}
+
+.student-screen .student-registration-tools .panel-heading p {
+  margin-top:3px;
+  font-size:12px;
+}
+
+.student-screen .registration-search-field {
+  margin:0;
+}
+
+.student-screen .registration-search-field>span {
+  font-size:12px;
+}
+
+.student-screen #student-search {
+  padding-left:38px;
+  border-color:#bdddf0;
+  background:
+    linear-gradient(45deg, transparent 45%, #5d7184 46%, #5d7184 54%, transparent 55%) 18px 23px / 7px 7px no-repeat,
+    radial-gradient(circle at center, transparent 43%, #5d7184 46%, #5d7184 57%, transparent 60%) 11px 10px / 17px 17px no-repeat,
+    #fff;
+}
+
+.student-screen .student-registration-actions {
+  flex-direction:row;
+}
+
+.student-screen #new-student {
+  min-height:40px;
+  padding:9px 14px;
+  background:#2f7644;
+  box-shadow:none;
+}
+
+.student-screen #new-student:hover {
+  background:#285f39;
+}
+
+.student-form-workspace {
+  display:grid;
+  grid-template-columns:210px minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+.student-form-stepper {
+  position:sticky;
+  top:16px;
+  z-index:4;
+  display:grid;
+  gap:3px;
+  padding:8px;
+  border:1px solid #cde8f5;
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 8px 20px rgba(43, 145, 207, .08);
+}
+
+.student-form-stepper button {
+  display:grid;
+  grid-template-columns:30px minmax(0, 1fr);
+  align-items:center;
+  gap:9px;
+  width:100%;
+  min-height:46px;
+  padding:7px 9px;
+  border:0;
+  border-left:3px solid transparent;
+  border-radius:6px;
+  background:transparent;
+  color:#5d7184;
+  text-align:left;
+  box-shadow:none;
+}
+
+.student-form-stepper button:hover {
+  background:#f4fbff;
+  color:#15324a;
+}
+
+.student-form-stepper button.is-active {
+  border-left-color:#2b91cf;
+  background:#e8f7ff;
+  color:#15537a;
+}
+
+.student-form-stepper button span {
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  margin:0;
+  border:1px solid #bdddf0;
+  border-radius:50%;
+  background:#fff;
+  color:#5d7184;
+  font-size:11px;
+}
+
+.student-form-stepper button.is-active span {
+  border-color:#d59a22;
+  color:#8a6110;
+}
+
+.student-form-stepper button strong {
+  min-width:0;
+  overflow-wrap:anywhere;
+  font-size:12px;
+  line-height:1.25;
+}
+
+.student-screen .student-form {
+  min-width:0;
+  margin:0;
+  border-color:#cde8f5;
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 10px 26px rgba(43, 145, 207, .08);
+}
+
+.student-screen .student-form>.form-section {
+  scroll-margin-top:20px;
+}
+
+.student-screen .student-form>.form-section:first-of-type {
+  padding-top:8px;
+}
+
+.student-screen .student-form .section-heading h2 {
+  color:#15324a;
+  font-size:22px;
+}
+
+.student-screen .student-form .section-heading>span {
+  border-color:#cde8f5;
+  background:#f4fbff;
+  color:#1f7fb8;
+}
+
+.student-screen .student-form .form-actions {
+  margin-top:8px;
+  padding:16px 0 0;
+  border-top:1px solid #cde8f5;
+}
+
+.student-screen .student-form .form-actions button[type="submit"] {
+  min-width:180px;
+  background:#2f7644;
+  box-shadow:none;
+}
+
+.student-screen .student-form .form-actions button[type="submit"]:hover {
+  background:#285f39;
+}
+
+@media(max-width:900px) {
+  .student-form-workspace {
+    grid-template-columns:176px minmax(0, 1fr);
+  }
+
+  .student-form-stepper {
+    padding:6px;
+  }
+
+  .student-form-stepper button {
+    grid-template-columns:26px minmax(0, 1fr);
+    gap:7px;
+    padding:6px;
+  }
+
+  .student-form-stepper button span {
+    width:24px;
+    height:24px;
+  }
+}
+
+@media(max-width:720px) {
+  .student-screen {
+    padding-bottom:86px;
+  }
+
+  .student-screen .student-page-heading {
+    align-items:flex-start;
+  }
+
+  .student-screen .student-page-heading h1 {
+    font-size:28px;
+  }
+
+  .student-screen .student-page-heading p {
+    display:none;
+  }
+
+  .student-retreat-context {
+    margin-top:6px;
+    padding:3px 6px;
+    font-size:11px;
+  }
+
+  .student-screen #student-financial-summary {
+    width:42px;
+    min-width:42px;
+    height:40px;
+    padding:0;
+    overflow:hidden;
+    font-size:0;
+    box-shadow:none;
+  }
+
+  .student-screen #student-financial-summary::before {
+    content:'R$';
+    font-size:12px;
+  }
+
+  .student-screen .student-registration-tools {
+    grid-template-columns:minmax(0, 1fr) 42px;
+    gap:8px;
+    padding:10px;
+  }
+
+  .student-screen .student-registration-tools .panel-heading {
+    display:contents;
+  }
+
+  .student-screen .student-registration-tools .panel-heading>div:first-child {
+    display:none;
+  }
+
+  .student-screen .registration-search-field {
+    grid-column:1;
+  }
+
+  .student-screen .registration-search-field>span {
+    position:absolute;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+  }
+
+  .student-screen .student-registration-actions {
+    grid-column:2;
+    align-self:end;
+  }
+
+  .student-screen #new-student {
+    display:grid;
+    place-items:center;
+    width:42px;
+    min-width:42px;
+    height:42px;
+    padding:0;
+    overflow:hidden;
+    border-radius:50%;
+    font-size:0;
+  }
+
+  .student-screen #new-student::before {
+    content:'+';
+    font-size:26px;
+    font-weight:400;
+    line-height:1;
+  }
+
+  .student-form-workspace {
+    display:block;
+  }
+
+  .student-form-stepper {
+    position:static;
+    display:grid;
+    grid-auto-columns:max-content;
+    grid-auto-flow:column;
+    gap:0;
+    overflow-x:auto;
+    padding:0;
+    border-radius:8px;
+    scrollbar-width:thin;
+    scroll-snap-type:x proximity;
+  }
+
+  .student-form-stepper button {
+    display:flex;
+    gap:7px;
+    width:auto;
+    min-width:128px;
+    min-height:48px;
+    padding:7px 10px;
+    border-left:0;
+    border-bottom:3px solid transparent;
+    border-radius:0;
+    scroll-snap-align:start;
+    white-space:nowrap;
+  }
+
+  .student-form-stepper button.is-active {
+    border-bottom-color:#2b91cf;
+  }
+
+  .student-form-stepper button strong {
+    white-space:nowrap;
+  }
+
+  .student-screen .student-form {
+    margin-top:10px;
+  }
+
+  .student-screen .student-form>.form-section {
+    scroll-margin-top:12px;
+  }
+
+  .student-screen .student-form .form-actions {
+    position:fixed;
+    z-index:70;
+    right:10px;
+    bottom:10px;
+    left:10px;
+    display:block;
+    margin:0;
+    padding:9px;
+    border:1px solid #cde8f5;
+    border-radius:8px;
+    background:rgba(255, 255, 255, .96);
+    box-shadow:0 10px 28px rgba(21, 50, 74, .22);
+    backdrop-filter:blur(10px);
+  }
+
+  .student-screen .student-form .form-actions p {
+    display:none;
+  }
+
+  .student-screen .student-form .form-actions button[type="submit"] {
+    width:100%;
+    min-height:44px;
+  }
+}
+
+@media(max-width:430px) {
+  .student-screen .student-form .fields.two-columns {
+    grid-template-columns:1fr;
+  }
+
+  .student-screen .student-form .field:has(input[name="cpf"]),
+  .student-screen .student-form .field:has(input[name="nascimento"]),
+  .student-screen .student-form .field:has(input[name="telefone"]),
+  .student-screen .student-form .field:has(input[name="telefonePai"]),
+  .student-screen .student-form .field:has(input[name="telefoneMae"]) {
+    grid-column:1 / -1;
+  }
+}
+
 .admin-shell input,
 .admin-shell textarea,
 .admin-shell select,
