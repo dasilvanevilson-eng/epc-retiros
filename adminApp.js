@@ -5090,7 +5090,18 @@ async function route() {
     const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
     const studentSearchInput = app.querySelector('#student-search');
     const studentSearchResults = app.querySelector('#student-search-results');
+    let suppressNextStudentSearchRender = false;
+    const closeStudentSearchResults = () => {
+      studentSearchInput.value = '';
+      studentSearchResults.hidden = true;
+      studentSearchResults.innerHTML = '';
+    };
     const renderStudentSearch = async () => {
+      if (suppressNextStudentSearchRender) {
+        suppressNextStudentSearchRender = false;
+        closeStudentSearchResults();
+        return;
+      }
       const term = normalizeText(studentSearchInput.value);
       const students = (await dataService.listCursistas())
         .filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id))
@@ -5112,9 +5123,9 @@ async function route() {
           loadStudent(student);
           ensureStudentMedicationDefault(student);
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          studentSearchInput.value = '';
-          studentSearchResults.hidden = true;
-          studentSearchResults.innerHTML = '';
+          suppressNextStudentSearchRender = true;
+          closeStudentSearchResults();
+          requestAnimationFrame(closeStudentSearchResults);
         }
       }));
     };
