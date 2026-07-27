@@ -4544,6 +4544,10 @@ body:has(.login-shell) {
   background:#285f39;
 }
 
+.student-financial-summary-overlay {
+  z-index:90;
+}
+
 @media(max-width:900px) {
   .student-form-workspace {
     grid-template-columns:176px minmax(0, 1fr);

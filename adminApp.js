@@ -2435,7 +2435,7 @@ async function renderCursista() {
   app.querySelector('#student-financial-summary').addEventListener('click', async () => {
     const rows = await financialSummaryRows();
     const overlay = document.createElement('section');
-    overlay.className = 'receiver-sector-overlay';
+    overlay.className = 'receiver-sector-overlay student-financial-summary-overlay';
     overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog student-financial-summary-dialog"><div class="panel-heading"><div><p class="eyebrow">Cursistas</p><h2>${escapeHtml(financialSummaryTitle)}</h2><p>Valores buscados somente nas fichas dos cursistas.</p></div></div><div id="student-financial-summary-table">${financialSummaryTable(rows)}</div><div class="receiver-report-actions"><button type="button" id="student-summary-pdf">Salvar PDF</button><button type="button" id="student-summary-sheet">Salvar planilha</button><button type="button" id="student-summary-print">Imprimir</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
     overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
