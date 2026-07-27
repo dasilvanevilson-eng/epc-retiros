@@ -891,6 +891,33 @@ async function renderHome() {
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const activeCommunityDetails = active ? studentCommunityDetails(allCommunities.filter((community) => community.retiroId === active.id)) : new Map();
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
+  const retreatBirthdayMonths = (() => {
+    const months = new Set();
+    const start = parseLocalDate(active?.dataInicio);
+    const end = parseLocalDate(active?.dataTermino || active?.dataInicio);
+    if (!start || !end || end < start) return months;
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1, 12);
+    const lastMonth = new Date(end.getFullYear(), end.getMonth(), 1, 12);
+    while (cursor <= lastMonth && months.size < 12) {
+      months.add(cursor.getMonth());
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return months;
+  })();
+  const birthdayStudents = activeStudents
+    .filter((student) => {
+      const birthDate = parseLocalDate(student.nascimento);
+      return birthDate && retreatBirthdayMonths.has(birthDate.getMonth());
+    })
+    .sort((first, second) => {
+      const firstBirth = parseLocalDate(first.nascimento);
+      const secondBirth = parseLocalDate(second.nascimento);
+      const monthResult = firstBirth.getMonth() - secondBirth.getMonth();
+      if (monthResult) return monthResult;
+      const dayResult = firstBirth.getDate() - secondBirth.getDate();
+      if (dayResult) return dayResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const activeEnrolments = active ? mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
   const activeStatEntries = activeEntries.length ? activeEntries : activeEnrolments;
@@ -995,6 +1022,10 @@ async function renderHome() {
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const birthdayRowsHtml = (students) => students.length ? `<div class="student-health-list">${students.map((student) => {
+    const community = studentCommunityDetail(student, activeCommunityDetails);
+    return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(date(student.nascimento))}</span></div>`;
+  }).join('')}</div>` : '<p class="empty-state">Nenhum cursista aniversariante nos meses deste retiro.</p>';
   const cityRowsHtml = (rows) => {
     if (!rows.length) return '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
     const totals = rows.reduce((sum, row) => ({ students: sum.students + row.students, team: sum.team + row.team }), { students: 0, team: 0 });
@@ -1013,6 +1044,7 @@ async function renderHome() {
       <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Cursistas aniversariantes do mês</span><strong>${birthdayStudents.length}</strong></div><button type="button" data-home-health="birthdays">Visualizar</button></article>
     </section>
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
@@ -1029,6 +1061,7 @@ async function renderHome() {
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
     cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
+    birthdays: `<div class="panel-heading"><div><h2>Cursistas aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {
     button.addEventListener('click', () => {
