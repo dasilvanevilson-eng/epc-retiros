@@ -5091,13 +5091,16 @@ async function route() {
     const studentSearchInput = app.querySelector('#student-search');
     const studentSearchResults = app.querySelector('#student-search-results');
     let studentSearchRequest = 0;
+    let studentSearchOpen = false;
     const closeStudentSearchResults = () => {
+      studentSearchOpen = false;
       studentSearchRequest += 1;
       studentSearchInput.value = '';
       studentSearchResults.hidden = true;
       studentSearchResults.innerHTML = '';
     };
     const renderStudentSearch = async () => {
+      studentSearchOpen = true;
       const currentRequest = ++studentSearchRequest;
       const term = normalizeText(studentSearchInput.value);
       const students = (await dataService.listCursistas())
@@ -5108,22 +5111,20 @@ async function route() {
           return !term || haystack.includes(term);
         })
         .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
-      if (currentRequest !== studentSearchRequest) return;
+      if (!studentSearchOpen || currentRequest !== studentSearchRequest) return;
       studentSearchResults.hidden = false;
       studentSearchResults.innerHTML = students.length ? students.map((student) => {
         const cpf = normalizeCpf(student.cpf || student.id);
         return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
       }).join('') : '<p>Nenhum cursista encontrado neste retiro.</p>';
-      studentSearchResults.querySelectorAll('[data-student-select]').forEach((button) => button.addEventListener('click', async () => {
-        const students = await dataService.listCursistas();
+      studentSearchResults.querySelectorAll('[data-student-select]').forEach((button) => button.addEventListener('click', () => {
         const student = students.find((item) => item.id === button.dataset.studentSelect);
         if (student) {
+          closeStudentSearchResults();
           loadStudent(student);
           ensureStudentMedicationDefault(student);
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          closeStudentSearchResults();
           setTimeout(() => {
-            closeStudentSearchResults();
             editSelectedStudent?.focus({ preventScroll: true });
           }, 0);
         }
@@ -5137,7 +5138,11 @@ async function route() {
     studentSearchInput.addEventListener('focus', renderStudentSearch);
     studentSearchInput.addEventListener('input', renderStudentSearch);
     const studentSearchField = studentSearchInput.closest('.registration-search-field');
-    const hideStudentSearch = () => { studentSearchResults.hidden = true; };
+    const hideStudentSearch = () => {
+      studentSearchOpen = false;
+      studentSearchRequest += 1;
+      studentSearchResults.hidden = true;
+    };
     const closeStudentSearch = (event) => {
       if (!studentSearchField.contains(event.target) && !studentSearchResults.contains(event.target)) hideStudentSearch();
     };
