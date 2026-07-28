@@ -1123,8 +1123,8 @@ async function renderHome() {
       </div></section>
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
         ${homePanel('Presença por dia', 'presence', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
-        ${homeHealthCard('Número de crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
-        ${homeHealthCard('Número de cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
+        ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
+        ${homeHealthCard('Cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
       </div></section>
     </section>
     <section class="dashboard-grid retreat-stats-grid home-detail-source" aria-hidden="true">
@@ -1142,8 +1142,8 @@ async function renderHome() {
     'parent-suggested-medication': `<div class="panel-heading"><div><h2>Medicação sugerida pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
-    kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
-    cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
+    kids: `<div class="panel-heading"><div><h2>Crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    cities: `<div class="panel-heading"><div><h2>Cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
     birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
     'team-birthdays': `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
   };
