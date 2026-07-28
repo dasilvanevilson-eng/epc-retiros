@@ -959,6 +959,16 @@ async function renderHome() {
       if (communityResult) return communityResult;
       return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
     });
+  const continuousMedicationStudents = activeStudents
+    .filter((student) => normalizeText(student.medicamentoContinuo) === 'sim')
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, activeCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, activeCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const groupedPreferenceRows = (entries, field) => {
     const usedCouples = new Set();
     return entries.reduce((rows, entry) => {
@@ -1064,6 +1074,7 @@ async function renderHome() {
     <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
       <article class="student-health-card"><div><span>Cursistas com Intolerância a alimentos</span><strong>${intoleranceStudents.length}</strong></div><button type="button" data-home-health="intolerance">Visualizar</button></article>
       <article class="student-health-card"><div><span>Cursistas Alérgicos a Medicamentos</span><strong>${allergyStudents.length}</strong></div><button type="button" data-home-health="allergy">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Cursista(s) com medicamento contínuo</span><strong>${continuousMedicationStudents.length}</strong></div><button type="button" data-home-health="continuous-medication">Visualizar</button></article>
       <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
       <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
@@ -1082,6 +1093,7 @@ async function renderHome() {
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
+    'continuous-medication': `<div class="panel-heading"><div><h2>Cursista(s) com medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
@@ -1363,6 +1375,16 @@ async function renderRetreat(id) {
       if (communityResult) return communityResult;
       return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
     });
+  const continuousMedicationStudents = registeredStudents
+    .filter((student) => normalizeText(student.medicamentoContinuo) === 'sim')
+    .sort((first, second) => {
+      const firstCommunity = studentCommunityDetail(first, retreatCommunityDetails);
+      const secondCommunity = studentCommunityDetail(second, retreatCommunityDetails);
+      if (firstCommunity.order !== secondCommunity.order) return firstCommunity.order - secondCommunity.order;
+      const communityResult = firstCommunity.name.localeCompare(secondCommunity.name, 'pt-BR', { sensitivity: 'base' });
+      if (communityResult) return communityResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const groupedPreferenceRows = (entries, field) => {
     const usedCouples = new Set();
     return entries.reduce((rows, entry) => {
@@ -1432,6 +1454,7 @@ async function renderRetreat(id) {
     <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
       <article class="student-health-card"><div><span>Cursistas com Intolerância a alimentos</span><strong>${intoleranceStudents.length}</strong></div><button type="button" data-home-health="intolerance">Visualizar</button></article>
       <article class="student-health-card"><div><span>Cursistas Alérgicos a Medicamentos</span><strong>${allergyStudents.length}</strong></div><button type="button" data-home-health="allergy">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Cursista(s) com medicamento contínuo</span><strong>${continuousMedicationStudents.length}</strong></div><button type="button" data-home-health="continuous-medication">Visualizar</button></article>
       <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
       <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
@@ -1445,6 +1468,7 @@ async function renderRetreat(id) {
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
+    'continuous-medication': `<div class="panel-heading"><div><h2>Cursista(s) com medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: retreatCommunityDetails })}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,

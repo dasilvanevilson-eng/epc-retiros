@@ -99,22 +99,34 @@ async function writeFileDatabase(database) {
 async function supabaseRequest(pathname, options = {}) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
   const baseUrl = process.env.SUPABASE_URL.replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/rest/v1/${pathname}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(options.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`Supabase ${response.status}: ${message}`);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${baseUrl}/rest/v1/${pathname}`, {
+      ...options,
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+        ...(options.headers || {}),
+      },
+    });
+    if (!response.ok) {
+      const message = await response.text();
+      let errorDetails = null;
+      try { errorDetails = JSON.parse(message); } catch {}
+      const shouldRetry = attempt === 0
+        && response.status === 401
+        && errorDetails?.code === 'PGRST303'
+        && errorDetails?.message === 'JWT issued at future';
+      if (shouldRetry) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        continue;
+      }
+      throw new Error(`Supabase ${response.status}: ${message}`);
+    }
+    if (response.status === 204) return null;
+    return response.json();
   }
-  if (response.status === 204) return null;
-  return response.json();
 }
 
 const enc = (value) => encodeURIComponent(String(value));
