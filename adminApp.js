@@ -1104,7 +1104,7 @@ async function renderHome() {
       <article class="metric-card static-metric"><span>Inscrições aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section></section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
-      <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div><strong>${activeStudents.length}</strong><span>pessoa(s)</span></div></div><div class="home-column-list">
+      <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><strong>${activeStudents.length}</strong></div><div class="home-column-list">
         ${homeHealthCard('Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
         ${homeHealthCard('Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
         ${homeHealthCard('Tomam medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
