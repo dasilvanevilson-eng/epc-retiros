@@ -4026,7 +4026,8 @@ select:focus {
   border-bottom:2px solid rgba(198,154,69,.72);
 }
 
-.home-column-heading h2 {
+.home-column-heading h2,
+.home-column>h2 {
   margin:0;
   color:#15324a;
   font:700 21px/1.15 "Fraunces", serif;
