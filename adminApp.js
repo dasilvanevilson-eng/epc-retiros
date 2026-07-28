@@ -778,21 +778,30 @@ function setupHomeStatTabs(options = {}) {
     ] : null;
     openHomeInfoWindow(label, panel.innerHTML, { printOptions });
   };
+  const bindHomeStatButton = (button) => {
+    if (button.dataset.homeStatBound === 'true') return;
+    button.dataset.homeStatBound = 'true';
+    button.addEventListener('click', () => {
+      const selected = button.dataset.homeStat;
+      if (!selected) return;
+      controls.querySelectorAll('[data-home-stat]').forEach((item) => {
+        const activeButton = item.dataset.homeStat === selected;
+        item.classList.toggle('is-active', activeButton);
+        item.setAttribute('aria-selected', activeButton ? 'true' : 'false');
+      });
+      openWindow(selected);
+    });
+  };
   panels.forEach(([key, , panel]) => {
     panel.classList.add('home-stat-panel');
     panel.dataset.homeStatPanel = key;
     panel.hidden = true;
   });
   controls.querySelectorAll('[data-home-stat]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const selected = button.dataset.homeStat;
-      controls.querySelectorAll('[data-home-stat]').forEach((item) => {
-        const activeButton = item === button;
-        item.classList.toggle('is-active', activeButton);
-        item.setAttribute('aria-selected', activeButton ? 'true' : 'false');
-      });
-      openWindow(selected);
-    });
+    bindHomeStatButton(button);
+  });
+  app.querySelectorAll('[data-home-stat]').forEach((button) => {
+    bindHomeStatButton(button);
   });
 }
 
@@ -1085,25 +1094,40 @@ async function renderHome() {
     const totals = rows.reduce((sum, row) => ({ students: sum.students + row.students, team: sum.team + row.team }), { students: 0, team: 0 });
     return `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}<div class="city-health-total"><strong>Total geral</strong><span><b>${totals.students}</b><small>Cursistas</small></span><span><b>${totals.team}</b><small>Equipe de trabalho</small></span><span><b>${totals.students + totals.team}</b><small>Participantes</small></span></div></div>`;
   };
-  layout(`<section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
+  const homeHealthCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-health="${key}">${action}</button></article>`;
+  const homeStatCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-stat="${key}">${action}</button></article>`;
+  const homeLinkCard = (label, count, href, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><a href="${href}">${action}</a></article>`;
+  const homePanel = (label, key, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2></div><button type="button" data-home-stat="${key}">Visualizar detalhes</button></div><div>${content}</div></article>`;
+  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
+    </section></section>
+    <section class="home-overview" aria-label="Resumo do retiro em foco">
+      <section class="home-column"><h2>Cursistas</h2><div class="home-column-list">
+        ${homeHealthCard('Cursistas com Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
+        ${homeHealthCard('Cursistas Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
+        ${homeHealthCard('Cursista(s) com medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
+        ${homeHealthCard('Cursistas com remédios sugerido pelos pais', parentSuggestedMedicationStudents.length, 'parent-suggested-medication')}
+        ${homeHealthCard('Cursistas aniversariantes do mês', birthdayStudents.length, 'birthdays')}
+        ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
+      </div></section>
+      <section class="home-column"><h2>Equipe de trabalho</h2><div class="home-column-list">
+        ${homeLinkCard('Fichas da equipe de trabalho aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
+        ${homeHealthCard('Quadrante impresso Equipe de trabalho', quadranteRows.length, 'quadrante')}
+        ${homeHealthCard('Fotos solicitadas pela equipe de trabalho', photoRows.length, 'photo')}
+        ${homeStatCard('Pessoas por setor', sectorStatRows.length, 'sectors')}
+        ${homeStatCard('Pessoas por grupo', participationGroupStatRows.length, 'groups')}
+        ${homeHealthCard('Equipe de trabalho aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
+      </div></section>
+      <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
+        ${homePanel('Presença por dia', 'presence', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
+        ${homeHealthCard('Número de crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
+        ${homeHealthCard('Número de cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
+      </div></section>
     </section>
-    <section class="student-health-grid" aria-label="Cuidados de saúde dos cursistas">
-      <article class="student-health-card"><div><span>Cursistas com Intolerância a alimentos</span><strong>${intoleranceStudents.length}</strong></div><button type="button" data-home-health="intolerance">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Cursistas Alérgicos a Medicamentos</span><strong>${allergyStudents.length}</strong></div><button type="button" data-home-health="allergy">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Cursista(s) com medicamento contínuo</span><strong>${continuousMedicationStudents.length}</strong></div><button type="button" data-home-health="continuous-medication">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Cursistas com remédios sugerido pelos pais</span><strong>${parentSuggestedMedicationStudents.length}</strong></div><button type="button" data-home-health="parent-suggested-medication">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Cursistas aniversariantes do mês</span><strong>${birthdayStudents.length}</strong></div><button type="button" data-home-health="birthdays">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Equipe de trabalho aniversariantes do mês</span><strong>${teamBirthdayRows.length}</strong></div><button type="button" data-home-health="team-birthdays">Visualizar</button></article>
-    </section>
-    <section class="dashboard-grid retreat-stats-grid">
+    <section class="dashboard-grid retreat-stats-grid home-detail-source" aria-hidden="true">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
       <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>

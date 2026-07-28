@@ -3938,12 +3938,20 @@ select:focus {
 }
 
 /* Tela de inicio compacta */
+.home-topline {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(420px, 1.45fr);
+  gap:20px;
+  align-items:start;
+  margin-bottom:14px;
+}
+
 .dashboard-hero {
   justify-items:start;
   gap:4px;
-  margin:0 0 18px;
-  padding-bottom:14px;
-  border-bottom:1px solid var(--line);
+  margin:0;
+  padding-bottom:0;
+  border-bottom:0;
   text-align:left;
 }
 
@@ -3967,7 +3975,7 @@ select:focus {
 
 .dashboard-metrics {
   gap:10px;
-  margin-bottom:14px;
+  margin-bottom:0;
 }
 
 .dashboard-metrics .metric-card {
@@ -3990,6 +3998,113 @@ select:focus {
 .dashboard-metrics .metric-card span,
 .dashboard-metrics .metric-card small {
   font-size:12px;
+}
+
+.home-overview {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:14px;
+  align-items:start;
+}
+
+.home-column {
+  min-width:0;
+  padding:16px 14px;
+  border:1px solid rgba(142, 201, 232, .54);
+  border-radius:8px;
+  background:rgba(251, 253, 255, .82);
+  box-shadow:0 18px 42px rgba(43, 145, 207, .07);
+}
+
+.home-column>h2 {
+  margin:0 0 12px;
+  padding:0 0 9px;
+  border-bottom:2px solid rgba(198,154,69,.72);
+  color:#15324a;
+  font:700 21px/1.15 "Fraunces", serif;
+}
+
+.home-column-list {
+  display:grid;
+  gap:10px;
+}
+
+.home-column-card.student-health-card {
+  min-height:62px;
+  padding:11px 12px;
+  border-color:rgba(142, 201, 232, .45);
+  background:rgba(255,255,255,.88);
+}
+
+.home-column-card.student-health-card span {
+  color:#15324a;
+  font-size:12px;
+}
+
+.home-column-card.student-health-card strong {
+  color:#15324a;
+  font-size:22px;
+}
+
+.home-column-card.student-health-card button,
+.home-column-card.student-health-card a,
+.home-column-panel .panel-heading button {
+  flex:0 0 auto;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#1167b1;
+  box-shadow:none;
+  font-size:12px;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.home-column-card.student-health-card button:hover,
+.home-column-card.student-health-card a:hover,
+.home-column-panel .panel-heading button:hover {
+  background:transparent;
+  color:#0b4f88;
+  text-decoration:underline;
+}
+
+.home-column-panel.dashboard-panel {
+  padding:12px;
+  border-color:rgba(142, 201, 232, .45);
+  background:rgba(255,255,255,.88);
+}
+
+.home-column-panel .panel-heading {
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.home-column-panel .panel-heading h2 {
+  margin:0;
+  font:800 12px/1.25 "DM Sans", sans-serif;
+}
+
+.home-column-panel .stat-tile-grid {
+  gap:0;
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+}
+
+.home-column-panel .stat-tile-grid>div {
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  background:#fff;
+  box-shadow:none;
+}
+
+.home-column-panel .stat-tile-grid>div:last-child {
+  border-bottom:0;
+}
+
+.home-detail-source {
+  display:none !important;
 }
 
 .student-health-grid {
@@ -4076,6 +4191,14 @@ select:focus {
 }
 
 @media(max-width:1100px) {
+  .home-topline {
+    grid-template-columns:1fr;
+  }
+
+  .home-overview {
+    grid-template-columns:1fr;
+  }
+
   .student-health-grid {
     grid-template-columns:repeat(3, minmax(0, 1fr));
   }
@@ -4094,6 +4217,19 @@ select:focus {
   .dashboard-metrics {
     grid-template-columns:repeat(3, minmax(0, 1fr));
     gap:7px;
+  }
+
+  .home-topline {
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  .home-column {
+    padding:12px 10px;
+  }
+
+  .home-column-card.student-health-card {
+    min-height:0;
   }
 
   .dashboard-metrics .metric-card {
