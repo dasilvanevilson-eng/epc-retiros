@@ -1102,7 +1102,7 @@ async function renderHome() {
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s)</small></article>
-      <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
+      <article class="metric-card static-metric"><span>Inscrições aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section></section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
       <section class="home-column"><h2>Cursistas</h2><div class="home-column-list">
@@ -1114,12 +1114,12 @@ async function renderHome() {
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>
       <section class="home-column"><h2>Equipe de trabalho</h2><div class="home-column-list">
-        ${homeLinkCard('Fichas da equipe de trabalho aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
-        ${homeHealthCard('Quadrante impresso Equipe de trabalho', quadranteRows.length, 'quadrante')}
-        ${homeHealthCard('Fotos solicitadas pela equipe de trabalho', photoRows.length, 'photo')}
+        ${homeLinkCard('Inscrições aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
+        ${homeHealthCard('Quadrante(s) impresso', quadranteRows.length, 'quadrante')}
+        ${homeHealthCard('Fotos solicitadas', photoRows.length, 'photo')}
         ${homeStatCard('Pessoas por setor', sectorStatRows.length, 'sectors')}
         ${homeStatCard('Pessoas por grupo', participationGroupStatRows.length, 'groups')}
-        ${homeHealthCard('Equipe de trabalho aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
+        ${homeHealthCard('Aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
       </div></section>
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
         ${homePanel('Presença por dia', 'presence', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
@@ -1140,12 +1140,12 @@ async function renderHome() {
     allergy: `<div class="panel-heading"><div><h2>Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'continuous-medication': `<div class="panel-heading"><div><h2>Tomam medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'parent-suggested-medication': `<div class="panel-heading"><div><h2>Medicação sugerida pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
-    quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
-    photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
+    quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
+    photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
     cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
     birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
-    'team-birthdays': `<div class="panel-heading"><div><h2>Equipe de trabalho aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
+    'team-birthdays': `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {
     button.addEventListener('click', () => {
