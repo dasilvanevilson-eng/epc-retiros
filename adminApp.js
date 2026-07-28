@@ -1097,7 +1097,7 @@ async function renderHome() {
   const homeHealthCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-health="${key}">${action}</button></article>`;
   const homeStatCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-stat="${key}">${action}</button></article>`;
   const homeLinkCard = (label, count, href, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><a href="${href}">${action}</a></article>`;
-  const homePanel = (label, key, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2></div><button type="button" data-home-stat="${key}">Visualizar detalhes</button></div><div>${content}</div></article>`;
+  const homePanel = (label, description, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2>${description ? `<p>${description}</p>` : ''}</div></div><div>${content}</div></article>`;
   layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     <section class="metric-grid dashboard-metrics">
       <article class="metric-card static-metric"><span>Cursistas</span><strong>${activeStudents.length}</strong><small>pessoa(s)</small></article>
@@ -1122,7 +1122,7 @@ async function renderHome() {
         ${homeHealthCard('Aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
       </div></section>
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
-        ${homePanel('Presença por dia', 'presence', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
+        ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
         ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
         ${homeHealthCard('Cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
       </div></section>
