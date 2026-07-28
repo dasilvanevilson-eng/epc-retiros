@@ -1106,11 +1106,11 @@ async function renderHome() {
     </section></section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
       <section class="home-column"><h2>Cursistas</h2><div class="home-column-list">
-        ${homeHealthCard('Cursistas com Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
-        ${homeHealthCard('Cursistas Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
-        ${homeHealthCard('Cursista(s) com medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
-        ${homeHealthCard('Cursistas com remédios sugerido pelos pais', parentSuggestedMedicationStudents.length, 'parent-suggested-medication')}
-        ${homeHealthCard('Cursistas aniversariantes do mês', birthdayStudents.length, 'birthdays')}
+        ${homeHealthCard('Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
+        ${homeHealthCard('Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
+        ${homeHealthCard('Tomam medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
+        ${homeHealthCard('Medicação sugerida pelos pais', parentSuggestedMedicationStudents.length, 'parent-suggested-medication')}
+        ${homeHealthCard('Aniversariantes do mês', birthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>
       <section class="home-column"><h2>Equipe de trabalho</h2><div class="home-column-list">
@@ -1136,15 +1136,15 @@ async function renderHome() {
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
   setupHomeStatTabs({ shirtStudents: activeStudents, communityDetails: activeCommunityDetails });
   const healthContent = {
-    intolerance: `<div class="panel-heading"><div><h2>Cursistas com Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
-    allergy: `<div class="panel-heading"><div><h2>Cursistas Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
-    'continuous-medication': `<div class="panel-heading"><div><h2>Cursista(s) com medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
-    'parent-suggested-medication': `<div class="panel-heading"><div><h2>Cursistas com remédios sugerido pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
+    intolerance: `<div class="panel-heading"><div><h2>Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
+    allergy: `<div class="panel-heading"><div><h2>Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
+    'continuous-medication': `<div class="panel-heading"><div><h2>Tomam medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
+    'parent-suggested-medication': `<div class="panel-heading"><div><h2>Medicação sugerida pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
     cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
-    birthdays: `<div class="panel-heading"><div><h2>Cursistas aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
+    birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
     'team-birthdays': `<div class="panel-heading"><div><h2>Equipe de trabalho aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {
