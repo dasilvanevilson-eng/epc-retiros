@@ -4033,7 +4033,7 @@ select:focus {
 }
 
 .home-column-heading strong {
-  color:#15324a;
+  color:var(--epc-navy);
   font:700 24px/1 "Fraunces", serif;
 }
 
