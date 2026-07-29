@@ -633,7 +633,7 @@ function layout(content, active = 'inicio') {
     ['retiros', 'Retiros', '▣'],
     ['pessoas', 'Equipe de trabalho', '♁'],
     ['validacao-inscricoes', 'Validação', '✓'],
-    ['cursista', 'Cursista', '♙'],
+    ['cursista', 'Cursista Individual', '♙'],
     ['comunidades', 'Comunidades', '♧'],
     ['recado-equipe', 'Recado &agrave; equipe', '!'],
     ['crachas', 'Crach&aacute;s', '▣'],
