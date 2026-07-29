@@ -319,10 +319,16 @@ async function saveRetreat(record) {
   ]);
   const removableSectorIds = removedSectors.map((setor) => setor.id).filter((id) => id && !referencedSectors.has(id));
   const removableDayIds = removedDays.map((dia) => dia.id).filter((id) => id && !referencedDays.has(id));
+  const existingSetores = setores.filter((setor) => setor.id);
+  const newSetores = setores.filter((setor) => !setor.id).map(({ id, ...setor }) => setor);
+  const existingDias = dias.filter((dia) => dia.id);
+  const newDias = dias.filter((dia) => !dia.id).map(({ id, ...dia }) => dia);
 
   await Promise.all([
-    setores.length ? upsert('retiro_setores', setores) : null,
-    dias.length ? upsert('retiro_dias', dias) : null,
+    existingSetores.length ? upsert('retiro_setores', existingSetores) : null,
+    newSetores.length ? upsert('retiro_setores', newSetores) : null,
+    existingDias.length ? upsert('retiro_dias', existingDias) : null,
+    newDias.length ? upsert('retiro_dias', newDias) : null,
     contribuicoes.length ? upsert('retiro_contribuicoes', contribuicoes) : null,
     removableSectorIds.length ? deleteWhere('retiro_setores', `id=in.(${removableSectorIds.map(enc).join(',')})`) : null,
     removableDayIds.length ? deleteWhere('retiro_dias', `id=in.(${removableDayIds.map(enc).join(',')})`) : null,
