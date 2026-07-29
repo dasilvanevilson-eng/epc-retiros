@@ -1666,6 +1666,7 @@ async function renderEditRetreat(id) {
   <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="date" value="${escapeHtml(retreat.dataInicio || '')}" ${dateLockAttr}></label><label class="field"><span>Data de término</span><input name="dataTermino" type="date" value="${escapeHtml(retreat.dataTermino || '')}" ${dateLockAttr}></label>${publishedDateHint}<label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label></div></div>
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro. Marque "Inscrições encerradas" somente quando quiser bloquear novas inscrições pelo link daquele setor.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores), retreat.setoresInscricoesEncerradas || [])}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'retiros');
   const form = app.querySelector('#edit-retreat-form');
+  form.querySelector('.form-actions')?.insertAdjacentHTML('beforebegin', '<p id="edit-retreat-message" class="form-message"></p>');
   ensureOfficialShirtValueField(form, currency(retreat.valorCamisetaOficial));
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
@@ -1706,9 +1707,15 @@ async function renderEditRetreat(id) {
       inscricoesEncerradas: setoresInscricoesEncerradas.some((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector)),
     }));
     Object.assign(retreat, { nome: values.get('nome').trim(), dataInicio, dataTermino, local: String(values.get('local') || '').trim(), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
-    await dataService.saveRetiro(retreat);
-    await loadData();
-    location.hash = `#retiros/${retreat.id}`;
+    const message = form.querySelector('#edit-retreat-message');
+    if (message) message.textContent = '';
+    try {
+      await dataService.saveRetiro(retreat);
+      await loadData();
+      location.hash = `#retiros/${retreat.id}`;
+    } catch (error) {
+      if (message) message.textContent = `NÃ£o foi possÃ­vel salvar as alteraÃ§Ãµes. ${error.message || 'Atualize a pÃ¡gina e tente novamente.'}`;
+    }
   });
 }
 
