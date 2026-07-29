@@ -1550,7 +1550,6 @@ async function renderRetreat(id) {
     ? '<span class="status concluido">Somente consulta</span>'
     : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a>${retreat.status === 'publicado' ? '<span class="status publicado">Retiro publicado</span>' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar retiro</button>`;
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions">${retreatActions}</div></section>
-    ${retreatStatisticsHtml}
     <section class="detail-grid"></section>
     `, 'retiros');
   setupHomeStatTabs({ shirtStudents: registeredStudents, communityDetails: retreatCommunityDetails });
