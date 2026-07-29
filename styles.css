@@ -4033,6 +4033,12 @@ select:focus {
   font:700 21px/1.15 "Fraunces", serif;
 }
 
+.home-column>h2 {
+  margin:0 0 12px;
+  padding:0 0 9px;
+  border-bottom:2px solid rgba(198,154,69,.72);
+}
+
 .home-column-heading strong {
   color:var(--epc-blue);
   font:700 24px/1 "Fraunces", serif;
