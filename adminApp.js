@@ -3923,7 +3923,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const kidsAgeLimitHint = Number(retreat.idadeMaximaEspacoKids) > 0 ? ` Idade máxima: ${Number(retreat.idadeMaximaEspacoKids)} ano(s).` : '';
   const kidsAgeLimitMessage = 'A idade da criança supera a idade máxima para ocupar o espaço kids neste retiro. Por gentileza consulte a coordenação';
   const internalKidsAgeLimitMessage = 'Idade superior á definida para esse retiro';
-  const canUseInternalKidAgeLimitException = embedded && retreat.status === 'publicado';
+  const canUseInternalKidAgeLimitException = embedded && canAccess('pessoas.editar') && canModifyRetreat(retreat);
   const kidAgeLimitViolation = (source) => {
     if (Number(retreat.idadeMaximaEspacoKids) <= 0) return null;
     for (let index = 1; index <= 5; index += 1) {
