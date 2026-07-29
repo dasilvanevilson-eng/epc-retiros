@@ -1548,8 +1548,8 @@ async function renderRetreat(id) {
   const concluded = isRetreatConcluded(retreat);
   const retreatActions = concluded
     ? '<span class="status concluido">Somente consulta</span>'
-    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar configuração</a>${retreat.status === 'publicado' ? '' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar retiro</button>`;
-  layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions">${retreatActions}</div></section>
+    : `<a class="secondary-button" href="#retreat-links">Links</a><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>${retreat.status === 'publicado' ? '' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>`;
+  layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions retreat-actions-menu">${retreatActions}</div></section>
     <section class="detail-grid"></section>
     `, 'retiros');
   setupHomeStatTabs({ shirtStudents: registeredStudents, communityDetails: retreatCommunityDetails });
@@ -1565,12 +1565,13 @@ async function renderRetreat(id) {
     deleteButton.className = 'delete-retreat';
     deleteButton.id = 'delete-retreat';
     deleteButton.type = 'button';
-    deleteButton.textContent = 'Excluir retiro';
+    deleteButton.textContent = 'Excluir';
     app.querySelector('.detail-actions')?.append(deleteButton);
   }
   if (activeSectorLinks.length) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
+    sectorLinksPanel.id = 'retreat-links';
     sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
@@ -1625,7 +1626,7 @@ async function renderRetreat(id) {
     } catch (error) {
       alert(`Nao foi possivel excluir o retiro. ${error.message || 'Atualize a pagina e tente novamente.'}`);
       button.disabled = false;
-      button.textContent = 'Excluir retiro';
+      button.textContent = 'Excluir';
     }
   });
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
