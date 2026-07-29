@@ -30,6 +30,7 @@ const viewPermissions = {
   pessoas: 'pessoas.ver',
   'validacao-inscricoes': 'validacao-inscricoes.ver',
   cursista: 'cursista.ver',
+  'cursista-smp': 'cursista.ver',
   comunidades: 'comunidades.ver',
   'recado-equipe': 'recado-equipe.ver',
   crachas: 'crachas.ver',
@@ -642,6 +643,12 @@ function layout(content, active = 'inicio') {
     ['alterar-senha', 'Alterar senha', '••'],
     ['usuarios', 'Usuarios e permissoes', 'UP'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id));
+  if (canView('cursista-smp')) {
+    const studentIndex = navItems.findIndex(([id]) => id === 'cursista');
+    const smpItem = ['cursista-smp', 'Cursista SMP', 'SMP'];
+    if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, smpItem);
+    else navItems.push(smpItem);
+  }
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
       <aside class="admin-sidebar" aria-label="Identidade EPC">
@@ -2369,6 +2376,94 @@ async function renderPessoa(id, retreatId, source = '') {
     location.hash = backHref;
   });
 }
+
+function renderCursistaSmp() {
+  const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
+  const shirtChoices = (name) => choices(name, ['P', 'M', 'G', 'GG'], false);
+  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>Cursista SMP</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
+  <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>1.</span><div><h2>Dados do casal</h2></div></div>
+      <div class="fields two-columns">
+        <label class="field"><span>Nome dele</span><input name="nomeDele" placeholder="Digite o nome completo"></label>
+        <label class="field"><span>Data de nascimento</span><input name="nascimentoDele" type="date"></label>
+        <label class="field"><span>Nome dela</span><input name="nomeDela" placeholder="Digite o nome completo"></label>
+        <label class="field"><span>Data de nascimento</span><input name="nascimentoDela" type="date"></label>
+        <label class="field"><span>CPF dele</span><input name="cpfDele" inputmode="numeric" placeholder="000.000.000-00"></label>
+        <label class="field"><span>CPF dela</span><input name="cpfDela" inputmode="numeric" placeholder="000.000.000-00"></label>
+        <label class="field"><span>Profissão dele</span><input name="profissaoDele" placeholder="Digite a profissão"></label>
+        <label class="field"><span>Profissão dela</span><input name="profissaoDela" placeholder="Digite a profissão"></label>
+      </div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>2.</span><div><h2>Endereço e contato</h2></div></div>
+      <div class="fields cursista-smp-address">
+        <label class="field smp-address-line"><span>Endereço</span><input name="endereco" placeholder="Digite o endereço"></label>
+        <label class="field"><span>Número</span><input name="numero" placeholder="Nº"></label>
+        <label class="field"><span>Bairro</span><input name="bairro" placeholder="Digite o bairro"></label>
+        <label class="field"><span>Cidade</span><input name="cidade" placeholder="Digite a cidade"></label>
+        <label class="field"><span>Estado</span><select name="estado"><option value="">Selecione</option><option>SC</option><option>PR</option><option>RS</option></select></label>
+        <label class="field"><span>CEP</span><input name="cep" inputmode="numeric" placeholder="00000-000"></label>
+        <label class="field"><span>Fone dele</span><input name="foneDele" inputmode="tel" placeholder="(00) 00000-0000"></label>
+        <label class="field"><span>Fone dela</span><input name="foneDela" inputmode="tel" placeholder="(00) 00000-0000"></label>
+      </div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>3.</span><div><h2>Vivência religiosa</h2></div></div>
+      <div class="fields two-columns">
+        <fieldset><legend>Crisma do ele</legend>${yesNo('crismaDele')}</fieldset>
+        <fieldset><legend>Crisma da ela</legend>${yesNo('crismaDela')}</fieldset>
+        <label class="field"><span>Religião dele</span><select name="religiaoDele"><option value="">Selecione</option><option>Católica</option><option>Outra</option></select></label>
+        <label class="field"><span>Religião dela</span><select name="religiaoDela"><option value="">Selecione</option><option>Católica</option><option>Outra</option></select></label>
+        <fieldset><legend>Participa das missas? Ele</legend>${yesNo('missaDele')}</fieldset>
+        <fieldset><legend>Participa das missas? Ela</legend>${yesNo('missaDela')}</fieldset>
+        <fieldset><legend>Pertence a movimento da Igreja?</legend>${yesNo('movimentoIgreja')}</fieldset>
+        <label class="field"><span>Qual?</span><input name="qualMovimento" placeholder="Digite o movimento"></label>
+      </div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>4.</span><div><h2>Filhos e casamento</h2></div></div>
+      <div class="fields three-columns">
+        <label class="field"><span>Data do 1º casamento dele</span><input name="casamentoDele" type="date"></label>
+        <label class="field"><span>Data do 1º casamento dela</span><input name="casamentoDela" type="date"></label>
+        <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" type="date"></label>
+        <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
+        <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
+        <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
+        <fieldset><legend>Houve outras uniões?</legend>${yesNo('outrasUnioes')}</fieldset>
+        <label class="field smp-wide"><span>Se sim, nome e idade</span><input name="outrasUnioesDetalhe" placeholder="Digite o nome e a idade"></label>
+        <fieldset class="smp-wide"><legend>Tem filhos menores de 12 anos que necessitam permanecer no espaço Kids?</legend>${yesNo('espacoKids')}</fieldset>
+      </div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>5.</span><div><h2>Saúde e acolhimento</h2></div></div>
+      <div class="fields two-columns">
+        <fieldset><legend>Possui algum problema de saúde? Ele</legend>${yesNo('saudeDele')}</fieldset>
+        <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema (opcional)"></label>
+        <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
+        <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
+        <fieldset><legend>Casal precisa de acolhimento?</legend>${yesNo('acolhimento')}</fieldset>
+        <label class="field"><span>Por quê?</span><input name="porqueAcolhimento" placeholder="Explique o motivo (opcional)"></label>
+        <p class="smp-pregnancy-alert smp-wide">⚠ Não estar grávida</p>
+        <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><span>Ele</span>${shirtChoices('manequimDele')}<span>Ela</span>${shirtChoices('manequimDela')}</div>
+      </div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>6.</span><div><h2>Apresentante e origem</h2></div></div>
+      <div class="fields two-columns">
+        <label class="field"><span>Nome do apresentante</span><input name="nomeApresentante" placeholder="Digite o nome"></label>
+        <label class="field"><span>Fone do apresentante</span><input name="foneApresentante" inputmode="tel" placeholder="(00) 00000-0000"></label>
+        <label class="field"><span>Curso que fez o apresentante</span><select name="cursoApresentante"><option value="">Selecione</option><option>EPC</option><option>ECC</option><option>Outro</option></select></label>
+        <label class="field"><span>Cidade do apresentante</span><input name="cidadeApresentante" placeholder="Digite a cidade"></label>
+        <label class="field smp-wide"><span>Paróquia que pertence o apresentante</span><input name="paroquiaApresentante" placeholder="Digite a paróquia"></label>
+        <label class="field"><span>Nome de um familiar ou amigo</span><input name="familiarAmigo" placeholder="Digite o nome"></label>
+        <label class="field"><span>Fone</span><input name="foneFamiliar" inputmode="tel" placeholder="(00) 00000-0000"></label>
+      </div>
+    </section>
+    <div class="form-actions cursista-smp-actions"><p>Somente layout de teste. Nenhuma informação será salva.</p><div><button type="button">Salvar</button><button type="button" class="secondary-button">Salvar e novo</button><button type="button" class="clear-student-form">Cancelar</button></div></div>
+  </form>`, 'cursista-smp');
+}
+
 async function renderCursista() {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const focusStudentRetreat = selectedRetreat();
@@ -5205,6 +5300,7 @@ async function route() {
     if (target === 'usuarios') return renderUsuarios();
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
+    if (target === 'cursista-smp') return renderCursistaSmp();
     await loadData();
     if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'alterar-senha') return renderAlterarSenha(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
     if (target === 'cursista') {

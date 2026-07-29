@@ -5200,6 +5200,162 @@ body:has(.login-shell) {
   box-shadow:0 12px 24px rgba(71, 114, 78, .24);
 }
 
+.cursista-smp-heading {
+  padding-bottom:22px;
+}
+
+.cursista-smp-form {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:0;
+  overflow:hidden;
+  padding:0;
+}
+
+.cursista-smp-section {
+  padding:24px;
+  border-bottom:1px solid var(--line);
+}
+
+.cursista-smp-section:nth-child(odd) {
+  border-right:1px solid var(--line);
+}
+
+.cursista-smp-section .section-heading {
+  margin-bottom:16px;
+}
+
+.cursista-smp-section .section-heading h2 {
+  color:var(--leaf);
+  font-size:16px;
+  text-transform:uppercase;
+}
+
+.cursista-smp-section .fields {
+  gap:14px 16px;
+}
+
+.cursista-smp-form fieldset {
+  min-width:0;
+  margin:0;
+  padding:0;
+  border:0;
+}
+
+.cursista-smp-form legend,
+.cursista-smp-form .field span {
+  margin-bottom:7px;
+  color:var(--ink);
+  font-weight:700;
+  font-size:13px;
+}
+
+.cursista-smp-form select {
+  width:100%;
+  padding:13px 14px;
+  border:1px solid #cdd8cc;
+  border-radius:8px;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+}
+
+.cursista-smp-form .inline-choices {
+  gap:8px;
+}
+
+.cursista-smp-form .choice {
+  min-height:38px;
+  padding:8px 11px;
+  box-shadow:none;
+}
+
+.cursista-smp-address {
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) 120px;
+}
+
+.cursista-smp-address .smp-address-line {
+  grid-column:1 / 3;
+}
+
+.smp-wide {
+  grid-column:1 / -1;
+}
+
+.smp-pregnancy-alert {
+  margin:0;
+  color:#d11f1f;
+  font-weight:900;
+}
+
+.smp-shirt-row {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.smp-shirt-row strong {
+  margin-right:8px;
+}
+
+.smp-shirt-row .inline-choices {
+  display:flex;
+}
+
+.cursista-smp-actions {
+  grid-column:1 / -1;
+  align-items:center;
+  padding:18px 24px 24px;
+}
+
+.cursista-smp-actions>div {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.cursista-smp-actions button {
+  min-width:104px;
+}
+
+.cursista-smp-actions .secondary-button {
+  background:#fff;
+  color:var(--leaf);
+  border:1px solid var(--leaf);
+  box-shadow:none;
+}
+
+@media(max-width:980px) {
+  .cursista-smp-form {
+    grid-template-columns:1fr;
+  }
+
+  .cursista-smp-section:nth-child(odd) {
+    border-right:0;
+  }
+}
+
+@media(max-width:650px) {
+  .cursista-smp-section {
+    padding:20px;
+  }
+
+  .cursista-smp-form .two-columns,
+  .cursista-smp-form .three-columns,
+  .cursista-smp-address {
+    grid-template-columns:1fr;
+  }
+
+  .cursista-smp-actions {
+    align-items:stretch;
+  }
+
+  .cursista-smp-actions>div {
+    flex-direction:column;
+  }
+}
+
 .hidden-team-alert-dialog.is-room-team .hidden-team-alert-close:hover {
   background:#365e3e;
 }
