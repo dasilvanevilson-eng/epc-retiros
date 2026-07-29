@@ -1100,7 +1100,6 @@ async function renderHome() {
   const homePanel = (label, description, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2>${description ? `<p>${description}</p>` : ''}</div></div><div>${content}</div></article>`;
   layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     <section class="metric-grid dashboard-metrics">
-      <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${activeEnrolments.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Inscrições aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section></section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
@@ -1112,7 +1111,7 @@ async function renderHome() {
         ${homeHealthCard('Aniversariantes do mês', birthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>
-      <section class="home-column"><h2>Equipe de trabalho</h2><div class="home-column-list">
+      <section class="home-column"><div class="home-column-heading"><h2>Equipe de trabalho</h2><strong>${activeEnrolments.length}</strong></div><div class="home-column-list">
         ${homeLinkCard('Inscrições aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
         ${homeHealthCard('Quadrante(s) impresso', quadranteRows.length, 'quadrante')}
         ${homeHealthCard('Fotos solicitadas', photoRows.length, 'photo')}
