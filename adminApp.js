@@ -2398,12 +2398,12 @@ function renderCursistaSmp() {
     <section class="cursista-smp-section">
       <div class="section-heading"><span>2.</span><div><h2>Endereço e contato</h2></div></div>
       <div class="fields cursista-smp-address">
+        <label class="field"><span>CEP</span><input name="cep" inputmode="numeric" placeholder="00000-000"></label>
         <label class="field smp-address-line"><span>Endereço</span><input name="endereco" placeholder="Digite o endereço"></label>
         <label class="field"><span>Número</span><input name="numero" placeholder="Nº"></label>
+        <label class="field"><span>Nr Apto</span><input name="nrApto" placeholder="Apto"></label>
         <label class="field"><span>Bairro</span><input name="bairro" placeholder="Digite o bairro"></label>
         <label class="field"><span>Cidade</span><input name="cidade" placeholder="Digite a cidade"></label>
-        <label class="field"><span>Estado</span><select name="estado"><option value="">Selecione</option><option>SC</option><option>PR</option><option>RS</option></select></label>
-        <label class="field"><span>CEP</span><input name="cep" inputmode="numeric" placeholder="00000-000"></label>
         <label class="field"><span>Fone dele</span><input name="foneDele" inputmode="tel" placeholder="(00) 00000-0000"></label>
         <label class="field"><span>Fone dela</span><input name="foneDela" inputmode="tel" placeholder="(00) 00000-0000"></label>
       </div>
@@ -2413,12 +2413,14 @@ function renderCursistaSmp() {
       <div class="fields two-columns">
         <fieldset><legend>Crisma do ele</legend>${yesNo('crismaDele')}</fieldset>
         <fieldset><legend>Crisma da ela</legend>${yesNo('crismaDela')}</fieldset>
-        <label class="field"><span>Religião dele</span><select name="religiaoDele"><option value="">Selecione</option><option>Católica</option><option>Outra</option></select></label>
-        <label class="field"><span>Religião dela</span><select name="religiaoDela"><option value="">Selecione</option><option>Católica</option><option>Outra</option></select></label>
-        <fieldset><legend>Participa das missas? Ele</legend>${yesNo('missaDele')}</fieldset>
-        <fieldset><legend>Participa das missas? Ela</legend>${yesNo('missaDela')}</fieldset>
-        <fieldset><legend>Pertence a movimento da Igreja?</legend>${yesNo('movimentoIgreja')}</fieldset>
-        <label class="field"><span>Qual?</span><input name="qualMovimento" placeholder="Digite o movimento"></label>
+        <label class="field"><span>Religião dele</span><input name="religiaoDele" placeholder="Digite a religião"></label>
+        <label class="field"><span>Religião dela</span><input name="religiaoDela" placeholder="Digite a religião"></label>
+        <label class="field"><span>Participa das missas? Ele</span><input name="missaDele" placeholder="Informe a participação"></label>
+        <label class="field"><span>Participa das missas? Ela</span><input name="missaDela" placeholder="Informe a participação"></label>
+        <fieldset><legend>Pertence a movimento da Igreja? Ele</legend>${yesNo('movimentoIgrejaDele')}</fieldset>
+        <label class="field"><span>Qual movimento dele?</span><input name="qualMovimentoDele" placeholder="Digite o movimento"></label>
+        <fieldset><legend>Pertence a movimento da Igreja? Ela</legend>${yesNo('movimentoIgrejaDela')}</fieldset>
+        <label class="field"><span>Qual movimento dela?</span><input name="qualMovimentoDela" placeholder="Digite o movimento"></label>
       </div>
     </section>
     <section class="cursista-smp-section">
@@ -2442,8 +2444,6 @@ function renderCursistaSmp() {
         <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema (opcional)"></label>
         <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
-        <fieldset><legend>Casal precisa de acolhimento?</legend>${yesNo('acolhimento')}</fieldset>
-        <label class="field"><span>Por quê?</span><input name="porqueAcolhimento" placeholder="Explique o motivo (opcional)"></label>
         <p class="smp-pregnancy-alert smp-wide">⚠ Não estar grávida</p>
         <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><span>Ele</span>${shirtChoices('manequimDele')}<span>Ela</span>${shirtChoices('manequimDela')}</div>
       </div>
