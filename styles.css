@@ -4130,6 +4130,10 @@ select:focus {
   border-bottom:0;
 }
 
+.home-column-panel .stat-tile-grid strong {
+  color:var(--epc-blue);
+}
+
 .home-detail-source {
   display:none !important;
 }
