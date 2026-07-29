@@ -4223,7 +4223,15 @@ select:focus {
   }
 
   .home-overview {
-    grid-template-columns:1fr;
+    grid-template-columns:repeat(3, minmax(300px, 1fr));
+    overflow-x:auto;
+    padding-bottom:8px;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .home-column {
+    scroll-snap-align:start;
   }
 
   .student-health-grid {
