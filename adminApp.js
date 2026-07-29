@@ -1099,9 +1099,7 @@ async function renderHome() {
   const homeLinkCard = (label, count, href, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><a href="${href}">${action}</a></article>`;
   const homePanel = (label, description, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2>${description ? `<p>${description}</p>` : ''}</div></div><div>${content}</div></article>`;
   layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
-    <section class="metric-grid dashboard-metrics">
-      <article class="metric-card static-metric"><span>Inscrições aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
-    </section></section>
+    </section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
       <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><strong>${activeStudents.length}</strong></div><div class="home-column-list">
         ${homeHealthCard('Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}

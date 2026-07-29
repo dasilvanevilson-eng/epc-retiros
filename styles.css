@@ -3940,7 +3940,7 @@ select:focus {
 /* Tela de inicio compacta */
 .home-topline {
   display:grid;
-  grid-template-columns:minmax(0, 1fr) minmax(420px, 1.45fr);
+  grid-template-columns:minmax(0, 1fr);
   gap:20px;
   align-items:start;
   margin-bottom:14px;
