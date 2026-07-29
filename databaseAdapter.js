@@ -256,7 +256,12 @@ async function referencedIds(table, column, ids = []) {
 }
 
 async function saveRetreat(record) {
-  const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'valorCamisetaOficial', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
+  const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'valorCamisetaOficial', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'setoresInscricoesEncerradas', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
+  const closedSectorKeysForExtras = new Set(array(record.setoresInscricoesEncerradas).map(normalizeText));
+  const retreatExtras = {
+    ...extras(record, mappedKeys),
+    setoresInscricoesEncerradas: array(record.setores).filter((sector) => closedSectorKeysForExtras.has(normalizeText(sector))),
+  };
   const [existingSectors, existingDays] = await Promise.all([
     rowsWhere('retiro_setores', `retiro_id=eq.${enc(record.id)}`),
     rowsWhere('retiro_dias', `retiro_id=eq.${enc(record.id)}`),
@@ -279,7 +284,7 @@ async function saveRetreat(record) {
     status: record.status || 'preparacao',
     created_at: record.createdAt || undefined,
     updated_at: record.updatedAt || undefined,
-    extras: extras(record, mappedKeys),
+    extras: retreatExtras,
   }));
 
   await deleteWhere('retiro_contribuicoes', `retiro_id=eq.${enc(record.id)}`);
