@@ -645,7 +645,7 @@ function layout(content, active = 'inicio') {
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id));
   if (canView('cursista-smp')) {
     const studentIndex = navItems.findIndex(([id]) => id === 'cursista');
-    const smpItem = ['cursista-smp', 'Cursista SMP', 'SMP'];
+    const smpItem = ['cursista-smp', 'Cursista SMP', ''];
     if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, smpItem);
     else navItems.push(smpItem);
   }
