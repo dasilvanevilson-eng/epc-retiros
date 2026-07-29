@@ -4298,6 +4298,21 @@ select:focus {
     align-self:end;
   }
 
+  .home-column-card.student-health-card:not(:has(strong)) {
+    grid-template-columns:1fr;
+  }
+
+  .home-column-card.student-health-card:not(:has(strong))>div {
+    display:block;
+  }
+
+  .home-column-card.student-health-card:not(:has(strong)) button,
+  .home-column-card.student-health-card:not(:has(strong)) a {
+    justify-self:start;
+    align-self:start;
+    min-height:24px;
+  }
+
   .dashboard-metrics .metric-card {
     min-height:0;
     padding:10px 8px;
