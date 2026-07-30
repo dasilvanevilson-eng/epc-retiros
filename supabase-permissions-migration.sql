@@ -26,6 +26,7 @@ with permission_seed(id, modulo, descricao) as (
     ('cursista.criar','Cursista','Cadastrar cursistas'),
     ('cursista.editar','Cursista','Editar cursistas'),
     ('cursista.excluir','Cursista','Excluir cursistas'),
+    ('cursista-epc.ver','Cursista EPC','Ver Cursista EPC'),
     ('comunidades.ver','Comunidades','Ver comunidades'),
     ('comunidades.criar','Comunidades','Criar comunidades'),
     ('comunidades.editar','Comunidades','Editar comunidades'),
@@ -53,7 +54,7 @@ with permission_seed(id) as (
     ('inicio.ver'),('retiros.ver'),('retiros.criar'),('retiros.editar'),('retiros.publicar'),('retiros.excluir'),
     ('pessoas.ver'),('pessoas.criar'),('pessoas.editar'),('pessoas.excluir'),
     ('validacao-inscricoes.ver'),('validacao-inscricoes.validar'),
-    ('cursista.ver'),('cursista.criar'),('cursista.editar'),('cursista.excluir'),
+    ('cursista.ver'),('cursista.criar'),('cursista.editar'),('cursista.excluir'),('cursista-epc.ver'),
     ('comunidades.ver'),('comunidades.criar'),('comunidades.editar'),('comunidades.excluir'),
     ('crachas.ver'),('crachas.editar'),('crachas.imprimir'),('crachas.excluir'),
     ('quadrante.ver'),('quadrante.imprimir'),('recebedor.ver'),('recebedor.editar'),
@@ -62,7 +63,7 @@ with permission_seed(id) as (
 profile_seed(perfil_id, permissao_id, permitido) as (
   select 'admin', id, true from permission_seed
   union all
-  select 'coordenador_geral', id, id <> 'usuarios.excluir' from permission_seed
+  select 'coordenador_geral', id, id not in ('usuarios.excluir', 'cursista-epc.ver') from permission_seed
   union all
   select 'coordenador_retiro', id, id in (
     'inicio.ver','retiros.ver','retiros.editar','pessoas.ver','pessoas.criar','pessoas.editar','pessoas.excluir',

@@ -30,6 +30,7 @@ const viewPermissions = {
   pessoas: 'pessoas.ver',
   'validacao-inscricoes': 'validacao-inscricoes.ver',
   cursista: 'cursista.ver',
+  'cursista-epc': 'cursista-epc.ver',
   'cursista-smp': 'cursista.ver',
   comunidades: 'comunidades.ver',
   'recado-equipe': 'recado-equipe.ver',
@@ -643,11 +644,14 @@ function layout(content, active = 'inicio') {
     ['alterar-senha', 'Alterar senha', '••'],
     ['usuarios', 'Usuarios e permissoes', 'UP'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id));
-  if (canView('cursista-smp')) {
+  if (canView('cursista-epc') || canView('cursista-smp')) {
     const studentIndex = navItems.findIndex(([id]) => id === 'cursista');
-    const smpItem = ['cursista-smp', 'Cursista SMP', ''];
-    if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, smpItem);
-    else navItems.push(smpItem);
+    const studentItems = [
+      canView('cursista-epc') ? ['cursista-epc', 'Cursista EPC', ''] : null,
+      canView('cursista-smp') ? ['cursista-smp', 'Cursista SMP', ''] : null,
+    ].filter(Boolean);
+    if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, ...studentItems);
+    else navItems.push(...studentItems);
   }
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
@@ -2377,11 +2381,11 @@ async function renderPessoa(id, retreatId, source = '') {
   });
 }
 
-function renderCursistaSmp() {
+function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-smp' } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" type="date"></label></div>`).join('');
-  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>Cursista SMP</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
+  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>${escapeHtml(title)}</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
     <div class="cursista-smp-tool-actions">
@@ -2483,7 +2487,15 @@ function renderCursistaSmp() {
       <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div>
     </section>
     <div class="form-actions cursista-smp-actions"><p>Somente layout de teste. Nenhuma informação será salva.</p><div><button type="button">Salvar</button><button type="button" class="secondary-button">Salvar e novo</button><button type="button" class="clear-student-form">Cancelar</button></div></div>
-  </form>`, 'cursista-smp');
+  </form>`, active);
+}
+
+function renderCursistaSmp() {
+  return renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
+}
+
+function renderCursistaEpc() {
+  return renderCursistaSmpScreen({ title: 'Cursista EPC', active: 'cursista-epc' });
 }
 
 async function renderCursista() {
@@ -5322,6 +5334,7 @@ async function route() {
     if (target === 'usuarios') return renderUsuarios();
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
+    if (target === 'cursista-epc') return renderCursistaEpc();
     if (target === 'cursista-smp') return renderCursistaSmp();
     await loadData();
     if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'alterar-senha') return renderAlterarSenha(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
