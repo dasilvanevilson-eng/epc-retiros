@@ -2499,6 +2499,27 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     </section>
     <div class="form-actions cursista-smp-actions"><p>Somente layout de teste. Nenhuma informação será salva.</p><div><button type="button">Salvar</button><button type="button" class="secondary-button">Salvar e novo</button><button type="button" class="clear-student-form">Cancelar</button></div></div>
   </form>`, active);
+  if (active !== 'cursista-smp') return;
+  const markOwner = (owner, fieldNames = []) => {
+    fieldNames.forEach((name) => {
+      app.querySelectorAll(`[name="${name}"]`).forEach((input) => {
+        const target = input.closest('.field, fieldset, .smp-shirt-choice-line, .kids-row, .choice-block');
+        target?.classList.add(`smp-owner-${owner}`);
+      });
+    });
+  };
+  const markSectionOwner = (owner, fieldName) => {
+    const section = app.querySelector(`[name="${fieldName}"]`)?.closest('.cursista-smp-section');
+    section?.classList.add(`smp-owner-${owner}`);
+  };
+  app.querySelector('#cursista-smp-form')?.classList.add('smp-ownership-debug');
+  app.querySelector('.cursista-smp-file-number')?.classList.add('smp-ownership-debug', 'smp-owner-common');
+  markOwner('him', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
+  markOwner('her', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
+  markOwner('common', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento']);
+  markSectionOwner('common', 'smpKidsNotNeeded');
+  markSectionOwner('common', 'nomeApresentante');
+  markSectionOwner('common', 'valorInscricaoSmp');
 }
 
 function renderCursistaSmp() {

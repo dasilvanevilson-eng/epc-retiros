@@ -5319,6 +5319,69 @@ body:has(.login-shell) {
   box-shadow:none;
 }
 
+.smp-ownership-debug.smp-owner-common,
+.smp-ownership-debug .smp-owner-common,
+.smp-ownership-debug .smp-owner-him,
+.smp-ownership-debug .smp-owner-her {
+  border:2px solid var(--smp-owner-color);
+  background:var(--smp-owner-bg);
+  border-radius:8px;
+}
+
+.smp-ownership-debug.smp-owner-common,
+.smp-ownership-debug .smp-owner-common {
+  --smp-owner-color:#d97706;
+  --smp-owner-bg:#fff7ed;
+}
+
+.smp-ownership-debug .smp-owner-him {
+  --smp-owner-color:#1e3a8a;
+  --smp-owner-bg:#eff6ff;
+}
+
+.smp-ownership-debug .smp-owner-her {
+  --smp-owner-color:#b91c1c;
+  --smp-owner-bg:#fef2f2;
+}
+
+.smp-ownership-debug .smp-owner-common input,
+.smp-ownership-debug .smp-owner-him input,
+.smp-ownership-debug .smp-owner-her input,
+.smp-ownership-debug.smp-owner-common input,
+.smp-ownership-debug .smp-owner-common select,
+.smp-ownership-debug .smp-owner-him select,
+.smp-ownership-debug .smp-owner-her select,
+.smp-ownership-debug.smp-owner-common select {
+  border-color:var(--smp-owner-color);
+  background:#fff;
+}
+
+.smp-ownership-debug.smp-owner-common .field span,
+.smp-ownership-debug .smp-owner-common legend,
+.smp-ownership-debug .smp-owner-common .field span,
+.smp-ownership-debug .smp-owner-common>span,
+.smp-ownership-debug .smp-owner-common strong,
+.smp-ownership-debug .smp-owner-him legend,
+.smp-ownership-debug .smp-owner-him .field span,
+.smp-ownership-debug .smp-owner-him>span,
+.smp-ownership-debug .smp-owner-him strong,
+.smp-ownership-debug .smp-owner-her legend,
+.smp-ownership-debug .smp-owner-her .field span,
+.smp-ownership-debug .smp-owner-her>span,
+.smp-ownership-debug .smp-owner-her strong {
+  color:var(--smp-owner-color);
+}
+
+.cursista-smp-form.smp-ownership-debug .smp-owner-common,
+.cursista-smp-form.smp-ownership-debug .smp-owner-him,
+.cursista-smp-form.smp-ownership-debug .smp-owner-her {
+  padding:10px;
+}
+
+.cursista-smp-form.smp-ownership-debug .cursista-smp-section.smp-owner-common {
+  padding:24px;
+}
+
 .cursista-smp-address {
   grid-template-columns:140px minmax(0, 1fr) 110px;
 }
