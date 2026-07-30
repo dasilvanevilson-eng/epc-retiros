@@ -2404,6 +2404,7 @@ function renderCursistaSmp() {
         <label class="field"><span>Nr Apto</span><input name="nrApto" placeholder="Apto"></label>
         <label class="field"><span>Bairro</span><input name="bairro" placeholder="Digite o bairro"></label>
         <label class="field"><span>Cidade</span><input name="cidade" placeholder="Digite a cidade"></label>
+        <label class="field"><span>Estado</span><input name="estadoSmp" maxlength="2" placeholder="SC"></label>
         <label class="field"><span>Fone dele</span><input name="foneDele" inputmode="tel" placeholder="(00) 00000-0000"></label>
         <label class="field"><span>Fone dela</span><input name="foneDela" inputmode="tel" placeholder="(00) 00000-0000"></label>
       </div>
@@ -2444,6 +2445,7 @@ function renderCursistaSmp() {
         <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema (opcional)"></label>
         <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
+        <fieldset class="smp-wide"><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
         <p class="smp-pregnancy-alert smp-wide">⚠ Não estar grávida</p>
         <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><span>Ele</span>${shirtChoices('manequimDele')}<span>Ela</span>${shirtChoices('manequimDela')}</div>
       </div>
