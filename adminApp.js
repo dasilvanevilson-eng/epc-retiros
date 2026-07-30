@@ -31,7 +31,7 @@ const viewPermissions = {
   'validacao-inscricoes': 'validacao-inscricoes.ver',
   cursista: 'cursista.ver',
   'cursista-epc': 'cursista-epc.ver',
-  'cursista-smp': 'cursista.ver',
+  'cursista-smp': 'cursista-smp.ver',
   comunidades: 'comunidades.ver',
   'recado-equipe': 'recado-equipe.ver',
   crachas: 'crachas.ver',
