@@ -2382,6 +2382,13 @@ function renderCursistaSmp() {
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" type="date"></label></div>`).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>Cursista SMP</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
+  <section class="admin-registration-tools cursista-smp-tools panel">
+    <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
+    <div class="cursista-smp-tool-actions">
+      <button type="button" id="new-cursista-smp">Novo</button>
+      <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
+    </div>
+  </section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
     <section class="cursista-smp-section">
       <div class="section-heading"><span>1.</span><div><h2>Dados do casal</h2></div></div>

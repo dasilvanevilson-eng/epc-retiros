@@ -5212,6 +5212,28 @@ body:has(.login-shell) {
   padding:0;
 }
 
+.cursista-smp-tools {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:16px;
+  align-items:end;
+}
+
+.cursista-smp-tools .registration-search-field {
+  margin-top:0;
+}
+
+.cursista-smp-tool-actions {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+.cursista-smp-tool-actions button {
+  min-width:96px;
+}
+
 .cursista-smp-section {
   padding:24px;
   border-bottom:1px solid var(--line);
@@ -5364,6 +5386,18 @@ body:has(.login-shell) {
 }
 
 @media(max-width:650px) {
+  .cursista-smp-tools {
+    grid-template-columns:1fr;
+  }
+
+  .cursista-smp-tool-actions {
+    justify-content:stretch;
+  }
+
+  .cursista-smp-tool-actions button {
+    flex:1 1 120px;
+  }
+
   .cursista-smp-section {
     padding:20px;
   }
