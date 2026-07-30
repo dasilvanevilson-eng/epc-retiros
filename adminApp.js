@@ -2464,6 +2464,10 @@ function renderCursistaSmp() {
         <label class="field"><span>Fone</span><input name="foneFamiliar" inputmode="tel" placeholder="(00) 00000-0000"></label>
       </div>
     </section>
+    <section class="cursista-smp-section student-registration-value">
+      <div class="section-heading"><span>8.</span><div><h2>Inscrição</h2><p>Informe os valores financeiros do cursista.</p></div></div>
+      <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div>
+    </section>
     <div class="form-actions cursista-smp-actions"><p>Somente layout de teste. Nenhuma informação será salva.</p><div><button type="button">Salvar</button><button type="button" class="secondary-button">Salvar e novo</button><button type="button" class="clear-student-form">Cancelar</button></div></div>
   </form>`, 'cursista-smp');
 }
