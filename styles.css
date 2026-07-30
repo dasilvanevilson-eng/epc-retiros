@@ -5235,8 +5235,7 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-file-number {
-  grid-column:1 / -1;
-  padding:24px 24px 0;
+  margin-bottom:24px;
 }
 
 .cursista-smp-file-number .field {

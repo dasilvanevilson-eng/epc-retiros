@@ -2389,10 +2389,10 @@ function renderCursistaSmp() {
       <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
     </div>
   </section>
+  <section class="panel cursista-smp-file-number">
+    <label class="field"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
+  </section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
-    <div class="cursista-smp-file-number">
-      <label class="field full"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
-    </div>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>1.</span><div><h2>Dados do casal</h2></div></div>
       <div class="fields two-columns">
