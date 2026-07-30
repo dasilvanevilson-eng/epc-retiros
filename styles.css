@@ -5283,17 +5283,27 @@ body:has(.login-shell) {
 }
 
 .smp-shirt-row {
+  display:grid;
+  gap:10px;
+}
+
+.smp-shirt-row strong {
+  display:block;
+}
+
+.smp-shirt-choice-line {
   display:flex;
   align-items:center;
   flex-wrap:wrap;
   gap:10px;
 }
 
-.smp-shirt-row strong {
-  margin-right:8px;
+.smp-shirt-choice-line>span {
+  min-width:28px;
+  font-weight:700;
 }
 
-.smp-shirt-row .inline-choices {
+.smp-shirt-choice-line .inline-choices {
   display:flex;
 }
 

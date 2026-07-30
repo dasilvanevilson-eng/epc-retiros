@@ -2446,7 +2446,7 @@ function renderCursistaSmp() {
         <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
         <fieldset class="smp-wide"><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
-        <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><span>Ele</span>${shirtChoices('manequimDele')}<span>Ela</span>${shirtChoices('manequimDela')}</div>
+        <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><div class="smp-shirt-choice-line"><span>Ele</span>${shirtChoices('manequimDele')}</div><div class="smp-shirt-choice-line"><span>Ela</span>${shirtChoices('manequimDela')}</div></div>
       </div>
     </section>
     <section class="cursista-smp-section">
