@@ -2448,6 +2448,10 @@ function renderCursistaSmp() {
         <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema (opcional)"></label>
         <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
+        <fieldset><legend>Possui alguma intolerância alimentar? Ele</legend>${yesNo('intoleranciaAlimentarDele')}</fieldset>
+        <label class="field"><span>Qual?</span><input name="qualIntoleranciaAlimentarDele" placeholder="Digite a intolerância (opcional)"></label>
+        <fieldset><legend>Possui alguma intolerância alimentar? Ela</legend>${yesNo('intoleranciaAlimentarDela')}</fieldset>
+        <label class="field"><span>Qual?</span><input name="qualIntoleranciaAlimentarDela" placeholder="Digite a intolerância (opcional)"></label>
         <fieldset class="smp-wide"><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
         <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><div class="smp-shirt-choice-line"><span>Ele</span>${shirtChoices('manequimDele')}</div><div class="smp-shirt-choice-line"><span>Ela</span>${shirtChoices('manequimDela')}</div></div>
       </div>
