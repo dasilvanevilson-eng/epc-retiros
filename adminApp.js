@@ -2379,7 +2379,7 @@ async function renderPessoa(id, retreatId, source = '') {
 
 function renderCursistaSmp() {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
-  const shirtChoices = (name) => choices(name, ['P', 'M', 'G', 'GG'], false);
+  const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>Cursista SMP</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
     <section class="cursista-smp-section">
@@ -2446,7 +2446,6 @@ function renderCursistaSmp() {
         <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema (opcional)"></label>
         <fieldset class="smp-wide"><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
-        <p class="smp-pregnancy-alert smp-wide">⚠ Não estar grávida</p>
         <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><span>Ele</span>${shirtChoices('manequimDele')}<span>Ela</span>${shirtChoices('manequimDela')}</div>
       </div>
     </section>
