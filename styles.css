@@ -5279,7 +5279,7 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-address {
-  grid-template-columns:140px minmax(0, 1fr) 86px;
+  grid-template-columns:140px minmax(0, 1fr) 110px;
 }
 
 .cursista-smp-address .smp-address-line {
@@ -5288,6 +5288,11 @@ body:has(.login-shell) {
 
 .cursista-smp-address .field:has(input[name="bairro"]),
 .cursista-smp-address .field:has(input[name="cidade"]) {
+  grid-column:1 / 3;
+}
+
+.cursista-smp-address .field:has(input[name="foneDele"]),
+.cursista-smp-address .field:has(input[name="foneDela"]) {
   grid-column:span 2;
 }
 
