@@ -4044,6 +4044,17 @@ select:focus {
   font:700 24px/1 "Fraunces", serif;
 }
 
+.home-column-total {
+  display:grid;
+  justify-items:start;
+  gap:2px;
+}
+
+.home-column-heading small {
+  color:var(--muted);
+  font:700 11px/1.1 "DM Sans", sans-serif;
+}
+
 .home-column-list {
   display:grid;
   gap:10px;

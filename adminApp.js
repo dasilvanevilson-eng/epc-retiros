@@ -1122,7 +1122,7 @@ async function renderHome() {
   layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
     </section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
-      <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><strong>${activeStudents.length}</strong></div><div class="home-column-list">
+      <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div class="home-column-total"><strong>${activeStudents.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
         ${homeHealthCard('Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
         ${homeHealthCard('Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
         ${homeHealthCard('Tomam medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
@@ -1130,7 +1130,7 @@ async function renderHome() {
         ${homeHealthCard('Aniversariantes do mês', birthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>
-      <section class="home-column"><div class="home-column-heading"><h2>Equipe de trabalho</h2><strong>${activeEnrolments.length}</strong></div><div class="home-column-list">
+      <section class="home-column"><div class="home-column-heading"><h2>Equipe de trabalho</h2><div class="home-column-total"><strong>${activeEnrolments.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
         ${homeLinkCard('Inscrições aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
         ${homeHealthCard('Quadrante(s) impresso', quadranteRows.length, 'quadrante')}
         ${homeHealthCard('Fotos solicitadas', photoRows.length, 'photo')}
