@@ -2393,6 +2393,7 @@ function renderCursistaSmp() {
     <section class="cursista-smp-section">
       <div class="section-heading"><span>1.</span><div><h2>Dados do casal</h2></div></div>
       <div class="fields two-columns">
+        <label class="field full"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
         <label class="field"><span>Nome dele</span><input name="nomeDele" placeholder="Digite o nome completo"></label>
         <label class="field"><span>Data de nascimento</span><input name="nascimentoDele" type="date"></label>
         <label class="field"><span>Nome dela</span><input name="nomeDela" placeholder="Digite o nome completo"></label>
