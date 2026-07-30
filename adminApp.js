@@ -2454,7 +2454,7 @@ function renderCursistaSmp() {
       <div class="fields two-columns">
         <label class="field"><span>Nome do apresentante</span><input name="nomeApresentante" placeholder="Digite o nome"></label>
         <label class="field"><span>Fone do apresentante</span><input name="foneApresentante" inputmode="tel" placeholder="(00) 00000-0000"></label>
-        <label class="field"><span>Curso que fez o apresentante</span><select name="cursoApresentante"><option value="">Selecione</option><option>EPC</option><option>ECC</option><option>Outro</option></select></label>
+        <label class="field"><span>Curso que fez o apresentante</span><input name="cursoApresentante" placeholder="Digite o curso"></label>
         <label class="field"><span>Cidade do apresentante</span><input name="cidadeApresentante" placeholder="Digite a cidade"></label>
         <label class="field smp-wide"><span>Paróquia que pertence o apresentante</span><input name="paroquiaApresentante" placeholder="Digite a paróquia"></label>
         <label class="field"><span>Nome de um familiar ou amigo</span><input name="familiarAmigo" placeholder="Digite o nome"></label>

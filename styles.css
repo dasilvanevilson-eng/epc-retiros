@@ -5235,8 +5235,16 @@ body:has(.login-shell) {
   gap:14px 16px;
 }
 
+.cursista-smp-form .field,
 .cursista-smp-form fieldset {
   min-width:0;
+}
+
+.cursista-smp-form .three-columns {
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+.cursista-smp-form fieldset {
   margin:0;
   padding:0;
   border:0;
@@ -5271,11 +5279,16 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-address {
-  grid-template-columns:140px minmax(0, 1fr) 92px 92px 86px;
+  grid-template-columns:140px minmax(0, 1fr) 86px;
 }
 
 .cursista-smp-address .smp-address-line {
-  grid-column:2 / 6;
+  grid-column:2 / 4;
+}
+
+.cursista-smp-address .field:has(input[name="bairro"]),
+.cursista-smp-address .field:has(input[name="cidade"]) {
+  grid-column:span 2;
 }
 
 .smp-wide {
