@@ -2435,11 +2435,14 @@ function renderCursistaSmp() {
         <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
         <fieldset><legend>Houve outras uniões?</legend>${yesNo('outrasUnioes')}</fieldset>
-        <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
       </div>
     </section>
     <section class="cursista-smp-section">
-      <div class="section-heading"><span>5.</span><div><h2>Saúde e acolhimento</h2></div></div>
+      <div class="section-heading"><span>5.</span><div><h2>Espaço Kids</h2></div></div>
+      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
+    </section>
+    <section class="cursista-smp-section">
+      <div class="section-heading"><span>6.</span><div><h2>Saúde e acolhimento</h2></div></div>
       <div class="fields two-columns">
         <fieldset><legend>Possui algum problema de saúde? Ele</legend>${yesNo('saudeDele')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema (opcional)"></label>
@@ -2450,7 +2453,7 @@ function renderCursistaSmp() {
       </div>
     </section>
     <section class="cursista-smp-section">
-      <div class="section-heading"><span>6.</span><div><h2>Apresentante e origem</h2></div></div>
+      <div class="section-heading"><span>7.</span><div><h2>Apresentante e origem</h2></div></div>
       <div class="fields two-columns">
         <label class="field"><span>Nome do apresentante</span><input name="nomeApresentante" placeholder="Digite o nome"></label>
         <label class="field"><span>Fone do apresentante</span><input name="foneApresentante" inputmode="tel" placeholder="(00) 00000-0000"></label>
