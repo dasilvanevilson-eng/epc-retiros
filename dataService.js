@@ -217,6 +217,13 @@ export const dataService = {
   listCursistas: () => list('cursistas'),
   saveCursista: (student) => saveProtectedRegistration('cursistas', student),
   deleteCursista: (id) => remove('cursistas', id),
+  listCursistasSmp: (retiroId = '') => api(`/cursista-smp${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
+  saveCursistaSmp: (student) => {
+    const retiroId = student.retiroId || '';
+    const numeroFicha = student.id || student.numeroFichaSmp || '';
+    return api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
+  },
+  deleteCursistaSmp: (retiroId, numeroFicha) => api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
   listComunidades: () => list('comunidades'),
   saveComunidade: (community) => save('comunidades', community),
   deleteComunidade: (id) => remove('comunidades', id),

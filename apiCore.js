@@ -1,6 +1,6 @@
 const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, getRecord, importDatabase, listRecords, readDatabase, saveRecord, deleteRecord } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaSmp, getRecord, importDatabase, listCursistasSmp, listRecords, readDatabase, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
@@ -261,6 +261,21 @@ async function handleApi(req, res, pathname) {
     if (denyIfMissingPermission(res, session, 'usuarios.editar')) return;
     await importDatabase(await readBody(req));
     return sendNoContent(res);
+  }
+
+  if (resource === 'cursista-smp') {
+    if (denyIfMissingPermission(res, session, 'cursista-smp.ver')) return;
+    const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
+    if (req.method === 'GET' && !id) return sendJson(res, 200, await listCursistasSmp(url.searchParams.get('retiroId') || ''));
+    if (req.method === 'PUT' && id && action) {
+      const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
+      return sendJson(res, 200, await saveCursistaSmp(record));
+    }
+    if (req.method === 'DELETE' && id && action) {
+      await deleteCursistaSmp(decodeURIComponent(id), decodeURIComponent(action));
+      return sendNoContent(res);
+    }
+    return sendError(res, 405, 'Metodo nao permitido para Cursista SMP.');
   }
 
   if (!stores.includes(resource)) return sendError(res, 404, 'Recurso nao encontrado.');

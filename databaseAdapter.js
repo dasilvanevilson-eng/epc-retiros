@@ -144,10 +144,17 @@ const boolOrFalse = (value) => {
   const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   return ['sim', 'true', '1', 'yes', 'on'].includes(normalized);
 };
+const boolOrNull = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  return boolOrFalse(value);
+};
 const choiceFromBool = (value) => value === null || value === undefined ? '' : (value ? 'Sim' : 'Não');
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 const isUuid = (value = '') => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
 const rowId = (row) => row?.cpf || row?.legacy_id || row?.id;
+const requireSupabaseForCursistaSmp = () => {
+  if (!hasSupabase()) throw new Error('Cursista SMP usa somente Supabase nesta etapa de testes.');
+};
 
 function extras(record, mappedKeys) {
   return Object.fromEntries(Object.entries(record || {}).filter(([key, value]) => !mappedKeys.has(key) && value !== undefined));
@@ -689,6 +696,185 @@ async function saveStudent(record) {
   return mapStudent(row);
 }
 
+function mapCursistaSmp(row) {
+  return {
+    ...(row.extras || {}),
+    retiroId: row.retiro_id,
+    id: row.id,
+    numeroFichaSmp: row.id,
+    nomeDele: row.ele_nome || '',
+    nascimentoDele: row.ele_nascimento || '',
+    cpfDele: row.ele_cpf || '',
+    profissaoDele: row.ele_profissao || '',
+    foneDele: row.ele_fone || '',
+    crismaDele: choiceFromBool(row.ele_crisma),
+    religiaoDele: row.ele_religiao || '',
+    missaDele: row.ele_participa_missas || '',
+    movimentoIgrejaDele: choiceFromBool(row.ele_movimento_igreja),
+    qualMovimentoDele: row.ele_qual_movimento || '',
+    casamentoDele: row.ele_data_primeiro_casamento || '',
+    filhosDele: row.ele_filhos_primeiro_casamento || '',
+    saudeDele: choiceFromBool(row.ele_problema_saude),
+    qualSaudeDele: row.ele_qual_problema_saude || '',
+    intoleranciaAlimentarDele: choiceFromBool(row.ele_intolerancia_alimentar),
+    qualIntoleranciaAlimentarDele: row.ele_qual_intolerancia_alimentar || '',
+    manequimDele: row.ele_manequim || '',
+    nomeDela: row.ela_nome || '',
+    nascimentoDela: row.ela_nascimento || '',
+    cpfDela: row.ela_cpf || '',
+    profissaoDela: row.ela_profissao || '',
+    foneDela: row.ela_fone || '',
+    crismaDela: choiceFromBool(row.ela_crisma),
+    religiaoDela: row.ela_religiao || '',
+    missaDela: row.ela_participa_missas || '',
+    movimentoIgrejaDela: choiceFromBool(row.ela_movimento_igreja),
+    qualMovimentoDela: row.ela_qual_movimento || '',
+    casamentoDela: row.ela_data_primeiro_casamento || '',
+    filhosDela: row.ela_filhos_primeiro_casamento || '',
+    saudeDela: choiceFromBool(row.ela_problema_saude),
+    qualSaudeDela: row.ela_qual_problema_saude || '',
+    intoleranciaAlimentarDela: choiceFromBool(row.ela_intolerancia_alimentar),
+    qualIntoleranciaAlimentarDela: row.ela_qual_intolerancia_alimentar || '',
+    manequimDela: row.ela_manequim || '',
+    cep: row.comum_cep || '',
+    endereco: row.comum_endereco || '',
+    numero: row.comum_numero || '',
+    nrApto: row.comum_nr_apto || '',
+    bairro: row.comum_bairro || '',
+    cidade: row.comum_cidade || '',
+    estadoSmp: row.comum_estado || '',
+    uniaoCasal: row.comum_data_uniao_casal || '',
+    filhosUniao: row.comum_filhos_uniao || '',
+    outrasUnioes: choiceFromBool(row.comum_outras_unioes),
+    smpKidsNotNeeded: Boolean(row.comum_espaco_kids_nao_necessito),
+    smpKidNome1: row.comum_kid_1_nome || '',
+    smpKidNascimento1: row.comum_kid_1_nascimento || '',
+    smpKidNome2: row.comum_kid_2_nome || '',
+    smpKidNascimento2: row.comum_kid_2_nascimento || '',
+    smpKidNome3: row.comum_kid_3_nome || '',
+    smpKidNascimento3: row.comum_kid_3_nascimento || '',
+    smpKidNome4: row.comum_kid_4_nome || '',
+    smpKidNascimento4: row.comum_kid_4_nascimento || '',
+    smpKidNome5: row.comum_kid_5_nome || '',
+    smpKidNascimento5: row.comum_kid_5_nascimento || '',
+    precisaAcolhimento: choiceFromBool(row.comum_precisa_acolhimento),
+    nomeApresentante: row.comum_nome_apresentante || '',
+    foneApresentante: row.comum_fone_apresentante || '',
+    cursoApresentante: row.comum_curso_apresentante || '',
+    cidadeApresentante: row.comum_cidade_apresentante || '',
+    paroquiaApresentante: row.comum_paroquia_apresentante || '',
+    familiarAmigo: row.comum_nome_familiar_amigo || '',
+    foneFamiliar: row.comum_fone_familiar_amigo || '',
+    valorInscricaoSmp: Number(row.comum_valor_inscricao || 0),
+    valorPagoSmp: Number(row.comum_valor_pago || 0),
+    saldoPagarSmp: Number(row.comum_saldo_pagar || 0),
+    recebedorValorPagoSmp: Number(row.comum_recebedor_valor_pago || 0),
+    recebedorTaxaPagaSmp: Boolean(row.comum_recebedor_taxa_paga),
+    recebedorFormaPagamentoSmp: row.comum_recebedor_forma_pagamento || '',
+    recebedorObservacaoSmp: row.comum_recebedor_observacao || '',
+    criadoEm: row.criado_em,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function listCursistasSmp(retiroId) {
+  requireSupabaseForCursistaSmp();
+  const filter = retiroId ? `retiro_id=eq.${enc(retiroId)}` : '';
+  const rows = filter ? await rowsWhere('cursista_smp', filter, 'updated_at.desc') : await allRows('cursista_smp');
+  return rows.map(mapCursistaSmp);
+}
+
+async function saveCursistaSmp(record) {
+  requireSupabaseForCursistaSmp();
+  const id = String(record.id || record.numeroFichaSmp || '').trim();
+  const mappedKeys = new Set(['retiroId', 'id', 'numeroFichaSmp', 'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp', 'criadoEm', 'createdAt', 'updatedAt']);
+  const row = await upsert('cursista_smp', compact({
+    retiro_id: record.retiroId,
+    id,
+    ele_nome: record.nomeDele || '',
+    ele_nascimento: dateOrNull(record.nascimentoDele),
+    ele_cpf: textOrNull(record.cpfDele),
+    ele_profissao: record.profissaoDele || '',
+    ele_fone: record.foneDele || '',
+    ele_crisma: boolOrNull(record.crismaDele),
+    ele_religiao: record.religiaoDele || '',
+    ele_participa_missas: record.missaDele || '',
+    ele_movimento_igreja: boolOrNull(record.movimentoIgrejaDele),
+    ele_qual_movimento: record.qualMovimentoDele || '',
+    ele_data_primeiro_casamento: dateOrNull(record.casamentoDele),
+    ele_filhos_primeiro_casamento: record.filhosDele || '',
+    ele_problema_saude: boolOrNull(record.saudeDele),
+    ele_qual_problema_saude: record.qualSaudeDele || '',
+    ele_intolerancia_alimentar: boolOrNull(record.intoleranciaAlimentarDele),
+    ele_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDele || '',
+    ele_manequim: record.manequimDele || '',
+    ela_nome: record.nomeDela || '',
+    ela_nascimento: dateOrNull(record.nascimentoDela),
+    ela_cpf: textOrNull(record.cpfDela),
+    ela_profissao: record.profissaoDela || '',
+    ela_fone: record.foneDela || '',
+    ela_crisma: boolOrNull(record.crismaDela),
+    ela_religiao: record.religiaoDela || '',
+    ela_participa_missas: record.missaDela || '',
+    ela_movimento_igreja: boolOrNull(record.movimentoIgrejaDela),
+    ela_qual_movimento: record.qualMovimentoDela || '',
+    ela_data_primeiro_casamento: dateOrNull(record.casamentoDela),
+    ela_filhos_primeiro_casamento: record.filhosDela || '',
+    ela_problema_saude: boolOrNull(record.saudeDela),
+    ela_qual_problema_saude: record.qualSaudeDela || '',
+    ela_intolerancia_alimentar: boolOrNull(record.intoleranciaAlimentarDela),
+    ela_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDela || '',
+    ela_manequim: record.manequimDela || '',
+    comum_cep: record.cep || '',
+    comum_endereco: record.endereco || '',
+    comum_numero: record.numero || '',
+    comum_nr_apto: record.nrApto || '',
+    comum_bairro: record.bairro || '',
+    comum_cidade: record.cidade || '',
+    comum_estado: record.estadoSmp || '',
+    comum_data_uniao_casal: dateOrNull(record.uniaoCasal),
+    comum_filhos_uniao: record.filhosUniao || '',
+    comum_outras_unioes: boolOrNull(record.outrasUnioes),
+    comum_espaco_kids_nao_necessito: Boolean(record.smpKidsNotNeeded),
+    comum_kid_1_nome: record.smpKidNome1 || '',
+    comum_kid_1_nascimento: dateOrNull(record.smpKidNascimento1),
+    comum_kid_2_nome: record.smpKidNome2 || '',
+    comum_kid_2_nascimento: dateOrNull(record.smpKidNascimento2),
+    comum_kid_3_nome: record.smpKidNome3 || '',
+    comum_kid_3_nascimento: dateOrNull(record.smpKidNascimento3),
+    comum_kid_4_nome: record.smpKidNome4 || '',
+    comum_kid_4_nascimento: dateOrNull(record.smpKidNascimento4),
+    comum_kid_5_nome: record.smpKidNome5 || '',
+    comum_kid_5_nascimento: dateOrNull(record.smpKidNascimento5),
+    comum_precisa_acolhimento: boolOrNull(record.precisaAcolhimento),
+    comum_nome_apresentante: record.nomeApresentante || '',
+    comum_fone_apresentante: record.foneApresentante || '',
+    comum_curso_apresentante: record.cursoApresentante || '',
+    comum_cidade_apresentante: record.cidadeApresentante || '',
+    comum_paroquia_apresentante: record.paroquiaApresentante || '',
+    comum_nome_familiar_amigo: record.familiarAmigo || '',
+    comum_fone_familiar_amigo: record.foneFamiliar || '',
+    comum_valor_inscricao: numberOrZero(record.valorInscricaoSmp),
+    comum_valor_pago: numberOrZero(record.valorPagoSmp),
+    comum_saldo_pagar: numberOrZero(record.saldoPagarSmp),
+    comum_recebedor_valor_pago: numberOrZero(record.recebedorValorPagoSmp),
+    comum_recebedor_taxa_paga: Boolean(record.recebedorTaxaPagaSmp),
+    comum_recebedor_forma_pagamento: record.recebedorFormaPagamentoSmp || '',
+    comum_recebedor_observacao: record.recebedorObservacaoSmp || '',
+    criado_em: record.criadoEm || undefined,
+    created_at: record.createdAt || undefined,
+    updated_at: record.updatedAt || undefined,
+    extras: extras(record, mappedKeys),
+  }), 'retiro_id,id');
+  return mapCursistaSmp(row);
+}
+
+async function deleteCursistaSmp(retiroId, numeroFicha) {
+  requireSupabaseForCursistaSmp();
+  return deleteWhere('cursista_smp', `retiro_id=eq.${enc(retiroId)}&id=eq.${enc(numeroFicha)}`);
+}
+
 function mapCommunity(row, lookups = {}) {
   return {
     ...(row.extras || {}),
@@ -942,6 +1128,9 @@ module.exports = {
   emptyDatabase,
   hasSupabase,
   importDatabase,
+  listCursistasSmp,
+  saveCursistaSmp,
+  deleteCursistaSmp,
   readDatabase,
   listRecords,
   getRecord,

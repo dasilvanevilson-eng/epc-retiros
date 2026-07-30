@@ -2399,6 +2399,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>${escapeHtml(title)}</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
+    <div id="cursista-smp-search-results" class="registration-search-results" hidden></div>
     <div class="cursista-smp-tool-actions">
       <button type="button" id="new-cursista-smp">Novo</button>
       <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
@@ -2497,7 +2498,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       <div class="section-heading"><span>8.</span><div><h2>Inscrição</h2><p>Informe os valores financeiros do cursista.</p></div></div>
       <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div>
     </section>
-    <div class="form-actions cursista-smp-actions"><p>Somente layout de teste. Nenhuma informação será salva.</p><div><button type="button">Salvar</button><button type="button" class="secondary-button">Salvar e novo</button><button type="button" class="clear-student-form">Cancelar</button></div></div>
+    <p id="cursista-smp-message" class="form-message"></p>
+    <div class="form-actions cursista-smp-actions"><p>Cadastro isolado para testes na tabela Cursista SMP.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
   </form>`, active);
   if (active !== 'cursista-smp') return;
   const markOwner = (owner, fieldNames = []) => {
@@ -2522,8 +2524,257 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   markSectionOwner('common', 'valorInscricaoSmp');
 }
 
-function renderCursistaSmp() {
-  return renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
+async function setupCursistaSmpTestCrud() {
+  const form = app.querySelector('#cursista-smp-form');
+  if (!form) return;
+  const retreat = selectedRetreat();
+  const fileNumberInput = app.querySelector('[name="numeroFichaSmp"]');
+  const searchInput = app.querySelector('#cursista-smp-search');
+  const searchResults = app.querySelector('#cursista-smp-search-results');
+  const message = app.querySelector('#cursista-smp-message');
+  const saveButton = app.querySelector('#save-cursista-smp');
+  const saveNewButton = app.querySelector('#save-new-cursista-smp');
+  const editButton = app.querySelector('#edit-cursista-smp');
+  const newButton = app.querySelector('#new-cursista-smp');
+  const deleteButton = app.querySelector('#delete-cursista-smp');
+  const cancelButton = app.querySelector('#cancel-cursista-smp');
+  const allFormControls = () => [...form.querySelectorAll('input, select, textarea'), fileNumberInput].filter(Boolean);
+  const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'manequimDele', 'manequimDela'];
+  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp'];
+  const cpfFields = ['cpfDele', 'cpfDela'];
+  let records = [];
+  let selectedId = '';
+  let searchRequest = 0;
+  let searchOpen = false;
+
+  const setMessage = (text = '') => { if (message) message.textContent = text; };
+  const canUseSmp = () => {
+    if (!retreat) return 'Selecione um retiro em foco antes de testar Cursista SMP.';
+    if (retreat.tipoFichaCursista !== 'cursista-smp') return 'O retiro em foco nao esta configurado como Cursista SMP.';
+    if (!canModifyRetreat(retreat)) return 'Retiro concluido: Cursista SMP disponivel apenas para consulta.';
+    return '';
+  };
+  const setLocked = (locked) => {
+    allFormControls().forEach((control) => { control.disabled = locked; });
+    saveButton.disabled = locked;
+    saveNewButton.disabled = locked;
+    deleteButton.disabled = locked || !selectedId;
+  };
+  const recalculateBalance = () => {
+    const value = Math.max(0, parseCurrency(form.elements.valorInscricaoSmp?.value) - parseCurrency(form.elements.valorPagoSmp?.value));
+    if (form.elements.saldoPagarSmp) form.elements.saldoPagarSmp.value = value > 0 ? currency(value) : currency(0);
+  };
+  const formatCpfField = (input) => {
+    input.value = formatCpf(input.value);
+    const cpf = normalizeCpf(input.value);
+    input.setCustomValidity(cpf && cpf.length === 11 && !isValidCpf(cpf) ? 'Informe um CPF valido.' : '');
+  };
+  const clearForm = ({ unlock = false, focus = false, notice = '' } = {}) => {
+    selectedId = '';
+    form.reset();
+    if (fileNumberInput) fileNumberInput.value = '';
+    deleteButton.hidden = true;
+    deleteButton.disabled = true;
+    form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
+    if (retreat?.valorInscricaoCursista && form.elements.valorInscricaoSmp) form.elements.valorInscricaoSmp.value = currency(retreat.valorInscricaoCursista);
+    recalculateBalance();
+    setLocked(!unlock);
+    setMessage(notice);
+    if (focus) fileNumberInput?.focus();
+  };
+  const fillRadio = (name, value) => {
+    form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = input.value === value; });
+  };
+  const loadRecord = (record) => {
+    selectedId = record.id || record.numeroFichaSmp || '';
+    clearForm({ unlock: false });
+    selectedId = record.id || record.numeroFichaSmp || '';
+    if (fileNumberInput) fileNumberInput.value = record.numeroFichaSmp || record.id || '';
+    textFields.forEach((name) => {
+      if (!form.elements[name]) return;
+      const value = record[name];
+      if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp'].includes(name)) form.elements[name].value = currency(value);
+      else form.elements[name].value = value || '';
+    });
+    radioNames.forEach((name) => fillRadio(name, record[name] || ''));
+    if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
+    deleteButton.hidden = false;
+    setLocked(true);
+    recalculateBalance();
+    setMessage(canUseSmp() ? 'Ficha SMP carregada apenas para consulta.' : 'Ficha SMP carregada. Clique em Editar para alterar.');
+  };
+  const collectRecord = () => {
+    const values = new FormData(form);
+    const record = {
+      retiroId: retreat?.id || '',
+      id: String(fileNumberInput?.value || '').trim(),
+      numeroFichaSmp: String(fileNumberInput?.value || '').trim(),
+      smpKidsNotNeeded: Boolean(form.elements.smpKidsNotNeeded?.checked),
+      criadoEm: records.find((item) => item.id === selectedId)?.criadoEm || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    textFields.forEach((name) => { record[name] = values.get(name) || ''; });
+    radioNames.forEach((name) => { record[name] = values.get(name) || ''; });
+    record.cpfDele = normalizeCpf(record.cpfDele);
+    record.cpfDela = normalizeCpf(record.cpfDela);
+    record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);
+    record.valorPagoSmp = parseCurrency(record.valorPagoSmp);
+    record.saldoPagarSmp = Math.max(0, record.valorInscricaoSmp - record.valorPagoSmp);
+    record.recebedorValorPagoSmp = record.valorPagoSmp;
+    record.recebedorTaxaPagaSmp = record.valorInscricaoSmp > 0 && record.valorPagoSmp >= record.valorInscricaoSmp;
+    return record;
+  };
+  const focusIssue = (control) => {
+    const target = control?.closest('.field, fieldset, .cursista-smp-file-number') || control;
+    target?.classList.add('field-warning');
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => control?.focus({ preventScroll: true }), 180);
+  };
+  const validateBeforeSave = () => {
+    const blockedReason = canUseSmp();
+    if (blockedReason) { setMessage(blockedReason); return false; }
+    if (!String(fileNumberInput?.value || '').trim()) {
+      setMessage('Informe o Numero da ficha para salvar.');
+      focusIssue(fileNumberInput);
+      return false;
+    }
+    const nextId = String(fileNumberInput?.value || '').trim();
+    const duplicated = records.find((record) => record.id === nextId && record.id !== selectedId);
+    if (duplicated) {
+      setMessage('Numero da ficha ja cadastrado neste retiro. Busque a ficha para editar.');
+      focusIssue(fileNumberInput);
+      return false;
+    }
+    const invalidCpf = cpfFields.map((name) => form.elements[name]).find((input) => {
+      const cpf = normalizeCpf(input?.value || '');
+      return cpf && cpf.length === 11 && !isValidCpf(cpf);
+    });
+    if (invalidCpf) {
+      setMessage('Revise o CPF informado antes de salvar.');
+      focusIssue(invalidCpf);
+      return false;
+    }
+    return true;
+  };
+  const refreshRecords = async () => {
+    records = retreat?.id ? await dataService.listCursistasSmp(retreat.id) : [];
+    return records;
+  };
+  const hideSearch = () => {
+    searchOpen = false;
+    searchRequest += 1;
+    searchResults.hidden = true;
+  };
+  const renderSearch = async () => {
+    searchOpen = true;
+    const currentRequest = ++searchRequest;
+    const term = normalizeText(searchInput.value);
+    const list = records.length ? records : await refreshRecords();
+    const filtered = list
+      .filter((record) => {
+        const cpfDele = normalizeCpf(record.cpfDele);
+        const cpfDela = normalizeCpf(record.cpfDela);
+        const haystack = normalizeText([record.id, record.numeroFichaSmp, record.nomeDele, record.nomeDela, cpfDele, cpfDela, cpfDele && formatCpf(cpfDele), cpfDela && formatCpf(cpfDela), record.foneDele, record.foneDela].filter(Boolean).join(' '));
+        return !term || haystack.includes(term);
+      })
+      .sort((first, second) => String(first.id || '').localeCompare(String(second.id || ''), 'pt-BR', { numeric: true }));
+    if (!searchOpen || currentRequest !== searchRequest) return;
+    searchResults.hidden = false;
+    searchResults.innerHTML = filtered.length ? filtered.map((record) => `<article><button type="button" class="student-search-choice" data-smp-select="${escapeHtml(record.id)}"><strong>Ficha ${escapeHtml(record.id || '')}</strong><span>${escapeHtml([record.nomeDele, record.nomeDela].filter(Boolean).join(' e ') || 'Sem nomes informados')}</span></button></article>`).join('') : '<p>Nenhuma ficha SMP encontrada neste retiro.</p>';
+    searchResults.querySelectorAll('[data-smp-select]').forEach((button) => button.addEventListener('click', () => {
+      const record = records.find((item) => item.id === button.dataset.smpSelect);
+      if (!record) return;
+      hideSearch();
+      searchInput.value = '';
+      loadRecord(record);
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  };
+  const saveRecord = async ({ clearAfter = false } = {}) => {
+    if (!validateBeforeSave()) return;
+    recalculateBalance();
+    const record = collectRecord();
+    const previousId = selectedId;
+    setMessage('Salvando ficha SMP...');
+    const saved = await dataService.saveCursistaSmp(record);
+    if (previousId && previousId !== saved.id) await dataService.deleteCursistaSmp(retreat.id, previousId);
+    await refreshRecords();
+    if (clearAfter) {
+      clearForm({ unlock: true, focus: true, notice: 'Ficha SMP salva com sucesso. Informe a proxima ficha.' });
+      return;
+    }
+    loadRecord(saved);
+    setMessage('Ficha SMP salva com sucesso.');
+  };
+
+  wireCepLookup(form);
+  form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
+  cpfFields.forEach((name) => {
+    const input = form.elements[name];
+    input?.addEventListener('input', () => formatCpfField(input));
+    input?.addEventListener('change', () => formatCpfField(input));
+  });
+  ['valorInscricaoSmp', 'valorPagoSmp'].forEach((name) => {
+    const input = form.elements[name];
+    input?.addEventListener('focus', () => { input.value = parseCurrency(input.value) || ''; });
+    input?.addEventListener('input', recalculateBalance);
+    input?.addEventListener('change', () => { input.value = currency(parseCurrency(input.value)); recalculateBalance(); });
+  });
+  form.elements.saldoPagarSmp.readOnly = true;
+  saveButton.addEventListener('click', () => saveRecord());
+  saveNewButton.addEventListener('click', () => saveRecord({ clearAfter: true }));
+  newButton.addEventListener('click', () => {
+    const blockedReason = canUseSmp();
+    if (blockedReason) { setMessage(blockedReason); return; }
+    clearForm({ unlock: true, focus: true, notice: 'Nova ficha SMP de teste.' });
+  });
+  editButton.addEventListener('click', () => {
+    const blockedReason = canUseSmp();
+    if (blockedReason) { setMessage(blockedReason); return; }
+    if (!selectedId) { setMessage('Busque e selecione uma ficha SMP para editar.'); return; }
+    setLocked(false);
+    deleteButton.disabled = false;
+    setMessage('Editando ficha SMP de teste.');
+    fileNumberInput?.focus();
+  });
+  cancelButton.addEventListener('click', () => {
+    const current = records.find((item) => item.id === selectedId);
+    if (current) loadRecord(current);
+    else clearForm({ unlock: false, notice: canUseSmp() || 'Clique em Novo para iniciar uma ficha SMP de teste.' });
+  });
+  deleteButton.addEventListener('click', async () => {
+    const blockedReason = canUseSmp();
+    if (blockedReason) { setMessage(blockedReason); return; }
+    if (!selectedId || !confirm(`Excluir a ficha SMP ${selectedId}?`)) return;
+    await dataService.deleteCursistaSmp(retreat.id, selectedId);
+    await refreshRecords();
+    clearForm({ unlock: false, notice: 'Ficha SMP excluida com sucesso.' });
+  });
+  searchInput.addEventListener('focus', renderSearch);
+  searchInput.addEventListener('input', renderSearch);
+  document.addEventListener('pointerdown', (event) => {
+    if (!searchInput.closest('.registration-search-field')?.contains(event.target) && !searchResults.contains(event.target)) hideSearch();
+  }, true);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveRecord();
+  });
+
+  setLocked(true);
+  try {
+    await refreshRecords();
+    const blockedReason = canUseSmp();
+    setMessage(blockedReason || 'Clique em Novo para iniciar uma ficha SMP de teste.');
+  } catch (error) {
+    setMessage(error.message || 'Nao foi possivel carregar as fichas SMP.');
+    newButton.disabled = true;
+    editButton.disabled = true;
+  }
+}
+
+async function renderCursistaSmp() {
+  renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
+  await setupCursistaSmpTestCrud();
 }
 
 function renderCursistaEpc() {
@@ -5367,7 +5618,10 @@ async function route() {
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     if (target === 'cursista-epc') return renderCursistaEpc();
-    if (target === 'cursista-smp') return renderCursistaSmp();
+    if (target === 'cursista-smp') {
+      await loadData();
+      return renderCursistaSmp();
+    }
     await loadData();
     if (target === 'inicio') return renderHome(); if (target === 'retiros') return renderRetiros(); if (target === 'retiros/novo') return canAccess('retiros.criar') ? renderNewRetreat() : renderDenied(); if (target.endsWith('/editar')) return canAccess('retiros.editar') ? renderEditRetreat(target.split('/')[1]) : renderDenied(); if (target.startsWith('retiros/')) return renderRetreat(target.split('/')[1]); if (target === 'validacao-inscricoes') return renderValidacaoInscricoes(); if (target === 'recebedor') return renderRecebedor(); if (target === 'comunidades') return renderComunidades(); if (target === 'recado-equipe') return renderRecadoEquipe(); if (target === 'alterar-senha') return renderAlterarSenha(); if (target === 'crachas') return renderCrachas(); if (target === 'quadrante') return renderQuadrante(); if (target.startsWith('cursista/')) return renderCursistaDetalhe(target.split('/')[1]);
     if (target === 'cursista') {
