@@ -2380,6 +2380,7 @@ async function renderPessoa(id, retreatId, source = '') {
 function renderCursistaSmp() {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
+  const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" type="date"></label></div>`).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>Cursista SMP</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
     <section class="cursista-smp-section">
@@ -2434,8 +2435,7 @@ function renderCursistaSmp() {
         <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
         <fieldset><legend>Houve outras uniões?</legend>${yesNo('outrasUnioes')}</fieldset>
-        <label class="field smp-wide"><span>Se sim, nome e idade</span><input name="outrasUnioesDetalhe" placeholder="Digite o nome e a idade"></label>
-        <fieldset class="smp-wide"><legend>Tem filhos menores de 12 anos que necessitam permanecer no espaço Kids?</legend>${yesNo('espacoKids')}</fieldset>
+        <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
       </div>
     </section>
     <section class="cursista-smp-section">
