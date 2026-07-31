@@ -1416,7 +1416,7 @@ async function renderNewRetreat() {
   });
 }
 
-async function renderRetreat(id) {
+async function renderRetreat(id, selectedSector = '') {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
@@ -1624,7 +1624,7 @@ async function renderRetreat(id) {
     sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
-      return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
+      return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}" data-registration-closed="${sectorRegistrationClosed(retreat, link.setor) ? 'true' : 'false'}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
     }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
@@ -1689,6 +1689,7 @@ async function renderRetreat(id) {
     const feedback = app.querySelector('#sector-link-feedback');
     const empty = app.querySelector('.sector-link-empty');
     const selectedLinks = app.querySelector('#sector-link-selected');
+    const canToggleSectorRegistration = canAccess('retiros.editar') && canModifyRetreat(retreat);
     const openSectorLinksMenu = () => {
       menu.hidden = false;
       sectorLinkSearch.setAttribute('aria-expanded', 'true');
@@ -1719,6 +1720,46 @@ async function renderRetreat(id) {
       filterSectorLinks();
       closeSectorLinksMenu();
     }));
+    app.querySelectorAll('[data-sector-link-select]').forEach((button) => button.addEventListener('click', () => {
+      const sector = button.dataset.sectorLinkSelect || '';
+      const registrationClosed = button.dataset.registrationClosed === 'true';
+      sectorLinkSearch.value = sector;
+      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><div class="sector-link-selected-heading"><strong>${escapeHtml(sector)}</strong><label class="sector-link-closed-option"><input type="checkbox" data-sector-registration-closed="${escapeHtml(sector)}" ${registrationClosed ? 'checked' : ''} ${canToggleSectorRegistration ? '' : 'disabled'}><span>Inscrições encerradas</span></label></div><p class="sector-link-save-message" data-sector-closed-message>${canToggleSectorRegistration ? '' : 'Somente consulta.'}</p><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button></label></div></article>`;
+      selectedLinks.querySelectorAll('[data-copy-sector-link]').forEach((copyButton) => copyButton.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(copyButton.dataset.copySectorLink);
+        copyButton.textContent = 'Copiado!';
+      }));
+      selectedLinks.querySelector('[data-sector-registration-closed]')?.addEventListener('change', async (event) => {
+        const checkbox = event.currentTarget;
+        const nextClosed = checkbox.checked;
+        const previousClosed = !nextClosed;
+        const message = selectedLinks.querySelector('[data-sector-closed-message]');
+        checkbox.disabled = true;
+        if (message) message.textContent = 'Salvando...';
+        try {
+          const sectorKey = normalizeText(sector);
+          const closedKeys = new Set((retreat.setoresInscricoesEncerradas || []).map(normalizeText));
+          if (nextClosed) closedKeys.add(sectorKey); else closedKeys.delete(sectorKey);
+          const setoresInscricoesEncerradas = sortSectors((retreat.setores || []).filter((item) => closedKeys.has(normalizeText(item))));
+          const existingLinks = (retreat.linksSetores || retreat.setorLinks || []).map((link) => (
+            normalizeText(link.setor || link.sector) === sectorKey ? { ...link, setor: link.setor || link.sector || sector, inscricoesEncerradas: nextClosed } : link
+          ));
+          Object.assign(retreat, {
+            setoresInscricoesEncerradas,
+            linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, retreat.setores || []),
+            updatedAt: new Date().toISOString(),
+          });
+          await dataService.saveRetiro(retreat);
+          if (message) message.textContent = 'Status salvo.';
+          await loadData();
+          await renderRetreat(id, sector);
+        } catch (error) {
+          checkbox.checked = previousClosed;
+          checkbox.disabled = !canToggleSectorRegistration;
+          if (message) message.textContent = `Nao foi possivel salvar o status. ${error.message || 'Atualize a pagina e tente novamente.'}`;
+        }
+      });
+    }));
     sectorLinkSearch.addEventListener('focus', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('click', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
@@ -1727,6 +1768,10 @@ async function renderRetreat(id) {
     });
     sectorLinkSearch.addEventListener('blur', () => setTimeout(closeSectorLinksMenu, 140));
     filterSectorLinks();
+    if (selectedSector) {
+      const selectedButton = [...app.querySelectorAll('[data-sector-link-select]')].find((button) => normalizeText(button.dataset.sectorLinkSelect) === normalizeText(selectedSector));
+      if (selectedButton) selectedButton.click();
+    }
   }
 }
 
