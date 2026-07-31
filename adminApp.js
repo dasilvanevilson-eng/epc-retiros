@@ -1462,6 +1462,7 @@ async function renderRetreat(id, selectedSector = '') {
     .filter((link) => storedSectorLinks.some((stored) => normalizeText(stored.setor || stored.sector) === normalizeText(link.setor)));
   const activeSectorKeys = new Set((retreat.setores || []).map(normalizeText));
   const activeSectorLinks = sectorLinks.filter((link) => activeSectorKeys.has(normalizeText(link.setor)));
+  const configuredRetreatSectors = sortSectors(retreat.setores || []);
   const serviceDays = retreatServiceDays(retreat);
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
@@ -1649,11 +1650,11 @@ async function renderRetreat(id, selectedSector = '') {
     deleteButton.textContent = 'Excluir';
     app.querySelector('.detail-actions')?.append(deleteButton);
   }
-  if (activeSectorLinks.length) {
+  if (activeSectorLinks.length || configuredRetreatSectors.length) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
     sectorLinksPanel.id = 'retreat-links';
-    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
+    sectorLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div><h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p></div><button type="button" class="secondary-button sector-link-view-status" id="view-sector-link-status">Visualizar</button></div><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
       return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}" data-registration-closed="${sectorRegistrationClosed(retreat, link.setor) ? 'true' : 'false'}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
@@ -1719,6 +1720,14 @@ async function renderRetreat(id, selectedSector = '') {
     const empty = app.querySelector('.sector-link-empty');
     const selectedLinks = app.querySelector('#sector-link-selected');
     const canToggleSectorRegistration = canAccess('retiros.editar') && canModifyRetreat(retreat);
+    const renderSectorLinkStatusList = () => {
+      const sectorRows = configuredRetreatSectors.map((sector) => {
+        const closed = sectorRegistrationClosed(retreat, sector);
+        return `<div class="sector-link-status-row"><strong>${escapeHtml(sector)}</strong><span class="sector-link-status-badge ${closed ? 'is-closed' : 'is-active'}">${closed ? 'Inscrições encerradas' : 'Ativo'}</span></div>`;
+      }).join('');
+      selectedLinks.innerHTML = `<article class="sector-link-selected-card sector-link-status-card"><div class="sector-link-selected-heading"><strong>Status dos links por setor</strong><span>${configuredRetreatSectors.length} setor(es)</span></div>${sectorRows ? `<div class="sector-link-status-list">${sectorRows}</div>` : '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</article>`;
+    };
+    app.querySelector('#view-sector-link-status')?.addEventListener('click', renderSectorLinkStatusList);
     const openSectorLinksMenu = () => {
       menu.hidden = false;
       sectorLinkSearch.setAttribute('aria-expanded', 'true');
