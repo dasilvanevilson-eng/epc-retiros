@@ -199,6 +199,24 @@ function isRetreatConcludeUpdate(current = {}, next = {}) {
   return true;
 }
 
+async function teamRegistrationClosedMessage(record = {}) {
+  const retreat = record.retiroId ? await getRecord('retiros', record.retiroId).catch(() => null) : null;
+  if (!retreat) return null;
+  if (retreat.status === 'publicado') return null;
+  return retreat.status === 'preparacao'
+    ? 'Este retiro ainda esta em preparacao. O cadastro da equipe de trabalho sera liberado quando o retiro for publicado.'
+    : 'Este retiro nao esta recebendo cadastro da equipe de trabalho.';
+}
+
+async function denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest) {
+  if (resource !== 'adesoes') return false;
+  if (!publicRegistrationRequest && record?.[userSubmittedRegistrationField] !== true) return false;
+  const message = await teamRegistrationClosedMessage(record);
+  if (!message) return false;
+  sendError(res, 403, message);
+  return true;
+}
+
 function denyIfMissingPermission(res, session, permission) {
   if (!permission || can(session, permission)) return false;
   sendError(res, 403, 'Voce nao tem permissao para esta acao.');
@@ -392,6 +410,7 @@ async function handleApi(req, res, pathname) {
   if (req.method === 'PUT' && id) {
     const record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
     if (!publicRegistrationRequest && resource !== 'pessoas' && await denyIfMissingRetreatAccess(res, session, resource, record)) return;
+    if (await denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest)) return;
     const protectedRecord = await protectRegistrationWrite(resource, record, req);
     return sendJson(res, 200, await saveRecord(resource, protectedRecord));
   }

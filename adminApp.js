@@ -70,7 +70,11 @@ const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey) 
 const fallbackRetreat = () => accessibleRetreats().find((retreat) => retreat.status === 'publicado') || accessibleRetreats().find((retreat) => retreat.status === 'preparacao') || accessibleRetreats().find((retreat) => retreat.status === 'concluido') || accessibleRetreats()[0] || null;
 const selectedRetreat = () => retreats.find((retreat) => retreat.id === selectedRetreatId() && canAccessRetreat(retreat)) || fallbackRetreat();
 const isRetreatConcluded = (retreat = {}) => retreat?.status === 'concluido';
+const isTeamRegistrationOpen = (retreat = {}) => retreat?.status === 'publicado';
 const canModifyRetreat = (retreat = {}) => Boolean(retreat) && canAccessRetreat(retreat) && !isRetreatConcluded(retreat);
+const teamRegistrationClosedMessage = (retreat = {}) => retreat?.status === 'preparacao'
+  ? 'Este retiro ainda esta em preparacao. O cadastro da equipe de trabalho sera liberado quando o retiro for publicado.'
+  : 'Este retiro nao esta recebendo cadastro da equipe de trabalho.';
 const renderRetreatAccessDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem acesso a este retiro</h1><p>Este retiro nao esta vinculado ao seu usuario.</p></div><a class="text-link" href="#retiros">Voltar para retiros</a></section>', 'retiros');
 const ensureRetreatAccess = (retreat) => {
   if (canAccessRetreat(retreat)) return true;
@@ -4439,6 +4443,13 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   if (!embedded && (!people.length || !enrolments.length)) {
     [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
   }
+  if (retreat.status === 'preparacao') {
+    const message = teamRegistrationClosedMessage(retreat);
+    mount.innerHTML = embedded
+      ? `<main class="public-shell embedded-registration-shell"><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>${escapeHtml(message)}</p></div><span class="status ${escapeHtml(retreat.status || '')}">${escapeHtml(statusLabel(retreat.status))}</span></div></section></main>`
+      : `<main class="public-shell external-registration-shell"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome || 'Retiro')}</h1><p class="hero-copy">${escapeHtml(message)}</p></div></header></main>`;
+    return;
+  }
   const requestedSectorToken = !embedded ? String(sectorToken || '').trim() : '';
   const sectorLink = requestedSectorToken ? (retreat.linksSetores || retreat.setorLinks || []).find((item) => item.cadastroToken === requestedSectorToken || item.token === requestedSectorToken) : null;
   const activeSectorByKey = new Map((retreat.setores || []).map((sector) => [normalizeText(sector), sector]));
@@ -5550,6 +5561,12 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     if (form.dataset.submitting === 'true') return;
     form.dataset.submitting = 'true';
     setPublicSubmitting(true);
+    if (retreat.status === 'preparacao' || (!embedded && !isTeamRegistrationOpen(retreat))) {
+      form.querySelector('#form-message')?.replaceChildren(teamRegistrationClosedMessage(retreat));
+      form.dataset.submitting = 'false';
+      setPublicSubmitting(false);
+      return;
+    }
     if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) {
       form.dataset.submitting = 'false';
       setPublicSubmitting(false);
