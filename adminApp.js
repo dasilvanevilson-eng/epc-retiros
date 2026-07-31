@@ -1597,7 +1597,7 @@ async function renderRetreat(id, selectedSector = '') {
   const concluded = isRetreatConcluded(retreat);
   const retreatActions = concluded
     ? '<span class="status concluido">Somente consulta</span>'
-    : `<a class="secondary-button" href="#retreat-links">Links</a><a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>${retreat.status === 'publicado' ? '' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>`;
+    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>${retreat.status === 'publicado' ? '' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>`;
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions retreat-actions-menu">${retreatActions}</div></section>
     <section class="detail-grid"></section>
     `, 'retiros');
