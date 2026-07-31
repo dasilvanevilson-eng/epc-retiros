@@ -5673,3 +5673,150 @@ body:has(.login-shell) {
     flex:1 1 120px;
   }
 }
+
+.retreat-config-form {
+  display:grid;
+  gap:12px;
+  margin-top:0;
+}
+
+.retreat-config-panel {
+  margin:0;
+  padding:16px;
+  border:1px solid #ddd7c9;
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 8px 20px rgba(48, 39, 25, .06);
+}
+
+.retreat-config-panel h2,
+.retreat-config-panel legend {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:0 0 14px;
+  color:#155534;
+  font:800 16px 'DM Sans', sans-serif;
+}
+
+.retreat-config-icon {
+  display:inline-grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  color:#155534;
+  font-size:16px;
+  line-height:1;
+}
+
+.retreat-event-fields,
+.retreat-config-panel .retreat-value-fields {
+  gap:12px 18px;
+}
+
+.retreat-event-fields .field,
+.retreat-config-panel .field {
+  gap:5px;
+  font-size:12px;
+}
+
+.retreat-config-panel input,
+.retreat-config-panel select {
+  min-height:40px;
+  padding:10px 12px;
+  border-radius:6px;
+  background:#fff;
+}
+
+.retreat-config-panel .field.full {
+  grid-column:1 / -1;
+}
+
+.retreat-config-panel .hint.full {
+  grid-column:1 / -1;
+  margin:0;
+}
+
+.retreat-sector-panel {
+  min-width:0;
+  border:1px solid #ddd7c9;
+}
+
+.retreat-sector-panel .sector-groups {
+  gap:14px;
+}
+
+.retreat-sector-panel .sector-area + .sector-area {
+  padding-top:13px;
+  border-top:1px solid #e7e0d3;
+}
+
+.retreat-sector-panel .sector-area h3 {
+  margin:0 0 9px;
+  color:#203725;
+  font:800 13px 'DM Sans', sans-serif;
+}
+
+.retreat-sector-panel .sector-checks {
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  gap:8px 10px;
+}
+
+.retreat-sector-panel .sector-option {
+  min-width:0;
+  border:1px solid #ddd7c9;
+  border-radius:6px;
+  background:#fff;
+  transition:.15s;
+}
+
+.retreat-sector-panel .sector-option label {
+  min-height:33px;
+  padding:7px 10px;
+  gap:8px;
+  color:#334155;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.retreat-sector-panel .sector-option input {
+  width:14px;
+  height:14px;
+  min-height:0;
+  padding:0;
+  accent-color:#155534;
+}
+
+.retreat-sector-panel .sector-option:has(input:checked) {
+  border-color:#155534;
+  background:linear-gradient(180deg, #17613c, #0f4f31);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+.retreat-sector-panel .sector-option:has(input:checked) label {
+  color:#fff;
+}
+
+.retreat-sector-panel .sector-option:hover {
+  border-color:#7ca58a;
+}
+
+.retreat-config-form .form-actions {
+  padding-top:12px;
+}
+
+@media(max-width:900px) {
+  .retreat-sector-panel .sector-checks,
+  .retreat-config-panel .retreat-value-fields {
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media(max-width:650px) {
+  .retreat-sector-panel .sector-checks,
+  .retreat-config-panel .retreat-value-fields,
+  .retreat-event-fields {
+    grid-template-columns:1fr;
+  }
+}

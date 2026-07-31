@@ -1213,6 +1213,36 @@ function sectorGroups(sectors, selectedSectors = sectors, publicSectors = sector
   return `${group('escondida', 'Equipe escondida')}${group('sala', 'Equipe Sala')}`;
 }
 
+function applyRetreatConfigLayout(form) {
+  if (!form || form.classList.contains('retreat-config-form')) return;
+  const fields = form.querySelector(':scope > .fields.two-columns');
+  const valueFields = fields?.querySelector('.retreat-value-fields');
+  const sectorFieldset = form.querySelector(':scope > fieldset');
+  if (!fields || !valueFields || !sectorFieldset) return;
+
+  form.classList.remove('panel');
+  form.classList.add('retreat-config-form');
+  fields.classList.add('retreat-event-fields');
+  valueFields.classList.remove('full');
+
+  const eventPanel = document.createElement('section');
+  eventPanel.className = 'retreat-config-panel';
+  eventPanel.innerHTML = '<h2><span class="retreat-config-icon" aria-hidden="true">▣</span> Dados do evento</h2>';
+  form.insertBefore(eventPanel, fields);
+  eventPanel.append(fields);
+
+  const valuePanel = document.createElement('section');
+  valuePanel.className = 'retreat-config-panel';
+  valuePanel.innerHTML = '<h2><span class="retreat-config-icon" aria-hidden="true">◇</span> Valores e regras</h2>';
+  form.insertBefore(valuePanel, sectorFieldset);
+  valuePanel.append(valueFields);
+
+  sectorFieldset.classList.add('retreat-config-panel', 'retreat-sector-panel');
+  const legend = sectorFieldset.querySelector('legend');
+  if (legend) legend.innerHTML = '<span class="retreat-config-icon" aria-hidden="true">♙</span> Setores de trabalho';
+  sectorFieldset.querySelector('.hint')?.remove();
+}
+
 function quadranteOrderList(sectors = [], order = []) {
   const sectorByKey = new Map(sectors.map((sector) => [normalizeText(sector), sector]));
   const orderedSectors = order.map((sector) => sectorByKey.get(normalizeText(sector))).filter(Boolean);
@@ -1792,6 +1822,7 @@ async function renderEditRetreat(id) {
   const form = app.querySelector('#edit-retreat-form');
   form.querySelector('.form-actions')?.insertAdjacentHTML('beforebegin', '<p id="edit-retreat-message" class="form-message"></p>');
   ensureOfficialShirtValueField(form, currency(retreat.valorCamisetaOficial));
+  applyRetreatConfigLayout(form);
   wireCurrencyInputs(form);
   wirePublicSectorToggles(form);
   form.addEventListener('submit', async (event) => {
