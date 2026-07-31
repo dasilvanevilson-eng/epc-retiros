@@ -1719,17 +1719,13 @@ async function renderRetreat(id) {
       filterSectorLinks();
       closeSectorLinksMenu();
     }));
-    app.querySelectorAll('[data-sector-link-select]').forEach((button) => button.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      button.click();
-    }));
     sectorLinkSearch.addEventListener('focus', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('click', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
     document.addEventListener('pointerdown', (event) => {
       if (!sectorLinksPanel.contains(event.target)) closeSectorLinksMenu();
     });
-    sectorLinkSearch.addEventListener('blur', closeSectorLinksMenu);
+    sectorLinkSearch.addEventListener('blur', () => setTimeout(closeSectorLinksMenu, 140));
     filterSectorLinks();
   }
 }
