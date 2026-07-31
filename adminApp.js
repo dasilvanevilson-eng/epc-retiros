@@ -1720,14 +1720,22 @@ async function renderRetreat(id, selectedSector = '') {
     const empty = app.querySelector('.sector-link-empty');
     const selectedLinks = app.querySelector('#sector-link-selected');
     const canToggleSectorRegistration = canAccess('retiros.editar') && canModifyRetreat(retreat);
-    const renderSectorLinkStatusList = () => {
+    const openSectorLinkStatusWindow = () => {
+      app.querySelector('.sector-link-status-overlay')?.remove();
+      const overlay = document.createElement('section');
+      overlay.className = 'receiver-sector-overlay sector-link-status-overlay';
       const sectorRows = configuredRetreatSectors.map((sector) => {
         const closed = sectorRegistrationClosed(retreat, sector);
         return `<div class="sector-link-status-row"><strong>${escapeHtml(sector)}</strong><span class="sector-link-status-badge ${closed ? 'is-closed' : 'is-active'}">${closed ? 'Inscrições encerradas' : 'Ativo'}</span></div>`;
       }).join('');
-      selectedLinks.innerHTML = `<article class="sector-link-selected-card sector-link-status-card"><div class="sector-link-selected-heading"><strong>Status dos links por setor</strong><span>${configuredRetreatSectors.length} setor(es)</span></div>${sectorRows ? `<div class="sector-link-status-list">${sectorRows}</div>` : '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</article>`;
+      overlay.innerHTML = `<div class="receiver-sector-dialog sector-link-status-dialog"><div class="panel-heading"><div><p class="eyebrow">Links por setor</p><h2>Status dos links por setor</h2><p>Visualização dos setores configurados para ${escapeHtml(retreat.nome || 'este retiro')}.</p></div></div>${sectorRows ? `<div class="sector-link-status-list">${sectorRows}</div>` : '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}<div class="form-actions"><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+      const close = () => overlay.remove();
+      overlay.querySelector('.close-sector-view')?.addEventListener('click', close);
+      overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+      app.append(overlay);
+      overlay.querySelector('.close-sector-view')?.focus();
     };
-    app.querySelector('#view-sector-link-status')?.addEventListener('click', renderSectorLinkStatusList);
+    app.querySelector('#view-sector-link-status')?.addEventListener('click', openSectorLinkStatusWindow);
     const openSectorLinksMenu = () => {
       menu.hidden = false;
       sectorLinkSearch.setAttribute('aria-expanded', 'true');

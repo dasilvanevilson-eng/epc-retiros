@@ -5836,6 +5836,20 @@ body:has(.login-shell) {
   gap:8px;
 }
 
+.sector-link-status-dialog .sector-link-status-list {
+  flex:1 1 auto;
+  min-height:0;
+  max-height:min(52vh, 430px);
+  overflow-y:auto;
+  margin:18px 0;
+  padding-right:4px;
+}
+
+.sector-link-status-dialog .form-actions {
+  flex:0 0 auto;
+  padding-top:16px;
+}
+
 .sector-link-status-row {
   display:grid;
   grid-template-columns:minmax(0, 1fr) auto;
