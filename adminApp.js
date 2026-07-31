@@ -54,15 +54,34 @@ const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFor
 const canAccess = (permission) => !permission || currentUser?.role === 'admin' || currentUser?.perfilCodigo === 'admin' || (currentUser?.permissions || []).includes(permission);
 const canView = (section) => canAccess(viewPermissions[section]);
 const firstAllowedSection = () => Object.keys(viewPermissions).find((section) => canView(section)) || 'inicio';
+const hasGlobalRetreatAccess = () => currentUser?.role === 'admin' || currentUser?.perfilCodigo === 'admin';
+const canAccessRetreat = (retreatOrId = '') => {
+  const id = typeof retreatOrId === 'string' ? retreatOrId : retreatOrId?.id;
+  if (!id) return false;
+  if (hasGlobalRetreatAccess()) return true;
+  if (typeof retreatOrId === 'object' && retreatOrId?.acessoPermitido === false) return false;
+  return (currentUser?.retiroIds || []).includes(id);
+};
+const accessibleRetreats = () => retreats.filter(canAccessRetreat);
 const setSelectedRetreatId = (id = '') => {
-  if (id) localStorage.setItem(selectedRetreatStorageKey, id);
+  if (id && canAccessRetreat(id)) localStorage.setItem(selectedRetreatStorageKey, id);
 };
 const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey) || '';
-const fallbackRetreat = () => retreats.find((retreat) => retreat.status === 'publicado') || retreats.find((retreat) => retreat.status === 'preparacao') || retreats.find((retreat) => retreat.status === 'concluido') || retreats[0] || null;
-const selectedRetreat = () => retreats.find((retreat) => retreat.id === selectedRetreatId()) || fallbackRetreat();
+const fallbackRetreat = () => accessibleRetreats().find((retreat) => retreat.status === 'publicado') || accessibleRetreats().find((retreat) => retreat.status === 'preparacao') || accessibleRetreats().find((retreat) => retreat.status === 'concluido') || accessibleRetreats()[0] || null;
+const selectedRetreat = () => retreats.find((retreat) => retreat.id === selectedRetreatId() && canAccessRetreat(retreat)) || fallbackRetreat();
 const isRetreatConcluded = (retreat = {}) => retreat?.status === 'concluido';
-const canModifyRetreat = (retreat = {}) => Boolean(retreat) && !isRetreatConcluded(retreat);
+const canModifyRetreat = (retreat = {}) => Boolean(retreat) && canAccessRetreat(retreat) && !isRetreatConcluded(retreat);
+const renderRetreatAccessDenied = () => layout('<section class="page-heading"><div><p class="eyebrow">Acesso restrito</p><h1>Sem acesso a este retiro</h1><p>Este retiro nao esta vinculado ao seu usuario.</p></div><a class="text-link" href="#retiros">Voltar para retiros</a></section>', 'retiros');
+const ensureRetreatAccess = (retreat) => {
+  if (canAccessRetreat(retreat)) return true;
+  renderRetreatAccessDenied();
+  return false;
+};
 const ensureRetreatCanBeChanged = (retreat, action = 'alterar este retiro') => {
+  if (!canAccessRetreat(retreat)) {
+    alert('Este retiro nao esta vinculado ao seu usuario.');
+    return false;
+  }
   if (canModifyRetreat(retreat)) return true;
   alert(`Este retiro esta concluido. Nao e mais possivel ${action}; apenas consultas, relatorios e impressoes estao disponiveis.`);
   return false;
@@ -1175,8 +1194,15 @@ async function renderHome() {
 }
 
 async function renderRetiros() {
+  const retreatCard = (retreat) => {
+    const allowed = canAccessRetreat(retreat);
+    const content = `<div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">${allowed ? '→' : 'Sem acesso'}</span>`;
+    return allowed
+      ? `<a class="retreat-card" href="#retiros/${retreat.id}">${content}</a>`
+      : `<article class="retreat-card is-disabled" aria-disabled="true">${content}</article>`;
+  };
   layout(`<section class="page-heading"><div><p class="eyebrow">Configuração de eventos</p><h1>Retiros</h1><p>Cada retiro possui sua própria estrutura, voluntários e histórico.</p></div><a class="primary-button" href="#retiros/novo">+ Novo retiro</a></section>
-  <section class="retreat-list">${retreats.length ? retreats.map((retreat) => `<a class="retreat-card" href="#retiros/${retreat.id}"><div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">→</span></a>`).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
+  <section class="retreat-list">${retreats.length ? retreats.map(retreatCard).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
 }
 
 const sectorOptionHtml = (sector, selected = false, registrationClosed = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label><label class="sector-closed-option"><input type="checkbox" name="setoresInscricoesEncerradas" value="${escapeHtml(sector)}" ${registrationClosed ? 'checked' : ''}> <span>Inscrições encerradas</span></label></div>`;
@@ -1393,6 +1419,7 @@ async function renderNewRetreat() {
 async function renderRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
+  if (!ensureRetreatAccess(retreat)) return;
   setSelectedRetreatId(retreat.id);
   const canDeleteRetreat = canAccess('retiros.excluir');
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
@@ -1594,11 +1621,11 @@ async function renderRetreat(id) {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
     sectorLinksPanel.id = 'retreat-links';
-    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><label class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" list="sector-link-options" placeholder="Digite o nome do setor"></label><datalist id="sector-link-options">${activeSectorLinks.map((link) => `<option value="${escapeHtml(link.setor)}"></option>`).join('')}</datalist><div class="sector-link-feedback" id="sector-link-feedback">Digite para localizar um setor ativo.</div><div class="sector-link-list" id="sector-link-list">${activeSectorLinks.map((link) => {
+    sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
-      return `<div class="sector-link-row" data-sector-link-row="${escapeHtml(link.setor)}" hidden><strong>${escapeHtml(link.setor)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label></div></div>`;
-    }).join('')}</div>`;
+      return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-toggle="${escapeHtml(link.setor)}" aria-expanded="false"><strong>${escapeHtml(link.setor)}</strong><span>Mostrar links</span></button><div class="sector-link-actions" hidden><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label></div></article>`;
+    }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
   if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
@@ -1657,19 +1684,53 @@ async function renderRetreat(id) {
   }));
   const sectorLinkSearch = app.querySelector('#sector-link-search');
   if (sectorLinkSearch) {
+    const menu = app.querySelector('#sector-link-menu');
     const rows = [...app.querySelectorAll('[data-sector-link-row]')];
     const feedback = app.querySelector('#sector-link-feedback');
+    const empty = app.querySelector('.sector-link-empty');
+    const openSectorLinksMenu = () => {
+      menu.hidden = false;
+      sectorLinkSearch.setAttribute('aria-expanded', 'true');
+    };
+    const closeSectorLinksMenu = () => {
+      menu.hidden = true;
+      sectorLinkSearch.setAttribute('aria-expanded', 'false');
+    };
     const filterSectorLinks = () => {
       const query = normalizeText(sectorLinkSearch.value);
       let visible = 0;
       rows.forEach((row) => {
-        const matches = query && normalizeText(row.dataset.sectorLinkRow).includes(query);
+        const matches = !query || normalizeText(row.dataset.sectorLinkRow).includes(query);
         row.hidden = !matches;
         if (matches) visible += 1;
       });
-      feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : 'Digite para localizar um setor ativo.';
+      if (empty) empty.hidden = visible > 0;
+      feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : 'Clique ou digite para localizar um setor ativo.';
     };
+    app.querySelectorAll('[data-sector-link-toggle]').forEach((button) => button.addEventListener('click', () => {
+      const row = button.closest('[data-sector-link-row]');
+      const actions = row?.querySelector('.sector-link-actions');
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      app.querySelectorAll('[data-sector-link-toggle]').forEach((toggle) => {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.closest('[data-sector-link-row]')?.querySelector('.sector-link-actions')?.setAttribute('hidden', '');
+        toggle.querySelector('span').textContent = 'Mostrar links';
+      });
+      if (!expanded && actions) {
+        button.setAttribute('aria-expanded', 'true');
+        actions.hidden = false;
+        button.querySelector('span').textContent = 'Ocultar links';
+      }
+    }));
+    sectorLinkSearch.addEventListener('focus', () => { filterSectorLinks(); openSectorLinksMenu(); });
+    sectorLinkSearch.addEventListener('click', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('input', filterSectorLinks);
+    document.addEventListener('pointerdown', (event) => {
+      if (!sectorLinksPanel.contains(event.target)) closeSectorLinksMenu();
+    });
+    sectorLinksPanel.addEventListener('focusout', (event) => {
+      if (!sectorLinksPanel.contains(event.relatedTarget)) closeSectorLinksMenu();
+    });
     filterSectorLinks();
   }
 }
@@ -1677,6 +1738,7 @@ async function renderRetreat(id) {
 async function renderEditRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
+  if (!ensureRetreatAccess(retreat)) return;
   setSelectedRetreatId(retreat.id);
   if (isRetreatConcluded(retreat)) {
     alert('Este retiro esta concluido. A configuracao esta disponivel apenas para consulta.');
@@ -5369,6 +5431,26 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     return false;
   };
+  const blockDuplicateEnrolmentCpfBeforeSave = async () => {
+    const data = new FormData(form);
+    const checks = [
+      { cpf: normalizeCpf(data.get('cpf')), control: form.elements.cpf, excludeEntryId: editingEntry?.id || '' },
+      ...(isCouple() ? [{ cpf: normalizeCpf(data.get('spouseCpf')), control: form.elements.spouseCpf, excludeEntryId: editingSpouseEntry?.id || '' }] : []),
+    ].filter((item) => isValidCpf(item.cpf));
+    if (!checks.length) return false;
+    const latestEnrolments = await dataService.listAdesoes().catch(() => enrolments);
+    if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
+    for (const item of checks) {
+      const duplicateEntry = enrolments.find((entry) => entry.retiroId === id && entry.id !== item.excludeEntryId && entryMatchesCpf(entry, item.cpf));
+      if (duplicateEntry) {
+        showCpfLockMessage(item.control, 'Este CPF ja possui adesao neste retiro.');
+        item.control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => item.control.focus({ preventScroll: true }), 180);
+        return true;
+      }
+    }
+    return false;
+  };
   const setPublicSubmitting = (submitting) => {
     [form.querySelector('button[type="submit"]')].filter(Boolean).forEach((button) => {
       if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
@@ -5379,23 +5461,34 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) return;
+    if (form.dataset.submitting === 'true') return;
+    form.dataset.submitting = 'true';
+    setPublicSubmitting(true);
+    if (embedded && !ensureRetreatCanBeChanged(retreat, 'salvar fichas da equipe')) {
+      form.dataset.submitting = 'false';
+      setPublicSubmitting(false);
+      return;
+    }
     await syncAutofilledPublicForm();
     if (canUseInternalKidAgeLimitException && kidAgeLimitViolation(form) && !internalKidAgeLimitExceptionAllowed) {
       internalKidAgeLimitExceptionAllowed = await showInternalKidAgeLimitDialog();
       if (!internalKidAgeLimitExceptionAllowed) {
         form.querySelector('#form-message')?.replaceChildren(internalKidsAgeLimitMessage);
+        form.dataset.submitting = 'false';
+        setPublicSubmitting(false);
         return;
       }
       form.querySelector('#form-message')?.replaceChildren('');
     }
-    setPublicSubmitting(true);
     try {
       syncContributionAmount();
       if (!validateForm(form)) {
         return;
       }
       if (await blockPublicCpfIssues()) {
+        return;
+      }
+      if (await blockDuplicateEnrolmentCpfBeforeSave()) {
         return;
       }
       if (isCouple()) {
@@ -5423,6 +5516,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       const messageTarget = form.querySelector('#form-message');
       messageTarget?.replaceChildren(`Não foi possível salvar a inscrição. ${error.message || 'Confira os dados e tente novamente.'}`);
     } finally {
+      form.dataset.submitting = 'false';
       setPublicSubmitting(false);
     }
   });

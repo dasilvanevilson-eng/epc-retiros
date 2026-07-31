@@ -1,5 +1,5 @@
 const { stores } = require('./storeConfig');
-const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
+const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
 const { checkDatabaseConnection, deleteCursistaSmp, getRecord, importDatabase, listCursistasSmp, listRecords, readDatabase, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 
@@ -205,6 +205,83 @@ function denyIfMissingPermission(res, session, permission) {
   return true;
 }
 
+const hasGlobalRetreatAccess = (session = {}) => session?.role === 'admin' || session?.perfilCodigo === 'admin';
+const allowedRetreatIds = (session = {}) => new Set((session?.retiroIds || []).filter(Boolean));
+const canAccessRetreat = (session = {}, retiroId = '') => hasGlobalRetreatAccess(session) || allowedRetreatIds(session).has(retiroId);
+const noRetreatAccessMessage = 'Voce nao tem acesso a este retiro.';
+const recordRetreatId = (record = {}) => record.retiroId || record.retiro_id || record.id && '';
+const filterByAllowedRetreats = (session = {}, records = []) => {
+  if (hasGlobalRetreatAccess(session)) return records;
+  const allowed = allowedRetreatIds(session);
+  return records.filter((record) => allowed.has(recordRetreatId(record)));
+};
+const tagRetreatAccess = (session = {}, retreat = {}) => ({
+  ...retreat,
+  acessoPermitido: canAccessRetreat(session, retreat.id),
+});
+async function allowedPersonIdsForSession(session = {}) {
+  if (hasGlobalRetreatAccess(session)) return null;
+  const allowed = allowedRetreatIds(session);
+  const entries = (await listRecords('adesoes')).filter((entry) => allowed.has(entry.retiroId));
+  return new Set(entries.map((entry) => entry.pessoaId).filter(Boolean));
+}
+
+async function currentSession(req) {
+  const session = readSession(req);
+  if (!session || String(session.id || '').startsWith('env:')) return session;
+  const user = (await listRecords('usuarios')).find((item) => (item.id === session.id || item.login === session.sub) && item.ativo !== false);
+  return user ? hydrateUser(user) : null;
+}
+
+async function listAuthorizedRecords(resource, session) {
+  const records = await listRecords(resource);
+  if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? records.map((retreat) => tagRetreatAccess(session, retreat)) : records;
+  if (resource === 'retiros') return records.map((retreat) => tagRetreatAccess(session, retreat));
+  if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return filterByAllowedRetreats(session, records);
+  if (resource === 'pessoas') {
+    const allowedPeople = await allowedPersonIdsForSession(session);
+    return records.filter((person) => allowedPeople.has(person.id));
+  }
+  return records;
+}
+
+async function getAuthorizedRecord(resource, id, session) {
+  const record = await getRecord(resource, id);
+  if (!record) return null;
+  if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? tagRetreatAccess(session, record) : record;
+  if (resource === 'retiros') return canAccessRetreat(session, record.id) ? tagRetreatAccess(session, record) : null;
+  if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return canAccessRetreat(session, recordRetreatId(record)) ? record : null;
+  if (resource === 'pessoas') {
+    const allowedPeople = await allowedPersonIdsForSession(session);
+    return allowedPeople.has(record.id) ? record : null;
+  }
+  return record;
+}
+
+async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
+  if (hasGlobalRetreatAccess(session)) return false;
+  if (resource === 'retiros') {
+    const retiroId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
+    if (canAccessRetreat(session, retiroId)) return false;
+    sendError(res, 403, noRetreatAccessMessage);
+    return true;
+  }
+  if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) {
+    const record = typeof recordOrId === 'string' ? await getRecord(resource, recordOrId) : recordOrId;
+    if (record && canAccessRetreat(session, recordRetreatId(record))) return false;
+    sendError(res, 403, noRetreatAccessMessage);
+    return true;
+  }
+  if (resource === 'pessoas') {
+    const personId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
+    const allowedPeople = await allowedPersonIdsForSession(session);
+    if (allowedPeople.has(personId)) return false;
+    sendError(res, 403, noRetreatAccessMessage);
+    return true;
+  }
+  return false;
+}
+
 async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action] = parts;
@@ -217,7 +294,14 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 200, { ok: false, database: process.env.SUPABASE_URL ? 'supabase' : 'file', auth: authStatus(req).configured, error: error.message || 'Falha ao verificar banco.' });
     }
   }
-  if (resource === 'auth' && id === 'session' && req.method === 'GET') return sendJson(res, 200, authStatus(req));
+  if (resource === 'auth' && id === 'session' && req.method === 'GET') {
+    const session = await currentSession(req);
+    return sendJson(res, 200, {
+      authenticated: Boolean(session),
+      user: session ? { id: session.id, username: session.username || session.sub, nome: session.nome, role: session.role, perfilId: session.perfilId, perfilCodigo: session.perfilCodigo, permissions: session.permissions || [], retiroIds: session.retiroIds || [] } : null,
+      configured: authStatus(req).configured,
+    });
+  }
   if (resource === 'auth' && id === 'login' && req.method === 'POST') {
     const { username, password } = await readBody(req);
     const user = await validateLogin(String(username || ''), String(password || ''));
@@ -226,8 +310,8 @@ async function handleApi(req, res, pathname) {
   }
   if (resource === 'auth' && id === 'logout' && req.method === 'POST') return sendNoContent(res, { 'Set-Cookie': clearSessionCookie() });
 
-  const publicRegistrationRequest = isPublicRegistrationRequest(resource, id, req);
-  const session = readSession(req);
+  const session = await currentSession(req);
+  const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
 
@@ -254,10 +338,12 @@ async function handleApi(req, res, pathname) {
   }
 
   if (resource === 'database' && req.method === 'GET') {
+    if (!hasGlobalRetreatAccess(session)) return sendError(res, 403, 'Apenas admin pode acessar o banco completo.');
     if (denyIfMissingPermission(res, session, 'usuarios.ver')) return;
     return sendJson(res, 200, await readDatabase());
   }
   if (resource === 'database' && id === 'import' && req.method === 'POST') {
+    if (!hasGlobalRetreatAccess(session)) return sendError(res, 403, 'Apenas admin pode importar o banco completo.');
     if (denyIfMissingPermission(res, session, 'usuarios.editar')) return;
     await importDatabase(await readBody(req));
     return sendNoContent(res);
@@ -266,12 +352,18 @@ async function handleApi(req, res, pathname) {
   if (resource === 'cursista-smp') {
     if (denyIfMissingPermission(res, session, 'cursista-smp.ver')) return;
     const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
-    if (req.method === 'GET' && !id) return sendJson(res, 200, await listCursistasSmp(url.searchParams.get('retiroId') || ''));
+    const queryRetreatId = url.searchParams.get('retiroId') || '';
+    if (req.method === 'GET' && !id) {
+      if (!hasGlobalRetreatAccess(session) && (!queryRetreatId || !canAccessRetreat(session, queryRetreatId))) return sendError(res, 403, noRetreatAccessMessage);
+      return sendJson(res, 200, await listCursistasSmp(queryRetreatId));
+    }
     if (req.method === 'PUT' && id && action) {
       const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
+      if (!canAccessRetreat(session, record.retiroId)) return sendError(res, 403, noRetreatAccessMessage);
       return sendJson(res, 200, await saveCursistaSmp(record));
     }
     if (req.method === 'DELETE' && id && action) {
+      if (!canAccessRetreat(session, decodeURIComponent(id))) return sendError(res, 403, noRetreatAccessMessage);
       await deleteCursistaSmp(decodeURIComponent(id), decodeURIComponent(action));
       return sendNoContent(res);
     }
@@ -289,16 +381,23 @@ async function handleApi(req, res, pathname) {
     requestPermission = isRetreatConcludeUpdate(current, record) ? 'retiros.encerrar' : 'retiros.editar';
   }
   if (!publicRegistrationRequest && denyIfMissingPermission(res, session, requestPermission)) return;
-  if (req.method === 'GET' && !id) return sendJson(res, 200, await listRecords(resource));
-  if (req.method === 'GET' && id) return sendJson(res, 200, await getRecord(resource, decodeURIComponent(id)));
+  if (!publicRegistrationRequest && !hasGlobalRetreatAccess(session) && resource === 'retiros' && req.method === 'PUT' && !id) return sendError(res, 403, noRetreatAccessMessage);
+  if (req.method === 'GET' && !id) return sendJson(res, 200, publicRegistrationRequest ? await listRecords(resource) : await listAuthorizedRecords(resource, session));
+  if (req.method === 'GET' && id) {
+    const record = publicRegistrationRequest ? await getRecord(resource, decodeURIComponent(id)) : await getAuthorizedRecord(resource, decodeURIComponent(id), session);
+    if (!record && !publicRegistrationRequest && ['retiros', 'adesoes', 'cursistas', 'casais', 'comunidades', 'crachas', 'pessoas'].includes(resource)) return sendError(res, 403, noRetreatAccessMessage);
+    return sendJson(res, 200, record);
+  }
 
   if (req.method === 'PUT' && id) {
     const record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
+    if (!publicRegistrationRequest && resource !== 'pessoas' && await denyIfMissingRetreatAccess(res, session, resource, record)) return;
     const protectedRecord = await protectRegistrationWrite(resource, record, req);
     return sendJson(res, 200, await saveRecord(resource, protectedRecord));
   }
 
   if (req.method === 'DELETE' && id) {
+    if (!publicRegistrationRequest && await denyIfMissingRetreatAccess(res, session, resource, decodeURIComponent(id))) return;
     await deleteRecord(resource, decodeURIComponent(id));
     return sendNoContent(res);
   }

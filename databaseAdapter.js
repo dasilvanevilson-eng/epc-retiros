@@ -149,6 +149,7 @@ const boolOrNull = (value) => {
   return boolOrFalse(value);
 };
 const choiceFromBool = (value) => value === null || value === undefined ? '' : (value ? 'Sim' : 'Não');
+const duplicateEnrolmentCpfMessage = 'Este CPF ja possui adesao neste retiro.';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 const isUuid = (value = '') => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
 const rowId = (row) => row?.cpf || row?.legacy_id || row?.id;
@@ -523,6 +524,18 @@ async function getEnrolment(id) {
   return mapEnrolment(row, lookups);
 }
 
+async function assertUniqueEnrolmentPerson(record, person) {
+  if (!record?.retiroId || !person?.id) return;
+  const rows = await rowsWhere('adesoes', `retiro_id=eq.${enc(record.retiroId)}&pessoa_id=eq.${enc(person.id)}`);
+  const conflict = rows.find((row) => row.id !== record.id);
+  if (conflict) {
+    const error = new Error(duplicateEnrolmentCpfMessage);
+    error.code = 'DUPLICATE_RETREAT_ENROLMENT_CPF';
+    error.conflictId = conflict.id;
+    throw error;
+  }
+}
+
 async function saveEnrolment(record) {
   const current = record.id ? await getEnrolment(record.id).catch(() => null) : null;
   const nextRecord = { ...record };
@@ -533,40 +546,50 @@ async function saveEnrolment(record) {
   });
   record = nextRecord;
   const person = await findPersonRow(record.pessoaId);
+  await assertUniqueEnrolmentPerson(record, person);
   const couple = await ensureCouple(record);
   const mappedKeys = new Set(['id', 'retiroId', 'pessoaId', 'nome', 'dias', 'setores', 'retirosAnteriores', 'quadrante', 'foto', 'contribuicao', 'coordenacao', 'coordenacaoSetor', 'espacoKids', 'espacoKidsNaoNecessito', 'observacao', 'termoVoluntariadoAceito', 'termoVoluntariadoAceitoEm', 'tipoFicha', 'casalId', 'papelNoCasal', 'tipoFinanceiro', 'taxaPaga', 'valorPago', 'formaPagamento', 'recebedorObservacao', 'status', 'validada', 'validadoEm', 'enviadoEm', 'atualizadoEm', 'dadosPessoais', 'createdAt', 'updatedAt']);
-  await upsert('adesoes', compact({
-    id: record.id,
-    retiro_id: record.retiroId,
-    pessoa_id: person?.id || null,
-    casal_id: couple?.id || null,
-    nome: record.nome || person?.nome || '',
-    tipo_ficha: record.tipoFicha || 'Individual',
-    papel_no_casal: record.papelNoCasal || '',
-    quadrante: boolOrFalse(record.quadrante),
-    foto: boolOrFalse(record.foto),
-    contribuicao: record.contribuicao || '',
-    coordenacao: record.coordenacao || '',
-    coordenacao_setor: record.coordenacaoSetor || '',
-    espaco_kids_nao_necessito: Boolean(record.espacoKidsNaoNecessito),
-    observacao: record.observacao || '',
-    termo_voluntariado_aceito: Boolean(record.termoVoluntariadoAceito),
-    termo_voluntariado_aceito_em: dateOrNull(record.termoVoluntariadoAceitoEm),
-    tipo_financeiro: record.tipoFinanceiro || '',
-    taxa_paga: Boolean(record.taxaPaga),
-    valor_pago: numberOrZero(record.valorPago),
-    forma_pagamento: record.formaPagamento || '',
-    recebedor_observacao: record.recebedorObservacao || '',
-    status: record.status || 'pendente_validacao',
-    validada: Boolean(record.validada),
-    validado_em: dateOrNull(record.validadoEm),
-    enviado_em: record.enviadoEm || undefined,
-    atualizado_em: record.atualizadoEm || undefined,
-    created_at: record.createdAt || undefined,
-    updated_at: record.updatedAt || undefined,
-    dados_pessoais: record.dadosPessoais || {},
-    extras: extras(record, mappedKeys),
-  }));
+  try {
+    await upsert('adesoes', compact({
+      id: record.id,
+      retiro_id: record.retiroId,
+      pessoa_id: person?.id || null,
+      casal_id: couple?.id || null,
+      nome: record.nome || person?.nome || '',
+      tipo_ficha: record.tipoFicha || 'Individual',
+      papel_no_casal: record.papelNoCasal || '',
+      quadrante: boolOrFalse(record.quadrante),
+      foto: boolOrFalse(record.foto),
+      contribuicao: record.contribuicao || '',
+      coordenacao: record.coordenacao || '',
+      coordenacao_setor: record.coordenacaoSetor || '',
+      espaco_kids_nao_necessito: Boolean(record.espacoKidsNaoNecessito),
+      observacao: record.observacao || '',
+      termo_voluntariado_aceito: Boolean(record.termoVoluntariadoAceito),
+      termo_voluntariado_aceito_em: dateOrNull(record.termoVoluntariadoAceitoEm),
+      tipo_financeiro: record.tipoFinanceiro || '',
+      taxa_paga: Boolean(record.taxaPaga),
+      valor_pago: numberOrZero(record.valorPago),
+      forma_pagamento: record.formaPagamento || '',
+      recebedor_observacao: record.recebedorObservacao || '',
+      status: record.status || 'pendente_validacao',
+      validada: Boolean(record.validada),
+      validado_em: dateOrNull(record.validadoEm),
+      enviado_em: record.enviadoEm || undefined,
+      atualizado_em: record.atualizadoEm || undefined,
+      created_at: record.createdAt || undefined,
+      updated_at: record.updatedAt || undefined,
+      dados_pessoais: record.dadosPessoais || {},
+      extras: extras(record, mappedKeys),
+    }));
+  } catch (error) {
+    if (String(error.message || '').includes('adesoes_retiro_pessoa_unique')) {
+      const duplicateError = new Error(duplicateEnrolmentCpfMessage);
+      duplicateError.code = 'DUPLICATE_RETREAT_ENROLMENT_CPF';
+      throw duplicateError;
+    }
+    throw error;
+  }
   await Promise.all([
     deleteWhere('adesao_dias', `adesao_id=eq.${enc(record.id)}`),
     deleteWhere('adesao_setores', `adesao_id=eq.${enc(record.id)}`),
@@ -1100,6 +1123,15 @@ async function saveRecord(storeName, record) {
     if (useSupabase) return saveRelational(storeName, record);
     const database = await readFileDatabase();
     const collection = database[storeName];
+    if (storeName === 'adesoes' && record?.retiroId && record?.pessoaId) {
+      const conflict = collection.find((item) => item.id !== record.id && item.retiroId === record.retiroId && item.pessoaId === record.pessoaId);
+      if (conflict) {
+        const error = new Error(duplicateEnrolmentCpfMessage);
+        error.code = 'DUPLICATE_RETREAT_ENROLMENT_CPF';
+        error.conflictId = conflict.id;
+        throw error;
+      }
+    }
     const index = collection.findIndex((item) => item.id === record.id);
     if (index >= 0) collection[index] = record;
     else collection.push(record);
