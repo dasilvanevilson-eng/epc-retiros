@@ -788,6 +788,16 @@ function shirtCommunityPrintContent(students = [], communityDetails = new Map())
   }).join('')}</div>`;
 }
 
+function shirtCouplePrintContent(peopleRows = []) {
+  const rows = [...peopleRows].sort((first, second) => String(first.couple || '').localeCompare(String(second.couple || ''), 'pt-BR', { sensitivity: 'base' }) || String(first.name || '').localeCompare(String(second.name || ''), 'pt-BR', { sensitivity: 'base' }));
+  if (!rows.length) return '<p class="empty-state">Nenhum cursista informado.</p>';
+  let currentCouple = '';
+  return `<div class="student-health-list shirt-community-list">${rows.map((person) => {
+    const heading = person.couple !== currentCouple ? (currentCouple = person.couple, `<div class="shirt-community-heading"><strong>${escapeHtml(person.couple || 'Casal sem nome')}</strong></div>`) : '';
+    return `${heading}<div><strong>${escapeHtml(person.name || 'Sem nome')}</strong><span>${escapeHtml(String(person.shirt || '').trim() || 'NÃ£o informado')}</span></div>`;
+  }).join('')}</div>`;
+}
+
 function openHomeInfoWindow(label, content, options = {}) {
   app.querySelector('.home-stat-overlay')?.remove();
   const overlay = document.createElement('section');
@@ -824,10 +834,10 @@ function setupHomeStatTabs(options = {}) {
     const item = panels.find(([panelKey]) => panelKey === key);
     if (!item) return;
     const [, label, panel] = item;
-    const printOptions = key === 'shirts' ? [
+    const printOptions = key === 'shirts' ? (options.shirtPrintOptions || [
       { label: 'Por tamanho da camiseta', title: 'Camisetas dos cursistas por tamanho', content: panel.innerHTML },
       { label: 'Por comunidade', title: 'Camisetas dos cursistas por comunidade', content: shirtCommunityPrintContent(options.shirtStudents || [], options.communityDetails || new Map()) },
-    ] : null;
+    ]) : null;
     openHomeInfoWindow(label, panel.innerHTML, { printOptions });
   };
   const bindHomeStatButton = (button) => {
@@ -949,9 +959,28 @@ function wireParticipationGroupStatWindows(rows = []) {
 
 async function renderHome() {
   const active = selectedRetreat();
-  const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
+  const activeStudentFormType = active?.tipoFichaCursista || defaultStudentFormType;
+  const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
+  const [allStudents, allCommunities, coupleStudents] = await Promise.all([
+    dataService.listCursistas(),
+    dataService.listComunidades(),
+    active?.id && usesCoupleStudentForm ? dataService.listCursistasSmp(active.id).catch((error) => {
+      console.error(error);
+      return [];
+    }) : Promise.resolve([]),
+  ]);
   const activeCommunityDetails = active ? studentCommunityDetails(allCommunities.filter((community) => community.retiroId === active.id)) : new Map();
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
+  const coupleStudentTitle = activeStudentFormType === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';
+  const smpYes = (value) => normalizeText(value) === 'sim';
+  const smpCoupleName = (record = {}) => [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || (record.numeroFichaSmp || record.id ? `Ficha ${record.numeroFichaSmp || record.id}` : 'Casal sem nome');
+  const smpPeople = coupleStudents.flatMap((record) => [
+    { record, side: 'Dele', name: record.nomeDele || 'Ele', health: record.saudeDele, healthDetail: record.qualSaudeDele, intolerance: record.intoleranciaAlimentarDele, intoleranceDetail: record.qualIntoleranciaAlimentarDele, shirt: record.manequimDele },
+    { record, side: 'Dela', name: record.nomeDela || 'Ela', health: record.saudeDela, healthDetail: record.qualSaudeDela, intolerance: record.intoleranciaAlimentarDela, intoleranceDetail: record.qualIntoleranciaAlimentarDela, shirt: record.manequimDela },
+  ].map((person) => ({ ...person, couple: smpCoupleName(record) })));
+  const smpIntolerancePeople = smpPeople.filter((person) => smpYes(person.intolerance) || String(person.intoleranceDetail || '').trim());
+  const smpHealthPeople = smpPeople.filter((person) => smpYes(person.health) || String(person.healthDetail || '').trim());
+  const smpAcolhimentoCouples = coupleStudents.filter((record) => smpYes(record.precisaAcolhimento));
   const retreatBirthdayMonths = (() => {
     const months = new Set();
     const start = parseLocalDate(active?.dataInicio);
@@ -993,13 +1022,19 @@ async function renderHome() {
     if (size) counts[size] = (counts[size] || 0) + 1;
     return counts;
   }, {});
+  const smpShirtCounts = smpPeople.reduce((counts, person) => {
+    const size = String(person.shirt || '').trim();
+    if (size) counts[size] = (counts[size] || 0) + 1;
+    return counts;
+  }, {});
   const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
-  const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => {
+  const shirtRowsFor = (counts) => Object.entries(counts).sort(([first], [second]) => {
     const firstIndex = shirtOrder.indexOf(first);
     const secondIndex = shirtOrder.indexOf(second);
     if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex);
     return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' });
   });
+  const shirtRows = shirtRowsFor(usesCoupleStudentForm ? smpShirtCounts : shirtCounts);
   const intoleranceStudents = activeStudents
     .filter((student) => normalizeText(student.intoleranciaAlimentos) === 'sim' || String(student.qualIntolerancia || '').trim())
     .sort((first, second) => {
@@ -1124,6 +1159,15 @@ async function renderHome() {
     const community = options.showCommunity ? studentCommunityDetail(student, options.communityDetails) : null;
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong>${community ? `<small>Comunidade: ${escapeHtml(community.name)}</small>` : ''}</div><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const smpPersonRows = (rows, field, fallback) => rows.length ? `<div class="student-health-list">${rows.map((person) => `<div><div class="student-health-person"><strong>${escapeHtml(person.name || 'Sem nome')}</strong><small>${escapeHtml(person.side)} - ${escapeHtml(person.couple || 'Casal sem nome')}</small></div><span>${escapeHtml(String(person[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const smpAcolhimentoRows = (rows) => rows.length ? `<div class="student-health-list">${rows.map((record) => {
+    const details = [
+      record.foneDele ? `Fone dele: ${record.foneDele}` : '',
+      record.foneDela ? `Fone dela: ${record.foneDela}` : '',
+      record.nomeApresentante ? `Apresentante: ${record.nomeApresentante}` : '',
+    ].filter(Boolean).join(' Â· ');
+    return `<div><strong>${escapeHtml(smpCoupleName(record))}</strong><span>${escapeHtml(details || 'Precisa de acolhimento')}</span></div>`;
+  }).join('')}</div>` : '<p class="empty-state">Nenhum casal informado.</p>';
   const parentSuggestedMedicationRows = (students, communityDetails) => students.length ? `<div class="student-health-list">${students.map((student) => {
     const community = studentCommunityDetail(student, communityDetails);
     const headacheMedication = String(student.medicamentoCabeca || '').trim();
@@ -1150,17 +1194,25 @@ async function renderHome() {
   const homeStatCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-stat="${key}">${action}</button></article>`;
   const homeLinkCard = (label, count, href, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><a href="${href}">${action}</a></article>`;
   const homePanel = (label, description, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2>${description ? `<p>${description}</p>` : ''}</div></div><div>${content}</div></article>`;
-  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
-    </section>
-    <section class="home-overview" aria-label="Resumo do retiro em foco">
-      <section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div class="home-column-total"><strong>${activeStudents.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
+  const studentColumnHtml = usesCoupleStudentForm
+    ? `<section class="home-column"><div class="home-column-heading"><h2>${escapeHtml(coupleStudentTitle)}</h2><div class="home-column-total"><strong>${coupleStudents.length}</strong><small>Casal(is)</small></div></div><div class="home-column-list">
+        ${homeHealthCard('Possui intolerância alimentar', smpIntolerancePeople.length, 'smp-intolerance')}
+        ${homeHealthCard('Possui problema de saúde', smpHealthPeople.length, 'smp-health')}
+        ${homeHealthCard('Precisa de acolhimento', smpAcolhimentoCouples.length, 'smp-acolhimento')}
+        ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
+      </div></section>`
+    : `<section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div class="home-column-total"><strong>${activeStudents.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
         ${homeHealthCard('Intolerância a alimentos', intoleranceStudents.length, 'intolerance')}
         ${homeHealthCard('Alérgicos a Medicamentos', allergyStudents.length, 'allergy')}
         ${homeHealthCard('Tomam medicamento contínuo', continuousMedicationStudents.length, 'continuous-medication')}
         ${homeHealthCard('Medicação sugerida pelos pais', parentSuggestedMedicationStudents.length, 'parent-suggested-medication')}
         ${homeHealthCard('Aniversariantes do mês', birthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
-      </div></section>
+      </div></section>`;
+  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
+    </section>
+    <section class="home-overview" aria-label="Resumo do retiro em foco">
+      ${studentColumnHtml}
       <section class="home-column"><div class="home-column-heading"><h2>Equipe de trabalho</h2><div class="home-column-total"><strong>${activeEnrolments.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
         ${homeLinkCard('Inscrições aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
         ${homeHealthCard('Quadrante(s) impresso', quadranteRows.length, 'quadrante')}
@@ -1182,12 +1234,22 @@ async function renderHome() {
       <article class="panel dashboard-panel participation-group-stat-panel"><div class="panel-heading"><div><h2>Pessoas por grupo</h2><p>Equipe de trabalho classificada pelos retiros anteriores.</p></div></div><div class="sector-simple-list">${participationGroupRows}</div></article>
     </section>
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
-  setupHomeStatTabs({ shirtStudents: activeStudents, communityDetails: activeCommunityDetails });
+  setupHomeStatTabs({
+    shirtStudents: usesCoupleStudentForm ? smpPeople.map((person) => ({ nome: person.name, camiseta: person.shirt })) : activeStudents,
+    communityDetails: activeCommunityDetails,
+    shirtPrintOptions: usesCoupleStudentForm ? [
+      { label: 'Por tamanho da camiseta', title: 'Camisetas dos cursistas por tamanho', content: app.querySelector('.shirt-stat-panel')?.innerHTML || '' },
+      { label: 'Por casal', title: `Camisetas dos cursistas por casal - ${coupleStudentTitle}`, content: shirtCouplePrintContent(smpPeople) },
+    ] : null,
+  });
   const healthContent = {
     intolerance: `<div class="panel-heading"><div><h2>Intolerância a alimentos</h2><p>Comunidade, nome do cursista e alimento informado na ficha.</p></div></div>${healthRows(intoleranceStudents, 'qualIntolerancia', 'Intolerância não detalhada', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     allergy: `<div class="panel-heading"><div><h2>Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'continuous-medication': `<div class="panel-heading"><div><h2>Tomam medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'parent-suggested-medication': `<div class="panel-heading"><div><h2>Medicação sugerida pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
+    'smp-intolerance': `<div class="panel-heading"><div><h2>Possui intolerância alimentar</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por pessoa.</p></div></div>${smpPersonRows(smpIntolerancePeople, 'intoleranceDetail', 'Intolerância não detalhada')}`,
+    'smp-health': `<div class="panel-heading"><div><h2>Possui problema de saúde</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por pessoa.</p></div></div>${smpPersonRows(smpHealthPeople, 'healthDetail', 'Problema de saúde não detalhado')}`,
+    'smp-acolhimento': `<div class="panel-heading"><div><h2>Precisa de acolhimento</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por casal.</p></div></div>${smpAcolhimentoRows(smpAcolhimentoCouples)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
