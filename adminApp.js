@@ -1157,8 +1157,8 @@ async function renderHome() {
         ${homeLinkCard('Inscrições aguardando validação', pendingValidationGroups.length, '#validacao-inscricoes')}
         ${homeHealthCard('Quadrante(s) impresso', quadranteRows.length, 'quadrante')}
         ${homeHealthCard('Fotos solicitadas', photoRows.length, 'photo')}
-        ${homeStatCard('Pessoas por setor', sectorStatRows.length, 'sectors')}
-        ${homeStatCard('Pessoas por grupo', participationGroupStatRows.length, 'groups')}
+        ${homeStatCard('Pessoas por setor', null, 'sectors')}
+        ${homeStatCard('Pessoas por grupo', null, 'groups')}
         ${homeHealthCard('Aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
       </div></section>
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
