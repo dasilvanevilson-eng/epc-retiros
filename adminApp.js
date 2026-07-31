@@ -47,6 +47,11 @@ const studentFormTypes = [
   ['cursista-smp', 'Cursista SMP'],
   ['cursista-epc', 'Cursista EPC'],
 ];
+const studentFormNavIds = {
+  'cursista-individual': 'cursista',
+  'cursista-smp': 'cursista-smp',
+  'cursista-epc': 'cursista-epc',
+};
 const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFormTypes
   .map(([value, label]) => `<option value="${value}" ${value === (selected || defaultStudentFormType) ? 'selected' : ''}>${escapeHtml(label)}</option>`)
   .join('');
@@ -663,6 +668,9 @@ function setupMetricSearch() {
 
 function layout(content, active = 'inicio') {
   const isPublicReceiverView = Boolean(publicReceiverToken);
+  const activeStudentNavId = studentFormNavIds[selectedRetreat()?.tipoFichaCursista || defaultStudentFormType] || studentFormNavIds[defaultStudentFormType];
+  const studentNavIds = new Set(Object.values(studentFormNavIds));
+  const isVisibleStudentNav = (id) => !studentNavIds.has(id) || id === activeStudentNavId;
   const navItems = [
     ['inicio', 'Início', '⌂'],
     ['retiros', 'Retiros', '▣'],
@@ -676,12 +684,12 @@ function layout(content, active = 'inicio') {
     ['recebedor', 'Recebedor', '▱'],
     ['alterar-senha', 'Alterar senha', '••'],
     ['usuarios', 'Usuarios e permissoes', 'UP'],
-  ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id));
+  ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
   if (canView('cursista-epc') || canView('cursista-smp')) {
     const studentIndex = navItems.findIndex(([id]) => id === 'cursista');
     const studentItems = [
-      canView('cursista-epc') ? ['cursista-epc', 'Cursista EPC', ''] : null,
-      canView('cursista-smp') ? ['cursista-smp', 'Cursista SMP', ''] : null,
+      canView('cursista-epc') && isVisibleStudentNav('cursista-epc') ? ['cursista-epc', 'Cursista EPC', ''] : null,
+      canView('cursista-smp') && isVisibleStudentNav('cursista-smp') ? ['cursista-smp', 'Cursista SMP', ''] : null,
     ].filter(Boolean);
     if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, ...studentItems);
     else navItems.push(...studentItems);
