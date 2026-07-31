@@ -1624,9 +1624,12 @@ async function renderRetreat(id, selectedSector = '') {
   });
   const sortIndicator = (key) => participantSort.key === key ? (participantSort.direction === 'asc' ? '↑' : '↓') : '↕';
   const concluded = isRetreatConcluded(retreat);
+  const canEditRetreat = canAccess('retiros.editar') && canModifyRetreat(retreat);
+  const canPublishRetreat = canAccess('retiros.publicar') && canModifyRetreat(retreat) && retreat.status !== 'publicado';
+  const canConcludeRetreat = canAccess('retiros.encerrar') && canModifyRetreat(retreat);
   const retreatActions = concluded
     ? '<span class="status concluido">Somente consulta</span>'
-    : `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>${retreat.status === 'publicado' ? '' : '<button class="primary-button" id="publish-retreat">Publicar retiro</button>'}<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>`;
+    : `${canEditRetreat ? `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>` : ''}${canPublishRetreat ? '<button class="primary-button" id="publish-retreat">Publicar retiro</button>' : ''}${canConcludeRetreat ? '<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>' : ''}`;
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions retreat-actions-menu">${retreatActions}</div></section>
     <section class="detail-grid"></section>
     `, 'retiros');
@@ -1657,9 +1660,6 @@ async function renderRetreat(id, selectedSector = '') {
     }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
-  if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
-  if (!canAccess('retiros.publicar')) app.querySelector('#publish-retreat')?.remove();
-  if (!canAccess('retiros.encerrar')) app.querySelector('#conclude-retreat')?.remove();
   app.querySelector('#publish-retreat')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'publicar este retiro')) return;
     if (retreat.status !== 'publicado') {
