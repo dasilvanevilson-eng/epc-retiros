@@ -1624,8 +1624,8 @@ async function renderRetreat(id) {
     sectorLinksPanel.innerHTML = `<h2>Links por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia.</p><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
-      return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-toggle="${escapeHtml(link.setor)}" aria-expanded="false"><strong>${escapeHtml(link.setor)}</strong><span>Mostrar links</span></button><div class="sector-link-actions" hidden><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(registrationUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(registrationUrl)}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(followupUrl)}"><button type="button" data-copy-sector-link="${escapeHtml(followupUrl)}">Copiar</button></label></div></article>`;
-    }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div>`;
+      return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
+    }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
   if (!canAccess('retiros.editar')) app.querySelector(`a[href="#retiros/${retreat.id}/editar"]`)?.remove();
@@ -1688,6 +1688,7 @@ async function renderRetreat(id) {
     const rows = [...app.querySelectorAll('[data-sector-link-row]')];
     const feedback = app.querySelector('#sector-link-feedback');
     const empty = app.querySelector('.sector-link-empty');
+    const selectedLinks = app.querySelector('#sector-link-selected');
     const openSectorLinksMenu = () => {
       menu.hidden = false;
       sectorLinkSearch.setAttribute('aria-expanded', 'true');
@@ -1707,20 +1708,16 @@ async function renderRetreat(id) {
       if (empty) empty.hidden = visible > 0;
       feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : 'Clique ou digite para localizar um setor ativo.';
     };
-    app.querySelectorAll('[data-sector-link-toggle]').forEach((button) => button.addEventListener('click', () => {
-      const row = button.closest('[data-sector-link-row]');
-      const actions = row?.querySelector('.sector-link-actions');
-      const expanded = button.getAttribute('aria-expanded') === 'true';
-      app.querySelectorAll('[data-sector-link-toggle]').forEach((toggle) => {
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.closest('[data-sector-link-row]')?.querySelector('.sector-link-actions')?.setAttribute('hidden', '');
-        toggle.querySelector('span').textContent = 'Mostrar links';
-      });
-      if (!expanded && actions) {
-        button.setAttribute('aria-expanded', 'true');
-        actions.hidden = false;
-        button.querySelector('span').textContent = 'Ocultar links';
-      }
+    app.querySelectorAll('[data-sector-link-select]').forEach((button) => button.addEventListener('click', () => {
+      const sector = button.dataset.sectorLinkSelect || '';
+      sectorLinkSearch.value = sector;
+      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><strong>${escapeHtml(sector)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button></label></div></article>`;
+      selectedLinks.querySelectorAll('[data-copy-sector-link]').forEach((copyButton) => copyButton.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(copyButton.dataset.copySectorLink);
+        copyButton.textContent = 'Copiado!';
+      }));
+      filterSectorLinks();
+      closeSectorLinksMenu();
     }));
     sectorLinkSearch.addEventListener('focus', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('click', () => { filterSectorLinks(); openSectorLinksMenu(); });
