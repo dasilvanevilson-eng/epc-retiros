@@ -2149,32 +2149,66 @@ async function renderRecebedor() {
     ? retreats.find((item) => item.id === publicReceiverRetreatId)
     : selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Financeiro do retiro</p><h1>Módulo Recebedor</h1><p>Publique ou crie um retiro para acompanhar as contribuições.</p></div></section>', 'recebedor'); return; }
-  const canEditReceiver = canAccess('recebedor.editar') && canModifyRetreat(retreat);
-  const students = uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id));
+  const canEditReceiverRetreat = () => Boolean(retreat) && !isRetreatConcluded(retreat) && (publicReceiverToken || (canAccess('recebedor.editar') && canAccessRetreat(retreat)));
+  const ensureReceiverCanBeChanged = () => {
+    if (publicReceiverToken) {
+      if (!isRetreatConcluded(retreat)) return true;
+      alert('Este retiro esta concluido. Para preservar o historico, alteracoes financeiras estao bloqueadas.');
+      return false;
+    }
+    return ensureRetreatCanBeChanged(retreat, 'alterar pagamentos');
+  };
+  const canEditReceiver = canEditReceiverRetreat();
+  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
+  const studentFinanceType = usesCoupleStudentForm ? studentFormType : 'cursista';
+  const studentSectorLabel = studentFormType === 'cursista-epc' ? 'Cursista EPC' : (studentFormType === 'cursista-smp' ? 'Cursista SMP' : 'Cursista');
+  const smpReceiverName = (record = {}) => [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || (record.numeroFichaSmp || record.id ? `Ficha ${record.numeroFichaSmp || record.id}` : studentSectorLabel);
+  const mapSmpReceiverStudent = (record = {}) => ({
+    ...record,
+    id: `smp-${record.id || record.numeroFichaSmp}`,
+    sourceId: record.id || record.numeroFichaSmp,
+    nome: smpReceiverName(record),
+    sortName: smpReceiverName(record),
+    setores: [studentSectorLabel],
+    tipoFinanceiro: studentFinanceType,
+    valorInscricao: record.valorInscricaoSmp,
+    valorPago: record.valorPagoSmp,
+    recebedorValorPago: record.recebedorValorPagoSmp,
+    recebedorTaxaPaga: record.recebedorTaxaPagaSmp,
+    recebedorFormaPagamento: record.recebedorFormaPagamentoSmp,
+    recebedorObservacao: record.recebedorObservacaoSmp,
+    __sourceRecord: record,
+  });
+  const students = usesCoupleStudentForm
+    ? (await dataService.listCursistasSmp(retreat.id)).map(mapSmpReceiverStudent)
+    : uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' }));
+  const isStudentFinanceEntry = (entry = {}) => ['cursista', 'cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
+  const isCoupleStudentFinanceEntry = (entry = {}) => ['cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const entries = [
     ...mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id)).map((entry) => ({ ...entry, tipoFinanceiro: 'voluntario' })),
-    ...students.map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' })),
+    ...students,
   ];
   const effectiveSuggested = (entry) => {
     if (entry.tipoFinanceiro === 'voluntario') return volunteerContributionAmount(retreat, entry);
     const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
     return Math.max(0, inscription - parseCurrency(entry.valorPago));
   };
-  const entryAdvanceAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? parseCurrency(entry.valorPago) : 0;
-  const entryPaidAmount = (entry) => entry.tipoFinanceiro === 'cursista' ? Math.max(0, parseCurrency(entry.recebedorValorPago) - entryAdvanceAmount(entry)) : parseCurrency(entry.valorPago);
+  const entryAdvanceAmount = (entry) => isStudentFinanceEntry(entry) ? parseCurrency(entry.valorPago) : 0;
+  const entryPaidAmount = (entry) => isStudentFinanceEntry(entry) ? Math.max(0, parseCurrency(entry.recebedorValorPago) - entryAdvanceAmount(entry)) : parseCurrency(entry.valorPago);
   const entryHasReceiverPayment = (entry) => entryPaidAmount(entry) > 0;
-  const entryAdvancePaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.formaPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorFormaPagamento : '') || '') : '';
-  const entryAdvancePaymentObservation = (entry) => entry.tipoFinanceiro === 'cursista' ? (entry.observacaoPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorObservacao : '') || '') : '';
+  const entryAdvancePaymentMethod = (entry) => isStudentFinanceEntry(entry) ? (entry.formaPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorFormaPagamento : '') || '') : '';
+  const entryAdvancePaymentObservation = (entry) => isStudentFinanceEntry(entry) ? (entry.observacaoPagamento || (entryAdvanceAmount(entry) > 0 && !entryHasReceiverPayment(entry) ? entry.recebedorObservacao : '') || '') : '';
   const entryPaidStatus = (entry) => {
-    if (entry.tipoFinanceiro !== 'cursista') return Boolean(entry.taxaPaga);
+    if (!isStudentFinanceEntry(entry)) return Boolean(entry.taxaPaga);
     const inscription = parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || suggestedAmount(entry.contribuicao);
     const advanceBalance = Math.max(0, inscription - entryAdvanceAmount(entry));
     return advanceBalance <= 0 || (inscription <= 0 ? Boolean(entry.recebedorTaxaPaga) : parseCurrency(entry.recebedorValorPago) >= inscription);
   };
-  const entryPaymentMethod = (entry) => entry.tipoFinanceiro === 'cursista' ? (entryHasReceiverPayment(entry) ? (entry.recebedorFormaPagamento || '') : '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
-  const entryPaymentObservation = (entry) => entry.tipoFinanceiro === 'cursista' ? (entryHasReceiverPayment(entry) ? (entry.recebedorObservacao || '') : '') : (entry.recebedorObservacao || '');
+  const entryPaymentMethod = (entry) => isStudentFinanceEntry(entry) ? (entryHasReceiverPayment(entry) ? (entry.recebedorFormaPagamento || '') : '') : (entry.formaPagamento || entry.recebedorFormaPagamento || '');
+  const entryPaymentObservation = (entry) => isStudentFinanceEntry(entry) ? (entryHasReceiverPayment(entry) ? (entry.recebedorObservacao || '') : '') : (entry.recebedorObservacao || '');
   const setEntryPayment = (entry, value, checked, paymentMethod = '', observation) => {
-    if (entry.tipoFinanceiro === 'cursista') {
+    if (isStudentFinanceEntry(entry)) {
       if (!entry.formaPagamento && entryAdvancePaymentMethod(entry)) entry.formaPagamento = entryAdvancePaymentMethod(entry);
       if (!entry.observacaoPagamento && entryAdvancePaymentObservation(entry)) entry.observacaoPagamento = entryAdvancePaymentObservation(entry);
       entry.recebedorValorPago = entryAdvanceAmount(entry) + value;
@@ -2191,9 +2225,21 @@ async function renderRecebedor() {
     else if (observation !== undefined) entry.recebedorObservacao = observation;
   };
   const saveFinancialEntry = async (entry) => {
-    if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
+    if (!ensureReceiverCanBeChanged()) return;
     if (entry.tipoFinanceiro === 'cursista') {
       await dataService.saveCursista(entry);
+      return;
+    }
+    if (isCoupleStudentFinanceEntry(entry)) {
+      await dataService.saveCursistaSmp({
+        ...entry.__sourceRecord,
+        valorPagoSmp: entry.valorPago,
+        saldoPagarSmp: Math.max(0, (parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || 0) - parseCurrency(entry.valorPago)),
+        recebedorValorPagoSmp: entry.recebedorValorPago,
+        recebedorTaxaPagaSmp: entry.recebedorTaxaPaga,
+        recebedorFormaPagamentoSmp: entry.recebedorFormaPagamento,
+        recebedorObservacaoSmp: entry.recebedorObservacao,
+      });
       return;
     }
     await dataService.saveAdesao(entry);
@@ -2207,7 +2253,7 @@ async function renderRecebedor() {
     return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
   });
   const isVolunteerCoupleRow = (row) => row.entries.some((entry) => entry.tipoFinanceiro === 'voluntario' && entry.casalId);
-  const isStudentRow = (row) => row.entries.some((entry) => entry.tipoFinanceiro === 'cursista');
+  const isStudentRow = (row) => row.entries.some((entry) => isStudentFinanceEntry(entry));
   const receiverRows = [];
   const usedCouples = new Set();
   entries.forEach((entry) => {
@@ -2474,7 +2520,7 @@ async function renderRecebedor() {
       input.value = row ? rowPaid(row) || '' : '';
     });
     input.addEventListener('change', async () => {
-      if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
+      if (!ensureReceiverCanBeChanged()) return;
       const row = receiverRows.find((item) => item.id === input.dataset.paidEntry);
       if (!row) return;
       const total = parseCurrency(input.value);
@@ -2489,7 +2535,7 @@ async function renderRecebedor() {
   });
   app.querySelectorAll('[data-partial-payment]').forEach((input) => { input.indeterminate = true; });
   app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {
-    if (!ensureRetreatCanBeChanged(retreat, 'alterar pagamentos')) return;
+    if (!ensureReceiverCanBeChanged()) return;
     const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
     if (!row) return;
     if (!input.checked && !(await askDeletePayment(row))) {

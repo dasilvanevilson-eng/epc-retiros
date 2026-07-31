@@ -99,11 +99,13 @@ async function publicReceiverRetreat(req) {
   return retreats.find((retreat) => retreat?.recebedorToken === token) || null;
 }
 
-async function handlePublicReceiverRequest(req, res, resource, id) {
+async function handlePublicReceiverRequest(req, res, resource, id, action) {
   const retreat = await publicReceiverRetreat(req);
   if (!retreat) return false;
   const retreatId = retreat.id;
-  const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas'];
+  const studentFormType = retreat.tipoFichaCursista || 'cursista-individual';
+  const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
+  const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas', 'cursista-smp'];
   if (!allowedStores.includes(resource)) return false;
 
   if (req.method === 'GET' && resource === 'retiros' && id) {
@@ -117,8 +119,16 @@ async function handlePublicReceiverRequest(req, res, resource, id) {
     return sendJson(res, 200, records), true;
   }
   if (req.method === 'GET' && resource === 'cursistas' && !id) {
+    if (usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
     const records = (await listRecords('cursistas')).filter((entry) => entry.retiroId === retreatId);
     return sendJson(res, 200, records), true;
+  }
+  if (req.method === 'GET' && resource === 'cursista-smp' && !id) {
+    if (!usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
+    const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
+    const queryRetreatId = url.searchParams.get('retiroId') || retreatId;
+    if (queryRetreatId !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este retiro.'), true;
+    return sendJson(res, 200, await listCursistasSmp(retreatId)), true;
   }
   if (req.method === 'GET' && resource === 'pessoas' && !id) {
     const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
@@ -127,6 +137,7 @@ async function handlePublicReceiverRequest(req, res, resource, id) {
     return sendJson(res, 200, records), true;
   }
   if (req.method === 'PUT' && ['adesoes', 'cursistas'].includes(resource) && id) {
+    if (resource === 'cursistas' && usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
     const decodedId = decodeURIComponent(id);
     const current = await getRecord(resource, decodedId);
     if (!current || current.retiroId !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este registro.'), true;
@@ -139,6 +150,20 @@ async function handlePublicReceiverRequest(req, res, resource, id) {
       if (Object.prototype.hasOwnProperty.call(incoming, field)) record[field] = incoming[field];
     });
     return sendJson(res, 200, await saveRecord(resource, record)), true;
+  }
+  if (req.method === 'PUT' && resource === 'cursista-smp' && id && action) {
+    if (!usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
+    if (decodeURIComponent(id) !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este retiro.'), true;
+    const decodedId = decodeURIComponent(action);
+    const current = (await listCursistasSmp(retreatId)).find((record) => record.id === decodedId || record.numeroFichaSmp === decodedId);
+    if (!current) return sendError(res, 403, 'Link do recebedor nao autorizado para este registro.'), true;
+    const incoming = await readBody(req);
+    const allowedFields = ['valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+    const record = { ...current, retiroId, id: decodedId };
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(incoming, field)) record[field] = incoming[field];
+    });
+    return sendJson(res, 200, await saveCursistaSmp(record)), true;
   }
   return false;
 }
@@ -330,7 +355,7 @@ async function handleApi(req, res, pathname) {
 
   const session = await currentSession(req);
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
-  if (await handlePublicReceiverRequest(req, res, resource, id)) return;
+  if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
 
   if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {
