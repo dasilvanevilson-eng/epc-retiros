@@ -2045,9 +2045,9 @@ function askPaymentMethod({ nome = 'Pagamento', total = 0, currentMethod = '', c
 function renderStudentPaymentComment(form) {
   const comment = form?.querySelector('.student-payment-comment');
   if (!comment) return;
-  const paidAmount = parseCurrency(form.elements.valorPago?.value);
-  const method = form.elements.formaPagamento?.value || '';
-  const observation = form.elements.observacaoPagamento?.value || '';
+  const paidAmount = parseCurrency(form.elements.valorPago?.value ?? form.elements.valorPagoSmp?.value);
+  const method = form.elements.formaPagamento?.value || form.elements.recebedorFormaPagamentoSmp?.value || '';
+  const observation = form.elements.observacaoPagamento?.value || form.elements.recebedorObservacaoSmp?.value || '';
   if (paidAmount > 0 && method) {
     comment.textContent = observation ? `Forma de pagamento: ${method}. Observação: ${observation}` : `Forma de pagamento: ${method}`;
     comment.hidden = false;
@@ -2718,7 +2718,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     </section>
     <section class="cursista-smp-section student-registration-value">
       <div class="section-heading"><span>8.</span><div><h2>Inscrição</h2><p>Informe os valores financeiros do cursista.</p></div></div>
-      <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div>
+      <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" readonly placeholder="R$ 0,00"><div class="student-payment-actions"><button type="button" id="set-smp-payment">Informar pagamento</button><button type="button" id="clear-smp-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div><input type="hidden" name="recebedorValorPagoSmp"><input type="hidden" name="recebedorTaxaPagaSmp"><input type="hidden" name="recebedorFormaPagamentoSmp"><input type="hidden" name="recebedorObservacaoSmp">
     </section>
     <p id="cursista-smp-message" class="form-message"></p>
     <div class="form-actions cursista-smp-actions"><p>Cadastro isolado para testes na tabela Cursista SMP.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
@@ -2762,7 +2762,7 @@ async function setupCursistaSmpTestCrud() {
   const cancelButton = app.querySelector('#cancel-cursista-smp');
   const allFormControls = () => [...form.querySelectorAll('input, select, textarea'), fileNumberInput].filter(Boolean);
   const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'manequimDele', 'manequimDela'];
-  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp'];
+  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
   const cpfFields = ['cpfDele', 'cpfDela'];
   let records = [];
   let selectedId = '';
@@ -2781,10 +2781,35 @@ async function setupCursistaSmpTestCrud() {
     saveButton.disabled = locked;
     saveNewButton.disabled = locked;
     deleteButton.disabled = locked || !selectedId;
+    app.querySelector('#set-smp-payment').disabled = locked;
+    app.querySelector('#clear-smp-payment').disabled = locked;
   };
   const recalculateBalance = () => {
     const value = Math.max(0, parseCurrency(form.elements.valorInscricaoSmp?.value) - parseCurrency(form.elements.valorPagoSmp?.value));
     if (form.elements.saldoPagarSmp) form.elements.saldoPagarSmp.value = value > 0 ? currency(value) : currency(0);
+  };
+  const setSmpPaymentDetails = ({ method = '', observation = '', paidAmount = parseCurrency(form.elements.valorPagoSmp?.value) } = {}) => {
+    form.elements.valorPagoSmp.value = paidAmount > 0 ? currency(paidAmount) : '';
+    form.elements.recebedorValorPagoSmp.value = paidAmount > 0 ? paidAmount : 0;
+    form.elements.recebedorTaxaPagaSmp.value = paidAmount > 0 ? 'true' : '';
+    form.elements.recebedorFormaPagamentoSmp.value = paidAmount > 0 ? method : '';
+    form.elements.recebedorObservacaoSmp.value = paidAmount > 0 ? observation : '';
+    app.querySelector('#clear-smp-payment').hidden = paidAmount <= 0;
+    recalculateBalance();
+    renderStudentPaymentComment(form);
+  };
+  const promptSmpPayment = async () => {
+    if (app.querySelector('#set-smp-payment')?.disabled || saveButton?.disabled) return;
+    const paymentDetails = await askStudentPayment({
+      nome: [form.elements.nomeDele?.value, form.elements.nomeDela?.value].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || 'Cursista SMP',
+      paidAmount: parseCurrency(form.elements.valorPagoSmp?.value),
+      currentMethod: form.elements.recebedorFormaPagamentoSmp?.value,
+      currentObservation: form.elements.recebedorObservacaoSmp?.value,
+    });
+    if (!paymentDetails?.method) return;
+    form.dataset.smpPaymentTouched = 'true';
+    setSmpPaymentDetails({ method: paymentDetails.method, observation: paymentDetails.observation || '', paidAmount: paymentDetails.amount });
+    setMessage('Pagamento informado. Clique em Salvar para gravar.');
   };
   const formatCpfField = (input) => {
     input.value = formatCpf(input.value);
@@ -2799,7 +2824,8 @@ async function setupCursistaSmpTestCrud() {
     deleteButton.disabled = true;
     form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
     if (retreat?.valorInscricaoCursista && form.elements.valorInscricaoSmp) form.elements.valorInscricaoSmp.value = currency(retreat.valorInscricaoCursista);
-    recalculateBalance();
+    form.dataset.smpPaymentTouched = 'false';
+    setSmpPaymentDetails({ paidAmount: 0 });
     setLocked(!unlock);
     setMessage(notice);
     if (focus) fileNumberInput?.focus();
@@ -2815,14 +2841,15 @@ async function setupCursistaSmpTestCrud() {
     textFields.forEach((name) => {
       if (!form.elements[name]) return;
       const value = record[name];
-      if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp'].includes(name)) form.elements[name].value = currency(value);
+      if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp'].includes(name)) form.elements[name].value = currency(value);
       else form.elements[name].value = value || '';
     });
+    const paidAmount = parseCurrency(record.valorPagoSmp);
+    setSmpPaymentDetails({ method: record.recebedorFormaPagamentoSmp || '', observation: record.recebedorObservacaoSmp || '', paidAmount });
     radioNames.forEach((name) => fillRadio(name, record[name] || ''));
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
     deleteButton.hidden = false;
     setLocked(true);
-    recalculateBalance();
     setMessage(canUseSmp() ? 'Ficha SMP carregada apenas para consulta.' : 'Ficha SMP carregada. Clique em Editar para alterar.');
   };
   const collectRecord = () => {
@@ -2842,8 +2869,10 @@ async function setupCursistaSmpTestCrud() {
     record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);
     record.valorPagoSmp = parseCurrency(record.valorPagoSmp);
     record.saldoPagarSmp = Math.max(0, record.valorInscricaoSmp - record.valorPagoSmp);
-    record.recebedorValorPagoSmp = record.valorPagoSmp;
-    record.recebedorTaxaPagaSmp = record.valorInscricaoSmp > 0 && record.valorPagoSmp >= record.valorInscricaoSmp;
+    record.recebedorValorPagoSmp = parseCurrency(record.recebedorValorPagoSmp || record.valorPagoSmp);
+    record.recebedorTaxaPagaSmp = record.recebedorValorPagoSmp > 0;
+    record.recebedorFormaPagamentoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorFormaPagamentoSmp || '').trim() : '';
+    record.recebedorObservacaoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorObservacaoSmp || '').trim() : '';
     return record;
   };
   const focusIssue = (control) => {
@@ -2936,11 +2965,17 @@ async function setupCursistaSmpTestCrud() {
     input?.addEventListener('input', () => formatCpfField(input));
     input?.addEventListener('change', () => formatCpfField(input));
   });
-  ['valorInscricaoSmp', 'valorPagoSmp'].forEach((name) => {
+  ['valorInscricaoSmp'].forEach((name) => {
     const input = form.elements[name];
     input?.addEventListener('focus', () => { input.value = parseCurrency(input.value) || ''; });
     input?.addEventListener('input', recalculateBalance);
     input?.addEventListener('change', () => { input.value = currency(parseCurrency(input.value)); recalculateBalance(); });
+  });
+  app.querySelector('#set-smp-payment')?.addEventListener('click', promptSmpPayment);
+  app.querySelector('#clear-smp-payment')?.addEventListener('click', () => {
+    form.dataset.smpPaymentTouched = 'true';
+    setSmpPaymentDetails({ paidAmount: 0 });
+    setMessage('Pagamento removido. Clique em Salvar para gravar.');
   });
   form.elements.saldoPagarSmp.readOnly = true;
   saveButton.addEventListener('click', () => saveRecord());
