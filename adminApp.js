@@ -676,7 +676,9 @@ function layout(content, active = 'inicio') {
     ['retiros', 'Retiros', '▣'],
     ['pessoas', 'Equipe de trabalho', '♁'],
     ['validacao-inscricoes', 'Validação', '✓'],
+    ['cursista-epc', 'Cursista EPC', ''],
     ['cursista', 'Cursista Individual', '♙'],
+    ['cursista-smp', 'Cursista SMP', ''],
     ['comunidades', 'Comunidades', '♧'],
     ['recado-equipe', 'Recado &agrave; equipe', '!'],
     ['crachas', 'Crach&aacute;s', '▣'],
@@ -685,15 +687,6 @@ function layout(content, active = 'inicio') {
     ['alterar-senha', 'Alterar senha', '••'],
     ['usuarios', 'Usuarios e permissoes', 'UP'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
-  if (canView('cursista-epc') || canView('cursista-smp')) {
-    const studentIndex = navItems.findIndex(([id]) => id === 'cursista');
-    const studentItems = [
-      canView('cursista-epc') && isVisibleStudentNav('cursista-epc') ? ['cursista-epc', 'Cursista EPC', ''] : null,
-      canView('cursista-smp') && isVisibleStudentNav('cursista-smp') ? ['cursista-smp', 'Cursista SMP', ''] : null,
-    ].filter(Boolean);
-    if (studentIndex >= 0) navItems.splice(studentIndex + 1, 0, ...studentItems);
-    else navItems.push(...studentItems);
-  }
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
       <aside class="admin-sidebar" aria-label="Identidade EPC">
