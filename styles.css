@@ -2282,7 +2282,8 @@ button:hover,
   z-index:1000 !important;
   display:none;
   grid-template-columns:1fr;
-  width:min(300px, calc(100vw - 32px));
+  width:max-content;
+  max-width:calc(100vw - 32px);
   max-height:calc(100vh - 92px);
   overflow:auto;
   gap:5px;
@@ -2348,8 +2349,9 @@ button:hover,
   .admin-menu-nav {
     top:56px !important;
     right:12px !important;
-    left:12px !important;
-    width:auto;
+    left:auto !important;
+    width:max-content;
+    max-width:calc(100vw - 24px);
   }
 }
 
