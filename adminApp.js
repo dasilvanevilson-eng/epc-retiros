@@ -2784,6 +2784,37 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   markSectionOwner('common', 'smpKidsNotNeeded');
   markSectionOwner('common', 'nomeApresentante');
   markSectionOwner('common', 'valorInscricaoSmp');
+  if (active === 'cursista-epc') {
+    const form = app.querySelector('#cursista-smp-form');
+    const message = app.querySelector('#cursista-smp-message');
+    const actions = app.querySelector('.cursista-smp-actions');
+    const fieldBlock = (name) => app.querySelector(`[name="${name}"]`)?.closest('.field, fieldset, .smp-shirt-row, .choice-block');
+    const fieldsBlock = (className, names = []) => {
+      const block = document.createElement('div');
+      block.className = className;
+      names.forEach((name) => {
+        const field = fieldBlock(name);
+        if (field && !block.contains(field)) block.append(field);
+      });
+      return block;
+    };
+    const section = (number, titleText, block) => {
+      const item = document.createElement('section');
+      item.className = 'cursista-smp-section';
+      item.innerHTML = `<div class="section-heading"><span>${number}.</span><div><h2>${titleText}</h2></div></div>`;
+      item.append(block);
+      return item;
+    };
+    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
+    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
+    const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
+    form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
+    form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
+    form.insertBefore(section('1', 'Informações dele', himFields), message);
+    form.insertBefore(section('2', 'Informações dela', herFields), message);
+    form.insertBefore(section('3', 'Informações comuns', commonFields), message);
+    if (actions) form.append(actions);
+  }
 }
 
 async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permissionPrefix = 'cursista-smp', label = 'Cursista SMP' } = {}) {
