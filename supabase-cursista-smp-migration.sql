@@ -26,8 +26,8 @@ begin
   from public.retiros r
   where r.id = new.retiro_id;
 
-  if tipo_ficha is distinct from 'cursista-smp' then
-    raise exception 'O retiro % nao esta configurado para Cursista SMP.', new.retiro_id
+  if tipo_ficha not in ('cursista-smp', 'cursista-epc') then
+    raise exception 'O retiro % nao esta configurado para Cursista SMP ou Cursista EPC.', new.retiro_id
       using errcode = '23514';
   end if;
 
@@ -127,9 +127,9 @@ create table if not exists public.cursista_smp (
   constraint cursista_smp_estado_length check (comum_estado is null or length(btrim(comum_estado)) <= 2)
 );
 
-comment on table public.cursista_smp is 'Ficha de casal da opcao Cursista SMP. Estrutura inicial; sem funcionalidade ligada na aplicacao.';
-comment on column public.cursista_smp.id is 'Numero da ficha SMP, exclusivo dentro do retiro.';
-comment on column public.cursista_smp.retiro_id is 'Retiro ao qual a ficha SMP pertence. O retiro deve estar configurado com tipoFichaCursista = cursista-smp.';
+comment on table public.cursista_smp is 'Ficha de casal das opcoes Cursista SMP e Cursista EPC.';
+comment on column public.cursista_smp.id is 'Numero da ficha, exclusivo dentro do retiro.';
+comment on column public.cursista_smp.retiro_id is 'Retiro ao qual a ficha pertence. O retiro deve estar configurado com tipoFichaCursista = cursista-smp ou cursista-epc.';
 
 create index if not exists cursista_smp_ele_cpf_idx on public.cursista_smp (ele_cpf);
 create index if not exists cursista_smp_ela_cpf_idx on public.cursista_smp (ela_cpf);

@@ -2658,7 +2658,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" type="date"></label></div>`).join('');
-  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Tela de teste</p><h1>${escapeHtml(title)}</h1><p>Cadastro visual para validação do layout. Esta tela ainda não salva informações.</p></div></section>
+  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div></section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
     <div id="cursista-smp-search-results" class="registration-search-results" hidden></div>
@@ -2761,9 +2761,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" readonly placeholder="R$ 0,00"><div class="student-payment-actions"><button type="button" id="set-smp-payment">Informar pagamento</button><button type="button" id="clear-smp-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div><input type="hidden" name="recebedorValorPagoSmp"><input type="hidden" name="recebedorTaxaPagaSmp"><input type="hidden" name="recebedorFormaPagamentoSmp"><input type="hidden" name="recebedorObservacaoSmp">
     </section>
     <p id="cursista-smp-message" class="form-message"></p>
-    <div class="form-actions cursista-smp-actions"><p>Cadastro isolado para testes na tabela Cursista SMP.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
+    <div class="form-actions cursista-smp-actions"><p>Revise os dados antes de salvar a ficha.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
   </form>`, active);
-  if (active !== 'cursista-smp') return;
+  if (!['cursista-smp', 'cursista-epc'].includes(active)) return;
   const markOwner = (owner, fieldNames = []) => {
     fieldNames.forEach((name) => {
       app.querySelectorAll(`[name="${name}"]`).forEach((input) => {
@@ -2786,7 +2786,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   markSectionOwner('common', 'valorInscricaoSmp');
 }
 
-async function setupCursistaSmpTestCrud() {
+async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permissionPrefix = 'cursista-smp', label = 'Cursista SMP' } = {}) {
   const form = app.querySelector('#cursista-smp-form');
   if (!form) return;
   const retreat = selectedRetreat();
@@ -2811,15 +2811,15 @@ async function setupCursistaSmpTestCrud() {
 
   const setMessage = (text = '') => { if (message) message.textContent = text; };
   const canUseSmp = () => {
-    if (!retreat) return 'Selecione um retiro em foco antes de testar Cursista SMP.';
-    if (retreat.tipoFichaCursista !== 'cursista-smp') return 'O retiro em foco nao esta configurado como Cursista SMP.';
-    if (!canModifyRetreat(retreat)) return 'Retiro concluido: Cursista SMP disponivel apenas para consulta.';
+    if (!retreat) return `Selecione um retiro em foco antes de testar ${label}.`;
+    if (retreat.tipoFichaCursista !== expectedType) return `O retiro em foco nao esta configurado como ${label}.`;
+    if (!canModifyRetreat(retreat)) return `Retiro concluido: ${label} disponivel apenas para consulta.`;
     return '';
   };
-  const canCreateSmp = () => canAccess('cursista-smp.criar');
-  const canEditSmp = () => canAccess('cursista-smp.editar');
-  const canDeleteSmp = () => canAccess('cursista-smp.excluir');
-  const smpPermissionMessage = (action) => `Voce nao tem permissao para ${action} Cursista SMP.`;
+  const canCreateSmp = () => canAccess(`${permissionPrefix}.criar`);
+  const canEditSmp = () => canAccess(`${permissionPrefix}.editar`);
+  const canDeleteSmp = () => canAccess(`${permissionPrefix}.excluir`);
+  const smpPermissionMessage = (action) => `Voce nao tem permissao para ${action} ${label}.`;
   const actionBlockedReason = (permission, action) => canUseSmp() || (!canAccess(permission) ? smpPermissionMessage(action) : '');
   const setLocked = (locked) => {
     allFormControls().forEach((control) => { control.disabled = locked; });
@@ -2847,7 +2847,7 @@ async function setupCursistaSmpTestCrud() {
   const promptSmpPayment = async () => {
     if (app.querySelector('#set-smp-payment')?.disabled || saveButton?.disabled) return;
     const paymentDetails = await askStudentPayment({
-      nome: [form.elements.nomeDele?.value, form.elements.nomeDela?.value].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || 'Cursista SMP',
+      nome: [form.elements.nomeDele?.value, form.elements.nomeDela?.value].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || label,
       paidAmount: parseCurrency(form.elements.valorPagoSmp?.value),
       currentMethod: form.elements.recebedorFormaPagamentoSmp?.value,
       currentObservation: form.elements.recebedorObservacaoSmp?.value,
@@ -2896,7 +2896,7 @@ async function setupCursistaSmpTestCrud() {
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
     deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
-    setMessage(canUseSmp() || (!canEditSmp() ? 'Ficha SMP carregada apenas para consulta.' : 'Ficha SMP carregada. Clique em Editar para alterar.'));
+    setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
   };
   const collectRecord = () => {
     const values = new FormData(form);
@@ -2941,7 +2941,7 @@ async function setupCursistaSmpTestCrud() {
       return false;
     }
     if (changingId && (!canCreateSmp() || !canDeleteSmp())) {
-      setMessage('Para alterar o Numero da ficha SMP, o usuario precisa das permissoes criar e excluir Cursista SMP.');
+      setMessage(`Para alterar o Numero da ficha, o usuario precisa das permissoes criar e excluir ${label}.`);
       return false;
     }
     if (!String(fileNumberInput?.value || '').trim()) {
@@ -2949,7 +2949,7 @@ async function setupCursistaSmpTestCrud() {
       focusIssue(fileNumberInput);
       return false;
     }
-    const duplicated = records.find((record) => record.id === nextId && record.id !== selectedId);
+    const duplicated = records.find((record) => (record.id === nextId || record.numeroFichaSmp === nextId) && record.id !== selectedId);
     if (duplicated) {
       setMessage('Numero da ficha ja cadastrado neste retiro. Busque a ficha para editar.');
       focusIssue(fileNumberInput);
@@ -2969,6 +2969,18 @@ async function setupCursistaSmpTestCrud() {
   const refreshRecords = async () => {
     records = retreat?.id ? await dataService.listCursistasSmp(retreat.id) : [];
     return records;
+  };
+  const nextCoupleStudentFileNumber = () => {
+    const used = new Set(records
+      .map((record) => Number(record.id || record.numeroFichaSmp))
+      .filter((number) => Number.isInteger(number) && number > 0));
+    let next = 1;
+    while (used.has(next)) next += 1;
+    return String(next);
+  };
+  const suggestCoupleStudentFileNumber = async () => {
+    await refreshRecords();
+    if (fileNumberInput) fileNumberInput.value = nextCoupleStudentFileNumber();
   };
   const hideSearch = () => {
     searchOpen = false;
@@ -2990,7 +3002,7 @@ async function setupCursistaSmpTestCrud() {
       .sort((first, second) => String(first.id || '').localeCompare(String(second.id || ''), 'pt-BR', { numeric: true }));
     if (!searchOpen || currentRequest !== searchRequest) return;
     searchResults.hidden = false;
-    searchResults.innerHTML = filtered.length ? filtered.map((record) => `<article><button type="button" class="student-search-choice" data-smp-select="${escapeHtml(record.id)}"><strong>Ficha ${escapeHtml(record.id || '')}</strong><span>${escapeHtml([record.nomeDele, record.nomeDela].filter(Boolean).join(' e ') || 'Sem nomes informados')}</span></button></article>`).join('') : '<p>Nenhuma ficha SMP encontrada neste retiro.</p>';
+    searchResults.innerHTML = filtered.length ? filtered.map((record) => `<article><button type="button" class="student-search-choice" data-smp-select="${escapeHtml(record.id)}"><strong>Ficha ${escapeHtml(record.id || '')}</strong><span>${escapeHtml([record.nomeDele, record.nomeDela].filter(Boolean).join(' e ') || 'Sem nomes informados')}</span></button></article>`).join('') : `<p>Nenhuma ficha ${escapeHtml(label)} encontrada neste retiro.</p>`;
     searchResults.querySelectorAll('[data-smp-select]').forEach((button) => button.addEventListener('click', () => {
       const record = records.find((item) => item.id === button.dataset.smpSelect);
       if (!record) return;
@@ -3005,19 +3017,20 @@ async function setupCursistaSmpTestCrud() {
     recalculateBalance();
     const record = collectRecord();
     const previousId = selectedId;
-    setMessage('Salvando ficha SMP...');
+    setMessage(`Salvando ${label}...`);
     try {
       const saved = await dataService.saveCursistaSmp(record);
       if (previousId && previousId !== saved.id) await dataService.deleteCursistaSmp(retreat.id, previousId);
       await refreshRecords();
       if (clearAfter) {
-        clearForm({ unlock: true, focus: true, notice: 'Ficha SMP salva com sucesso. Informe a proxima ficha.' });
+        clearForm({ unlock: true, focus: true, notice: `${label} salvo com sucesso. Informe a proxima ficha.` });
+        if (fileNumberInput) fileNumberInput.value = nextCoupleStudentFileNumber();
         return;
       }
       loadRecord(saved);
-      setMessage('Ficha SMP salva com sucesso.');
+      setMessage(`${label} salvo com sucesso.`);
     } catch (error) {
-      setMessage(error.message || 'Nao foi possivel salvar a ficha SMP.');
+      setMessage(error.message || `Nao foi possivel salvar ${label}.`);
     }
   };
 
@@ -3043,41 +3056,47 @@ async function setupCursistaSmpTestCrud() {
   form.elements.saldoPagarSmp.readOnly = true;
   saveButton.addEventListener('click', () => saveRecord());
   saveNewButton.addEventListener('click', () => saveRecord({ clearAfter: true }));
-  newButton.addEventListener('click', () => {
-    const blockedReason = actionBlockedReason('cursista-smp.criar', 'criar');
+  newButton.addEventListener('click', async () => {
+    const blockedReason = actionBlockedReason(`${permissionPrefix}.criar`, 'criar');
     if (blockedReason) { setMessage(blockedReason); return; }
-    clearForm({ unlock: true, focus: true, notice: 'Nova ficha SMP de teste.' });
+    try {
+      await suggestCoupleStudentFileNumber();
+      clearForm({ unlock: true, focus: true, notice: `Nova ficha ${label}.` });
+      if (fileNumberInput) fileNumberInput.value = nextCoupleStudentFileNumber();
+    } catch (error) {
+      setMessage(error.message || `Nao foi possivel sugerir o numero da ficha ${label}.`);
+    }
   });
   editButton.addEventListener('click', () => {
-    const blockedReason = actionBlockedReason('cursista-smp.editar', 'editar');
+    const blockedReason = actionBlockedReason(`${permissionPrefix}.editar`, 'editar');
     if (blockedReason) { setMessage(blockedReason); return; }
-    if (!selectedId) { setMessage('Busque e selecione uma ficha SMP para editar.'); return; }
+    if (!selectedId) { setMessage(`Busque e selecione uma ficha ${label} para editar.`); return; }
     setLocked(false);
-    setMessage('Editando ficha SMP de teste.');
+    setMessage(`Editando ${label}.`);
     fileNumberInput?.focus();
   });
   cancelButton.addEventListener('click', () => {
     const current = records.find((item) => item.id === selectedId);
     if (current) loadRecord(current);
-    else clearForm({ unlock: false, notice: canUseSmp() || 'Clique em Novo para iniciar uma ficha SMP de teste.' });
+    else clearForm({ unlock: false, notice: canUseSmp() || `Clique em Novo para iniciar uma ficha ${label}.` });
   });
   deleteButton.addEventListener('click', async () => {
-    const blockedReason = actionBlockedReason('cursista-smp.excluir', 'excluir');
+    const blockedReason = actionBlockedReason(`${permissionPrefix}.excluir`, 'excluir');
     if (blockedReason) { setMessage(blockedReason); return; }
-    if (!selectedId || !confirm(`Excluir a ficha SMP ${selectedId}?`)) return;
+    if (!selectedId || !confirm(`Excluir a ficha ${label} ${selectedId}?`)) return;
     const deletingId = selectedId;
     deleteButton.disabled = true;
-    setMessage('Excluindo ficha SMP...');
+    setMessage(`Excluindo ${label}...`);
     try {
       await dataService.deleteCursistaSmp(retreat.id, deletingId);
       await refreshRecords();
       if (records.some((record) => record.id === deletingId || record.numeroFichaSmp === deletingId)) {
         throw new Error('A ficha ainda aparece na lista apos a exclusao.');
       }
-      clearForm({ unlock: false, notice: 'Ficha SMP excluida com sucesso.' });
+      clearForm({ unlock: false, notice: `${label} excluido com sucesso.` });
     } catch (error) {
       deleteButton.disabled = false;
-      setMessage(error.message || 'Nao foi possivel excluir a ficha SMP.');
+      setMessage(error.message || `Nao foi possivel excluir ${label}.`);
     }
   });
   searchInput.addEventListener('focus', renderSearch);
@@ -3096,9 +3115,9 @@ async function setupCursistaSmpTestCrud() {
     const blockedReason = canUseSmp();
     newButton.disabled = Boolean(blockedReason) || !canCreateSmp();
     editButton.disabled = Boolean(blockedReason) || !canEditSmp();
-    setMessage(blockedReason || 'Clique em Novo para iniciar uma ficha SMP de teste.');
+    setMessage(blockedReason || `Clique em Novo para iniciar uma ficha ${label}.`);
   } catch (error) {
-    setMessage(error.message || 'Nao foi possivel carregar as fichas SMP.');
+    setMessage(error.message || `Nao foi possivel carregar as fichas ${label}.`);
     newButton.disabled = true;
     editButton.disabled = true;
   }
@@ -3106,11 +3125,12 @@ async function setupCursistaSmpTestCrud() {
 
 async function renderCursistaSmp() {
   renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
-  await setupCursistaSmpTestCrud();
+  await setupCursistaSmpTestCrud({ expectedType: 'cursista-smp', permissionPrefix: 'cursista-smp', label: 'Cursista SMP' });
 }
 
-function renderCursistaEpc() {
-  return renderCursistaSmpScreen({ title: 'Cursista EPC', active: 'cursista-epc' });
+async function renderCursistaEpc() {
+  renderCursistaSmpScreen({ title: 'Cursista EPC', active: 'cursista-epc' });
+  await setupCursistaSmpTestCrud({ expectedType: 'cursista-epc', permissionPrefix: 'cursista-epc', label: 'Cursista EPC' });
 }
 
 async function renderCursista() {
@@ -6044,7 +6064,10 @@ async function route() {
     if (target === 'usuarios') return renderUsuarios();
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
-    if (target === 'cursista-epc') return renderCursistaEpc();
+    if (target === 'cursista-epc') {
+      await loadData();
+      return renderCursistaEpc();
+    }
     if (target === 'cursista-smp') {
       await loadData();
       return renderCursistaSmp();

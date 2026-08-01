@@ -325,6 +325,12 @@ async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
   return false;
 }
 
+async function coupleStudentPermissionPrefix(retiroId = '') {
+  if (!retiroId) return 'cursista-smp';
+  const retreat = await getRecord('retiros', retiroId).catch(() => null);
+  return retreat?.tipoFichaCursista === 'cursista-epc' ? 'cursista-epc' : 'cursista-smp';
+}
+
 async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action] = parts;
@@ -396,21 +402,25 @@ async function handleApi(req, res, pathname) {
     const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
     const queryRetreatId = url.searchParams.get('retiroId') || '';
     if (req.method === 'GET' && !id) {
-      if (denyIfMissingPermission(res, session, 'cursista-smp.ver')) return;
+      const permissionPrefix = await coupleStudentPermissionPrefix(queryRetreatId);
+      if (denyIfMissingPermission(res, session, `${permissionPrefix}.ver`)) return;
       if (!hasGlobalRetreatAccess(session) && (!queryRetreatId || !canAccessRetreat(session, queryRetreatId))) return sendError(res, 403, noRetreatAccessMessage);
       return sendJson(res, 200, await listCursistasSmp(queryRetreatId));
     }
     if (req.method === 'PUT' && id && action) {
       const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
       if (!canAccessRetreat(session, record.retiroId)) return sendError(res, 403, noRetreatAccessMessage);
+      const permissionPrefix = await coupleStudentPermissionPrefix(record.retiroId);
       const existing = (await listCursistasSmp(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
-      if (denyIfMissingPermission(res, session, existing ? 'cursista-smp.editar' : 'cursista-smp.criar')) return;
+      if (denyIfMissingPermission(res, session, existing ? `${permissionPrefix}.editar` : `${permissionPrefix}.criar`)) return;
       return sendJson(res, 200, await saveCursistaSmp(record));
     }
     if (req.method === 'DELETE' && id && action) {
-      if (denyIfMissingPermission(res, session, 'cursista-smp.excluir')) return;
-      if (!canAccessRetreat(session, decodeURIComponent(id))) return sendError(res, 403, noRetreatAccessMessage);
-      await deleteCursistaSmp(decodeURIComponent(id), decodeURIComponent(action));
+      const retreatId = decodeURIComponent(id);
+      const permissionPrefix = await coupleStudentPermissionPrefix(retreatId);
+      if (denyIfMissingPermission(res, session, `${permissionPrefix}.excluir`)) return;
+      if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+      await deleteCursistaSmp(retreatId, decodeURIComponent(action));
       return sendNoContent(res);
     }
     return sendError(res, 405, 'Metodo nao permitido para Cursista SMP.');

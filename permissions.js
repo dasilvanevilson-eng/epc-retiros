@@ -21,6 +21,9 @@ const allPermissions = [
   ['cursista-smp.editar', 'Cursista SMP', 'Editar Cursista SMP'],
   ['cursista-smp.excluir', 'Cursista SMP', 'Excluir Cursista SMP'],
   ['cursista-epc.ver', 'Cursista EPC', 'Ver Cursista EPC'],
+  ['cursista-epc.criar', 'Cursista EPC', 'Cadastrar Cursista EPC'],
+  ['cursista-epc.editar', 'Cursista EPC', 'Editar Cursista EPC'],
+  ['cursista-epc.excluir', 'Cursista EPC', 'Excluir Cursista EPC'],
   ['comunidades.ver', 'Comunidades', 'Ver comunidades'],
   ['comunidades.criar', 'Comunidades', 'Criar comunidades'],
   ['comunidades.editar', 'Comunidades', 'Editar comunidades'],
@@ -58,7 +61,7 @@ const defaultProfiles = [
     nome: 'Coordenador Geral',
     codigo: 'coordenador_geral',
     descricao: 'Acesso amplo, exceto exclusoes sensiveis de usuarios.',
-    permissions: permissionIds.filter((id) => !['usuarios.excluir', 'cursista-epc.ver'].includes(id) && !id.startsWith('cursista-smp.')),
+    permissions: permissionIds.filter((id) => id !== 'usuarios.excluir' && !id.startsWith('cursista-smp.') && !id.startsWith('cursista-epc.')),
   },
   {
     id: 'coordenador_retiro',
