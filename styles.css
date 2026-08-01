@@ -2286,12 +2286,12 @@ button:hover,
   max-width:calc(100vw - 32px);
   max-height:calc(100vh - 92px);
   overflow:auto;
-  gap:5px;
-  padding:10px;
-  border:1px solid rgba(198,154,69,.28);
-  border-radius:14px;
+  gap:3px;
+  padding:8px;
+  border:1px solid rgba(198,154,69,.22);
+  border-radius:12px;
   background:#fffdf7;
-  box-shadow:0 18px 42px rgba(41,33,19,.22);
+  box-shadow:0 14px 30px rgba(41,33,19,.16);
   opacity:1 !important;
   visibility:visible !important;
 }
@@ -2307,21 +2307,26 @@ button:hover,
   align-items:center;
   gap:10px;
   width:100%;
-  min-height:42px;
-  padding:10px 12px;
+  min-height:40px;
+  padding:9px 12px;
   border:0;
-  border-radius:9px;
+  border-radius:8px;
   color:#1f2c3f;
   font-size:14px;
-  font-weight:800;
+  font-weight:700;
+  line-height:1.25;
   text-decoration:none;
 }
 
 .admin-menu-nav a:hover,
 .admin-menu-nav a.is-active {
-  background:#dfeadb;
-  color:#285130;
+  background:#e8f7ff;
+  color:#15537a;
   box-shadow:none;
+}
+
+.admin-menu-nav a.is-active {
+  font-weight:800;
 }
 
 .admin-menu-nav a.logout-link {
@@ -2329,7 +2334,7 @@ button:hover,
 }
 
 .admin-menu-nav a.logout-link:hover {
-  background:#fff1ee;
+  background:#fff5f2;
   color:#8f2f1c;
 }
 
@@ -2614,7 +2619,7 @@ select:focus {
 }
 
 .admin-menu-nav {
-  border-color:rgba(198,154,69,.32);
+  border-color:rgba(198,154,69,.22);
   background:var(--ui-surface);
 }
 
@@ -2624,14 +2629,14 @@ select:focus {
   align-items:center;
   gap:10px;
   width:100%;
-  min-height:42px;
-  padding:10px 12px;
+  min-height:40px;
+  padding:9px 12px;
   border:0;
   border-radius:8px;
   background:transparent;
   color:#26382c;
   box-shadow:none;
-  font:800 14px/1.2 "DM Sans", sans-serif;
+  font:700 14px/1.25 "DM Sans", sans-serif;
   text-align:left;
   text-decoration:none;
 }
@@ -2642,12 +2647,16 @@ select:focus {
   color:#224a2b;
 }
 
+.admin-menu-nav a.is-active {
+  font-weight:800;
+}
+
 .admin-menu-nav .logout-link {
   color:var(--ui-red);
 }
 
 .admin-menu-nav .logout-link:hover {
-  background:var(--ui-red-soft);
+  background:#fff5f2;
   color:#87382f;
 }
 
