@@ -2816,13 +2816,19 @@ async function setupCursistaSmpTestCrud() {
     if (!canModifyRetreat(retreat)) return 'Retiro concluido: Cursista SMP disponivel apenas para consulta.';
     return '';
   };
+  const canCreateSmp = () => canAccess('cursista-smp.criar');
+  const canEditSmp = () => canAccess('cursista-smp.editar');
+  const canDeleteSmp = () => canAccess('cursista-smp.excluir');
+  const smpPermissionMessage = (action) => `Voce nao tem permissao para ${action} Cursista SMP.`;
+  const actionBlockedReason = (permission, action) => canUseSmp() || (!canAccess(permission) ? smpPermissionMessage(action) : '');
   const setLocked = (locked) => {
     allFormControls().forEach((control) => { control.disabled = locked; });
-    saveButton.disabled = locked;
-    saveNewButton.disabled = locked;
-    deleteButton.disabled = locked || !selectedId;
-    app.querySelector('#set-smp-payment').disabled = locked;
-    app.querySelector('#clear-smp-payment').disabled = locked;
+    const saveDisabled = locked || (selectedId ? !canEditSmp() : !canCreateSmp());
+    saveButton.disabled = saveDisabled;
+    saveNewButton.disabled = saveDisabled;
+    deleteButton.disabled = Boolean(canUseSmp()) || !selectedId || !canDeleteSmp();
+    app.querySelector('#set-smp-payment').disabled = saveDisabled;
+    app.querySelector('#clear-smp-payment').disabled = saveDisabled;
   };
   const recalculateBalance = () => {
     const value = Math.max(0, parseCurrency(form.elements.valorInscricaoSmp?.value) - parseCurrency(form.elements.valorPagoSmp?.value));
@@ -2888,9 +2894,9 @@ async function setupCursistaSmpTestCrud() {
     setSmpPaymentDetails({ method: record.recebedorFormaPagamentoSmp || '', observation: record.recebedorObservacaoSmp || '', paidAmount });
     radioNames.forEach((name) => fillRadio(name, record[name] || ''));
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
-    deleteButton.hidden = false;
+    deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
-    setMessage(canUseSmp() ? 'Ficha SMP carregada apenas para consulta.' : 'Ficha SMP carregada. Clique em Editar para alterar.');
+    setMessage(canUseSmp() || (!canEditSmp() ? 'Ficha SMP carregada apenas para consulta.' : 'Ficha SMP carregada. Clique em Editar para alterar.'));
   };
   const collectRecord = () => {
     const values = new FormData(form);
@@ -2924,12 +2930,25 @@ async function setupCursistaSmpTestCrud() {
   const validateBeforeSave = () => {
     const blockedReason = canUseSmp();
     if (blockedReason) { setMessage(blockedReason); return false; }
+    const nextId = String(fileNumberInput?.value || '').trim();
+    const changingId = Boolean(selectedId && nextId && nextId !== selectedId);
+    if (selectedId && !canEditSmp()) {
+      setMessage(smpPermissionMessage('editar'));
+      return false;
+    }
+    if (!selectedId && !canCreateSmp()) {
+      setMessage(smpPermissionMessage('criar'));
+      return false;
+    }
+    if (changingId && (!canCreateSmp() || !canDeleteSmp())) {
+      setMessage('Para alterar o Numero da ficha SMP, o usuario precisa das permissoes criar e excluir Cursista SMP.');
+      return false;
+    }
     if (!String(fileNumberInput?.value || '').trim()) {
       setMessage('Informe o Numero da ficha para salvar.');
       focusIssue(fileNumberInput);
       return false;
     }
-    const nextId = String(fileNumberInput?.value || '').trim();
     const duplicated = records.find((record) => record.id === nextId && record.id !== selectedId);
     if (duplicated) {
       setMessage('Numero da ficha ja cadastrado neste retiro. Busque a ficha para editar.');
@@ -2987,15 +3006,19 @@ async function setupCursistaSmpTestCrud() {
     const record = collectRecord();
     const previousId = selectedId;
     setMessage('Salvando ficha SMP...');
-    const saved = await dataService.saveCursistaSmp(record);
-    if (previousId && previousId !== saved.id) await dataService.deleteCursistaSmp(retreat.id, previousId);
-    await refreshRecords();
-    if (clearAfter) {
-      clearForm({ unlock: true, focus: true, notice: 'Ficha SMP salva com sucesso. Informe a proxima ficha.' });
-      return;
+    try {
+      const saved = await dataService.saveCursistaSmp(record);
+      if (previousId && previousId !== saved.id) await dataService.deleteCursistaSmp(retreat.id, previousId);
+      await refreshRecords();
+      if (clearAfter) {
+        clearForm({ unlock: true, focus: true, notice: 'Ficha SMP salva com sucesso. Informe a proxima ficha.' });
+        return;
+      }
+      loadRecord(saved);
+      setMessage('Ficha SMP salva com sucesso.');
+    } catch (error) {
+      setMessage(error.message || 'Nao foi possivel salvar a ficha SMP.');
     }
-    loadRecord(saved);
-    setMessage('Ficha SMP salva com sucesso.');
   };
 
   wireCepLookup(form);
@@ -3021,16 +3044,15 @@ async function setupCursistaSmpTestCrud() {
   saveButton.addEventListener('click', () => saveRecord());
   saveNewButton.addEventListener('click', () => saveRecord({ clearAfter: true }));
   newButton.addEventListener('click', () => {
-    const blockedReason = canUseSmp();
+    const blockedReason = actionBlockedReason('cursista-smp.criar', 'criar');
     if (blockedReason) { setMessage(blockedReason); return; }
     clearForm({ unlock: true, focus: true, notice: 'Nova ficha SMP de teste.' });
   });
   editButton.addEventListener('click', () => {
-    const blockedReason = canUseSmp();
+    const blockedReason = actionBlockedReason('cursista-smp.editar', 'editar');
     if (blockedReason) { setMessage(blockedReason); return; }
     if (!selectedId) { setMessage('Busque e selecione uma ficha SMP para editar.'); return; }
     setLocked(false);
-    deleteButton.disabled = false;
     setMessage('Editando ficha SMP de teste.');
     fileNumberInput?.focus();
   });
@@ -3040,7 +3062,7 @@ async function setupCursistaSmpTestCrud() {
     else clearForm({ unlock: false, notice: canUseSmp() || 'Clique em Novo para iniciar uma ficha SMP de teste.' });
   });
   deleteButton.addEventListener('click', async () => {
-    const blockedReason = canUseSmp();
+    const blockedReason = actionBlockedReason('cursista-smp.excluir', 'excluir');
     if (blockedReason) { setMessage(blockedReason); return; }
     if (!selectedId || !confirm(`Excluir a ficha SMP ${selectedId}?`)) return;
     const deletingId = selectedId;
@@ -3072,6 +3094,8 @@ async function setupCursistaSmpTestCrud() {
   try {
     await refreshRecords();
     const blockedReason = canUseSmp();
+    newButton.disabled = Boolean(blockedReason) || !canCreateSmp();
+    editButton.disabled = Boolean(blockedReason) || !canEditSmp();
     setMessage(blockedReason || 'Clique em Novo para iniciar uma ficha SMP de teste.');
   } catch (error) {
     setMessage(error.message || 'Nao foi possivel carregar as fichas SMP.');

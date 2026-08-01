@@ -393,19 +393,22 @@ async function handleApi(req, res, pathname) {
   }
 
   if (resource === 'cursista-smp') {
-    if (denyIfMissingPermission(res, session, 'cursista-smp.ver')) return;
     const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
     const queryRetreatId = url.searchParams.get('retiroId') || '';
     if (req.method === 'GET' && !id) {
+      if (denyIfMissingPermission(res, session, 'cursista-smp.ver')) return;
       if (!hasGlobalRetreatAccess(session) && (!queryRetreatId || !canAccessRetreat(session, queryRetreatId))) return sendError(res, 403, noRetreatAccessMessage);
       return sendJson(res, 200, await listCursistasSmp(queryRetreatId));
     }
     if (req.method === 'PUT' && id && action) {
       const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
       if (!canAccessRetreat(session, record.retiroId)) return sendError(res, 403, noRetreatAccessMessage);
+      const existing = (await listCursistasSmp(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
+      if (denyIfMissingPermission(res, session, existing ? 'cursista-smp.editar' : 'cursista-smp.criar')) return;
       return sendJson(res, 200, await saveCursistaSmp(record));
     }
     if (req.method === 'DELETE' && id && action) {
+      if (denyIfMissingPermission(res, session, 'cursista-smp.excluir')) return;
       if (!canAccessRetreat(session, decodeURIComponent(id))) return sendError(res, 403, noRetreatAccessMessage);
       await deleteCursistaSmp(decodeURIComponent(id), decodeURIComponent(action));
       return sendNoContent(res);
