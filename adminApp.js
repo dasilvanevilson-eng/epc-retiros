@@ -3083,6 +3083,16 @@ async function renderCursista() {
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
   layout(`<section class="page-heading student-page-heading"><div><h1>Cursista individual</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><section class="panel student-file-number"><label class="field"><span>Número da ficha</span><input type="text" inputmode="numeric" placeholder="Sem número definido" readonly aria-label="Número da ficha apenas visual"></label></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
+  const studentFileNumberInput = app.querySelector('.student-file-number input');
+  if (studentFileNumberInput) {
+    studentFileNumberInput.name = 'numeroFichaIndividual';
+    studentFileNumberInput.required = true;
+    studentFileNumberInput.readOnly = false;
+    studentFileNumberInput.placeholder = 'Ex.: 001';
+    studentFileNumberInput.setAttribute('aria-label', 'Número da ficha');
+    const fileNumberLabel = studentFileNumberInput.closest('.field')?.querySelector('span');
+    if (fileNumberLabel) fileNumberLabel.innerHTML = 'Número da ficha <b>*</b>';
+  }
   const studentMain = app.querySelector('.admin-main');
   studentMain?.classList.add('student-screen');
   const studentHeadingIntro = app.querySelector('.student-page-heading>div');
@@ -3135,6 +3145,8 @@ async function renderCursista() {
   const clearStudentWarning = (event) => event.target.closest('.field, .choice-block, fieldset, .form-section')?.classList.remove('field-warning');
   form.addEventListener('input', clearStudentWarning);
   form.addEventListener('change', clearStudentWarning);
+  studentFileNumberInput?.addEventListener('input', clearStudentWarning);
+  studentFileNumberInput?.addEventListener('change', clearStudentWarning);
   const focusStudentIssue = (control) => {
     if (!control) return;
     const target = control.closest('.field, .choice-block, fieldset, .form-section') || control;
@@ -3179,8 +3191,28 @@ async function renderCursista() {
     syncStudentConditionalRequired();
   };
   const duplicateStudentCpfMessage = 'CPF já cadastrado';
+  const duplicateStudentFileNumberMessage = 'Número da ficha já cadastrado neste retiro.';
   const studentTeamConflictMessage = 'Este CPF já está cadastrado na equipe de trabalho deste retiro.';
   const studentArchiveMessage = 'Dados encontrados no acervo da equipe. Revise antes de salvar.';
+  const studentFileNumberValue = () => String(studentFileNumberInput?.value || '').trim();
+  const normalizeStudentFileNumber = (value) => {
+    const number = Number(String(value || '').trim());
+    return Number.isInteger(number) && number > 0 ? String(number) : '';
+  };
+  const nextStudentFileNumber = async () => {
+    const students = await dataService.listCursistas();
+    const used = new Set(students
+      .filter((student) => !focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
+      .map((student) => Number(student.numeroFichaIndividual))
+      .filter((number) => Number.isInteger(number) && number > 0));
+    let next = 1;
+    while (used.has(next)) next += 1;
+    return String(next);
+  };
+  const suggestStudentFileNumber = async () => {
+    if (!studentFileNumberInput) return;
+    studentFileNumberInput.value = await nextStudentFileNumber();
+  };
   const financialSummaryTitle = `Resumo financeiro dos cursistas${focusStudentRetreat ? ` - ${focusStudentRetreat.nome}` : ''}`;
   const financialSummaryRows = async () => {
     const students = await dataService.listCursistas();
@@ -3314,6 +3346,12 @@ async function renderCursista() {
     if (!ensureRetreatCanBeChanged(focusStudentRetreat, 'salvar cursistas')) return;
     syncStudentConditionalRequired();
     const values = new FormData(form);
+    const numeroFichaIndividual = normalizeStudentFileNumber(studentFileNumberValue());
+    if (!numeroFichaIndividual) {
+      app.querySelector('#student-message').textContent = 'Informe um Número da ficha válido.';
+      focusStudentIssue(studentFileNumberInput);
+      return;
+    }
     const submitCpf = normalizeCpf(values.get('cpf'));
     if (isValidCpf(submitCpf) && await checkStudentCpf(true)) return;
     const firstIssue = firstStudentRequiredIssue();
@@ -3332,6 +3370,16 @@ async function renderCursista() {
     const previousId = values.get('id');
     const currentStudents = await dataService.listCursistas();
     const currentStudent = previousId && currentStudents.find((student) => student.id === previousId);
+    const duplicatedFileNumber = currentStudents.find((student) => (
+      (!focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
+      && String(student.numeroFichaIndividual || '') === numeroFichaIndividual
+      && student.id !== previousId
+    ));
+    if (duplicatedFileNumber) {
+      app.querySelector('#student-message').textContent = duplicateStudentFileNumberMessage;
+      focusStudentIssue(studentFileNumberInput);
+      return;
+    }
     const duplicatedCpf = currentStudents.find((student) => normalizeCpf(student.cpf || student.id) === cpf && student.id !== previousId);
     if (duplicatedCpf) {
       app.querySelector('#student-message').textContent = duplicateStudentCpfMessage;
@@ -3365,7 +3413,8 @@ async function renderCursista() {
         values.set('recebedorObservacao', '');
       }
     }
-    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
+    values.set('numeroFichaIndividual', numeroFichaIndividual);
+    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, numeroFichaIndividual, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
     await dataService.saveCursista(record);
     if (previousId && previousId !== cpf) {
       const communities = await dataService.listComunidades();
@@ -3392,6 +3441,7 @@ async function renderCursista() {
     form.querySelectorAll('input, select, textarea').forEach((control) => {
       if (control.type !== 'hidden') control.disabled = true;
     });
+    if (studentFileNumberInput) studentFileNumberInput.disabled = true;
     form.querySelector('button[type="submit"]').disabled = true;
     form.querySelector('#set-student-payment').disabled = true;
     form.querySelector('#clear-student-payment').disabled = true;
@@ -3407,7 +3457,7 @@ async function renderCursistaDetalhe(id) {
   const canDeleteStudentDetail = canModifyRetreat(retreat);
   const field = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const address = [student.rua, student.numero, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ');
-  layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('CPF', formatCpf(student.cpf || student.id))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
+  layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('Número da ficha', student.numeroFichaIndividual)}${field('CPF', formatCpf(student.cpf || student.id))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
   const studentHealthItems = [...app.querySelectorAll('.panel')].find((panel) => panel.querySelector('h2')?.textContent === 'Saúde e inscrição')?.querySelectorAll('.simple-list > div');
   studentHealthItems?.[3]?.insertAdjacentHTML('afterend', `${field('Toma medicamento contínuo', student.medicamentoContinuo || 'Não')}${field('Qual medicamento contínuo?', student.qualMedicamentoContinuo)}`);
   if (!canDeleteStudentDetail) app.querySelector('#delete-consulted-student')?.closest('.panel')?.remove();
@@ -6035,13 +6085,14 @@ async function route() {
       form.querySelectorAll('input, select, textarea').forEach((control) => {
         if (control.type !== 'hidden') control.disabled = effectiveLocked;
       });
+      if (studentFileNumberInput) studentFileNumberInput.disabled = effectiveLocked;
       form.querySelector('button[type="submit"]').disabled = effectiveLocked;
       app.querySelector('#set-student-payment').disabled = effectiveLocked;
       app.querySelector('#clear-student-payment').disabled = effectiveLocked;
     };
     const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
     const deleteStudentRecord = async (id) => { if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return; if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
-    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
+    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (studentFileNumberInput) studentFileNumberInput.value = student.numeroFichaIndividual || ''; if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
     const studentSearchInput = app.querySelector('#student-search');
     const studentSearchResults = app.querySelector('#student-search-results');
     let studentSearchRequest = 0;
@@ -6061,7 +6112,8 @@ async function route() {
         .filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id))
         .filter((student) => {
           const cpf = normalizeCpf(student.cpf || student.id);
-          const haystack = normalizeText([student.nome, cpf, cpf && formatCpf(cpf), student.telefone, student.nomePai, student.nomeMae].filter(Boolean).join(' '));
+          const fileNumber = student.numeroFichaIndividual ? `Ficha ${student.numeroFichaIndividual}` : '';
+          const haystack = normalizeText([student.numeroFichaIndividual, fileNumber, student.nome, cpf, cpf && formatCpf(cpf), student.telefone, student.nomePai, student.nomeMae].filter(Boolean).join(' '));
           return !term || haystack.includes(term);
         })
         .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR'));
@@ -6069,7 +6121,8 @@ async function route() {
       studentSearchResults.hidden = false;
       studentSearchResults.innerHTML = students.length ? students.map((student) => {
         const cpf = normalizeCpf(student.cpf || student.id);
-        return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
+        const fileNumber = student.numeroFichaIndividual ? `Ficha ${escapeHtml(student.numeroFichaIndividual)} · ` : '';
+        return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><strong>${fileNumber}${escapeHtml(student.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
       }).join('') : '<p>Nenhum cursista encontrado neste retiro.</p>';
       studentSearchResults.querySelectorAll('[data-student-select]').forEach((button) => button.addEventListener('click', () => {
         const student = students.find((item) => item.id === button.dataset.studentSelect);
@@ -6086,7 +6139,7 @@ async function route() {
     };
     setStudentFormLocked(true);
     form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.';
-    app.querySelector('#new-student')?.addEventListener('click', () => { if (ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) clearStudentForm(); });
+    app.querySelector('#new-student')?.addEventListener('click', async () => { if (ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) { clearStudentForm(); await suggestStudentFileNumber(); } });
     editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
     studentSearchInput.addEventListener('focus', renderStudentSearch);

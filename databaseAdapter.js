@@ -614,6 +614,7 @@ function mapStudent(row) {
     id: row.cpf || row.id,
     cpf: row.cpf || row.extras?.cpf || '',
     retiroId: row.retiro_id,
+    numeroFichaIndividual: row.numero_ficha_individual || row.extras?.numeroFichaIndividual || '',
     nome: row.nome,
     nascimento: row.nascimento || '',
     telefone: row.telefone || '',
@@ -666,13 +667,14 @@ async function findStudentRow(id) {
 }
 
 async function saveStudent(record) {
-  const mappedKeys = new Set(['id', 'cpf', 'retiroId', 'nome', 'nascimento', 'telefone', 'cep', 'rua', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'batizado', 'primeiraComunhao', 'estuda', 'serie', 'escola', 'fezRetiro', 'qualRetiro', 'nomePai', 'telefonePai', 'nomeMae', 'telefoneMae', 'paisMovimento', 'qualMovimento', 'convidou', 'camiseta', 'camisetaOutro', 'intoleranciaAlimentos', 'qualIntolerancia', 'alergiaMedicamento', 'qualAlergia', 'medicamentoCabeca', 'medicamentoEstomago', 'valorInscricao', 'valorPago', 'saldoPagar', 'recebedorValorPago', 'recebedorTaxaPaga', 'recebedorFormaPagamento', 'recebedorObservacao', 'criadoEm', 'createdAt', 'updatedAt']);
+  const mappedKeys = new Set(['id', 'cpf', 'retiroId', 'numeroFichaIndividual', 'nome', 'nascimento', 'telefone', 'cep', 'rua', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'batizado', 'primeiraComunhao', 'estuda', 'serie', 'escola', 'fezRetiro', 'qualRetiro', 'nomePai', 'telefonePai', 'nomeMae', 'telefoneMae', 'paisMovimento', 'qualMovimento', 'convidou', 'camiseta', 'camisetaOutro', 'intoleranciaAlimentos', 'qualIntolerancia', 'alergiaMedicamento', 'qualAlergia', 'medicamentoCabeca', 'medicamentoEstomago', 'valorInscricao', 'valorPago', 'saldoPagar', 'recebedorValorPago', 'recebedorTaxaPaga', 'recebedorFormaPagamento', 'recebedorObservacao', 'criadoEm', 'createdAt', 'updatedAt']);
   const current = await findStudentRow(record.id || record.cpf);
   const cpf = record.cpf || (!isUuid(record.id) ? record.id : '');
   const row = await upsert('cursistas', compact({
     id: current?.id || (isUuid(record.id) ? record.id : undefined),
     cpf: textOrNull(cpf),
     retiro_id: record.retiroId,
+    numero_ficha_individual: record.numeroFichaIndividual ? Number(record.numeroFichaIndividual) : null,
     nome: record.nome || 'Sem nome',
     nascimento: dateOrNull(record.nascimento),
     telefone: record.telefone || '',

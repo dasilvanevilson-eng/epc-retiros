@@ -4978,12 +4978,6 @@ body:has(.login-shell) {
   max-width:280px;
 }
 
-.student-screen .student-file-number input[readonly] {
-  background:#f4f8f1;
-  color:#667268;
-  font-weight:700;
-}
-
 .student-screen .student-form-workspace {
   display:block;
 }

@@ -165,6 +165,7 @@ create table if not exists public.cursistas (
   id uuid primary key default gen_random_uuid(),
   retiro_id uuid not null references public.retiros(id) on delete cascade,
   cpf text unique,
+  numero_ficha_individual integer,
   nome text not null,
   nascimento date,
   telefone text,
@@ -206,8 +207,13 @@ create table if not exists public.cursistas (
   criado_em timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  extras jsonb not null default '{}'::jsonb
+  extras jsonb not null default '{}'::jsonb,
+  constraint cursistas_numero_ficha_individual_positive check (numero_ficha_individual is null or numero_ficha_individual > 0)
 );
+
+create unique index if not exists cursistas_retiro_numero_ficha_individual_unique
+on public.cursistas(retiro_id, numero_ficha_individual)
+where numero_ficha_individual is not null;
 
 create table if not exists public.comunidades (
   id uuid primary key default gen_random_uuid(),
