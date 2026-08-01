@@ -1100,16 +1100,6 @@ button:hover,
   box-shadow:none;
 }
 
-.nav-icon {
-  display:grid;
-  place-items:center;
-  width:18px;
-  height:18px;
-  color:currentColor;
-  font-size:16px;
-  line-height:1;
-}
-
 .admin-main {
   min-height:calc(100vh - 128px);
   padding:clamp(24px, 3.2vw, 46px);
@@ -2340,14 +2330,6 @@ button:hover,
 .admin-menu-nav a.logout-link:hover {
   background:#fff1ee;
   color:#8f2f1c;
-}
-
-.admin-menu-nav .nav-icon,
-.admin-menu-nav a span {
-  display:inline-grid !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  color:currentColor !important;
 }
 
 .admin-workspace {

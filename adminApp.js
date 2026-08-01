@@ -672,20 +672,20 @@ function layout(content, active = 'inicio') {
   const studentNavIds = new Set(Object.values(studentFormNavIds));
   const isVisibleStudentNav = (id) => !studentNavIds.has(id) || id === activeStudentNavId;
   const navItems = [
-    ['inicio', 'Início', '⌂'],
-    ['retiros', 'Retiros', '▣'],
-    ['pessoas', 'Equipe de trabalho', '♁'],
-    ['validacao-inscricoes', 'Validação', '✓'],
-    ['cursista-epc', 'Cursista EPC', ''],
-    ['cursista', 'Cursista Individual', '♙'],
-    ['cursista-smp', 'Cursista SMP', ''],
-    ['comunidades', 'Comunidades', '♧'],
-    ['recado-equipe', 'Recado &agrave; equipe', '!'],
-    ['crachas', 'Crach&aacute;s', '▣'],
-    ['quadrante', 'Quadrante', '✣'],
-    ['recebedor', 'Recebedor', '▱'],
-    ['alterar-senha', 'Alterar senha', '••'],
-    ['usuarios', 'Usuarios e permissoes', 'UP'],
+    ['inicio', 'Início'],
+    ['retiros', 'Retiros'],
+    ['pessoas', 'Equipe de trabalho'],
+    ['validacao-inscricoes', 'Validação'],
+    ['cursista-epc', 'Cursista EPC'],
+    ['cursista', 'Cursista Individual'],
+    ['cursista-smp', 'Cursista SMP'],
+    ['comunidades', 'Comunidades'],
+    ['recado-equipe', 'Recado &agrave; equipe'],
+    ['crachas', 'Crach&aacute;s'],
+    ['quadrante', 'Quadrante'],
+    ['recebedor', 'Recebedor'],
+    ['alterar-senha', 'Alterar senha'],
+    ['usuarios', 'Usuarios e permissoes'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
@@ -697,8 +697,8 @@ function layout(content, active = 'inicio') {
       </aside>
       <div class="admin-workspace">
         <header class="admin-header"><button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button></header><nav class="main-nav admin-menu-nav" aria-label="Menu principal">
-          ${navItems.map(([id, label, icon]) => `<a href="#${id}" class="${active === id ? 'is-active' : ''}"><span class="nav-icon" aria-hidden="true">${icon}</span>${label}</a>`).join('')}
-          <button type="button" class="logout-link" id="logout-button"><span class="nav-icon" aria-hidden="true">↪</span>Sair</button>
+          ${navItems.map(([id, label]) => `<a href="#${id}" class="${active === id ? 'is-active' : ''}">${label}</a>`).join('')}
+          <button type="button" class="logout-link" id="logout-button">Sair</button>
         </nav>
         <main class="admin-main">${content}</main>
       </div>
