@@ -685,7 +685,7 @@ function layout(content, active = 'inicio') {
     ['quadrante', 'Quadrante'],
     ['recebedor', 'Recebedor'],
     ['alterar-senha', 'Alterar senha'],
-    ['usuarios', 'Usuarios e permissoes'],
+    ['usuarios', 'Usuarios'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
