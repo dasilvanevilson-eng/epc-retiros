@@ -3043,9 +3043,20 @@ async function setupCursistaSmpTestCrud() {
     const blockedReason = canUseSmp();
     if (blockedReason) { setMessage(blockedReason); return; }
     if (!selectedId || !confirm(`Excluir a ficha SMP ${selectedId}?`)) return;
-    await dataService.deleteCursistaSmp(retreat.id, selectedId);
-    await refreshRecords();
-    clearForm({ unlock: false, notice: 'Ficha SMP excluida com sucesso.' });
+    const deletingId = selectedId;
+    deleteButton.disabled = true;
+    setMessage('Excluindo ficha SMP...');
+    try {
+      await dataService.deleteCursistaSmp(retreat.id, deletingId);
+      await refreshRecords();
+      if (records.some((record) => record.id === deletingId || record.numeroFichaSmp === deletingId)) {
+        throw new Error('A ficha ainda aparece na lista apos a exclusao.');
+      }
+      clearForm({ unlock: false, notice: 'Ficha SMP excluida com sucesso.' });
+    } catch (error) {
+      deleteButton.disabled = false;
+      setMessage(error.message || 'Nao foi possivel excluir a ficha SMP.');
+    }
   });
   searchInput.addEventListener('focus', renderSearch);
   searchInput.addEventListener('input', renderSearch);

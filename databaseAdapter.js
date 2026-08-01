@@ -897,7 +897,14 @@ async function saveCursistaSmp(record) {
 
 async function deleteCursistaSmp(retiroId, numeroFicha) {
   requireSupabaseForCursistaSmp();
-  return deleteWhere('cursista_smp', `retiro_id=eq.${enc(retiroId)}&id=eq.${enc(numeroFicha)}`);
+  const ficha = String(numeroFicha || '').trim();
+  if (!retiroId || !ficha) throw new Error('Informe o retiro e o Numero da ficha SMP para excluir.');
+  const deleted = await supabaseRequest(`cursista_smp?retiro_id=eq.${enc(retiroId)}&id=eq.${enc(ficha)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=representation' },
+  });
+  if (!Array.isArray(deleted) || !deleted.length) throw new Error(`Ficha SMP ${ficha} nao foi encontrada para exclusao.`);
+  return deleted.map(mapCursistaSmp);
 }
 
 function mapCommunity(row, lookups = {}) {
