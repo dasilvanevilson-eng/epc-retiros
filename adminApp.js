@@ -2805,9 +2805,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       item.append(block);
       return item;
     };
-    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
-    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
-    const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
+    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
+    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
+    const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'outrasUnioes', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
     form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
     form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
     form.insertBefore(section('1', 'Informações dele', himFields), message);
@@ -2931,15 +2931,19 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   const collectRecord = () => {
     const values = new FormData(form);
+    const previousRecord = records.find((item) => item.id === selectedId || item.numeroFichaSmp === selectedId);
     const record = {
+      ...(previousRecord || {}),
       retiroId: retreat?.id || '',
       id: String(fileNumberInput?.value || '').trim(),
       numeroFichaSmp: String(fileNumberInput?.value || '').trim(),
       smpKidsNotNeeded: Boolean(form.elements.smpKidsNotNeeded?.checked),
-      criadoEm: records.find((item) => item.id === selectedId)?.criadoEm || new Date().toISOString(),
+      criadoEm: previousRecord?.criadoEm || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    textFields.forEach((name) => { record[name] = values.get(name) || ''; });
+    textFields.forEach((name) => {
+      if (form.elements[name]) record[name] = values.get(name) || '';
+    });
     radioNames.forEach((name) => { record[name] = values.get(name) || ''; });
     record.cpfDele = normalizeCpf(record.cpfDele);
     record.cpfDela = normalizeCpf(record.cpfDela);
