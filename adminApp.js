@@ -2816,7 +2816,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     };
     const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
     const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
-    const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
+    const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
     const emailField = document.createElement('label');
     emailField.className = 'field smp-owner-common';
     emailField.innerHTML = '<span>E-mail</span><input name="emailEpc" type="email" autocomplete="email" placeholder="Digite o e-mail">';
@@ -2827,6 +2827,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     marriagePlaceField.className = 'field smp-owner-common';
     marriagePlaceField.innerHTML = '<span>Local do casamento</span><input name="localCasamentoEpc" placeholder="Digite o local do casamento">';
     commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.insertAdjacentElement('afterend', marriagePlaceField);
+    commonFields.querySelectorAll(':scope > .field, :scope > fieldset, :scope > .choice-block').forEach((field) => {
+      field.classList.add('smp-owner-common');
+    });
     form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
     form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
     form.insertBefore(section('1', 'Informações dele', himFields), message);
