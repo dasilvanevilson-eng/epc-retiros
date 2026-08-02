@@ -2788,7 +2788,16 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const form = app.querySelector('#cursista-smp-form');
     const message = app.querySelector('#cursista-smp-message');
     const actions = app.querySelector('.cursista-smp-actions');
-    const fieldBlock = (name) => app.querySelector(`[name="${name}"]`)?.closest('.field, fieldset, .smp-shirt-row, .choice-block');
+    const fieldBlock = (name) => {
+      const input = app.querySelector(`[name="${name}"]`);
+      if (['manequimDele', 'manequimDela'].includes(name)) {
+        const shirtLine = input?.closest('.smp-shirt-choice-line');
+        const shirtLabel = shirtLine?.querySelector(':scope > span');
+        if (shirtLabel) shirtLabel.textContent = 'Manequim / Camisa normal';
+        return shirtLine;
+      }
+      return input?.closest('.field, fieldset, .smp-shirt-row, .choice-block');
+    };
     const fieldsBlock = (className, names = []) => {
       const block = document.createElement('div');
       block.className = className;
@@ -2809,7 +2818,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
     const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'outrasUnioes', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
     const marriageDateLabel = commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.querySelector('span');
-    if (marriageDateLabel) marriageDateLabel.textContent = 'Data do casamento';
+    if (marriageDateLabel) marriageDateLabel.textContent = 'Data do casamento no religioso';
     form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
     form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
     form.insertBefore(section('1', 'Informações dele', himFields), message);
