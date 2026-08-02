@@ -5405,6 +5405,7 @@ body:has(.login-shell) {
   grid-auto-flow:row dense;
 }
 
+.cursista-epc-common-fields .epc-common-span-1 { grid-column:span 1; }
 .cursista-epc-common-fields .epc-common-span-2 { grid-column:span 2; }
 .cursista-epc-common-fields .epc-common-span-3 { grid-column:span 3; }
 .cursista-epc-common-fields .epc-common-span-4 { grid-column:span 4; }
