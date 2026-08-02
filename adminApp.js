@@ -2826,21 +2826,25 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const marriagePlaceField = document.createElement('label');
     marriagePlaceField.className = 'field smp-owner-common';
     marriagePlaceField.innerHTML = '<span>Local do casamento</span><input name="localCasamentoEpc" placeholder="Digite o local do casamento">';
-    commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.insertAdjacentElement('afterend', marriagePlaceField);
+    const marriageDateField = commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field');
+    const careField = commonFields.querySelector('[name="precisaAcolhimento"]')?.closest('fieldset');
+    const kidsField = commonFields.querySelector('[name="smpKidsNotNeeded"]')?.closest('.choice-block');
+    if (marriageDateField && careField) marriageDateField.insertAdjacentElement('afterend', careField);
+    if (kidsField) kidsField.insertAdjacentElement('afterend', marriagePlaceField);
     commonFields.classList.add('cursista-epc-common-fields');
     const commonFieldSpans = {
       cep: 2,
-      endereco: 6,
-      numero: 2,
+      endereco: 5,
+      numero: 1,
       nrApto: 2,
       bairro: 3,
       cidade: 3,
       estadoSmp: 2,
       emailEpc: 4,
       uniaoCasal: 3,
-      localCasamentoEpc: 9,
+      localCasamentoEpc: 4,
       smpKidsNotNeeded: 12,
-      precisaAcolhimento: 4,
+      precisaAcolhimento: 9,
       nomeApresentante: 5,
       foneApresentante: 3,
       valorInscricaoSmp: 4,
@@ -2849,7 +2853,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     };
     Object.entries(commonFieldSpans).forEach(([name, span]) => {
       const field = commonFields.querySelector(`[name="${name}"]`)?.closest('.field, fieldset, .choice-block');
-      field?.classList.add(`epc-common-span-${span}`);
+      field?.classList.add(`epc-common-field-${name}`, `epc-common-span-${span}`);
     });
     commonFields.querySelectorAll(':scope > .field, :scope > fieldset, :scope > .choice-block').forEach((field) => {
       field.classList.add('smp-owner-common');

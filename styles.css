@@ -5414,6 +5414,15 @@ body:has(.login-shell) {
 .cursista-epc-common-fields .epc-common-span-9 { grid-column:span 9; }
 .cursista-epc-common-fields .epc-common-span-12 { grid-column:1 / -1; }
 
+.cursista-epc-common-fields .epc-common-field-cep { grid-column:1 / span 2; }
+.cursista-epc-common-fields .epc-common-field-endereco { grid-column:3 / span 5; }
+.cursista-epc-common-fields .epc-common-field-numero { grid-column:8 / span 1; }
+.cursista-epc-common-fields .epc-common-field-nrApto { grid-column:9 / span 2; }
+.cursista-epc-common-fields .epc-common-field-bairro { grid-column:1 / span 3; }
+.cursista-epc-common-fields .epc-common-field-cidade { grid-column:4 / span 3; }
+.cursista-epc-common-fields .epc-common-field-estadoSmp { grid-column:7 / span 2; }
+.cursista-epc-common-fields .epc-common-field-emailEpc { grid-column:9 / span 4; }
+
 .cursista-smp-section .section-heading {
   margin-bottom:16px;
 }
