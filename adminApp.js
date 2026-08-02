@@ -2764,6 +2764,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <div class="form-actions cursista-smp-actions"><p>Revise os dados antes de salvar a ficha.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
   </form>`, active);
   if (!['cursista-smp', 'cursista-epc'].includes(active)) return;
+  if (active === 'cursista-smp') app.querySelector('#cursista-smp-form')?.classList.add('smp-topics-aligned-layout');
   const markOwner = (owner, fieldNames = []) => {
     fieldNames.forEach((name) => {
       app.querySelectorAll(`[name="${name}"]`).forEach((input) => {

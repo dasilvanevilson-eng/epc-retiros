@@ -5395,6 +5395,27 @@ body:has(.login-shell) {
   border-right:1px solid var(--line);
 }
 
+.cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(5) {
+  grid-column:1;
+  grid-row:3 / span 3;
+}
+
+.cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(6) {
+  grid-column:2;
+  grid-row:3;
+}
+
+.cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(7) {
+  grid-column:2;
+  grid-row:4;
+  border-right:0;
+}
+
+.cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(8) {
+  grid-column:2;
+  grid-row:5;
+}
+
 .cursista-smp-form .cursista-epc-common-section {
   grid-column:1 / -1;
   border-right:0;
@@ -5683,6 +5704,14 @@ body:has(.login-shell) {
 @media(max-width:980px) {
   .cursista-smp-form {
     grid-template-columns:1fr;
+  }
+
+  .cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(5),
+  .cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(6),
+  .cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(7),
+  .cursista-smp-form.smp-topics-aligned-layout .cursista-smp-section:nth-of-type(8) {
+    grid-column:1;
+    grid-row:auto;
   }
 
   .cursista-smp-section:nth-child(odd) {
