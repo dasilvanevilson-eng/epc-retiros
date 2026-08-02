@@ -5400,7 +5400,7 @@ body:has(.login-shell) {
   border-right:0;
 }
 
-.cursista-smp-form .cursista-epc-common-fields {
+.cursista-smp-form .three-columns.cursista-epc-common-fields {
   grid-template-columns:repeat(12, minmax(0, 1fr));
   grid-auto-flow:row dense;
 }
@@ -5656,6 +5656,10 @@ body:has(.login-shell) {
   .cursista-smp-form .two-columns,
   .cursista-smp-form .three-columns,
   .cursista-smp-address {
+    grid-template-columns:1fr;
+  }
+
+  .cursista-smp-form .three-columns.cursista-epc-common-fields {
     grid-template-columns:1fr;
   }
 
