@@ -2794,6 +2794,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
         const shirtLine = input?.closest('.smp-shirt-choice-line');
         const shirtLabel = shirtLine?.querySelector(':scope > span');
         if (shirtLabel) shirtLabel.textContent = 'Manequim / Camisa normal';
+        shirtLine?.classList.add('epc-shirt-choice-line');
         return shirtLine;
       }
       return input?.closest('.field, fieldset, .smp-shirt-row, .choice-block');

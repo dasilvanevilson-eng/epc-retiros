@@ -5603,6 +5603,26 @@ body:has(.login-shell) {
   display:flex;
 }
 
+.cursista-smp-form .epc-shirt-choice-line {
+  display:grid;
+  gap:8px;
+  min-width:0;
+}
+
+.cursista-smp-form .epc-shirt-choice-line .inline-choices {
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow-x:auto;
+  padding-bottom:3px;
+}
+
+.cursista-smp-form .epc-shirt-choice-line .choice {
+  flex:0 0 auto;
+  min-width:40px;
+  justify-content:center;
+  padding:8px 9px;
+}
+
 .cursista-smp-actions {
   grid-column:1 / -1;
   align-items:center;
