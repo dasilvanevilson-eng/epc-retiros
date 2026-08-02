@@ -2818,13 +2818,13 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
     const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
     const emailField = document.createElement('label');
-    emailField.className = 'field';
+    emailField.className = 'field smp-owner-common';
     emailField.innerHTML = '<span>E-mail</span><input name="emailEpc" type="email" autocomplete="email" placeholder="Digite o e-mail">';
     commonFields.querySelector('[name="estadoSmp"]')?.closest('.field')?.insertAdjacentElement('afterend', emailField);
     const marriageDateLabel = commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.querySelector('span');
     if (marriageDateLabel) marriageDateLabel.textContent = 'Data do casamento no religioso';
     const marriagePlaceField = document.createElement('label');
-    marriagePlaceField.className = 'field';
+    marriagePlaceField.className = 'field smp-owner-common';
     marriagePlaceField.innerHTML = '<span>Local do casamento</span><input name="localCasamentoEpc" placeholder="Digite o local do casamento">';
     commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.insertAdjacentElement('afterend', marriagePlaceField);
     form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
