@@ -2831,6 +2831,14 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const careField = commonFields.querySelector('[name="precisaAcolhimento"]')?.closest('fieldset');
     if (marriageDateField) marriageDateField.insertAdjacentElement('afterend', marriagePlaceField);
     if (careField) marriagePlaceField.insertAdjacentElement('afterend', careField);
+    const hasChildrenField = document.createElement('fieldset');
+    hasChildrenField.className = 'smp-owner-common';
+    hasChildrenField.innerHTML = `<legend>Tem filhos?</legend>${yesNo('temFilhosEpc')}`;
+    const childrenAgeField = document.createElement('label');
+    childrenAgeField.className = 'field smp-owner-common';
+    childrenAgeField.innerHTML = '<span>Idade dos filhos</span><input name="idadeFilhosEpc" placeholder="Digite a idade dos filhos">';
+    if (careField) careField.insertAdjacentElement('afterend', hasChildrenField);
+    hasChildrenField.insertAdjacentElement('afterend', childrenAgeField);
     commonFields.classList.add('cursista-epc-common-fields');
     const commonFieldSpans = {
       cep: 2,
@@ -2843,6 +2851,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       emailEpc: 4,
       uniaoCasal: 3,
       localCasamentoEpc: 4,
+      temFilhosEpc: 4,
+      idadeFilhosEpc: 8,
       smpKidsNotNeeded: 12,
       precisaAcolhimento: 5,
       nomeApresentante: 9,
@@ -2884,8 +2894,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const deleteButton = app.querySelector('#delete-cursista-smp');
   const cancelButton = app.querySelector('#cancel-cursista-smp');
   const allFormControls = () => [...form.querySelectorAll('input, select, textarea'), fileNumberInput].filter(Boolean);
-  const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'manequimDele', 'manequimDela'];
-  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+  const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'temFilhosEpc', 'manequimDele', 'manequimDela'];
+  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
   const cpfFields = ['cpfDele', 'cpfDela'];
   let records = [];
   let selectedId = '';
