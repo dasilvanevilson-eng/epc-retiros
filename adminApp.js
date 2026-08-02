@@ -2827,6 +2827,30 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     marriagePlaceField.className = 'field smp-owner-common';
     marriagePlaceField.innerHTML = '<span>Local do casamento</span><input name="localCasamentoEpc" placeholder="Digite o local do casamento">';
     commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field')?.insertAdjacentElement('afterend', marriagePlaceField);
+    commonFields.classList.add('cursista-epc-common-fields');
+    const commonFieldSpans = {
+      cep: 2,
+      endereco: 6,
+      numero: 2,
+      nrApto: 2,
+      bairro: 4,
+      cidade: 4,
+      estadoSmp: 2,
+      emailEpc: 5,
+      uniaoCasal: 3,
+      localCasamentoEpc: 4,
+      smpKidsNotNeeded: 12,
+      precisaAcolhimento: 4,
+      nomeApresentante: 5,
+      foneApresentante: 3,
+      valorInscricaoSmp: 4,
+      valorPagoSmp: 4,
+      saldoPagarSmp: 4,
+    };
+    Object.entries(commonFieldSpans).forEach(([name, span]) => {
+      const field = commonFields.querySelector(`[name="${name}"]`)?.closest('.field, fieldset, .choice-block');
+      field?.classList.add(`epc-common-span-${span}`);
+    });
     commonFields.querySelectorAll(':scope > .field, :scope > fieldset, :scope > .choice-block').forEach((field) => {
       field.classList.add('smp-owner-common');
     });
