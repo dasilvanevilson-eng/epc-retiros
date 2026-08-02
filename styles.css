@@ -5582,6 +5582,30 @@ body:has(.login-shell) {
   padding:6px 0;
 }
 
+.cursista-smp-form .epc-kid-care {
+  display:grid;
+  grid-column:2 / -1;
+  gap:10px;
+  padding-top:4px;
+}
+
+.cursista-smp-form .epc-kid-care-row {
+  display:grid;
+  grid-template-columns:minmax(260px, .8fr) minmax(0, 1.2fr);
+  gap:10px;
+  align-items:end;
+}
+
+.cursista-smp-form .epc-kid-care-row fieldset,
+.cursista-smp-form .epc-kid-care-row .field {
+  grid-column:auto;
+  min-width:0;
+}
+
+.cursista-smp-form .epc-kid-care-row .inline-choices {
+  flex-wrap:nowrap;
+}
+
 .smp-shirt-row {
   display:grid;
   gap:10px;
@@ -5692,6 +5716,14 @@ body:has(.login-shell) {
   .cursista-smp-form .cursista-epc-common-fields > fieldset,
   .cursista-smp-form .cursista-epc-common-fields > .choice-block {
     grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .epc-kid-care {
+    grid-column:2;
+  }
+
+  .cursista-smp-form .epc-kid-care-row {
+    grid-template-columns:1fr;
   }
 
   .cursista-smp-actions {

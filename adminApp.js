@@ -2848,6 +2848,21 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const presenterPhoneField = commonFields.querySelector('[name="foneApresentante"]')?.closest('.field');
     if (presenterPhoneField) presenterPhoneField.insertAdjacentElement('afterend', emergencyContactField);
     emergencyContactField.insertAdjacentElement('afterend', emergencyPhoneField);
+    commonFields.querySelectorAll('.kids-row').forEach((row, index) => {
+      const kidNumber = index + 1;
+      const careQuestions = document.createElement('div');
+      careQuestions.className = 'epc-kid-care';
+      careQuestions.innerHTML = `
+        <div class="epc-kid-care-row">
+          <fieldset class="smp-owner-common"><legend>Possui algum problema de saúde?</legend>${yesNo(`smpKidProblemaSaude${kidNumber}Epc`)}</fieldset>
+          <label class="field smp-owner-common"><span>Descreva</span><input name="smpKidDescricaoSaude${kidNumber}Epc" placeholder="Descreva o problema de saúde"></label>
+        </div>
+        <div class="epc-kid-care-row">
+          <fieldset class="smp-owner-common"><legend>Possui alguma intolerância alimentar?</legend>${yesNo(`smpKidIntolerancia${kidNumber}Epc`)}</fieldset>
+          <label class="field smp-owner-common"><span>Descreva</span><input name="smpKidDescricaoIntolerancia${kidNumber}Epc" placeholder="Descreva a intolerância alimentar"></label>
+        </div>`;
+      row.append(careQuestions);
+    });
     commonFields.classList.add('cursista-epc-common-fields');
     const commonFieldSpans = {
       cep: 2,
@@ -2905,8 +2920,10 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const deleteButton = app.querySelector('#delete-cursista-smp');
   const cancelButton = app.querySelector('#cancel-cursista-smp');
   const allFormControls = () => [...form.querySelectorAll('input, select, textarea'), fileNumberInput].filter(Boolean);
-  const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'temFilhosEpc', 'manequimDele', 'manequimDela'];
-  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+  const epcKidRadioNames = Array.from({ length: 5 }, (_, index) => [`smpKidProblemaSaude${index + 1}Epc`, `smpKidIntolerancia${index + 1}Epc`]).flat();
+  const epcKidTextFields = Array.from({ length: 5 }, (_, index) => [`smpKidDescricaoSaude${index + 1}Epc`, `smpKidDescricaoIntolerancia${index + 1}Epc`]).flat();
+  const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'temFilhosEpc', 'manequimDele', 'manequimDela', ...epcKidRadioNames];
+  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', ...epcKidTextFields, 'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
   const cpfFields = ['cpfDele', 'cpfDela'];
   let records = [];
   let selectedId = '';
