@@ -2805,6 +2805,14 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const form = app.querySelector('#cursista-smp-form');
     const message = app.querySelector('#cursista-smp-message');
     const actions = app.querySelector('.cursista-smp-actions');
+    const hisConfirmationField = app.querySelector('[name="crismaDele"]')?.closest('fieldset');
+    const herConfirmationField = app.querySelector('[name="crismaDela"]')?.closest('fieldset');
+    const hisConfirmationLegend = hisConfirmationField?.querySelector('legend');
+    const herConfirmationLegend = herConfirmationField?.querySelector('legend');
+    if (hisConfirmationLegend) hisConfirmationLegend.textContent = 'É crismado?';
+    if (herConfirmationLegend) herConfirmationLegend.textContent = 'É crismado?';
+    hisConfirmationField?.classList.add('smp-owner-him');
+    herConfirmationField?.classList.add('smp-owner-her');
     const fieldBlock = (name) => {
       const input = app.querySelector(`[name="${name}"]`);
       if (['manequimDele', 'manequimDela'].includes(name)) {
