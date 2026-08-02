@@ -5429,6 +5429,8 @@ body:has(.login-shell) {
 .cursista-epc-common-fields .epc-common-field-idadeFilhosEpc { grid-column:5 / span 8; }
 .cursista-epc-common-fields .epc-common-field-nomeApresentante { grid-column:1 / span 9; }
 .cursista-epc-common-fields .epc-common-field-foneApresentante { grid-column:10 / span 3; }
+.cursista-epc-common-fields .epc-common-field-contatoEmergenciaEpc { grid-column:1 / span 9; }
+.cursista-epc-common-fields .epc-common-field-foneEmergenciaEpc { grid-column:10 / span 3; }
 .cursista-epc-common-fields .epc-common-field-valorInscricaoSmp { grid-column:1 / span 4; }
 .cursista-epc-common-fields .epc-common-field-valorPagoSmp { grid-column:5 / span 4; }
 .cursista-epc-common-fields .epc-common-field-saldoPagarSmp { grid-column:9 / span 4; }
