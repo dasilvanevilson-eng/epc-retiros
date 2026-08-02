@@ -5582,14 +5582,16 @@ body:has(.login-shell) {
   padding:6px 0;
 }
 
-.cursista-smp-form .epc-kid-care {
+.cursista-smp-form .epc-kid-care,
+.cursista-smp-form .smp-kid-care {
   display:grid;
   grid-column:2 / -1;
   gap:10px;
   padding-top:4px;
 }
 
-.cursista-smp-form .epc-kid-care-row {
+.cursista-smp-form .epc-kid-care-row,
+.cursista-smp-form .smp-kid-care-row {
   display:grid;
   grid-template-columns:minmax(260px, .8fr) minmax(0, 1.2fr);
   gap:10px;
@@ -5597,12 +5599,15 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-form .epc-kid-care-row fieldset,
-.cursista-smp-form .epc-kid-care-row .field {
+.cursista-smp-form .epc-kid-care-row .field,
+.cursista-smp-form .smp-kid-care-row fieldset,
+.cursista-smp-form .smp-kid-care-row .field {
   grid-column:auto;
   min-width:0;
 }
 
-.cursista-smp-form .epc-kid-care-row .inline-choices {
+.cursista-smp-form .epc-kid-care-row .inline-choices,
+.cursista-smp-form .smp-kid-care-row .inline-choices {
   flex-wrap:nowrap;
 }
 
@@ -5718,11 +5723,13 @@ body:has(.login-shell) {
     grid-column:1 / -1;
   }
 
-  .cursista-smp-form .epc-kid-care {
+  .cursista-smp-form .epc-kid-care,
+  .cursista-smp-form .smp-kid-care {
     grid-column:2;
   }
 
-  .cursista-smp-form .epc-kid-care-row {
+  .cursista-smp-form .epc-kid-care-row,
+  .cursista-smp-form .smp-kid-care-row {
     grid-template-columns:1fr;
   }
 

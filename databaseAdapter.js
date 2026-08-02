@@ -721,6 +721,38 @@ async function saveStudent(record) {
   return mapStudent(row);
 }
 
+const cursistaSmpKidCareRecordKeys = Array.from({ length: 5 }, (_, index) => {
+  const kidNumber = index + 1;
+  return [
+    `smpKidProblemaSaude${kidNumber}`,
+    `smpKidDescricaoSaude${kidNumber}`,
+    `smpKidIntolerancia${kidNumber}`,
+    `smpKidDescricaoIntolerancia${kidNumber}`,
+  ];
+}).flat();
+
+function mapCursistaSmpKidCare(row) {
+  const fields = {};
+  for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+    fields[`smpKidProblemaSaude${kidNumber}`] = choiceFromBool(row[`comum_kid_${kidNumber}_problema_saude`]);
+    fields[`smpKidDescricaoSaude${kidNumber}`] = row[`comum_kid_${kidNumber}_descricao_saude`] || '';
+    fields[`smpKidIntolerancia${kidNumber}`] = choiceFromBool(row[`comum_kid_${kidNumber}_intolerancia_alimentar`]);
+    fields[`smpKidDescricaoIntolerancia${kidNumber}`] = row[`comum_kid_${kidNumber}_descricao_intolerancia`] || '';
+  }
+  return fields;
+}
+
+function mapCursistaSmpKidCareRow(record) {
+  const fields = {};
+  for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+    fields[`comum_kid_${kidNumber}_problema_saude`] = boolOrNull(record[`smpKidProblemaSaude${kidNumber}`]);
+    fields[`comum_kid_${kidNumber}_descricao_saude`] = textOrNull(record[`smpKidDescricaoSaude${kidNumber}`]);
+    fields[`comum_kid_${kidNumber}_intolerancia_alimentar`] = boolOrNull(record[`smpKidIntolerancia${kidNumber}`]);
+    fields[`comum_kid_${kidNumber}_descricao_intolerancia`] = textOrNull(record[`smpKidDescricaoIntolerancia${kidNumber}`]);
+  }
+  return fields;
+}
+
 function mapCursistaSmp(row) {
   return {
     ...(row.extras || {}),
@@ -782,6 +814,7 @@ function mapCursistaSmp(row) {
     smpKidNascimento4: row.comum_kid_4_nascimento || '',
     smpKidNome5: row.comum_kid_5_nome || '',
     smpKidNascimento5: row.comum_kid_5_nascimento || '',
+    ...mapCursistaSmpKidCare(row),
     precisaAcolhimento: choiceFromBool(row.comum_precisa_acolhimento),
     nomeApresentante: row.comum_nome_apresentante || '',
     foneApresentante: row.comum_fone_apresentante || '',
@@ -814,6 +847,7 @@ async function saveCursistaSmp(record) {
   requireSupabaseForCursistaSmp();
   const id = String(record.id || record.numeroFichaSmp || '').trim();
   const mappedKeys = new Set(['retiroId', 'id', 'numeroFichaSmp', 'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp', 'criadoEm', 'createdAt', 'updatedAt']);
+  cursistaSmpKidCareRecordKeys.forEach((key) => mappedKeys.add(key));
   const row = await upsert('cursista_smp', compact({
     retiro_id: record.retiroId,
     id,
@@ -872,6 +906,7 @@ async function saveCursistaSmp(record) {
     comum_kid_4_nascimento: dateOrNull(record.smpKidNascimento4),
     comum_kid_5_nome: record.smpKidNome5 || '',
     comum_kid_5_nascimento: dateOrNull(record.smpKidNascimento5),
+    ...mapCursistaSmpKidCareRow(record),
     comum_precisa_acolhimento: boolOrNull(record.precisaAcolhimento),
     comum_nome_apresentante: record.nomeApresentante || '',
     comum_fone_apresentante: record.foneApresentante || '',
