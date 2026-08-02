@@ -5605,22 +5605,23 @@ body:has(.login-shell) {
 
 .cursista-smp-form .epc-shirt-choice-line {
   display:grid;
+  grid-column:1 / -1;
   gap:8px;
   min-width:0;
 }
 
 .cursista-smp-form .epc-shirt-choice-line .inline-choices {
-  flex-wrap:nowrap;
+  display:grid;
+  grid-template-columns:repeat(8, minmax(0, 1fr));
   gap:6px;
-  overflow-x:auto;
-  padding-bottom:3px;
+  overflow:visible;
 }
 
 .cursista-smp-form .epc-shirt-choice-line .choice {
-  flex:0 0 auto;
-  min-width:40px;
+  min-width:0;
+  width:100%;
   justify-content:center;
-  padding:8px 9px;
+  padding:8px 4px;
 }
 
 .cursista-smp-actions {
