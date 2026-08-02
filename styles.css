@@ -5395,6 +5395,11 @@ body:has(.login-shell) {
   border-right:1px solid var(--line);
 }
 
+.cursista-smp-form .cursista-epc-common-section {
+  grid-column:1 / -1;
+  border-right:0;
+}
+
 .cursista-smp-section .section-heading {
   margin-bottom:16px;
 }

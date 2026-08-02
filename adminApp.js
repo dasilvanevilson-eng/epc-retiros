@@ -2834,7 +2834,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
     form.insertBefore(section('1', 'Informações dele', himFields), message);
     form.insertBefore(section('2', 'Informações dela', herFields), message);
-    form.insertBefore(section('3', 'Informações comuns', commonFields), message);
+    const commonSection = section('3', 'Informações comuns', commonFields);
+    commonSection.classList.add('cursista-epc-common-section');
+    form.insertBefore(commonSection, message);
     if (actions) form.append(actions);
   }
 }
