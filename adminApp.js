@@ -2828,9 +2828,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     marriagePlaceField.innerHTML = '<span>Local do casamento</span><input name="localCasamentoEpc" placeholder="Digite o local do casamento">';
     const marriageDateField = commonFields.querySelector('[name="uniaoCasal"]')?.closest('.field');
     const careField = commonFields.querySelector('[name="precisaAcolhimento"]')?.closest('fieldset');
-    const kidsField = commonFields.querySelector('[name="smpKidsNotNeeded"]')?.closest('.choice-block');
-    if (marriageDateField && careField) marriageDateField.insertAdjacentElement('afterend', careField);
-    if (kidsField) kidsField.insertAdjacentElement('afterend', marriagePlaceField);
+    if (marriageDateField) marriageDateField.insertAdjacentElement('afterend', marriagePlaceField);
+    if (careField) marriagePlaceField.insertAdjacentElement('afterend', careField);
     commonFields.classList.add('cursista-epc-common-fields');
     const commonFieldSpans = {
       cep: 2,
@@ -2844,8 +2843,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       uniaoCasal: 3,
       localCasamentoEpc: 4,
       smpKidsNotNeeded: 12,
-      precisaAcolhimento: 9,
-      nomeApresentante: 5,
+      precisaAcolhimento: 5,
+      nomeApresentante: 9,
       foneApresentante: 3,
       valorInscricaoSmp: 4,
       valorPagoSmp: 4,

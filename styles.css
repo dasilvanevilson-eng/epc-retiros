@@ -5422,6 +5422,14 @@ body:has(.login-shell) {
 .cursista-epc-common-fields .epc-common-field-cidade { grid-column:4 / span 3; }
 .cursista-epc-common-fields .epc-common-field-estadoSmp { grid-column:7 / span 2; }
 .cursista-epc-common-fields .epc-common-field-emailEpc { grid-column:9 / span 4; }
+.cursista-epc-common-fields .epc-common-field-uniaoCasal { grid-column:1 / span 3; }
+.cursista-epc-common-fields .epc-common-field-localCasamentoEpc { grid-column:4 / span 4; }
+.cursista-epc-common-fields .epc-common-field-precisaAcolhimento { grid-column:8 / span 5; }
+.cursista-epc-common-fields .epc-common-field-nomeApresentante { grid-column:1 / span 9; }
+.cursista-epc-common-fields .epc-common-field-foneApresentante { grid-column:10 / span 3; }
+.cursista-epc-common-fields .epc-common-field-valorInscricaoSmp { grid-column:1 / span 4; }
+.cursista-epc-common-fields .epc-common-field-valorPagoSmp { grid-column:5 / span 4; }
+.cursista-epc-common-fields .epc-common-field-saldoPagarSmp { grid-column:9 / span 4; }
 
 .cursista-smp-section .section-heading {
   margin-bottom:16px;
