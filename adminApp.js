@@ -6353,7 +6353,13 @@ async function route() {
     };
     setStudentFormLocked(true);
     form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.';
-    app.querySelector('#new-student')?.addEventListener('click', async () => { if (ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) { clearStudentForm(); await suggestStudentFileNumber(); } });
+    app.querySelector('#new-student')?.addEventListener('click', async () => {
+      if (!ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) return;
+      clearStudentForm({ focus: false });
+      await suggestStudentFileNumber();
+      studentFileNumberInput?.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => studentFileNumberInput?.focus({ preventScroll: true }), 180);
+    });
     editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
     studentSearchInput.addEventListener('focus', renderStudentSearch);
