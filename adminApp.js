@@ -3547,6 +3547,49 @@ async function renderCursista() {
     if (await warnStudentTeamConflict(focus)) return true;
     return warnDuplicateStudentCpf(focus);
   };
+  const resetStudentScreenAfterSave = () => {
+    form.reset();
+    form.querySelectorAll('input, select, textarea').forEach((control) => {
+      control.setCustomValidity?.('');
+      if (control.type === 'radio' || control.type === 'checkbox') control.checked = false;
+      else if (control.name !== 'retiroId') control.value = '';
+    });
+    if (form.elements.retiroId) form.elements.retiroId.value = focusStudentRetreat?.id || '';
+    form.querySelector('input[name="id"]')?.remove();
+    form.dataset.studentPaymentTouched = 'false';
+    syncStudentConditionalRequired();
+    form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
+    const paymentComment = form.querySelector('.student-payment-comment');
+    if (paymentComment) {
+      paymentComment.textContent = '';
+      paymentComment.hidden = true;
+    }
+    form.querySelector('#clear-student-payment')?.setAttribute('hidden', '');
+    form.querySelector('.delete-student')?.setAttribute('hidden', '');
+    app.querySelector('.student-heading-actions')?.setAttribute('hidden', '');
+    if (studentFileNumberInput) {
+      studentFileNumberInput.value = '';
+      studentFileNumberInput.setCustomValidity('');
+      studentFileNumberInput.disabled = false;
+    }
+    const studentSearchInput = app.querySelector('#student-search');
+    const studentSearchResults = app.querySelector('#student-search-results');
+    if (studentSearchInput) studentSearchInput.value = '';
+    if (studentSearchResults) {
+      studentSearchResults.hidden = true;
+      studentSearchResults.innerHTML = '';
+    }
+    form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>';
+    form.querySelectorAll('input, select, textarea').forEach((control) => {
+      if (control.type !== 'hidden') control.disabled = true;
+    });
+    form.querySelector('button[type="submit"]').disabled = true;
+    form.querySelector('#set-student-payment').disabled = true;
+    form.querySelector('#clear-student-payment').disabled = true;
+    app.querySelector('#student-message').textContent = 'Cadastro do cursista salvo com sucesso.';
+    form.dispatchEvent(new CustomEvent('student-form-cleared-after-save'));
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!ensureRetreatCanBeChanged(focusStudentRetreat, 'salvar cursistas')) return;
@@ -3630,29 +3673,7 @@ async function renderCursista() {
       else if (normalizeText(message).includes('cpf')) focusStudentIssue(form.elements.cpf);
       return;
     }
-    form.reset();
-    ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro'].forEach((name) => {
-      form.querySelectorAll(`[name="${name}"]`).forEach((input) => { input.checked = false; });
-    });
-    ['serie', 'escola', 'qualRetiro'].forEach((name) => {
-      if (form.elements[name]) form.elements[name].value = '';
-    });
-    form.querySelector('.student-payment-comment')?.setAttribute('hidden', '');
-    form.querySelector('#clear-student-payment')?.setAttribute('hidden', '');
-    form.querySelector('input[name="id"]')?.remove();
-    form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
-    form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>';
-    form.querySelector('.delete-student')?.setAttribute('hidden', '');
-    app.querySelector('.student-heading-actions')?.setAttribute('hidden', '');
-    form.querySelectorAll('input, select, textarea').forEach((control) => {
-      if (control.type !== 'hidden') control.disabled = true;
-    });
-    if (studentFileNumberInput) studentFileNumberInput.disabled = true;
-    form.querySelector('button[type="submit"]').disabled = true;
-    form.querySelector('#set-student-payment').disabled = true;
-    form.querySelector('#clear-student-payment').disabled = true;
-    app.querySelector('#student-message').textContent = 'Cadastro do cursista salvo com sucesso.';
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    resetStudentScreenAfterSave();
   });
 }
 async function renderCursistaDetalhe(id) {
@@ -6289,12 +6310,24 @@ async function route() {
     }
     let selectedStudentId = '';
     form.dataset.studentPaymentTouched = 'false';
+    let studentFileLookupTimer = 0;
+    let studentFileLookupRequest = 0;
+    const cancelStudentFileLookup = () => {
+      window.clearTimeout(studentFileLookupTimer);
+      studentFileLookupTimer = 0;
+      studentFileLookupRequest += 1;
+    };
+    const normalizeStudentFileLookup = (value) => {
+      const number = Number(String(value || '').trim());
+      return Number.isInteger(number) && number > 0 ? number : 0;
+    };
+    const studentFileLookupEnabled = () => Boolean(form.querySelector('button[type="submit"]')?.disabled);
     const setStudentFormLocked = (locked) => {
       const effectiveLocked = locked || !canEditStudentRetreat;
       form.querySelectorAll('input, select, textarea').forEach((control) => {
         if (control.type !== 'hidden') control.disabled = effectiveLocked;
       });
-      if (studentFileNumberInput) studentFileNumberInput.disabled = effectiveLocked;
+      if (studentFileNumberInput) studentFileNumberInput.disabled = false;
       form.querySelector('button[type="submit"]').disabled = effectiveLocked;
       app.querySelector('#set-student-payment').disabled = effectiveLocked;
       app.querySelector('#clear-student-payment').disabled = effectiveLocked;
@@ -6313,6 +6346,11 @@ async function route() {
       studentSearchResults.hidden = true;
       studentSearchResults.innerHTML = '';
     };
+    form.addEventListener('student-form-cleared-after-save', () => {
+      cancelStudentFileLookup();
+      selectedStudentId = '';
+      closeStudentSearchResults();
+    });
     const renderStudentSearch = async () => {
       studentSearchOpen = true;
       const currentRequest = ++studentSearchRequest;
@@ -6346,10 +6384,61 @@ async function route() {
         }
       }));
     };
+    const resetStudentFileLookupState = (fileNumber, message) => {
+      selectedStudentId = '';
+      studentHeadingActions.hidden = true;
+      form.dataset.studentPaymentTouched = 'false';
+      form.reset();
+      form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
+      form.querySelector('input[name="id"]')?.remove();
+      form.elements.retiroId.value = activeRetreat?.id || '';
+      form.elements.valorInscricao.value = '';
+      setStudentPaymentDetails({ paidAmount: 0 });
+      form.querySelector('.delete-student')?.setAttribute('hidden', '');
+      form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>';
+      setStudentFormLocked(true);
+      if (studentFileNumberInput) studentFileNumberInput.value = fileNumber;
+      form.querySelector('#student-message').textContent = message;
+    };
+    const lookupStudentByFileNumber = () => {
+      if (!studentFileNumberInput || !studentFileLookupEnabled()) return;
+      closeStudentSearchResults();
+      const typedFileNumber = studentFileNumberInput.value;
+      cancelStudentFileLookup();
+      const currentRequest = studentFileLookupRequest;
+      resetStudentFileLookupState(typedFileNumber, typedFileNumber.trim() ? 'Buscando ficha...' : (canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.'));
+      if (!typedFileNumber.trim()) return;
+      studentFileLookupTimer = window.setTimeout(async () => {
+        const fileNumber = normalizeStudentFileLookup(typedFileNumber);
+        if (!fileNumber) {
+          if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, 'Informe um número da ficha válido.');
+          return;
+        }
+        try {
+          const students = await dataService.listCursistas();
+          if (currentRequest !== studentFileLookupRequest) return;
+          const student = students.find((item) => (
+            item.retiroId === activeRetreat?.id
+            && Number(item.numeroFichaIndividual) === fileNumber
+          ));
+          if (!student) {
+            resetStudentFileLookupState(typedFileNumber, 'Nenhuma ficha encontrada neste retiro.');
+            return;
+          }
+          loadStudent(student);
+          ensureStudentMedicationDefault(student);
+          form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => editSelectedStudent?.focus({ preventScroll: true }), 0);
+        } catch (error) {
+          if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, error.message || 'Não foi possível consultar o número da ficha.');
+        }
+      }, 350);
+    };
     setStudentFormLocked(true);
     form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.';
     app.querySelector('#new-student')?.addEventListener('click', async () => {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) return;
+      cancelStudentFileLookup();
       clearStudentForm({ focus: false });
       const students = await dataService.listCursistas();
       if (!studentFileNumberInput) return;
@@ -6357,10 +6446,11 @@ async function route() {
       studentFileNumberInput.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       studentFileNumberInput.focus({ preventScroll: true });
     });
-    editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
+    editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { cancelStudentFileLookup(); setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
-    studentSearchInput.addEventListener('focus', renderStudentSearch);
-    studentSearchInput.addEventListener('input', renderStudentSearch);
+    studentFileNumberInput?.addEventListener('input', lookupStudentByFileNumber);
+    studentSearchInput.addEventListener('focus', () => { cancelStudentFileLookup(); renderStudentSearch(); });
+    studentSearchInput.addEventListener('input', () => { cancelStudentFileLookup(); renderStudentSearch(); });
     const studentSearchField = studentSearchInput.closest('.registration-search-field');
     const hideStudentSearch = () => {
       studentSearchOpen = false;
