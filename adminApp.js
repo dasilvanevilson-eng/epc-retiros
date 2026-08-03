@@ -3551,6 +3551,7 @@ async function renderCursista() {
     form.querySelector('input[name="id"]')?.remove();
     form.dataset.studentPaymentTouched = 'false';
     syncStudentConditionalRequired();
+    syncChoiceStates(form);
     form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
     const paymentComment = form.querySelector('.student-payment-comment');
     if (paymentComment) {
