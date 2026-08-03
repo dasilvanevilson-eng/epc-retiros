@@ -116,6 +116,15 @@ const createId = () => {
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
+const nextAvailableStudentFileNumber = (students = [], retreatId = '') => {
+  const used = new Set(students
+    .filter((student) => !retreatId || student.retiroId === retreatId)
+    .map((student) => Number(student.numeroFichaIndividual))
+    .filter((number) => Number.isInteger(number) && number > 0));
+  let next = 1;
+  while (used.has(next)) next += 1;
+  return String(next);
+};
 const submitForm = (form) => {
   if (typeof form.requestSubmit === 'function') {
     form.requestSubmit();
@@ -3410,20 +3419,6 @@ async function renderCursista() {
     const number = Number(String(value || '').trim());
     return Number.isInteger(number) && number > 0 ? String(number) : '';
   };
-  const nextStudentFileNumber = async () => {
-    const students = await dataService.listCursistas();
-    const used = new Set(students
-      .filter((student) => !focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
-      .map((student) => Number(student.numeroFichaIndividual))
-      .filter((number) => Number.isInteger(number) && number > 0));
-    let next = 1;
-    while (used.has(next)) next += 1;
-    return String(next);
-  };
-  const suggestStudentFileNumber = async () => {
-    if (!studentFileNumberInput) return;
-    studentFileNumberInput.value = await nextStudentFileNumber();
-  };
   const financialSummaryTitle = `Resumo financeiro dos cursistas${focusStudentRetreat ? ` - ${focusStudentRetreat.nome}` : ''}`;
   const financialSummaryRows = async () => {
     const students = await dataService.listCursistas();
@@ -6356,9 +6351,11 @@ async function route() {
     app.querySelector('#new-student')?.addEventListener('click', async () => {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) return;
       clearStudentForm({ focus: false });
-      await suggestStudentFileNumber();
-      studentFileNumberInput?.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => studentFileNumberInput?.focus({ preventScroll: true }), 180);
+      const students = await dataService.listCursistas();
+      if (!studentFileNumberInput) return;
+      studentFileNumberInput.value = nextAvailableStudentFileNumber(students, activeRetreat?.id || '');
+      studentFileNumberInput.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      studentFileNumberInput.focus({ preventScroll: true });
     });
     editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
