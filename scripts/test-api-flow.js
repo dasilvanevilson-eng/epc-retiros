@@ -27,6 +27,7 @@ const retreatId = crypto.randomUUID();
 const personCpf = `90200${suffix.replace(/\D/g, '').padEnd(6, '2')}`.slice(0, 11);
 const enrolmentId = crypto.randomUUID();
 const studentCpf = `90300${suffix.replace(/\D/g, '').padEnd(6, '3')}`.slice(0, 11);
+const studentId = crypto.randomUUID();
 const publicToken = () => crypto.randomBytes(24).toString('hex');
 const receiverToken = publicToken();
 const legacySectorToken = publicToken();
@@ -64,7 +65,7 @@ async function cleanup() {
     }
   };
   await safe('DELETE', `/api/adesoes/${encodeURIComponent(enrolmentId)}`);
-  await safe('DELETE', `/api/cursistas/${encodeURIComponent(studentCpf)}`);
+  await safe('DELETE', `/api/cursistas/${encodeURIComponent(studentId)}`);
   await safe('DELETE', `/api/pessoas/${encodeURIComponent(personCpf)}`);
   await safe('DELETE', `/api/retiros/${encodeURIComponent(retreatId)}`);
 }
@@ -147,12 +148,13 @@ async function main() {
   });
   assert(enrolment.pessoaId === personCpf && enrolment.setores.includes('Secretaria'), 'API nao salvou adesao relacional.');
 
-  const student = await api(`/api/cursistas/${encodeURIComponent(studentCpf)}`, {
+  const student = await api(`/api/cursistas/${encodeURIComponent(studentId)}`, {
     method: 'PUT',
     body: JSON.stringify({
-      id: studentCpf,
+      id: studentId,
       cpf: studentCpf,
       retiroId: retreatId,
+      numeroFichaIndividual: 1,
       nome: `Cursista API ${suffix}`,
       nascimento: '2013-03-03',
       telefone: '(47) 94444-0000',
@@ -170,7 +172,7 @@ async function main() {
       criadoEm: new Date().toISOString(),
     }),
   });
-  assert(student.id === studentCpf && student.valorInscricao === 180, 'API nao salvou cursista relacional.');
+  assert(student.id === studentId && student.cpf === studentCpf && student.numeroFichaIndividual === 1 && student.valorInscricao === 180, 'API nao salvou cursista com identidade relacional.');
 
   const receiverRows = await api('/api/adesoes', {
     headers: { 'X-Public-Receiver-Token': receiverToken },

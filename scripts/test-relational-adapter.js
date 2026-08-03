@@ -26,8 +26,14 @@ const { findPublicReceiverRetreat, findPublicSectorLink } = require('../publicLi
 const runId = crypto.randomUUID();
 const suffix = runId.slice(0, 8);
 const retreatId = crypto.randomUUID();
+const secondRetreatId = crypto.randomUUID();
 const personCpf = `90000${suffix.replace(/\D/g, '').padEnd(6, '0')}`.slice(0, 11);
 const studentCpf = `90100${suffix.replace(/\D/g, '').padEnd(6, '1')}`.slice(0, 11);
+const studentId = crypto.randomUUID();
+const secondRetreatStudentId = crypto.randomUUID();
+const duplicateCandidateId = crypto.randomUUID();
+const secondStudentCpf = `90400${suffix.replace(/\D/g, '').padEnd(6, '4')}`.slice(0, 11);
+const editedStudentCpf = `90500${suffix.replace(/\D/g, '').padEnd(6, '5')}`.slice(0, 11);
 const enrolmentId = crypto.randomUUID();
 const communityId = crypto.randomUUID();
 const badgeId = crypto.randomUUID();
@@ -46,6 +52,16 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
+async function assertRejects(action, expectedMessage) {
+  try {
+    await action();
+  } catch (error) {
+    assert(String(error.message || '').includes(expectedMessage), `Erro inesperado: ${error.message}`);
+    return;
+  }
+  throw new Error(`Operacao deveria falhar: ${expectedMessage}`);
+}
+
 async function cleanup() {
   const safeDelete = async (store, id) => {
     try {
@@ -61,9 +77,12 @@ async function cleanup() {
   await safeDelete('crachas', badgeId);
   await safeDelete('comunidades', communityId);
   await safeDelete('adesoes', enrolmentId);
-  await safeDelete('cursistas', studentCpf);
+  await safeDelete('cursistas', studentId);
+  await safeDelete('cursistas', secondRetreatStudentId);
+  await safeDelete('cursistas', duplicateCandidateId);
   await safeDelete('pessoas', personCpf);
   await safeDelete('retiros', retreatId);
+  await safeDelete('retiros', secondRetreatId);
 }
 
 async function main() {
@@ -172,9 +191,10 @@ async function main() {
   assert(enrolmentPaid.taxaPaga === true && enrolmentPaid.valorPago === 60, 'Atualizacao financeira da adesao falhou.');
 
   const student = await db.saveRecord('cursistas', {
-    id: studentCpf,
+    id: studentId,
     cpf: studentCpf,
     retiroId: retreatId,
+    numeroFichaIndividual: 1,
     nome: `Cursista Smoke ${suffix}`,
     nascimento: '2012-05-10',
     telefone: '(47) 98888-0000',
@@ -208,11 +228,39 @@ async function main() {
     saldoPagar: 'R$ 90,00',
     criadoEm: new Date().toISOString(),
   });
-  assert(student.id === studentCpf && student.cpf === studentCpf, 'Cursista nao preservou CPF como id externo.');
+  assert(student.id === studentId && student.cpf === studentCpf, 'Cursista nao preservou UUID e CPF separadamente.');
+  assert(student.numeroFichaIndividual === 1, 'Cursista nao preservou o numero da ficha.');
   assert(student.valorInscricao === 180 && student.saldoPagar === 90, 'Valores do cursista nao foram convertidos.');
 
-  const studentPaid = await db.saveRecord('cursistas', {
+  await assertRejects(() => db.saveRecord('cursistas', {
     ...student,
+    id: duplicateCandidateId,
+    numeroFichaIndividual: 2,
+  }), 'CPF ja possui cadastro de cursista neste retiro');
+  await assertRejects(() => db.saveRecord('cursistas', {
+    ...student,
+    id: duplicateCandidateId,
+    cpf: secondStudentCpf,
+  }), 'numero de ficha ja possui cadastro de cursista neste retiro');
+
+  await db.saveRecord('retiros', {
+    ...retreat,
+    id: secondRetreatId,
+    nome: `Smoke Relacional 2 ${suffix}`,
+    recebedorToken: publicToken(),
+  });
+  const sameCpfOtherRetreat = await db.saveRecord('cursistas', {
+    ...student,
+    id: secondRetreatStudentId,
+    retiroId: secondRetreatId,
+  });
+  assert(sameCpfOtherRetreat.cpf === studentCpf && sameCpfOtherRetreat.numeroFichaIndividual === 1, 'Mesmo CPF e numero deveriam ser permitidos em outro retiro.');
+
+  const editedStudent = await db.saveRecord('cursistas', { ...student, cpf: editedStudentCpf });
+  assert(editedStudent.id === studentId && editedStudent.cpf === editedStudentCpf, 'Edicao de CPF alterou o UUID da ficha.');
+
+  const studentPaid = await db.saveRecord('cursistas', {
+    ...editedStudent,
     recebedorValorPago: 180,
     recebedorTaxaPaga: true,
     recebedorFormaPagamento: 'Dinheiro',
@@ -225,12 +273,12 @@ async function main() {
     retiroId: retreatId,
     nome: `Comunidade Smoke ${suffix}`,
     monitorIds: [personCpf],
-    membroIds: [studentCpf],
+    membroIds: [studentId],
     ordem: 1,
     criadoEm: new Date().toISOString(),
   });
   assert(community.monitorIds.includes(personCpf), 'Monitor da comunidade nao retornou.');
-  assert(community.membroIds.includes(studentCpf), 'Cursista da comunidade nao retornou.');
+  assert(community.membroIds.includes(studentId), 'Cursista da comunidade nao retornou pelo UUID.');
 
   const registrationLink = await findPublicSectorLink({ token: secretariaRegistrationToken, type: 'cadastro' });
   assert(registrationLink?.retreatId === retreatId && registrationLink.sector === 'Secretaria', 'Resolucao do link publico de cadastro falhou.');
@@ -295,7 +343,7 @@ async function main() {
   const leftovers = await Promise.all([
     db.getRecord('retiros', retreatId),
     db.getRecord('pessoas', personCpf),
-    db.getRecord('cursistas', studentCpf),
+    db.getRecord('cursistas', studentId),
     db.getRecord('comunidades', communityId),
     db.getRecord('crachas', badgeId),
     db.getRecord('configuracoes', settingId),

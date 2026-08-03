@@ -462,7 +462,7 @@ const brazilianStates = [['AC', 'Acre'], ['AL', 'Alagoas'], ['AP', 'Amapá'], ['
 const standardSectorsKey = 'epc-standard-sectors';
 const removeStudentFromCommunities = async (studentOrId) => {
   const studentId = typeof studentOrId === 'string' ? studentOrId : studentOrId?.id;
-  const studentCpf = typeof studentOrId === 'string' ? '' : normalizeCpf(studentOrId?.cpf || studentOrId?.id);
+  const studentCpf = typeof studentOrId === 'string' ? '' : normalizeCpf(studentOrId?.cpf);
   const identifiers = new Set([studentId, studentCpf].filter(Boolean));
   if (!identifiers.size) return;
   const communities = await dataService.listComunidades();
@@ -3541,7 +3541,7 @@ async function renderCursista() {
     if (cpf.length !== 11 || !isValidCpf(cpf)) return false;
     const previousId = form.elements.id?.value || '';
     const students = await dataService.listCursistas();
-    const duplicated = students.find((student) => normalizeCpf(student.cpf || student.id) === cpf && student.id !== previousId);
+    const duplicated = students.find((student) => student.retiroId === focusStudentRetreat?.id && normalizeCpf(student.cpf) === cpf && student.id !== previousId);
     if (!duplicated) return false;
     form.elements.cpf.setCustomValidity(duplicateStudentCpfMessage);
     app.querySelector('#student-message').textContent = duplicateStudentCpfMessage;
@@ -3591,7 +3591,7 @@ async function renderCursista() {
       focusStudentIssue(studentFileNumberInput);
       return;
     }
-    const duplicatedCpf = currentStudents.find((student) => normalizeCpf(student.cpf || student.id) === cpf && student.id !== previousId);
+    const duplicatedCpf = currentStudents.find((student) => student.retiroId === focusStudentRetreat?.id && normalizeCpf(student.cpf) === cpf && student.id !== previousId);
     if (duplicatedCpf) {
       app.querySelector('#student-message').textContent = duplicateStudentCpfMessage;
       focusStudentIssue(form.elements.cpf);
@@ -3625,15 +3625,15 @@ async function renderCursista() {
       }
     }
     values.set('numeroFichaIndividual', numeroFichaIndividual);
-    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: cpf, cpf, numeroFichaIndividual, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
-    await dataService.saveCursista(record);
-    if (previousId && previousId !== cpf) {
-      const communities = await dataService.listComunidades();
-      await Promise.all(communities.map((community) => {
-        const membroIds = (community.membroIds || []).map((studentId) => studentId === previousId ? cpf : studentId);
-        return membroIds.join('|') === (community.membroIds || []).join('|') ? null : dataService.saveComunidade({ ...community, membroIds });
-      }).filter(Boolean));
-      await dataService.deleteCursista(previousId);
+    const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: currentStudent?.id || createId(), cpf, numeroFichaIndividual, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
+    try {
+      await dataService.saveCursista(record);
+    } catch (error) {
+      const message = String(error?.message || 'Nao foi possivel salvar o cursista.');
+      app.querySelector('#student-message').textContent = message;
+      if (normalizeText(message).includes('numero de ficha')) focusStudentIssue(studentFileNumberInput);
+      else if (normalizeText(message).includes('cpf')) focusStudentIssue(form.elements.cpf);
+      return;
     }
     form.reset();
     ['batizado', 'primeiraComunhao', 'estuda', 'fezRetiro'].forEach((name) => {
@@ -3668,7 +3668,7 @@ async function renderCursistaDetalhe(id) {
   const canDeleteStudentDetail = canModifyRetreat(retreat);
   const field = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const address = [student.rua, student.numero, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ');
-  layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('Número da ficha', student.numeroFichaIndividual)}${field('CPF', formatCpf(student.cpf || student.id))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
+  layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('Número da ficha', student.numeroFichaIndividual)}${field('CPF', formatCpf(student.cpf))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
   const studentHealthItems = [...app.querySelectorAll('.panel')].find((panel) => panel.querySelector('h2')?.textContent === 'Saúde e inscrição')?.querySelectorAll('.simple-list > div');
   studentHealthItems?.[3]?.insertAdjacentHTML('afterend', `${field('Toma medicamento contínuo', student.medicamentoContinuo || 'Não')}${field('Qual medicamento contínuo?', student.qualMedicamentoContinuo)}`);
   if (!canDeleteStudentDetail) app.querySelector('#delete-consulted-student')?.closest('.panel')?.remove();
@@ -5608,7 +5608,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       return false;
     }
     const students = await listStudentsForCpfCheck();
-    const hasConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
+    const hasConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf) === cpf);
     if (!hasConflict) {
       if (form.querySelector('#form-message').textContent === publicStudentConflictMessage) clearDuplicateCpfMessage();
       return false;
@@ -5643,7 +5643,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const mainCpf = normalizeCpf(form.elements.cpf.value);
     const teamConflictEntry = await findFocusedRetreatEntryByCpf(cpf, embedded ? editingSpouseEntry?.id : '');
     const students = await listStudentsForCpfCheck();
-    const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf || student.id) === cpf);
+    const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf) === cpf);
     const sameAsMainCpf = mainCpf && mainCpf === cpf;
     if (!teamConflictEntry && !studentConflict && !sameAsMainCpf) {
       const currentMessage = form.querySelector('#form-message').textContent;
@@ -6325,7 +6325,7 @@ async function route() {
       const students = (await dataService.listCursistas())
         .filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id))
         .filter((student) => {
-          const cpf = normalizeCpf(student.cpf || student.id);
+          const cpf = normalizeCpf(student.cpf);
           const fileNumber = student.numeroFichaIndividual ? `Ficha ${student.numeroFichaIndividual}` : '';
           const haystack = normalizeText([student.numeroFichaIndividual, fileNumber, student.nome, cpf, cpf && formatCpf(cpf), student.telefone, student.nomePai, student.nomeMae].filter(Boolean).join(' '));
           return !term || haystack.includes(term);
@@ -6334,7 +6334,7 @@ async function route() {
       if (!studentSearchOpen || currentRequest !== studentSearchRequest) return;
       studentSearchResults.hidden = false;
       studentSearchResults.innerHTML = students.length ? students.map((student) => {
-        const cpf = normalizeCpf(student.cpf || student.id);
+        const cpf = normalizeCpf(student.cpf);
         const fileNumber = student.numeroFichaIndividual ? `Ficha ${escapeHtml(student.numeroFichaIndividual)} · ` : '';
         return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><strong>${fileNumber}${escapeHtml(student.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
       }).join('') : '<p>Nenhum cursista encontrado neste retiro.</p>';

@@ -206,7 +206,7 @@ function createStudent(retreat, index) {
   const paid = index % 6 === 0 ? 0 : index % 5 === 0 ? value / 2 : value;
   const receiverPaid = index % 4 === 0 ? paid : 0;
   return {
-    id: cpf,
+    id: crypto.randomUUID(),
     cpf,
     retiroId: retreat.id,
     nome: fullName(gender === 'Masculino' ? childMale : childFemale, index, ' Cursista'),

@@ -190,6 +190,24 @@ async function saveProtectedRegistration(storeName, record) {
   return save(storeName, nextRecord);
 }
 
+async function saveStudentRegistration(record) {
+  const nextRecord = { ...record, id: record.id || createId() };
+  if ((await ensureBackend()) === 'indexeddb') {
+    const students = await legacyStore.list('cursistas');
+    const cpf = String(nextRecord.cpf || '').replace(/\D/g, '');
+    const fileNumber = Number(nextRecord.numeroFichaIndividual);
+    const duplicateCpf = cpf && students.find((student) => student.id !== nextRecord.id
+      && student.retiroId === nextRecord.retiroId
+      && String(student.cpf || '').replace(/\D/g, '') === cpf);
+    if (duplicateCpf) throw new Error('Este CPF ja possui cadastro de cursista neste retiro.');
+    const duplicateFileNumber = Number.isInteger(fileNumber) && fileNumber > 0 && students.find((student) => student.id !== nextRecord.id
+      && student.retiroId === nextRecord.retiroId
+      && Number(student.numeroFichaIndividual) === fileNumber);
+    if (duplicateFileNumber) throw new Error('Este numero de ficha ja possui cadastro de cursista neste retiro.');
+  }
+  return saveProtectedRegistration('cursistas', nextRecord);
+}
+
 export const retreatDefaults = {
   setores: ['Animação/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Direção Espiritual', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligação', 'Monitor(es)', 'Participações especiais', 'Pegue e Pague', 'Recebedor(es)', 'Recreação', 'Refeitório', 'Secretaria', 'Sineteira(s)', 'Zeladoria'],
   dias: ['Sexta-feira', 'Sábado', 'Domingo'],
@@ -215,7 +233,7 @@ export const dataService = {
   savePessoa: (person) => save('pessoas', person),
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: () => list('cursistas'),
-  saveCursista: (student) => saveProtectedRegistration('cursistas', student),
+  saveCursista: (student) => saveStudentRegistration(student),
   deleteCursista: (id) => remove('cursistas', id),
   listCursistasSmp: (retiroId = '') => api(`/cursista-smp${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
   saveCursistaSmp: (student) => {

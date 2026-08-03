@@ -32,6 +32,25 @@ function auditCollection(name, records, requiredFields) {
   return rows.length;
 }
 
+function auditStudentBusinessKeys(records) {
+  const seenCpf = new Map();
+  const seenFileNumber = new Map();
+  const issues = [];
+  records.forEach((record) => {
+    const cpf = String(record.cpf || '').replace(/\D/g, '');
+    const fileNumber = Number(record.numeroFichaIndividual);
+    const cpfKey = cpf ? `${record.retiroId}|${cpf}` : '';
+    const fileNumberKey = Number.isInteger(fileNumber) && fileNumber > 0 ? `${record.retiroId}|${fileNumber}` : '';
+    if (cpfKey && seenCpf.has(cpfKey)) issues.push(`CPF repetido no retiro entre ${seenCpf.get(cpfKey)} e ${record.id}`);
+    else if (cpfKey) seenCpf.set(cpfKey, record.id);
+    if (fileNumberKey && seenFileNumber.has(fileNumberKey)) issues.push(`Numero de ficha repetido no retiro entre ${seenFileNumber.get(fileNumberKey)} e ${record.id}`);
+    else if (fileNumberKey) seenFileNumber.set(fileNumberKey, record.id);
+  });
+  console.log(`cursistas: ${issues.length} conflito(s) de identidade por retiro.`);
+  issues.slice(0, 50).forEach((issue) => console.log(`- ${issue}`));
+  return issues.length;
+}
+
 function main() {
   const database = readDatabase();
   const adesoes = Array.isArray(database.adesoes) ? database.adesoes : [];
@@ -39,7 +58,8 @@ function main() {
 
   const issues = [
     auditCollection('adesoes', adesoes, ['id', 'retiroId', 'pessoaId', 'nome', 'setores', 'dias']),
-    auditCollection('cursistas', cursistas, ['id', 'retiroId', 'nome', 'nascimento']),
+    auditCollection('cursistas', cursistas, ['id', 'retiroId', 'cpf', 'numeroFichaIndividual', 'nome', 'nascimento']),
+    auditStudentBusinessKeys(cursistas),
   ].reduce((total, count) => total + count, 0);
 
   if (issues) {

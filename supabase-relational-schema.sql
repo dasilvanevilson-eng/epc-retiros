@@ -164,7 +164,7 @@ create table if not exists public.adesao_espaco_kids (
 create table if not exists public.cursistas (
   id uuid primary key default gen_random_uuid(),
   retiro_id uuid not null references public.retiros(id) on delete cascade,
-  cpf text unique,
+  cpf text,
   numero_ficha_individual integer,
   nome text not null,
   nascimento date,
@@ -214,6 +214,10 @@ create table if not exists public.cursistas (
 create unique index if not exists cursistas_retiro_numero_ficha_individual_unique
 on public.cursistas(retiro_id, numero_ficha_individual)
 where numero_ficha_individual is not null;
+
+create unique index if not exists cursistas_retiro_cpf_unique
+on public.cursistas(retiro_id, cpf)
+where cpf is not null;
 
 create table if not exists public.comunidades (
   id uuid primary key default gen_random_uuid(),

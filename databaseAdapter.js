@@ -150,6 +150,8 @@ const boolOrNull = (value) => {
 };
 const choiceFromBool = (value) => value === null || value === undefined ? '' : (value ? 'Sim' : 'Não');
 const duplicateEnrolmentCpfMessage = 'Este CPF ja possui adesao neste retiro.';
+const duplicateStudentCpfMessage = 'Este CPF ja possui cadastro de cursista neste retiro.';
+const duplicateStudentFileNumberMessage = 'Este numero de ficha ja possui cadastro de cursista neste retiro.';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 const isUuid = (value = '') => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
 const rowId = (row) => row?.cpf || row?.legacy_id || row?.id;
@@ -611,7 +613,7 @@ async function saveEnrolment(record) {
 function mapStudent(row) {
   return {
     ...(row.extras || {}),
-    id: row.cpf || row.id,
+    id: row.id,
     cpf: row.cpf || row.extras?.cpf || '',
     retiroId: row.retiro_id,
     numeroFichaIndividual: row.numero_ficha_individual || row.extras?.numeroFichaIndividual || '',
@@ -663,15 +665,52 @@ function mapStudent(row) {
 async function findStudentRow(id) {
   if (!id) return null;
   if (isUuid(id)) return oneWhere('cursistas', `id=eq.${enc(id)}`);
-  return oneWhere('cursistas', `cpf=eq.${enc(id)}`);
+  const legacyMatches = await rowsWhere('cursistas', `cpf=eq.${enc(id)}`);
+  return legacyMatches.length === 1 ? legacyMatches[0] : null;
+}
+
+async function findStudentRowForRetreat(id, retreatId) {
+  if (!id) return null;
+  if (isUuid(id)) return oneWhere('cursistas', `id=eq.${enc(id)}&retiro_id=eq.${enc(retreatId)}`);
+  if (!retreatId) return findStudentRow(id);
+  return oneWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(id)}`);
+}
+
+async function assertStudentBusinessKeys(record, currentId = '') {
+  const retreatId = String(record.retiroId || '').trim();
+  const cpf = String(record.cpf || '').trim();
+  const fileNumber = Number(record.numeroFichaIndividual);
+  if (!retreatId) return;
+  if (cpf) {
+    const duplicateCpf = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(cpf)}`))
+      .find((row) => row.id !== currentId);
+    if (duplicateCpf) {
+      const error = new Error(duplicateStudentCpfMessage);
+      error.code = 'DUPLICATE_RETREAT_STUDENT_CPF';
+      throw error;
+    }
+  }
+  if (Number.isInteger(fileNumber) && fileNumber > 0) {
+    const duplicateFileNumber = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&numero_ficha_individual=eq.${enc(fileNumber)}`))
+      .find((row) => row.id !== currentId);
+    if (duplicateFileNumber) {
+      const error = new Error(duplicateStudentFileNumberMessage);
+      error.code = 'DUPLICATE_RETREAT_STUDENT_FILE_NUMBER';
+      throw error;
+    }
+  }
 }
 
 async function saveStudent(record) {
   const mappedKeys = new Set(['id', 'cpf', 'retiroId', 'numeroFichaIndividual', 'nome', 'nascimento', 'telefone', 'cep', 'rua', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'batizado', 'primeiraComunhao', 'estuda', 'serie', 'escola', 'fezRetiro', 'qualRetiro', 'nomePai', 'telefonePai', 'nomeMae', 'telefoneMae', 'paisMovimento', 'qualMovimento', 'convidou', 'camiseta', 'camisetaOutro', 'intoleranciaAlimentos', 'qualIntolerancia', 'alergiaMedicamento', 'qualAlergia', 'medicamentoCabeca', 'medicamentoEstomago', 'valorInscricao', 'valorPago', 'saldoPagar', 'recebedorValorPago', 'recebedorTaxaPaga', 'recebedorFormaPagamento', 'recebedorObservacao', 'criadoEm', 'createdAt', 'updatedAt']);
-  const current = await findStudentRow(record.id || record.cpf);
-  const cpf = record.cpf || (!isUuid(record.id) ? record.id : '');
-  const row = await upsert('cursistas', compact({
-    id: current?.id || (isUuid(record.id) ? record.id : undefined),
+  const current = isUuid(record.id) ? await findStudentRow(record.id) : null;
+  const studentId = current?.id || (isUuid(record.id) ? record.id : undefined);
+  const cpf = record.cpf || '';
+  await assertStudentBusinessKeys(record, studentId);
+  let row;
+  try {
+    row = await upsert('cursistas', compact({
+    id: studentId,
     cpf: textOrNull(cpf),
     retiro_id: record.retiroId,
     numero_ficha_individual: record.numeroFichaIndividual ? Number(record.numeroFichaIndividual) : null,
@@ -717,7 +756,13 @@ async function saveStudent(record) {
     created_at: record.createdAt || undefined,
     updated_at: record.updatedAt || undefined,
     extras: extras(record, mappedKeys),
-  }));
+    }));
+  } catch (error) {
+    const message = String(error?.message || '');
+    if (message.includes('cursistas_retiro_cpf_unique')) throw new Error(duplicateStudentCpfMessage);
+    if (message.includes('cursistas_retiro_numero_ficha_individual_unique')) throw new Error(duplicateStudentFileNumberMessage);
+    throw error;
+  }
   return mapStudent(row);
 }
 
@@ -951,7 +996,7 @@ function mapCommunity(row, lookups = {}) {
     liderCasalId: row.lider_casal_id || row.extras?.liderCasalId || '',
     monitorCasalId: row.monitor_casal_id || row.extras?.monitorCasalId || '',
     monitorIds: array(lookups.monitorsByCommunity?.get(row.id)).map(rowId),
-    membroIds: array(lookups.studentsByCommunity?.get(row.id)).map((item) => item.cpf || item.id),
+    membroIds: array(lookups.studentsByCommunity?.get(row.id)).map((item) => item.id),
     ordem: row.ordem,
     criadoEm: row.criado_em,
     createdAt: row.created_at,
@@ -1003,7 +1048,7 @@ async function saveCommunity(record) {
     deleteWhere('comunidade_cursistas', `comunidade_id=eq.${enc(record.id)}`),
   ]);
   const monitorRows = (await Promise.all(array(record.monitorIds).map(findPersonRow))).filter(Boolean);
-  const studentRows = (await Promise.all(array(record.membroIds).map(findStudentRow))).filter(Boolean);
+  const studentRows = (await Promise.all(array(record.membroIds).map((id) => findStudentRowForRetreat(id, record.retiroId)))).filter(Boolean);
   await Promise.all([
     monitorRows.length ? upsert('comunidade_monitores', monitorRows.map((person) => ({ comunidade_id: record.id, pessoa_id: person.id })), 'comunidade_id,pessoa_id') : null,
     studentRows.length ? upsert('comunidade_cursistas', studentRows.map((student) => ({ comunidade_id: record.id, cursista_id: student.id })), 'comunidade_id,cursista_id') : null,
@@ -1112,8 +1157,9 @@ async function saveRelational(storeName, record) {
 async function deleteRelational(storeName, id) {
   if (storeName === 'pessoas') return deletePerson(id);
   if (storeName === 'cursistas') {
-    if (isUuid(id)) return deleteWhere('cursistas', `id=eq.${enc(id)}`);
-    return deleteWhere('cursistas', `cpf=eq.${enc(id)}`);
+    const row = await findStudentRow(id);
+    if (row) return deleteWhere('cursistas', `id=eq.${enc(row.id)}`);
+    return undefined;
   }
   if (storeName === 'perfil_permissoes') {
     const [perfilId, ...rest] = String(id).split(':');
@@ -1173,6 +1219,26 @@ async function saveRecord(storeName, record) {
         const error = new Error(duplicateEnrolmentCpfMessage);
         error.code = 'DUPLICATE_RETREAT_ENROLMENT_CPF';
         error.conflictId = conflict.id;
+        throw error;
+      }
+    }
+    if (storeName === 'cursistas' && record?.retiroId) {
+      const normalizedCpf = String(record.cpf || '').replace(/\D/g, '');
+      const fileNumber = Number(record.numeroFichaIndividual);
+      const duplicateCpf = normalizedCpf && collection.find((item) => item.id !== record.id
+        && item.retiroId === record.retiroId
+        && String(item.cpf || '').replace(/\D/g, '') === normalizedCpf);
+      if (duplicateCpf) {
+        const error = new Error(duplicateStudentCpfMessage);
+        error.code = 'DUPLICATE_RETREAT_STUDENT_CPF';
+        throw error;
+      }
+      const duplicateFileNumber = Number.isInteger(fileNumber) && fileNumber > 0 && collection.find((item) => item.id !== record.id
+        && item.retiroId === record.retiroId
+        && Number(item.numeroFichaIndividual) === fileNumber);
+      if (duplicateFileNumber) {
+        const error = new Error(duplicateStudentFileNumberMessage);
+        error.code = 'DUPLICATE_RETREAT_STUDENT_FILE_NUMBER';
         throw error;
       }
     }

@@ -141,7 +141,7 @@ function createStudent(retreat, index) {
   const value = Number(retreat.valorInscricaoCursista) || 180;
   const paid = index % 5 === 0 ? value / 2 : value;
   return {
-    id: cpf,
+    id: randomUUID(),
     cpf,
     retiroId: retreat.id,
     nome: fullName(gender === 'Masculino' ? maleKids : femaleKids, index, ' Cursista'),
