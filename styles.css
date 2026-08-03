@@ -4638,6 +4638,34 @@ body:has(.login-shell) {
     #fff;
 }
 
+.student-screen #student-search-results article {
+  grid-template-columns:minmax(0, 1fr);
+}
+
+.student-screen #student-search-results .student-search-choice-heading {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  align-items:baseline;
+  gap:12px;
+}
+
+.student-screen #student-search-results .student-search-choice-name {
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+.student-screen #student-search-results .student-search-choice-file-number {
+  margin:0;
+  color:#15324a;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.student-screen #student-search-results .student-search-choice-details {
+  margin-top:4px;
+}
+
 .student-screen .student-registration-actions {
   flex-direction:row;
 }

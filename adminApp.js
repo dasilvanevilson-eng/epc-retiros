@@ -6368,8 +6368,8 @@ async function route() {
       studentSearchResults.hidden = false;
       studentSearchResults.innerHTML = students.length ? students.map((student) => {
         const cpf = normalizeCpf(student.cpf);
-        const fileNumber = student.numeroFichaIndividual ? `Ficha ${escapeHtml(student.numeroFichaIndividual)} · ` : '';
-        return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><strong>${fileNumber}${escapeHtml(student.nome || 'Sem nome')}</strong><span>${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
+        const fileNumber = student.numeroFichaIndividual ? `Ficha ${escapeHtml(student.numeroFichaIndividual)}` : 'Sem número';
+        return `<article><button type="button" class="student-search-choice" data-student-select="${student.id}"><div class="student-search-choice-heading"><strong class="student-search-choice-name">${escapeHtml(student.nome || 'Sem nome')}</strong><span class="student-search-choice-file-number">${fileNumber}</span></div><span class="student-search-choice-details">${cpf ? formatCpf(cpf) : 'CPF não informado'} · ${escapeHtml(student.telefone || 'Sem telefone')}</span></button></article>`;
       }).join('') : '<p>Nenhum cursista encontrado neste retiro.</p>';
       studentSearchResults.querySelectorAll('[data-student-select]').forEach((button) => button.addEventListener('click', () => {
         const student = students.find((item) => item.id === button.dataset.studentSelect);
@@ -6400,7 +6400,32 @@ async function route() {
       if (studentFileNumberInput) studentFileNumberInput.value = fileNumber;
       form.querySelector('#student-message').textContent = message;
     };
-    const lookupStudentByFileNumber = () => {
+    const executeStudentFileLookup = async (typedFileNumber, currentRequest) => {
+      const fileNumber = normalizeStudentFileLookup(typedFileNumber);
+      if (!fileNumber) {
+        if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, 'Informe um número da ficha válido.');
+        return;
+      }
+      try {
+        const students = await dataService.listCursistas();
+        if (currentRequest !== studentFileLookupRequest) return;
+        const student = students.find((item) => (
+          item.retiroId === activeRetreat?.id
+          && Number(item.numeroFichaIndividual) === fileNumber
+        ));
+        if (!student) {
+          resetStudentFileLookupState(typedFileNumber, 'Nenhuma ficha encontrada neste retiro.');
+          return;
+        }
+        loadStudent(student);
+        ensureStudentMedicationDefault(student);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => editSelectedStudent?.focus({ preventScroll: true }), 0);
+      } catch (error) {
+        if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, error.message || 'Não foi possível consultar o número da ficha.');
+      }
+    };
+    const lookupStudentByFileNumber = ({ immediate = false } = {}) => {
       if (!studentFileNumberInput || !studentFileLookupEnabled()) return;
       closeStudentSearchResults();
       const typedFileNumber = studentFileNumberInput.value;
@@ -6408,30 +6433,12 @@ async function route() {
       const currentRequest = studentFileLookupRequest;
       resetStudentFileLookupState(typedFileNumber, typedFileNumber.trim() ? 'Buscando ficha...' : (canEditStudentRetreat ? 'Clique em Incluir novo para iniciar um cadastro.' : 'Retiro concluido: cursistas disponiveis apenas para consulta.'));
       if (!typedFileNumber.trim()) return;
-      studentFileLookupTimer = window.setTimeout(async () => {
-        const fileNumber = normalizeStudentFileLookup(typedFileNumber);
-        if (!fileNumber) {
-          if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, 'Informe um número da ficha válido.');
-          return;
-        }
-        try {
-          const students = await dataService.listCursistas();
-          if (currentRequest !== studentFileLookupRequest) return;
-          const student = students.find((item) => (
-            item.retiroId === activeRetreat?.id
-            && Number(item.numeroFichaIndividual) === fileNumber
-          ));
-          if (!student) {
-            resetStudentFileLookupState(typedFileNumber, 'Nenhuma ficha encontrada neste retiro.');
-            return;
-          }
-          loadStudent(student);
-          ensureStudentMedicationDefault(student);
-          form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          setTimeout(() => editSelectedStudent?.focus({ preventScroll: true }), 0);
-        } catch (error) {
-          if (currentRequest === studentFileLookupRequest) resetStudentFileLookupState(typedFileNumber, error.message || 'Não foi possível consultar o número da ficha.');
-        }
+      if (immediate) {
+        void executeStudentFileLookup(typedFileNumber, currentRequest);
+        return;
+      }
+      studentFileLookupTimer = window.setTimeout(() => {
+        void executeStudentFileLookup(typedFileNumber, currentRequest);
       }, 350);
     };
     setStudentFormLocked(true);
@@ -6448,7 +6455,12 @@ async function route() {
     });
     editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { cancelStudentFileLookup(); setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
-    studentFileNumberInput?.addEventListener('input', lookupStudentByFileNumber);
+    studentFileNumberInput?.addEventListener('input', () => lookupStudentByFileNumber());
+    studentFileNumberInput?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || !studentFileLookupEnabled()) return;
+      event.preventDefault();
+      lookupStudentByFileNumber({ immediate: true });
+    });
     studentSearchInput.addEventListener('focus', () => { cancelStudentFileLookup(); renderStudentSearch(); });
     studentSearchInput.addEventListener('input', () => { cancelStudentFileLookup(); renderStudentSearch(); });
     const studentSearchField = studentSearchInput.closest('.registration-search-field');
