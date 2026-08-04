@@ -321,6 +321,13 @@ const formatCpf = (value = '') => {
   const digits = normalizeCpf(value);
   return digits.replace(/^(\d{3})(\d{0,3})(\d{0,3})(\d{0,2}).*/, (_, first, second, third, fourth) => [first, second, third].filter(Boolean).join('.') + (fourth ? `-${fourth}` : ''));
 };
+const formatBrazilianPhone = (value = '') => {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (!digits) return '';
+  return digits.length <= 10
+    ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`)
+    : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`);
+};
 const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.updatedAt || record.enviadoEm || record.criadoEm || record.createdAt || '') || 0;
 const participantIdentity = (record = {}) => normalizeCpf(record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id) || String(record.pessoaId || record.id || record.nome || '').trim();
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
@@ -2986,6 +2993,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const typedDateFields = expectedType === 'cursista-smp'
     ? ['nascimentoDele', 'nascimentoDela', 'casamentoDele', 'casamentoDela', 'uniaoCasal', ...Array.from({ length: 5 }, (_, index) => `smpKidNascimento${index + 1}`)]
     : [];
+  const phoneFields = expectedType === 'cursista-smp' ? ['foneDele', 'foneDela', 'foneApresentante', 'foneFamiliar'] : [];
   const cpfFields = ['cpfDele', 'cpfDela'];
   if (typedDateFields.length) wireTypedDates(form, typedDateFields.map((name) => `[name="${name}"]`).join(', '));
   let records = [];
@@ -3050,6 +3058,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const clearForm = ({ unlock = false, focus = false, notice = '' } = {}) => {
     selectedId = '';
     form.reset();
+    syncChoiceStates(form);
+    form.querySelectorAll('input, select, textarea').forEach((control) => control.setCustomValidity?.(''));
     if (fileNumberInput) fileNumberInput.value = '';
     deleteButton.hidden = true;
     deleteButton.disabled = true;
@@ -3073,6 +3083,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       if (!form.elements[name]) return;
       const value = record[name];
       if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp'].includes(name)) form.elements[name].value = currency(value);
+      else if (phoneFields.includes(name)) form.elements[name].value = formatBrazilianPhone(value);
       else if (typedDateFields.includes(name)) form.elements[name].value = formatDateInput(value) || value || '';
       else form.elements[name].value = value || '';
     });
@@ -3080,6 +3091,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     setSmpPaymentDetails({ method: record.recebedorFormaPagamentoSmp || '', observation: record.recebedorObservacaoSmp || '', paidAmount });
     radioNames.forEach((name) => fillRadio(name, record[name] || ''));
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
+    syncChoiceStates(form);
     deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
@@ -3101,6 +3113,9 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     });
     typedDateFields.forEach((name) => {
       if (form.elements[name]) record[name] = normalizeDateInput(record[name]);
+    });
+    phoneFields.forEach((name) => {
+      if (form.elements[name]) record[name] = formatBrazilianPhone(record[name]);
     });
     radioNames.forEach((name) => {
       if (form.elements[name]) record[name] = values.get(name) || '';
@@ -3231,8 +3246,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
         if (fileNumberInput) fileNumberInput.value = nextCoupleStudentFileNumber();
         return;
       }
-      loadRecord(saved);
-      setMessage(`${label} salvo com sucesso.`);
+      clearForm({ unlock: false, notice: `${label} salvo com sucesso.` });
     } catch (error) {
       setMessage(error.message || `Nao foi possivel salvar ${label}.`);
     }
@@ -3244,6 +3258,12 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const input = form.elements[name];
     input?.addEventListener('input', () => formatCpfField(input));
     input?.addEventListener('change', () => formatCpfField(input));
+  });
+  phoneFields.forEach((name) => {
+    const input = form.elements[name];
+    if (!input) return;
+    input.maxLength = 15;
+    input.addEventListener('blur', () => { input.value = formatBrazilianPhone(input.value); });
   });
   ['valorInscricaoSmp'].forEach((name) => {
     const input = form.elements[name];
