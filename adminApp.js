@@ -2792,8 +2792,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   }).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div>${active === 'cursista-smp' ? '<button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button>' : ''}</section>
   <section class="admin-registration-tools cursista-smp-tools panel">
-    <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
-    <div id="cursista-smp-search-results" class="registration-search-results" hidden></div>
+    <div class="cursista-smp-search-shell"><label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="cursista-smp-search-results" class="registration-search-results" hidden></div></div>
     <div class="cursista-smp-tool-actions">
       <button type="button" id="new-cursista-smp">Novo</button>
       <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>

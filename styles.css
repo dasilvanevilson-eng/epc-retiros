@@ -5463,6 +5463,10 @@ body:has(.login-shell) {
   align-items:end;
 }
 
+.cursista-smp-search-shell {
+  min-width:0;
+}
+
 .cursista-smp-tools .registration-search-field {
   margin-top:0;
 }
@@ -5713,6 +5717,29 @@ body:has(.login-shell) {
   padding:10px;
 }
 
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-common,
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-him,
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-her {
+  position:relative;
+  padding-top:16px;
+}
+
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-common > span:first-child,
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-him > span:first-child,
+.cursista-smp-form.smp-three-section-layout .field.smp-owner-her > span:first-child {
+  position:absolute;
+  z-index:1;
+  top:0;
+  left:9px;
+  width:max-content;
+  max-width:calc(100% - 18px);
+  margin:0;
+  padding:0 4px;
+  background:var(--smp-owner-bg);
+  line-height:1.2;
+  transform:translateY(-50%);
+}
+
 .cursista-smp-form.smp-ownership-debug .cursista-smp-section.smp-owner-common {
   padding:24px;
 }
@@ -5923,6 +5950,21 @@ body:has(.login-shell) {
 
   .cursista-smp-section:nth-child(odd) {
     border-right:0;
+  }
+}
+
+@media(max-width:720px) {
+  .cursista-smp-search-shell {
+    position:relative;
+  }
+
+  .cursista-smp-tools #cursista-smp-search-results {
+    position:absolute;
+    z-index:40;
+    top:calc(100% + 6px);
+    right:0;
+    left:0;
+    max-height:min(55vh, 420px);
   }
 }
 
