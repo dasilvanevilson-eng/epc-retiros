@@ -55,6 +55,19 @@ const studentFormNavIds = {
   'cursista-smp': 'cursista-smp',
   'cursista-epc': 'cursista-epc',
 };
+const coupleStudentSource = (studentFormType = 'cursista-smp') => {
+  const isEpc = studentFormType === 'cursista-epc';
+  return {
+    type: isEpc ? 'cursista-epc' : 'cursista-smp',
+    label: isEpc ? 'Cursista EPC' : 'Cursista SMP',
+    shortLabel: isEpc ? 'EPC' : 'SMP',
+    membershipType: isEpc ? 'epc' : 'smp',
+    memberField: isEpc ? 'membroEpcIds' : 'membroSmpIds',
+    list: isEpc ? dataService.listCursistasEpc : dataService.listCursistasSmp,
+    save: isEpc ? dataService.saveCursistaEpc : dataService.saveCursistaSmp,
+    delete: isEpc ? dataService.deleteCursistaEpc : dataService.deleteCursistaSmp,
+  };
+};
 const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFormTypes
   .map(([value, label]) => `<option value="${value}" ${value === (selected || defaultStudentFormType) ? 'selected' : ''}>${escapeHtml(label)}</option>`)
   .join('');
@@ -204,18 +217,19 @@ const studentCommunityDetail = (student, details) => {
   }
   return { name: 'Sem comunidade', order: Number.MAX_SAFE_INTEGER };
 };
-const smpCommunityDetails = (communities = []) => {
+const coupleCommunityDetails = (communities = [], studentFormType = 'cursista-smp') => {
   const details = new Map();
+  const memberField = studentFormType === 'cursista-epc' ? 'membroEpcIds' : 'membroSmpIds';
   sortCommunitiesByPosition(communities).forEach((community, index) => {
     const detail = { name: communityLabel(community, index), order: Number(community.ordem) || index + 1 };
-    (community.membroSmpIds || []).forEach((memberId) => {
+    (community[memberField] || []).forEach((memberId) => {
       const key = String(memberId || '').trim();
       if (key) details.set(key, detail);
     });
   });
   return details;
 };
-const smpCommunityDetail = (record, details) => details.get(String(record?.id || record?.numeroFichaSmp || '').trim())
+const coupleCommunityDetail = (record, details) => details.get(String(record?.id || record?.numeroFichaSmp || '').trim())
   || { name: 'Sem comunidade', order: Number.MAX_SAFE_INTEGER };
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
@@ -1005,14 +1019,14 @@ async function renderHome() {
   const [allStudents, allCommunities, coupleStudents] = await Promise.all([
     dataService.listCursistas(),
     dataService.listComunidades(),
-    active?.id && usesCoupleStudentForm ? dataService.listCursistasSmp(active.id).catch((error) => {
+    active?.id && usesCoupleStudentForm ? coupleStudentSource(activeStudentFormType).list(active.id).catch((error) => {
       console.error(error);
       return [];
     }) : Promise.resolve([]),
   ]);
   const activeCommunities = active ? allCommunities.filter((community) => community.retiroId === active.id) : [];
   const activeCommunityDetails = studentCommunityDetails(activeCommunities);
-  const activeSmpCommunityDetails = smpCommunityDetails(activeCommunities);
+  const activeCoupleCommunityDetails = coupleCommunityDetails(activeCommunities, activeStudentFormType);
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
   const coupleStudentTitle = activeStudentFormType === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';
   const smpYes = (value) => normalizeText(value) === 'sim';
@@ -1020,7 +1034,7 @@ async function renderHome() {
   const smpPeople = coupleStudents.flatMap((record) => [
     { record, side: 'Dele', name: record.nomeDele || 'Ele', health: record.saudeDele, healthDetail: record.qualSaudeDele, intolerance: record.intoleranciaAlimentarDele, intoleranceDetail: record.qualIntoleranciaAlimentarDele, shirt: record.manequimDele },
     { record, side: 'Dela', name: record.nomeDela || 'Ela', health: record.saudeDela, healthDetail: record.qualSaudeDela, intolerance: record.intoleranciaAlimentarDela, intoleranceDetail: record.qualIntoleranciaAlimentarDela, shirt: record.manequimDela },
-  ].map((person) => ({ ...person, couple: smpCoupleName(record), community: smpCommunityDetail(record, activeSmpCommunityDetails) })));
+  ].map((person) => ({ ...person, couple: smpCoupleName(record), community: coupleCommunityDetail(record, activeCoupleCommunityDetails) })));
   const smpIntolerancePeople = smpPeople.filter((person) => smpYes(person.intolerance) || String(person.intoleranceDetail || '').trim());
   const smpHealthPeople = smpPeople.filter((person) => smpYes(person.health) || String(person.healthDetail || '').trim());
   const smpAcolhimentoCouples = coupleStudents.filter((record) => smpYes(record.precisaAcolhimento));
@@ -2223,8 +2237,9 @@ async function renderRecebedor() {
     recebedorObservacao: record.recebedorObservacaoSmp,
     __sourceRecord: record,
   });
+  const activeCoupleStudentSource = usesCoupleStudentForm ? coupleStudentSource(studentFormType) : null;
   const students = usesCoupleStudentForm
-    ? (await dataService.listCursistasSmp(retreat.id)).map(mapSmpReceiverStudent)
+    ? (await activeCoupleStudentSource.list(retreat.id)).map(mapSmpReceiverStudent)
     : uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' }));
   const isStudentFinanceEntry = (entry = {}) => ['cursista', 'cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const isCoupleStudentFinanceEntry = (entry = {}) => ['cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
@@ -2274,7 +2289,7 @@ async function renderRecebedor() {
       return;
     }
     if (isCoupleStudentFinanceEntry(entry)) {
-      await dataService.saveCursistaSmp({
+      await coupleStudentSource(entry.tipoFinanceiro).save({
         ...entry.__sourceRecord,
         valorPagoSmp: entry.valorPago,
         saldoPagarSmp: Math.max(0, (parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || 0) - parseCurrency(entry.valorPago)),
@@ -2790,7 +2805,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     if (!['cursista-smp', 'cursista-epc'].includes(active)) return row;
     return `<details class="smp-kid-panel" data-smp-kid-panel="${kidNumber}" ${index === 0 ? 'open' : ''}><summary><strong>Criança ${kidNumber}</strong><span class="smp-kid-summary-value">Não preenchida</span></summary>${row}</details>`;
   }).join('');
-  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div>${active === 'cursista-smp' ? '<button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button>' : ''}</section>
+  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div><button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button></section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <div class="cursista-smp-search-shell"><label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="cursista-smp-search-results" class="registration-search-results" hidden></div></div>
     <div class="cursista-smp-tool-actions">
@@ -2858,7 +2873,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>5.</span><div><h2>Espaço Kids</h2></div></div>
-      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> ${active === 'cursista-smp' ? 'Não necessita do Espaço Kids' : 'Não necessito do Espaço Kids'}</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
+      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessita do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>6.</span><div><h2>Saúde e acolhimento</h2></div></div>
@@ -3104,8 +3119,14 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const typedDateFields = expectedType === 'cursista-smp'
     ? ['nascimentoDele', 'nascimentoDela', 'casamentoDele', 'casamentoDela', 'uniaoCasal', ...Array.from({ length: 5 }, (_, index) => `smpKidNascimento${index + 1}`)]
     : [];
-  const phoneFields = expectedType === 'cursista-smp' ? ['foneDele', 'foneDela', 'foneApresentante', 'foneFamiliar'] : [];
+  const phoneFields = expectedType === 'cursista-epc'
+    ? ['foneDele', 'foneDela', 'foneApresentante', 'foneEmergenciaEpc']
+    : ['foneDele', 'foneDela', 'foneApresentante', 'foneFamiliar'];
   const cpfFields = ['cpfDele', 'cpfDela'];
+  const activeCoupleStudentSource = coupleStudentSource(expectedType);
+  const listCoupleStudents = activeCoupleStudentSource.list;
+  const saveCoupleStudent = activeCoupleStudentSource.save;
+  const deleteCoupleStudent = activeCoupleStudentSource.delete;
   if (typedDateFields.length) wireTypedDates(form, typedDateFields.map((name) => `[name="${name}"]`).join(', '));
   let records = [];
   let selectedId = '';
@@ -3170,7 +3191,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const idleNotice = () => canUseSmp();
   const setLocked = (locked) => {
     allFormControls().forEach((control) => { control.disabled = locked; });
-    if (fileNumberInput && expectedType === 'cursista-smp') fileNumberInput.disabled = !retreat;
+    if (fileNumberInput && ['cursista-smp', 'cursista-epc'].includes(expectedType)) fileNumberInput.disabled = !retreat;
     const saveDisabled = locked || (selectedId ? !canEditSmp() : !canCreateSmp());
     saveButton.disabled = saveDisabled;
     saveNewButton.disabled = saveDisabled;
@@ -3303,9 +3324,9 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     radioNames.forEach((name) => {
       if (form.elements[name]) record[name] = values.get(name) || '';
     });
-    if (expectedType === 'cursista-smp' && record.smpKidsNotNeeded) {
+    if (record.smpKidsNotNeeded) {
       Array.from({ length: 5 }, (_, index) => index + 1).forEach((kidNumber) => {
-        [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`, `smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`, `smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`]
+        [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`, `smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`, `smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`, `smpKidProblemaSaude${kidNumber}Epc`, `smpKidDescricaoSaude${kidNumber}Epc`, `smpKidIntolerancia${kidNumber}Epc`, `smpKidDescricaoIntolerancia${kidNumber}Epc`]
           .forEach((name) => { record[name] = ''; });
       });
     }
@@ -3375,7 +3396,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     return true;
   };
   const refreshRecords = async () => {
-    records = retreat?.id ? await dataService.listCursistasSmp(retreat.id) : [];
+    records = retreat?.id ? await listCoupleStudents(retreat.id) : [];
     return records;
   };
   const nextCoupleStudentFileNumber = () => {
@@ -3431,8 +3452,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const previousId = selectedId;
     setMessage(`Salvando ${label}...`);
     try {
-      const saved = await dataService.saveCursistaSmp(record);
-      if (previousId && previousId !== saved.id) await dataService.deleteCursistaSmp(retreat.id, previousId);
+      const saved = await saveCoupleStudent(record);
+      if (previousId && previousId !== saved.id) await deleteCoupleStudent(retreat.id, previousId);
       await refreshRecords();
       if (clearAfter) {
         clearForm({ unlock: true, focus: true, notice: `${label} salvo com sucesso. Informe a proxima ficha.` });
@@ -3447,10 +3468,6 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
 
   wireCepLookup(form);
   coupleKidsNotNeededInput?.addEventListener('change', () => {
-    if (expectedType !== 'cursista-smp') {
-      syncSmpKidsNeedVisibility();
-      return;
-    }
     if (!coupleKidsNotNeededInput.checked) {
       syncSmpKidsNeedVisibility();
       return;
@@ -3487,7 +3504,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     input.maxLength = 15;
     input.addEventListener('blur', () => { input.value = formatBrazilianPhone(input.value); });
   });
-  if (fileNumberInput && expectedType === 'cursista-smp') {
+  if (fileNumberInput && ['cursista-smp', 'cursista-epc'].includes(expectedType)) {
     let fileNumberLookupTimer = 0;
     const runFileNumberLookup = () => consultFileNumber().catch((error) => {
       setMessage(error.message || `Não foi possível consultar a ficha ${label}.`);
@@ -3557,7 +3574,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     deleteButton.disabled = true;
     setMessage(`Excluindo ${label}...`);
     try {
-      await dataService.deleteCursistaSmp(retreat.id, deletingId);
+      await deleteCoupleStudent(retreat.id, deletingId);
       await refreshRecords();
       if (records.some((record) => record.id === deletingId || record.numeroFichaSmp === deletingId)) {
         throw new Error('A ficha ainda aparece na lista apos a exclusao.');
@@ -3592,19 +3609,23 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   }
 }
 
-function setupCursistaSmpFinancialSummary() {
+function setupCoupleStudentFinancialSummary(studentFormType = 'cursista-smp') {
   const retreat = selectedRetreat();
+  const source = coupleStudentSource(studentFormType);
+  const usesEpc = source.type === 'cursista-epc';
+  const label = source.label;
+  const listCoupleStudents = source.list;
   wireFinancialSummaryButton({
     buttonSelector: '#smp-financial-summary',
-    title: `Resumo financeiro dos casais cursistas${retreat ? ` - ${retreat.nome}` : ''}`,
-    eyebrow: 'Cursista SMP',
-    description: 'Valores buscados somente nas fichas dos casais cursistas.',
+    title: `Resumo financeiro dos casais ${label}${retreat ? ` - ${retreat.nome}` : ''}`,
+    eyebrow: label,
+    description: `Valores buscados somente nas fichas ${label}.`,
     firstColumnLabel: 'Casal cursista',
-    emptyMessage: 'Nenhuma ficha SMP encontrada neste retiro.',
-    filenameFallback: 'resumo-financeiro-cursista-smp',
+    emptyMessage: `Nenhuma ficha ${usesEpc ? 'EPC' : 'SMP'} encontrada neste retiro.`,
+    filenameFallback: `resumo-financeiro-${usesEpc ? 'cursista-epc' : 'cursista-smp'}`,
     loadRows: async () => {
       if (!retreat?.id) return [];
-      const records = await dataService.listCursistasSmp(retreat.id);
+      const records = await listCoupleStudents(retreat.id);
       return records
         .filter((record) => !record.retiroId || record.retiroId === retreat.id)
         .map((record) => {
@@ -3629,12 +3650,13 @@ function setupCursistaSmpFinancialSummary() {
 
 async function renderCursistaSmp() {
   renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
-  setupCursistaSmpFinancialSummary();
+  setupCoupleStudentFinancialSummary('cursista-smp');
   await setupCursistaSmpTestCrud({ expectedType: 'cursista-smp', permissionPrefix: 'cursista-smp', label: 'Cursista SMP' });
 }
 
 async function renderCursistaEpc() {
   renderCursistaSmpScreen({ title: 'Cursista EPC', active: 'cursista-epc' });
+  setupCoupleStudentFinancialSummary('cursista-epc');
   await setupCursistaSmpTestCrud({ expectedType: 'cursista-epc', permissionPrefix: 'cursista-epc', label: 'Cursista EPC' });
 }
 
@@ -3992,50 +4014,49 @@ async function renderComunidades() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
   const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
-  if (studentFormType === 'cursista-epc') {
-    layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)}</p></div></section><section class="panel"><h2>Cursista EPC ainda indisponível</h2><p class="empty-state">A distribuição em comunidades será habilitada quando a tabela própria cursista_epc estiver disponível. Nenhuma ficha SMP será usada neste retiro.</p></section>`, 'comunidades');
-    return;
-  }
   const usesSmpStudents = studentFormType === 'cursista-smp';
+  const usesEpcStudents = studentFormType === 'cursista-epc';
+  const usesCoupleStudents = usesSmpStudents || usesEpcStudents;
+  const activeCoupleStudentSource = usesCoupleStudents ? coupleStudentSource(studentFormType) : null;
   const [sourceStudents, allCommunities] = await Promise.all([
-    usesSmpStudents ? dataService.listCursistasSmp(retreat.id) : dataService.listCursistas(),
+    usesCoupleStudents ? activeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(),
     dataService.listComunidades(),
   ]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id));
   const leaders = [...new Set(entries.filter((entry) => entry.casalId && entryHasSector(entry, 'Tios de comunidade')).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const monitorCandidates = [...new Set(entries.filter((entry) => entry.casalId && (entry.setores || []).some((sector) => normalizeText(sector).includes('monitor'))).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
-  const retreatStudentRecords = usesSmpStudents ? sourceStudents : sourceStudents.filter((student) => student.retiroId === retreat.id);
+  const retreatStudentRecords = usesCoupleStudents ? sourceStudents : sourceStudents.filter((student) => student.retiroId === retreat.id);
   const smpCoupleName = (record = {}) => [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || `Ficha ${record.numeroFichaSmp || record.id || 'sem número'}`;
   const averageSmpBirthTime = (record = {}) => {
     const dates = [record.nascimentoDele, record.nascimentoDela].map(parseLocalDate);
     if (dates.some((value) => !value)) return Number.NEGATIVE_INFINITY;
     return dates.reduce((total, value) => total + value.getTime(), 0) / dates.length;
   };
-  const toCommunityStudent = (student) => usesSmpStudents
+  const toCommunityStudent = (student) => usesCoupleStudents
     ? { ...student, id: String(student.id || student.numeroFichaSmp || ''), nome: smpCoupleName(student), detail: `Ficha ${student.numeroFichaSmp || student.id || 'sem número'}`, ageSort: averageSmpBirthTime(student) }
     : { ...student, detail: ageInYearsAndMonths(student.nascimento), ageSort: parseLocalDate(student.nascimento)?.getTime() ?? Number.NEGATIVE_INFINITY };
-  const retreatStudents = (usesSmpStudents ? retreatStudentRecords : uniqueByParticipant(retreatStudentRecords)).map(toCommunityStudent);
-  const membershipType = usesSmpStudents ? 'smp' : 'individual';
-  const memberField = usesSmpStudents ? 'membroSmpIds' : 'membroIds';
+  const retreatStudents = (usesCoupleStudents ? retreatStudentRecords : uniqueByParticipant(retreatStudentRecords)).map(toCommunityStudent);
+  const membershipType = usesCoupleStudents ? activeCoupleStudentSource.membershipType : 'individual';
+  const memberField = usesCoupleStudents ? activeCoupleStudentSource.memberField : 'membroIds';
   const memberIdsFor = (community) => community[memberField] || [];
   const communityMembers = (community) => {
     const memberIds = new Set(memberIdsFor(community).map(String));
     const records = retreatStudentRecords.filter((student) => memberIds.has(String(student.id)));
-    return (usesSmpStudents ? records : uniqueByParticipant(records)).map(toCommunityStudent).sort((first, second) => second.ageSort - first.ageSort);
+    return (usesCoupleStudents ? records : uniqueByParticipant(records)).map(toCommunityStudent).sort((first, second) => second.ageSort - first.ageSort);
   };
   const canEditCommunities = canModifyRetreat(retreat);
   const assignedStudentIds = new Set(communities.flatMap(memberIdsFor).map(String));
-  const assignedStudentKeys = usesSmpStudents ? assignedStudentIds : new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(String(student.id))).map(participantIdentity));
-  const studentsWithoutCommunity = retreatStudents.filter((student) => usesSmpStudents ? !assignedStudentIds.has(String(student.id)) : !assignedStudentKeys.has(participantIdentity(student))).length;
+  const assignedStudentKeys = usesCoupleStudents ? assignedStudentIds : new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(String(student.id))).map(participantIdentity));
+  const studentsWithoutCommunity = retreatStudents.filter((student) => usesCoupleStudents ? !assignedStudentIds.has(String(student.id)) : !assignedStudentKeys.has(participantIdentity(student))).length;
   const communitiesWithoutLeaders = communities.filter((community) => !community.liderCasalId).length;
   const communitiesWithoutMonitor = communities.filter((community) => !community.monitorCasalId && !(community.monitorIds || []).length).length;
-  const participantLabel = usesSmpStudents ? 'Casais' : 'Cursistas';
-  const participantLabelLower = usesSmpStudents ? 'casais' : 'cursistas';
+  const participantLabel = usesCoupleStudents ? 'Casais' : 'Cursistas';
+  const participantLabelLower = usesCoupleStudents ? 'casais' : 'cursistas';
   const leaderOptions = (selected) => `<option value="">Buscar tios da comunidade</option>${leaders.map((leader) => `<option value="${leader.casalId}" ${leader.casalId === selected ? 'selected' : ''}>${escapeHtml(leader.label)}</option>`).join('')}`;
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os ${participantLabelLower}.</p><div class="community-overview"><article><span>${participantLabel} sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir ${participantLabelLower}</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = communityMembers(community); const hasHistoricalMembers = (community.membroIds || []).length || (community.membroSmpIds || []).length; return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>${participantLabel}</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${escapeHtml(student.detail)}</small></span><select data-move-student="${escapeHtml(student.id)}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${escapeHtml(student.id)}">Remover</button></div>`).join('') : `<p>Nenhum ${usesSmpStudents ? 'casal' : 'cursista'} alocado.</p>`}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${hasHistoricalMembers ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os ${participantLabelLower}.</p><div class="community-overview"><article><span>${participantLabel} sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir ${participantLabelLower}</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = communityMembers(community); const hasHistoricalMembers = (community.membroIds || []).length || (community.membroSmpIds || []).length || (community.membroEpcIds || []).length; return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>${participantLabel}</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${escapeHtml(student.detail)}</small></span><select data-move-student="${escapeHtml(student.id)}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${escapeHtml(student.id)}">Remover</button></div>`).join('') : `<p>Nenhum ${usesCoupleStudents ? 'casal' : 'cursista'} alocado.</p>`}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${hasHistoricalMembers ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
   if (!canAccess('comunidades.criar') || !canEditCommunities) app.querySelector('#add-community')?.remove();
   if (!canAccess('comunidades.editar') || !canEditCommunities) {
     app.querySelector('#distribute-students')?.remove();
@@ -4047,7 +4068,7 @@ async function renderComunidades() {
     if (!ensureRetreatCanBeChanged(retreat, 'incluir comunidades')) return;
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
-    await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], membroSmpIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
+    await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], membroSmpIds: [], membroEpcIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
     renderComunidades();
   });
   app.querySelectorAll('[data-community-name]').forEach((input) => input.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === input.dataset.communityName); community.nome = input.value.trim() || `Comunidade ${community.ordem}`; await dataService.saveComunidade(community); input.value = community.nome; }));
@@ -4091,7 +4112,7 @@ async function renderComunidades() {
     if (!ensureRetreatCanBeChanged(retreat, 'distribuir cursistas em comunidades')) return;
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
     const communityOptions = (selected = '') => `<option value="">Sem comunidade</option>${communities.map((community) => `<option value="${community.id}" ${community.id === selected ? 'selected' : ''}>${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de ${participantLabelLower}</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada ${usesSmpStudents ? 'casal' : 'cursista'} e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => memberIdsFor(community).map(String).includes(String(student.id))); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${escapeHtml(student.detail)}</span><select data-student-community="${escapeHtml(student.id)}">${communityOptions(current?.id)}</select></div>`; }).join('') || `<p>Nenhum ${usesSmpStudents ? 'casal SMP' : 'cursista'} cadastrado.</p>`}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length && retreatStudents.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de ${participantLabelLower}</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada ${usesCoupleStudents ? 'casal' : 'cursista'} e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => memberIdsFor(community).map(String).includes(String(student.id))); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${escapeHtml(student.detail)}</span><select data-student-community="${escapeHtml(student.id)}">${communityOptions(current?.id)}</select></div>`; }).join('') || `<p>Nenhum ${usesCoupleStudents ? `casal ${usesEpcStudents ? 'EPC' : 'SMP'}` : 'cursista'} cadastrado.</p>`}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length && retreatStudents.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
     overlay.querySelector('#suggest-by-age').addEventListener('click', () => { const ordered = [...retreatStudents].sort((first, second) => second.ageSort - first.ageSort); const base = Math.floor(ordered.length / communities.length); const extra = ordered.length % communities.length; let cursor = 0; communities.forEach((community, index) => { const size = base + (index >= communities.length - extra ? 1 : 0); ordered.slice(cursor, cursor + size).forEach((student) => { const control = [...overlay.querySelectorAll('[data-student-community]')].find((input) => input.dataset.studentCommunity === String(student.id)); if (control) control.value = community.id; }); cursor += size; }); });
     overlay.querySelector('#export-students').addEventListener('click', async () => {

@@ -1,6 +1,6 @@
 const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaSmp, getRecord, importDatabase, listCursistasSmp, listRecords, readDatabase, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 
@@ -106,7 +106,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
   const retreatId = retreat.id;
   const studentFormType = retreat.tipoFichaCursista || 'cursista-individual';
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
-  const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas', 'cursista-smp'];
+  const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas', 'cursista-smp', 'cursista-epc'];
   if (!allowedStores.includes(resource)) return false;
 
   if (req.method === 'GET' && resource === 'retiros' && id) {
@@ -124,12 +124,12 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
     const records = (await listRecords('cursistas')).filter((entry) => entry.retiroId === retreatId);
     return sendJson(res, 200, records), true;
   }
-  if (req.method === 'GET' && resource === 'cursista-smp' && !id) {
-    if (!usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
-    const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
+  if (req.method === 'GET' && ['cursista-smp', 'cursista-epc'].includes(resource) && !id) {
+    if (resource !== studentFormType) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
+    const url = new URL(req.url || `/api/${resource}`, 'https://familiaepcindaial.local');
     const queryRetreatId = url.searchParams.get('retiroId') || retreatId;
     if (queryRetreatId !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este retiro.'), true;
-    return sendJson(res, 200, await listCursistasSmp(retreatId)), true;
+    return sendJson(res, 200, resource === 'cursista-epc' ? await listCursistasEpc(retreatId) : await listCursistasSmp(retreatId)), true;
   }
   if (req.method === 'GET' && resource === 'pessoas' && !id) {
     const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
@@ -152,11 +152,13 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
     });
     return sendJson(res, 200, await saveRecord(resource, record)), true;
   }
-  if (req.method === 'PUT' && resource === 'cursista-smp' && id && action) {
-    if (!usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
+  if (req.method === 'PUT' && ['cursista-smp', 'cursista-epc'].includes(resource) && id && action) {
+    if (resource !== studentFormType) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
     if (decodeURIComponent(id) !== retreatId) return sendError(res, 403, 'Link do recebedor nao autorizado para este retiro.'), true;
     const decodedId = decodeURIComponent(action);
-    const current = (await listCursistasSmp(retreatId)).find((record) => record.id === decodedId || record.numeroFichaSmp === decodedId);
+    const listCoupleStudents = resource === 'cursista-epc' ? listCursistasEpc : listCursistasSmp;
+    const saveCoupleStudent = resource === 'cursista-epc' ? saveCursistaEpc : saveCursistaSmp;
+    const current = (await listCoupleStudents(retreatId)).find((record) => record.id === decodedId || record.numeroFichaSmp === decodedId);
     if (!current) return sendError(res, 403, 'Link do recebedor nao autorizado para este registro.'), true;
     const incoming = await readBody(req);
     const allowedFields = ['valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
@@ -164,7 +166,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
     allowedFields.forEach((field) => {
       if (Object.prototype.hasOwnProperty.call(incoming, field)) record[field] = incoming[field];
     });
-    return sendJson(res, 200, await saveCursistaSmp(record)), true;
+    return sendJson(res, 200, await saveCoupleStudent(record)), true;
   }
   return false;
 }
@@ -326,12 +328,6 @@ async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
   return false;
 }
 
-async function coupleStudentPermissionPrefix(retiroId = '') {
-  if (!retiroId) return 'cursista-smp';
-  const retreat = await getRecord('retiros', retiroId).catch(() => null);
-  return retreat?.tipoFichaCursista === 'cursista-epc' ? 'cursista-epc' : 'cursista-smp';
-}
-
 async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action] = parts;
@@ -429,32 +425,41 @@ async function handleApi(req, res, pathname) {
     return sendNoContent(res);
   }
 
-  if (resource === 'cursista-smp') {
-    const url = new URL(req.url || '/api/cursista-smp', 'https://familiaepcindaial.local');
+  if (resource === 'cursista-smp' || resource === 'cursista-epc') {
+    const expectedType = resource;
+    const permissionPrefix = resource;
+    const listCoupleStudents = resource === 'cursista-epc' ? listCursistasEpc : listCursistasSmp;
+    const saveCoupleStudent = resource === 'cursista-epc' ? saveCursistaEpc : saveCursistaSmp;
+    const deleteCoupleStudent = resource === 'cursista-epc' ? deleteCursistaEpc : deleteCursistaSmp;
+    const label = resource === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';
+    const url = new URL(req.url || `/api/${resource}`, 'https://familiaepcindaial.local');
     const queryRetreatId = url.searchParams.get('retiroId') || '';
     if (req.method === 'GET' && !id) {
-      const permissionPrefix = await coupleStudentPermissionPrefix(queryRetreatId);
       if (denyIfMissingPermission(res, session, `${permissionPrefix}.ver`)) return;
       if (!hasGlobalRetreatAccess(session) && (!queryRetreatId || !canAccessRetreat(session, queryRetreatId))) return sendError(res, 403, noRetreatAccessMessage);
-      return sendJson(res, 200, await listCursistasSmp(queryRetreatId));
+      const retreat = queryRetreatId ? await getRecord('retiros', queryRetreatId).catch(() => null) : null;
+      if (retreat && retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      return sendJson(res, 200, await listCoupleStudents(queryRetreatId));
     }
     if (req.method === 'PUT' && id && action) {
       const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
       if (!canAccessRetreat(session, record.retiroId)) return sendError(res, 403, noRetreatAccessMessage);
-      const permissionPrefix = await coupleStudentPermissionPrefix(record.retiroId);
-      const existing = (await listCursistasSmp(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
+      const retreat = await getRecord('retiros', record.retiroId).catch(() => null);
+      if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      const existing = (await listCoupleStudents(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
       if (denyIfMissingPermission(res, session, existing ? `${permissionPrefix}.editar` : `${permissionPrefix}.criar`)) return;
-      return sendJson(res, 200, await saveCursistaSmp(record));
+      return sendJson(res, 200, await saveCoupleStudent(record));
     }
     if (req.method === 'DELETE' && id && action) {
       const retreatId = decodeURIComponent(id);
-      const permissionPrefix = await coupleStudentPermissionPrefix(retreatId);
       if (denyIfMissingPermission(res, session, `${permissionPrefix}.excluir`)) return;
       if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
-      await deleteCursistaSmp(retreatId, decodeURIComponent(action));
+      const retreat = await getRecord('retiros', retreatId).catch(() => null);
+      if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      await deleteCoupleStudent(retreatId, decodeURIComponent(action));
       return sendNoContent(res);
     }
-    return sendError(res, 405, 'Metodo nao permitido para Cursista SMP.');
+    return sendError(res, 405, `Metodo nao permitido para ${label}.`);
   }
 
   if (!stores.includes(resource)) return sendError(res, 404, 'Recurso nao encontrado.');

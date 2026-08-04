@@ -1,4 +1,6 @@
--- EPC Retiros - Cursista EPC na estrutura de ficha de casal
+-- EPC Retiros - permissoes da ficha Cursista EPC (arquivo historico).
+-- A persistencia EPC agora pertence a public.cursista_epc, criada por
+-- supabase-cursista-epc-migration.sql. Este arquivo nao habilita mais EPC em SMP.
 -- Execute apos backup/auditoria das permissoes atuais.
 -- Este patch nao altera fichas, cursistas, retiros ou pagamentos.
 
@@ -16,8 +18,8 @@ begin
   from public.retiros r
   where r.id = new.retiro_id;
 
-  if tipo_ficha not in ('cursista-smp', 'cursista-epc') then
-    raise exception 'O retiro % nao esta configurado para Cursista SMP ou Cursista EPC.', new.retiro_id
+  if tipo_ficha is distinct from 'cursista-smp' then
+    raise exception 'O retiro % nao esta configurado para Cursista SMP.', new.retiro_id
       using errcode = '23514';
   end if;
 

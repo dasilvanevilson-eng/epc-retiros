@@ -56,7 +56,7 @@ assert.match(migration, /delete from public\.epc_backup_operations where expires
 const registrySection = migration.match(/as \$\$\s*values([\s\S]*?);\s*\$\$;/i)?.[1] || '';
 const sqlRegistryTables = [...registrySection.matchAll(/\('([^']+)',\s*\d+,\s*(?:true|false)\)/gi)].map((match) => match[1]);
 assert.deepStrictEqual(sqlRegistryTables, relationalTableNames, 'O registro de tabelas do SQL deve coincidir com o backend.');
-for (const table of ['retiros', 'pessoas', 'adesoes', 'cursistas', 'cursista_smp', 'comunidades', 'usuarios']) {
+for (const table of ['retiros', 'pessoas', 'adesoes', 'cursistas', 'cursista_smp', 'cursista_epc', 'comunidades', 'comunidade_cursistas_epc', 'usuarios']) {
   assert.doesNotMatch(migration, new RegExp(`delete\\s+from\\s+public\\.${table}\\b`, 'i'), `A migracao nao pode excluir diretamente dados de ${table}.`);
 }
 

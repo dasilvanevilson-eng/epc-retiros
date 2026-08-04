@@ -4,7 +4,7 @@ const { stores } = require('./storeConfig');
 
 const BACKUP_FORMAT = 'familia-epc-backup';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 'supabase-relational-2026-08-v1';
+const SCHEMA_VERSION = 'supabase-relational-2026-08-v2';
 const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v1';
 const CHUNK_SIZE = 200;
 
@@ -25,10 +25,12 @@ const relationalTables = [
   ['adesao_espaco_kids', ['id']],
   ['cursistas', ['id']],
   ['cursista_smp', ['retiro_id', 'id']],
+  ['cursista_epc', ['retiro_id', 'id']],
   ['comunidades', ['id']],
   ['comunidade_monitores', ['comunidade_id', 'pessoa_id']],
   ['comunidade_cursistas', ['comunidade_id', 'cursista_id']],
   ['comunidade_cursistas_smp', ['comunidade_id', 'retiro_id', 'cursista_id']],
+  ['comunidade_cursistas_epc', ['comunidade_id', 'retiro_id', 'cursista_id']],
   ['crachas', ['id']],
   ['configuracoes', ['id']],
   ['usuarios', ['id']],

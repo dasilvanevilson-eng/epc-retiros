@@ -57,10 +57,12 @@ as $$
     ('adesao_espaco_kids', 140, true),
     ('cursistas', 150, true),
     ('cursista_smp', 160, true),
+    ('cursista_epc', 165, true),
     ('comunidades', 170, true),
     ('comunidade_monitores', 180, true),
     ('comunidade_cursistas', 190, true),
     ('comunidade_cursistas_smp', 200, true),
+    ('comunidade_cursistas_epc', 205, true),
     ('crachas', 210, true),
     ('configuracoes', 220, true),
     ('usuarios', 230, true),
@@ -156,7 +158,7 @@ begin
     'operationId', v_operation_id,
     'format', 'familia-epc-backup',
     'version', 1,
-    'schemaVersion', 'supabase-relational-2026-08-v1',
+    'schemaVersion', 'supabase-relational-2026-08-v2',
     'storage', 'supabase-relational',
     'createdAt', to_char(v_created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'counts', v_counts,
@@ -182,7 +184,7 @@ begin
   if jsonb_typeof(p_manifest) is distinct from 'object'
     or p_manifest->>'format' is distinct from 'familia-epc-backup'
     or p_manifest->>'version' is distinct from '1'
-    or p_manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v1'
+    or p_manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v2'
     or p_manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(p_manifest->'counts') is distinct from 'object'
     or jsonb_typeof(p_manifest->'tableNames') is distinct from 'array'
@@ -229,7 +231,7 @@ begin
   if jsonb_typeof(v_operation.manifest) is distinct from 'object'
     or v_operation.manifest->>'format' is distinct from 'familia-epc-backup'
     or v_operation.manifest->>'version' is distinct from '1'
-    or v_operation.manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v1'
+    or v_operation.manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v2'
     or v_operation.manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(v_operation.manifest->'counts') is distinct from 'object'
     or jsonb_typeof(v_operation.manifest->'tableNames') is distinct from 'array'
@@ -406,4 +408,6 @@ notify pgrst, 'reload schema';
 -- union all select 'adesoes', count(*) from public.adesoes
 -- union all select 'cursistas', count(*) from public.cursistas
 -- union all select 'cursista_smp', count(*) from public.cursista_smp
+-- union all select 'cursista_epc', count(*) from public.cursista_epc
+-- union all select 'comunidade_cursistas_epc', count(*) from public.comunidade_cursistas_epc
 -- union all select 'comunidades', count(*) from public.comunidades;

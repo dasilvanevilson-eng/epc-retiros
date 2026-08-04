@@ -249,10 +249,17 @@ export const dataService = {
     return api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
   },
   deleteCursistaSmp: (retiroId, numeroFicha) => api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
+  listCursistasEpc: (retiroId = '') => api(`/cursista-epc${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
+  saveCursistaEpc: (student) => {
+    const retiroId = student.retiroId || '';
+    const numeroFicha = student.id || student.numeroFichaSmp || '';
+    return api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
+  },
+  deleteCursistaEpc: (retiroId, numeroFicha) => api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
   listComunidades: () => list('comunidades'),
   saveComunidade: (community) => save('comunidades', community),
   saveComunidadeMembros: async (community, membershipType, memberIds = []) => {
-    const memberField = membershipType === 'smp' ? 'membroSmpIds' : 'membroIds';
+    const memberField = membershipType === 'smp' ? 'membroSmpIds' : (membershipType === 'epc' ? 'membroEpcIds' : 'membroIds');
     const nextCommunity = { ...community, [memberField]: [...new Set(memberIds)] };
     if ((await ensureBackend()) === 'file') {
       return api(`/comunidades/${encodeURIComponent(nextCommunity.id)}`, {

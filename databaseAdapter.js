@@ -158,6 +158,9 @@ const rowId = (row) => row?.cpf || row?.legacy_id || row?.id;
 const requireSupabaseForCursistaSmp = () => {
   if (!hasSupabase()) throw new Error('Cursista SMP usa somente Supabase nesta etapa de testes.');
 };
+const requireSupabaseForCursistaEpc = () => {
+  if (!hasSupabase()) throw new Error('Cursista EPC usa somente Supabase.');
+};
 
 function extras(record, mappedKeys) {
   return Object.fromEntries(Object.entries(record || {}).filter(([key, value]) => !mappedKeys.has(key) && value !== undefined));
@@ -1002,6 +1005,157 @@ async function deleteCursistaSmp(retiroId, numeroFicha) {
   return deleted.map(mapCursistaSmp);
 }
 
+const cursistaEpcKidRecordKeys = Array.from({ length: 5 }, (_, index) => {
+  const kidNumber = index + 1;
+  return [
+    `smpKidNome${kidNumber}`,
+    `smpKidNascimento${kidNumber}`,
+    `smpKidProblemaSaude${kidNumber}Epc`,
+    `smpKidDescricaoSaude${kidNumber}Epc`,
+    `smpKidIntolerancia${kidNumber}Epc`,
+    `smpKidDescricaoIntolerancia${kidNumber}Epc`,
+  ];
+}).flat();
+
+function mapCursistaEpc(row) {
+  const record = {
+    ...mapCursistaSmp(row),
+    emailEpc: row.comum_email || '',
+    uniaoCasal: row.comum_data_casamento_religioso || '',
+    localCasamentoEpc: row.comum_local_casamento || '',
+    precisaAcolhimento: choiceFromBool(row.comum_precisa_acolhimento),
+    temFilhosEpc: choiceFromBool(row.comum_tem_filhos),
+    idadeFilhosEpc: row.comum_idade_filhos || '',
+    smpKidsNotNeeded: Boolean(row.comum_espaco_kids_nao_necessita),
+    nomeApresentante: row.comum_nome_apresentante || '',
+    foneApresentante: row.comum_fone_apresentante || '',
+    contatoEmergenciaEpc: row.comum_contato_emergencia || '',
+    foneEmergenciaEpc: row.comum_fone_emergencia || '',
+  };
+  [
+    'religiaoDele', 'missaDele', 'casamentoDele', 'filhosDele',
+    'religiaoDela', 'missaDela', 'casamentoDela', 'filhosDela',
+    'filhosUniao', 'outrasUnioes', 'cursoApresentante', 'cidadeApresentante',
+    'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar',
+  ].forEach((key) => { delete record[key]; });
+  for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+    delete record[`smpKidProblemaSaude${kidNumber}`];
+    delete record[`smpKidDescricaoSaude${kidNumber}`];
+    delete record[`smpKidIntolerancia${kidNumber}`];
+    delete record[`smpKidDescricaoIntolerancia${kidNumber}`];
+    record[`smpKidProblemaSaude${kidNumber}Epc`] = choiceFromBool(row[`comum_kid_${kidNumber}_problema_saude`]);
+    record[`smpKidDescricaoSaude${kidNumber}Epc`] = row[`comum_kid_${kidNumber}_descricao_saude`] || '';
+    record[`smpKidIntolerancia${kidNumber}Epc`] = choiceFromBool(row[`comum_kid_${kidNumber}_intolerancia_alimentar`]);
+    record[`smpKidDescricaoIntolerancia${kidNumber}Epc`] = row[`comum_kid_${kidNumber}_descricao_intolerancia`] || '';
+  }
+  return record;
+}
+
+async function listCursistasEpc(retiroId) {
+  requireSupabaseForCursistaEpc();
+  const filter = retiroId ? `retiro_id=eq.${enc(retiroId)}` : '';
+  const rows = filter ? await rowsWhere('cursista_epc', filter, 'updated_at.desc') : await allRows('cursista_epc');
+  return rows.map(mapCursistaEpc);
+}
+
+async function saveCursistaEpc(record) {
+  requireSupabaseForCursistaEpc();
+  const id = String(record.id || record.numeroFichaSmp || '').trim();
+  const mappedKeys = new Set([
+    'retiroId', 'id', 'numeroFichaSmp', 'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele',
+    'movimentoIgrejaDele', 'qualMovimentoDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele',
+    'qualIntoleranciaAlimentarDele', 'manequimDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela',
+    'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela',
+    'qualIntoleranciaAlimentarDela', 'manequimDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp',
+    'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'precisaAcolhimento', 'temFilhosEpc', 'idadeFilhosEpc', 'smpKidsNotNeeded',
+    'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'valorInscricaoSmp', 'valorPagoSmp',
+    'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp',
+    'recebedorObservacaoSmp', 'criadoEm', 'createdAt', 'updatedAt',
+  ]);
+  cursistaEpcKidRecordKeys.forEach((key) => mappedKeys.add(key));
+  const rowData = {
+    retiro_id: record.retiroId,
+    id,
+    ele_nome: record.nomeDele || '',
+    ele_nascimento: dateOrNull(record.nascimentoDele),
+    ele_cpf: textOrNull(record.cpfDele),
+    ele_profissao: record.profissaoDele || '',
+    ele_fone: record.foneDele || '',
+    ele_crisma: boolOrNull(record.crismaDele),
+    ele_movimento_igreja: boolOrNull(record.movimentoIgrejaDele),
+    ele_qual_movimento: record.qualMovimentoDele || '',
+    ele_problema_saude: boolOrNull(record.saudeDele),
+    ele_qual_problema_saude: record.qualSaudeDele || '',
+    ele_intolerancia_alimentar: boolOrNull(record.intoleranciaAlimentarDele),
+    ele_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDele || '',
+    ele_manequim: record.manequimDele || '',
+    ela_nome: record.nomeDela || '',
+    ela_nascimento: dateOrNull(record.nascimentoDela),
+    ela_cpf: textOrNull(record.cpfDela),
+    ela_profissao: record.profissaoDela || '',
+    ela_fone: record.foneDela || '',
+    ela_crisma: boolOrNull(record.crismaDela),
+    ela_movimento_igreja: boolOrNull(record.movimentoIgrejaDela),
+    ela_qual_movimento: record.qualMovimentoDela || '',
+    ela_problema_saude: boolOrNull(record.saudeDela),
+    ela_qual_problema_saude: record.qualSaudeDela || '',
+    ela_intolerancia_alimentar: boolOrNull(record.intoleranciaAlimentarDela),
+    ela_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDela || '',
+    ela_manequim: record.manequimDela || '',
+    comum_cep: record.cep || '',
+    comum_endereco: record.endereco || '',
+    comum_numero: record.numero || '',
+    comum_nr_apto: record.nrApto || '',
+    comum_bairro: record.bairro || '',
+    comum_cidade: record.cidade || '',
+    comum_estado: record.estadoSmp || '',
+    comum_email: record.emailEpc || '',
+    comum_data_casamento_religioso: dateOrNull(record.uniaoCasal),
+    comum_local_casamento: record.localCasamentoEpc || '',
+    comum_precisa_acolhimento: boolOrNull(record.precisaAcolhimento),
+    comum_tem_filhos: boolOrNull(record.temFilhosEpc),
+    comum_idade_filhos: record.idadeFilhosEpc || '',
+    comum_espaco_kids_nao_necessita: Boolean(record.smpKidsNotNeeded),
+    comum_nome_apresentante: record.nomeApresentante || '',
+    comum_fone_apresentante: record.foneApresentante || '',
+    comum_contato_emergencia: record.contatoEmergenciaEpc || '',
+    comum_fone_emergencia: record.foneEmergenciaEpc || '',
+    comum_valor_inscricao: numberOrZero(record.valorInscricaoSmp),
+    comum_valor_pago: numberOrZero(record.valorPagoSmp),
+    comum_saldo_pagar: numberOrZero(record.saldoPagarSmp),
+    comum_recebedor_valor_pago: numberOrZero(record.recebedorValorPagoSmp),
+    comum_recebedor_taxa_paga: Boolean(record.recebedorTaxaPagaSmp),
+    comum_recebedor_forma_pagamento: record.recebedorFormaPagamentoSmp || '',
+    comum_recebedor_observacao: record.recebedorObservacaoSmp || '',
+    criado_em: record.criadoEm || undefined,
+    created_at: record.createdAt || undefined,
+    updated_at: record.updatedAt || undefined,
+    extras: extras(record, mappedKeys),
+  };
+  for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+    rowData[`comum_kid_${kidNumber}_nome`] = record[`smpKidNome${kidNumber}`] || '';
+    rowData[`comum_kid_${kidNumber}_nascimento`] = dateOrNull(record[`smpKidNascimento${kidNumber}`]);
+    rowData[`comum_kid_${kidNumber}_problema_saude`] = boolOrNull(record[`smpKidProblemaSaude${kidNumber}Epc`]);
+    rowData[`comum_kid_${kidNumber}_descricao_saude`] = textOrNull(record[`smpKidDescricaoSaude${kidNumber}Epc`]);
+    rowData[`comum_kid_${kidNumber}_intolerancia_alimentar`] = boolOrNull(record[`smpKidIntolerancia${kidNumber}Epc`]);
+    rowData[`comum_kid_${kidNumber}_descricao_intolerancia`] = textOrNull(record[`smpKidDescricaoIntolerancia${kidNumber}Epc`]);
+  }
+  const row = await upsert('cursista_epc', compact(rowData), 'retiro_id,id');
+  return mapCursistaEpc(row);
+}
+
+async function deleteCursistaEpc(retiroId, numeroFicha) {
+  requireSupabaseForCursistaEpc();
+  const ficha = String(numeroFicha || '').trim();
+  if (!retiroId || !ficha) throw new Error('Informe o retiro e o Numero da ficha EPC para excluir.');
+  const deleted = await supabaseRequest(`cursista_epc?retiro_id=eq.${enc(retiroId)}&id=eq.${enc(ficha)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=representation' },
+  });
+  if (!Array.isArray(deleted) || !deleted.length) throw new Error(`Ficha EPC ${ficha} nao foi encontrada para exclusao.`);
+  return deleted.map(mapCursistaEpc);
+}
+
 function mapCommunity(row, lookups = {}) {
   return {
     ...(row.extras || {}),
@@ -1013,6 +1167,7 @@ function mapCommunity(row, lookups = {}) {
     monitorIds: array(lookups.monitorsByCommunity?.get(row.id)).map(rowId),
     membroIds: array(lookups.studentsByCommunity?.get(row.id)).map((item) => item.id),
     membroSmpIds: array(lookups.smpStudentsByCommunity?.get(row.id)).map((item) => item.cursista_id),
+    membroEpcIds: array(lookups.epcStudentsByCommunity?.get(row.id)).map((item) => item.cursista_id),
     ordem: row.ordem,
     criadoEm: row.criado_em,
     createdAt: row.created_at,
@@ -1022,12 +1177,13 @@ function mapCommunity(row, lookups = {}) {
 
 async function communityLookups(rows) {
   const ids = new Set(rows.map((row) => row.id));
-  const [linksMonitors, people, linksStudents, students, linksSmpStudents] = await Promise.all([
+  const [linksMonitors, people, linksStudents, students, linksSmpStudents, linksEpcStudents] = await Promise.all([
     allRows('comunidade_monitores', ''),
     allRows('pessoas'),
     allRows('comunidade_cursistas', ''),
     allRows('cursistas'),
     optionalAllRows('comunidade_cursistas_smp', ''),
+    optionalAllRows('comunidade_cursistas_epc', ''),
   ]);
   const personById = new Map(people.map((item) => [item.id, item]));
   const studentById = new Map(students.map((item) => [item.id, item]));
@@ -1049,7 +1205,13 @@ async function communityLookups(rows) {
     list.push(item);
     smpStudentsByCommunity.set(item.comunidade_id, list);
   });
-  return { monitorsByCommunity, studentsByCommunity, smpStudentsByCommunity };
+  const epcStudentsByCommunity = new Map();
+  linksEpcStudents.filter((item) => ids.has(item.comunidade_id)).forEach((item) => {
+    const list = epcStudentsByCommunity.get(item.comunidade_id) || [];
+    list.push(item);
+    epcStudentsByCommunity.set(item.comunidade_id, list);
+  });
+  return { monitorsByCommunity, studentsByCommunity, smpStudentsByCommunity, epcStudentsByCommunity };
 }
 
 async function syncIndividualCommunityMembers(communityId, retreatId, memberIds = []) {
@@ -1085,9 +1247,29 @@ async function syncSmpCommunityMembers(communityId, retreatId, memberIds = []) {
   }
 }
 
+async function syncEpcCommunityMembers(communityId, retreatId, memberIds = []) {
+  const desiredIds = new Set(array(memberIds).map((id) => String(id || '').trim()).filter(Boolean));
+  const availableIds = new Set((await rowsWhere('cursista_epc', `retiro_id=eq.${enc(retreatId)}`, '')).map((item) => String(item.id)));
+  const missingIds = [...desiredIds].filter((id) => !availableIds.has(id));
+  if (missingIds.length) throw new Error('Uma ou mais fichas EPC nao foram encontradas neste retiro. Nenhum vinculo foi alterado.');
+  let currentRows;
+  try {
+    currentRows = await rowsWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}`, '');
+  } catch (error) {
+    if (isMissingRelationError(error, 'comunidade_cursistas_epc')) throw new Error('A migracao comunidade_cursistas_epc ainda nao foi aplicada ao banco.');
+    throw error;
+  }
+  const currentIds = new Set(currentRows.map((item) => String(item.cursista_id)));
+  const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, retiro_id: retreatId, cursista_id: id }));
+  if (additions.length) await upsert('comunidade_cursistas_epc', additions, 'comunidade_id,retiro_id,cursista_id');
+  for (const id of currentIds) {
+    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=eq.${enc(id)}`);
+  }
+}
+
 async function saveCommunity(record) {
   const membershipType = record.__membershipType || '';
-  const mappedKeys = new Set(['id', 'retiroId', 'nome', 'liderCasalId', 'monitorCasalId', 'monitorIds', 'membroIds', 'membroSmpIds', '__membershipType', 'ordem', 'criadoEm', 'createdAt', 'updatedAt']);
+  const mappedKeys = new Set(['id', 'retiroId', 'nome', 'liderCasalId', 'monitorCasalId', 'monitorIds', 'membroIds', 'membroSmpIds', 'membroEpcIds', '__membershipType', 'ordem', 'criadoEm', 'createdAt', 'updatedAt']);
   await upsert('comunidades', compact({
     id: record.id,
     retiro_id: record.retiroId,
@@ -1109,6 +1291,7 @@ async function saveCommunity(record) {
   ]);
   if (membershipType === 'individual') await syncIndividualCommunityMembers(record.id, record.retiroId, record.membroIds);
   if (membershipType === 'smp') await syncSmpCommunityMembers(record.id, record.retiroId, record.membroSmpIds);
+  if (membershipType === 'epc') await syncEpcCommunityMembers(record.id, record.retiroId, record.membroEpcIds);
   return getRecord('comunidades', record.id);
 }
 
@@ -1255,6 +1438,7 @@ async function importDatabase(incoming) {
       if (storeName === 'comunidades') {
         await saveRelational(storeName, { ...record, __membershipType: 'individual' });
         if (Object.prototype.hasOwnProperty.call(record, 'membroSmpIds')) await saveRelational(storeName, { ...record, __membershipType: 'smp' });
+        if (Object.prototype.hasOwnProperty.call(record, 'membroEpcIds')) await saveRelational(storeName, { ...record, __membershipType: 'epc' });
       } else {
         await saveRelational(storeName, record);
       }
@@ -1345,6 +1529,9 @@ module.exports = {
   listCursistasSmp,
   saveCursistaSmp,
   deleteCursistaSmp,
+  listCursistasEpc,
+  saveCursistaEpc,
+  deleteCursistaEpc,
   readDatabase,
   replaceDatabase,
   listRecords,
