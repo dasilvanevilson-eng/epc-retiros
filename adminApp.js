@@ -578,8 +578,8 @@ function wireCpfFields(root) {
     input.addEventListener('change', validateCpf);
   });
 }
-function wireTypedBirthDates(root) {
-  root.querySelectorAll('[name="nascimento"], [name="spouseNascimento"]').forEach((input) => {
+function wireTypedDates(root, selector) {
+  root.querySelectorAll(selector).forEach((input) => {
     input.type = 'text';
     input.inputMode = 'numeric';
     input.placeholder = 'dd/mm/aaaa';
@@ -601,6 +601,10 @@ function wireTypedBirthDates(root) {
     input.addEventListener('change', validateDate);
     input.addEventListener('blur', validateDate);
   });
+}
+
+function wireTypedBirthDates(root) {
+  wireTypedDates(root, '[name="nascimento"], [name="spouseNascimento"]');
 }
 
 async function loadData() {
@@ -2666,7 +2670,8 @@ async function renderPessoa(id, retreatId, source = '') {
 function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-smp' } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
-  const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" type="date"></label></div>`).join('');
+  const dateInputAttributes = active === 'cursista-smp' ? 'type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"' : 'type="date"';
+  const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" ${dateInputAttributes}></label></div>`).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div></section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
@@ -2684,9 +2689,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       <div class="section-heading"><span>1.</span><div><h2>Dados do casal</h2></div></div>
       <div class="fields two-columns">
         <label class="field"><span>Nome dele</span><input name="nomeDele" placeholder="Digite o nome completo"></label>
-        <label class="field"><span>Data de nascimento</span><input name="nascimentoDele" type="date"></label>
+        <label class="field"><span>Data de nascimento</span><input name="nascimentoDele" ${dateInputAttributes}></label>
         <label class="field"><span>Nome dela</span><input name="nomeDela" placeholder="Digite o nome completo"></label>
-        <label class="field"><span>Data de nascimento</span><input name="nascimentoDela" type="date"></label>
+        <label class="field"><span>Data de nascimento</span><input name="nascimentoDela" ${dateInputAttributes}></label>
         <label class="field"><span>CPF dele</span><input name="cpfDele" inputmode="numeric" placeholder="000.000.000-00"></label>
         <label class="field"><span>CPF dela</span><input name="cpfDela" inputmode="numeric" placeholder="000.000.000-00"></label>
         <label class="field"><span>Profissão dele</span><input name="profissaoDele" placeholder="Digite a profissão"></label>
@@ -2725,9 +2730,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <section class="cursista-smp-section">
       <div class="section-heading"><span>4.</span><div><h2>Filhos e casamento</h2></div></div>
       <div class="fields three-columns">
-        <label class="field"><span>Data do 1º casamento dele</span><input name="casamentoDele" type="date"></label>
-        <label class="field"><span>Data do 1º casamento dela</span><input name="casamentoDela" type="date"></label>
-        <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" type="date"></label>
+        <label class="field"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
+        <label class="field"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
+        <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" ${dateInputAttributes}></label>
         <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
         <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
@@ -2978,7 +2983,11 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const epcKidTextFields = Array.from({ length: 5 }, (_, index) => [`smpKidDescricaoSaude${index + 1}Epc`, `smpKidDescricaoIntolerancia${index + 1}Epc`]).flat();
   const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'temFilhosEpc', 'manequimDele', 'manequimDela', ...smpKidRadioNames, ...epcKidRadioNames];
   const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', ...smpKidTextFields, ...epcKidTextFields, 'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+  const typedDateFields = expectedType === 'cursista-smp'
+    ? ['nascimentoDele', 'nascimentoDela', 'casamentoDele', 'casamentoDela', 'uniaoCasal', ...Array.from({ length: 5 }, (_, index) => `smpKidNascimento${index + 1}`)]
+    : [];
   const cpfFields = ['cpfDele', 'cpfDela'];
+  if (typedDateFields.length) wireTypedDates(form, typedDateFields.map((name) => `[name="${name}"]`).join(', '));
   let records = [];
   let selectedId = '';
   let searchRequest = 0;
@@ -3063,6 +3072,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       if (!form.elements[name]) return;
       const value = record[name];
       if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp'].includes(name)) form.elements[name].value = currency(value);
+      else if (typedDateFields.includes(name)) form.elements[name].value = formatDateInput(value) || value || '';
       else form.elements[name].value = value || '';
     });
     const paidAmount = parseCurrency(record.valorPagoSmp);
@@ -3087,6 +3097,9 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     };
     textFields.forEach((name) => {
       if (form.elements[name]) record[name] = values.get(name) || '';
+    });
+    typedDateFields.forEach((name) => {
+      if (form.elements[name]) record[name] = normalizeDateInput(record[name]);
     });
     radioNames.forEach((name) => {
       if (form.elements[name]) record[name] = values.get(name) || '';
@@ -3143,6 +3156,15 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (invalidCpf) {
       setMessage('Revise o CPF informado antes de salvar.');
       focusIssue(invalidCpf);
+      return false;
+    }
+    const invalidDate = typedDateFields
+      .map((name) => form.elements[name])
+      .find((input) => String(input?.value || '').trim() && !normalizeDateInput(input.value));
+    if (invalidDate) {
+      invalidDate.setCustomValidity('Digite a data no formato dd/mm/aaaa.');
+      setMessage('Revise a data informada. Use o formato dd/mm/aaaa.');
+      focusIssue(invalidDate);
       return false;
     }
     return true;

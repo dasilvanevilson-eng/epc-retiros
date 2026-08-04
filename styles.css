@@ -5828,13 +5828,13 @@ body:has(.login-shell) {
   }
 
   .cursista-smp-form .cursista-smp-common-fields {
-    grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    grid-template-columns:repeat(6, minmax(0, 1fr));
     grid-auto-flow:row;
   }
 
   .cursista-smp-form .cursista-smp-common-fields > .field,
   .cursista-smp-form .cursista-smp-common-fields > fieldset {
-    grid-column:auto;
+    grid-column:span 3;
     min-width:0;
     width:100%;
   }
@@ -5845,6 +5845,12 @@ body:has(.login-shell) {
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="familiarAmigo"]),
   .cursista-smp-form .cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) {
     grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorInscricaoSmp"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorPagoSmp"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="saldoPagarSmp"]) {
+    grid-column:span 2;
   }
 
   .cursista-smp-form .cursista-smp-common-fields .kids-row {
@@ -5900,6 +5906,19 @@ body:has(.login-shell) {
 
   .cursista-smp-actions>div {
     flex-direction:column;
+  }
+}
+
+@media(max-width:430px) {
+  .cursista-smp-form .cursista-smp-common-fields > .field,
+  .cursista-smp-form .cursista-smp-common-fields > fieldset {
+    grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorInscricaoSmp"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorPagoSmp"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="saldoPagarSmp"]) {
+    grid-column:span 2;
   }
 }
 
