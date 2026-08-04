@@ -5880,6 +5880,20 @@ body:has(.login-shell) {
     grid-template-columns:1fr;
   }
 
+  .cursista-smp-form .inline-choices:has(input[value="Sim"]):has(input[value="Não"]) {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:8px;
+    width:100%;
+  }
+
+  .cursista-smp-form .inline-choices:has(input[value="Sim"]):has(input[value="Não"]) .choice {
+    justify-content:center;
+    min-width:0;
+    width:100%;
+    text-align:center;
+  }
+
   .cursista-smp-actions {
     align-items:stretch;
   }
