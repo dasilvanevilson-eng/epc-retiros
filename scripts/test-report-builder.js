@@ -15,8 +15,8 @@ const hostile = validateSpec({
   groupBy: ['retiro', 'setor', 'cidade', 'cpf'],
   filters: [{ field: 'nome', operator: 'contains', value: 'Ana' }, { field: 'senha', operator: 'equals', value: 'x' }],
   sort: [{ field: 'nome', direction: 'desc' }, { field: 'sql', direction: 'asc' }],
+  locations: ['Indaial'],
   chart: '<script>',
-  locations: ['Indaial', '', 'Indaial'],
   pageSize: 5000,
 });
 assert.strictEqual(hostile.dataset, 'equipe');
@@ -27,7 +27,7 @@ assert.strictEqual(hostile.filters.length, 1);
 assert.strictEqual(hostile.sort.length, 1);
 assert.strictEqual(hostile.chart, 'bar');
 assert.strictEqual(hostile.pageSize, 100);
-assert.deepStrictEqual(hostile.locations, ['Indaial']);
+assert.strictEqual(hostile.locations, undefined, 'Modelos antigos nao podem manter filtro oculto por localidade.');
 assert(permissionsForRole('admin').includes('relatorios.ver'));
 assert(!permissionsForRole('coordenador_geral').includes('relatorios.ver'));
 
@@ -50,5 +50,7 @@ assert.match(frontend, /relatorios: 'relatorios\.ver'/);
 assert.match(frontend, /async function renderRelatorios\(\)/);
 assert.match(frontend, /data-report-step="\$\{step\}"/);
 assert.match(frontend, /data-report-action="csv"/);
+assert.doesNotMatch(frontend, /data-report-location|<legend>Localidades/);
+assert.match(frontend, /retreat\.local \?/, 'O campo Local dos retiros deve permanecer disponivel.');
 
 console.log('Relatorios: validacao, permissao, migracao aditiva e protecoes de API validadas.');

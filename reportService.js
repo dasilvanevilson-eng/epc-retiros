@@ -105,7 +105,6 @@ function validateSpec(incoming = {}) {
     dataset: dataset.id,
     statuses: statuses.length ? statuses : ['concluido'],
     retreatIds: unique(array(incoming.retreatIds).map(text)),
-    locations: unique(array(incoming.locations).map(text)).slice(0, 100),
     periodStart: dateValue(incoming.periodStart), periodEnd: dateValue(incoming.periodEnd),
     columns: columns.length ? columns : [...dataset.defaults], groupBy,
     metrics: selectedMetrics.length ? selectedMetrics : [dataset.metrics[0]], filters, sort,
@@ -127,11 +126,9 @@ async function sourceRows(spec, allowedRetreatIds = null) {
   ]);
   const allowed = allowedRetreatIds ? new Set(allowedRetreatIds) : null;
   const requested = new Set(spec.retreatIds);
-  const requestedLocations = new Set(spec.locations.map((location) => location.toLocaleLowerCase('pt-BR')));
   const selectedRetreats = allRetreats.filter((retreat) => (!allowed || allowed.has(retreat.id))
     && spec.statuses.includes(retreat.status)
     && (!requested.size || requested.has(retreat.id))
-    && (!requestedLocations.size || requestedLocations.has(text(retreat.local).toLocaleLowerCase('pt-BR')))
     && (!spec.periodStart || dateValue(retreat.dataTermino || retreat.dataInicio) >= spec.periodStart)
     && (!spec.periodEnd || dateValue(retreat.dataInicio) <= spec.periodEnd));
   const retreatById = new Map(selectedRetreats.map((retreat) => [retreat.id, retreat]));
@@ -290,7 +287,7 @@ async function buildReport(incoming, allowedRetreatIds = null, options = {}) {
 async function reportCatalog(allowedRetreatIds = null) {
   const allowed = allowedRetreatIds ? new Set(allowedRetreatIds) : null;
   const retreats = (await listRecords('retiros')).filter((retreat) => !allowed || allowed.has(retreat.id));
-  return { ...catalog(), locations: unique(retreats.map((retreat) => text(retreat.local))).sort((a, b) => a.localeCompare(b, 'pt-BR')), retreats: retreats.map((retreat) => ({ id: retreat.id, nome: retreat.nome, status: retreat.status, statusLabel: statusLabels[retreat.status] || retreat.status, dataInicio: retreat.dataInicio, dataTermino: retreat.dataTermino, local: retreat.local || '' })) };
+  return { ...catalog(), retreats: retreats.map((retreat) => ({ id: retreat.id, nome: retreat.nome, status: retreat.status, statusLabel: statusLabels[retreat.status] || retreat.status, dataInicio: retreat.dataInicio, dataTermino: retreat.dataTermino, local: retreat.local || '' })) };
 }
 
 module.exports = { buildReport, reportCatalog, validateSpec };
