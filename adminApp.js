@@ -2773,7 +2773,6 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <div class="form-actions cursista-smp-actions"><p>Revise os dados antes de salvar a ficha.</p><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
   </form>`, active);
   if (!['cursista-smp', 'cursista-epc'].includes(active)) return;
-  if (active === 'cursista-smp') app.querySelector('#cursista-smp-form')?.classList.add('smp-topics-aligned-layout');
   const markOwner = (owner, fieldNames = []) => {
     fieldNames.forEach((name) => {
       app.querySelectorAll(`[name="${name}"]`).forEach((input) => {
@@ -2785,6 +2784,33 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   const markSectionOwner = (owner, fieldName) => {
     const section = app.querySelector(`[name="${fieldName}"]`)?.closest('.cursista-smp-section');
     section?.classList.add(`smp-owner-${owner}`);
+  };
+  const fieldBlock = (name) => {
+    const input = app.querySelector(`[name="${name}"]`);
+    if (['manequimDele', 'manequimDela'].includes(name)) {
+      const shirtLine = input?.closest('.smp-shirt-choice-line');
+      const shirtLabel = shirtLine?.querySelector(':scope > span');
+      if (shirtLabel) shirtLabel.textContent = 'Manequim / Camisa normal';
+      shirtLine?.classList.add('epc-shirt-choice-line');
+      return shirtLine;
+    }
+    return input?.closest('.field, fieldset, .smp-shirt-row, .choice-block');
+  };
+  const fieldsBlock = (className, names = []) => {
+    const block = document.createElement('div');
+    block.className = className;
+    names.forEach((name) => {
+      const field = fieldBlock(name);
+      if (field && !block.contains(field)) block.append(field);
+    });
+    return block;
+  };
+  const section = (number, titleText, block) => {
+    const item = document.createElement('section');
+    item.className = 'cursista-smp-section';
+    item.innerHTML = `<div class="section-heading"><span>${number}.</span><div><h2>${titleText}</h2></div></div>`;
+    item.append(block);
+    return item;
   };
   app.querySelector('#cursista-smp-form')?.classList.add('smp-ownership-debug');
   app.querySelector('.cursista-smp-file-number')?.classList.add('smp-ownership-debug', 'smp-owner-common');
@@ -2810,6 +2836,24 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
         </div>`;
       row.append(careQuestions);
     });
+    const form = app.querySelector('#cursista-smp-form');
+    const message = app.querySelector('#cursista-smp-message');
+    const actions = app.querySelector('.cursista-smp-actions');
+    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
+    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
+    const commonFields = fieldsBlock('fields two-columns cursista-smp-common-fields', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
+    commonFields.querySelectorAll(':scope > .field, :scope > fieldset, :scope > .choice-block').forEach((field) => {
+      field.classList.add('smp-owner-common');
+    });
+    form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
+    form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
+    form.classList.add('smp-three-section-layout');
+    form.insertBefore(section('1', 'Informações dele', himFields), message);
+    form.insertBefore(section('2', 'Informações dela', herFields), message);
+    const commonSection = section('3', 'Informações em comum', commonFields);
+    commonSection.classList.add('cursista-smp-common-section', 'student-registration-value');
+    form.insertBefore(commonSection, message);
+    if (actions) form.append(actions);
   }
   if (active === 'cursista-epc') {
     const form = app.querySelector('#cursista-smp-form');
@@ -2823,33 +2867,6 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     if (herConfirmationLegend) herConfirmationLegend.textContent = 'É crismado?';
     hisConfirmationField?.classList.add('smp-owner-him');
     herConfirmationField?.classList.add('smp-owner-her');
-    const fieldBlock = (name) => {
-      const input = app.querySelector(`[name="${name}"]`);
-      if (['manequimDele', 'manequimDela'].includes(name)) {
-        const shirtLine = input?.closest('.smp-shirt-choice-line');
-        const shirtLabel = shirtLine?.querySelector(':scope > span');
-        if (shirtLabel) shirtLabel.textContent = 'Manequim / Camisa normal';
-        shirtLine?.classList.add('epc-shirt-choice-line');
-        return shirtLine;
-      }
-      return input?.closest('.field, fieldset, .smp-shirt-row, .choice-block');
-    };
-    const fieldsBlock = (className, names = []) => {
-      const block = document.createElement('div');
-      block.className = className;
-      names.forEach((name) => {
-        const field = fieldBlock(name);
-        if (field && !block.contains(field)) block.append(field);
-      });
-      return block;
-    };
-    const section = (number, titleText, block) => {
-      const item = document.createElement('section');
-      item.className = 'cursista-smp-section';
-      item.innerHTML = `<div class="section-heading"><span>${number}.</span><div><h2>${titleText}</h2></div></div>`;
-      item.append(block);
-      return item;
-    };
     const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
     const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
     const commonFields = fieldsBlock('fields three-columns', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
