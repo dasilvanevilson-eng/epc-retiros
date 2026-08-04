@@ -4711,19 +4711,22 @@ body:has(.login-shell) {
   grid-template-columns:minmax(0, 1fr);
 }
 
-.student-screen #student-search-results .student-search-choice-heading {
+.student-screen #student-search-results .student-search-choice-heading,
+#cursista-smp-search-results .student-search-choice-heading {
   display:grid;
   grid-template-columns:minmax(0, 1fr) auto;
   align-items:baseline;
   gap:12px;
 }
 
-.student-screen #student-search-results .student-search-choice-name {
+.student-screen #student-search-results .student-search-choice-name,
+#cursista-smp-search-results .student-search-choice-name {
   min-width:0;
   overflow-wrap:anywhere;
 }
 
-.student-screen #student-search-results .student-search-choice-file-number {
+.student-screen #student-search-results .student-search-choice-file-number,
+#cursista-smp-search-results .student-search-choice-file-number {
   margin:0;
   color:#15324a;
   font-size:12px;

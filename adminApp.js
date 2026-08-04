@@ -3122,6 +3122,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const idleNotice = () => canUseSmp() || (expectedType === 'cursista-smp' ? '' : `Clique em Novo para iniciar uma ficha ${label}.`);
   const setLocked = (locked) => {
     allFormControls().forEach((control) => { control.disabled = locked; });
+    if (fileNumberInput && expectedType === 'cursista-smp') fileNumberInput.disabled = !retreat;
     const saveDisabled = locked || (selectedId ? !canEditSmp() : !canCreateSmp());
     saveButton.disabled = saveDisabled;
     saveNewButton.disabled = saveDisabled;
@@ -3202,6 +3203,29 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
+  };
+  const normalizeSmpFileNumberLookup = (value) => {
+    const fileNumber = String(value || '').trim();
+    return /^\d+$/.test(fileNumber) ? String(Number(fileNumber)) : fileNumber;
+  };
+  const findRecordByFileNumber = (value) => {
+    const target = normalizeSmpFileNumberLookup(value);
+    if (!target) return null;
+    return records.find((record) => [record.numeroFichaSmp, record.id]
+      .some((fileNumber) => normalizeSmpFileNumberLookup(fileNumber) === target)) || null;
+  };
+  const consultFileNumber = async (value = fileNumberInput?.value) => {
+    const typedFileNumber = String(value || '').trim();
+    if (!typedFileNumber || !retreat?.id) return;
+    if (!records.length) await refreshRecords();
+    const record = findRecordByFileNumber(typedFileNumber);
+    if (record) {
+      loadRecord(record);
+      searchInput.value = '';
+      setMessage(`${label} carregado pela ficha ${record.numeroFichaSmp || record.id}.`);
+      return;
+    }
+    setMessage(`Ficha ${typedFileNumber} não encontrada neste retiro.`);
   };
   const collectRecord = () => {
     const values = new FormData(form);
@@ -3328,7 +3352,11 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       .sort((first, second) => String(first.id || '').localeCompare(String(second.id || ''), 'pt-BR', { numeric: true }));
     if (!searchOpen || currentRequest !== searchRequest) return;
     searchResults.hidden = false;
-    searchResults.innerHTML = filtered.length ? filtered.map((record) => `<article><button type="button" class="student-search-choice" data-smp-select="${escapeHtml(record.id)}"><strong>Ficha ${escapeHtml(record.id || '')}</strong><span>${escapeHtml([record.nomeDele, record.nomeDela].filter(Boolean).join(' e ') || 'Sem nomes informados')}</span></button></article>`).join('') : `<p>Nenhuma ficha ${escapeHtml(label)} encontrada neste retiro.</p>`;
+    searchResults.innerHTML = filtered.length ? filtered.map((record) => {
+      const coupleName = [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || 'Sem nomes informados';
+      const fileNumber = record.numeroFichaSmp || record.id || '';
+      return `<article><button type="button" class="student-search-choice" data-smp-select="${escapeHtml(record.id)}"><div class="student-search-choice-heading"><strong class="student-search-choice-name">${escapeHtml(coupleName)}</strong><span class="student-search-choice-file-number">Ficha ${escapeHtml(fileNumber)}</span></div></button></article>`;
+    }).join('') : `<p>Nenhuma ficha ${escapeHtml(label)} encontrada neste retiro.</p>`;
     searchResults.querySelectorAll('[data-smp-select]').forEach((button) => button.addEventListener('click', () => {
       const record = records.find((item) => item.id === button.dataset.smpSelect);
       if (!record) return;
@@ -3376,6 +3404,29 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     input.maxLength = 15;
     input.addEventListener('blur', () => { input.value = formatBrazilianPhone(input.value); });
   });
+  if (fileNumberInput && expectedType === 'cursista-smp') {
+    let fileNumberLookupTimer = 0;
+    const runFileNumberLookup = () => consultFileNumber().catch((error) => {
+      setMessage(error.message || `Não foi possível consultar a ficha ${label}.`);
+    });
+    const scheduleFileNumberLookup = () => {
+      fileNumberInput.value = fileNumberInput.value.replace(/\D/g, '');
+      clearTimeout(fileNumberLookupTimer);
+      if (!fileNumberInput.value) return;
+      fileNumberLookupTimer = setTimeout(runFileNumberLookup, 450);
+    };
+    fileNumberInput.addEventListener('input', scheduleFileNumberLookup);
+    fileNumberInput.addEventListener('change', () => {
+      clearTimeout(fileNumberLookupTimer);
+      runFileNumberLookup();
+    });
+    fileNumberInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      clearTimeout(fileNumberLookupTimer);
+      runFileNumberLookup();
+    });
+  }
   ['valorInscricaoSmp'].forEach((name) => {
     const input = form.elements[name];
     input?.addEventListener('focus', () => { input.value = parseCurrency(input.value) || ''; });
