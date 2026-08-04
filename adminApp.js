@@ -2784,7 +2784,12 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const dateInputAttributes = active === 'cursista-smp' ? 'type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"' : 'type="date"';
-  const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" ${dateInputAttributes}></label></div>`).join('');
+  const smpKidsFields = Array.from({ length: 5 }, (_, index) => {
+    const kidNumber = index + 1;
+    const row = `<div class="kids-row" data-smp-kid-row="${kidNumber}"><span>${kidNumber}</span><label class="field"><span>Nome</span><input name="smpKidNome${kidNumber}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${kidNumber}" ${dateInputAttributes}></label></div>`;
+    if (active !== 'cursista-smp') return row;
+    return `<details class="smp-kid-panel" data-smp-kid-panel="${kidNumber}" ${index === 0 ? 'open' : ''}><summary><strong>Criança ${kidNumber}</strong><span class="smp-kid-summary-value">Não preenchida</span></summary>${row}</details>`;
+  }).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div>${active === 'cursista-smp' ? '<button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button>' : ''}</section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
@@ -3106,6 +3111,25 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   let selectedId = '';
   let searchRequest = 0;
   let searchOpen = false;
+  const smpKidPanels = expectedType === 'cursista-smp' ? [...form.querySelectorAll('[data-smp-kid-panel]')] : [];
+  const smpKidPanelHasData = (panel) => [...panel.querySelectorAll('input, select, textarea')].some((control) => {
+    if (['checkbox', 'radio'].includes(control.type)) return control.checked;
+    return Boolean(String(control.value || '').trim());
+  });
+  const syncSmpKidPanels = ({ resetOpen = false } = {}) => {
+    let firstPanelWithData = -1;
+    smpKidPanels.forEach((panel, index) => {
+      const kidNumber = panel.dataset.smpKidPanel;
+      const name = String(form.elements[`smpKidNome${kidNumber}`]?.value || '').trim();
+      const hasData = smpKidPanelHasData(panel);
+      if (hasData && firstPanelWithData < 0) firstPanelWithData = index;
+      const summary = panel.querySelector('.smp-kid-summary-value');
+      if (summary) summary.textContent = name || (hasData ? 'Dados preenchidos' : 'Não preenchida');
+    });
+    if (!resetOpen || !smpKidPanels.length) return;
+    const openIndex = firstPanelWithData >= 0 ? firstPanelWithData : 0;
+    smpKidPanels.forEach((panel, index) => { panel.open = index === openIndex; });
+  };
 
   const setMessage = (text = '') => { if (message) message.textContent = text; };
   const canUseSmp = () => {
@@ -3174,6 +3198,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (retreat?.valorInscricaoCursista && form.elements.valorInscricaoSmp) form.elements.valorInscricaoSmp.value = currency(retreat.valorInscricaoCursista);
     form.dataset.smpPaymentTouched = 'false';
     setSmpPaymentDetails({ paidAmount: 0 });
+    syncSmpKidPanels({ resetOpen: true });
     setLocked(!unlock);
     setMessage(notice);
     if (focus) fileNumberInput?.focus();
@@ -3200,6 +3225,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     radioNames.forEach((name) => fillRadio(name, record[name] || ''));
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
     syncChoiceStates(form);
+    syncSmpKidPanels({ resetOpen: true });
     deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
@@ -3388,6 +3414,12 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
 
   wireCepLookup(form);
+  const syncChangedSmpKidPanel = (event) => {
+    if (event.target.closest('[data-smp-kid-panel]')) syncSmpKidPanels();
+  };
+  form.addEventListener('input', syncChangedSmpKidPanel);
+  form.addEventListener('change', syncChangedSmpKidPanel);
+  syncSmpKidPanels({ resetOpen: true });
   form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
   cpfFields.forEach((name) => {
     const input = form.elements[name];

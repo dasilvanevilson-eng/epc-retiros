@@ -5739,9 +5739,69 @@ body:has(.login-shell) {
   grid-column:1 / -1;
 }
 
+.cursista-smp-form .smp-kid-panel {
+  grid-column:1 / -1;
+  overflow:hidden;
+  border:1px solid #cde8f5;
+  border-radius:10px;
+  background:#fff;
+}
+
+.cursista-smp-form .smp-kid-panel > summary {
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:48px;
+  padding:11px 14px;
+  color:#15324a;
+  cursor:pointer;
+  list-style:none;
+}
+
+.cursista-smp-form .smp-kid-panel > summary::-webkit-details-marker {
+  display:none;
+}
+
+.cursista-smp-form .smp-kid-panel > summary::after {
+  content:'⌄';
+  color:#2f84bd;
+  font-size:20px;
+  font-weight:900;
+  line-height:1;
+  transition:transform .18s ease;
+}
+
+.cursista-smp-form .smp-kid-panel[open] > summary {
+  border-bottom:1px solid #cde8f5;
+  background:#eef8fd;
+}
+
+.cursista-smp-form .smp-kid-panel[open] > summary::after {
+  transform:rotate(180deg);
+}
+
+.cursista-smp-form .smp-kid-summary-value {
+  min-width:0;
+  overflow:hidden;
+  color:#526d7e;
+  font-size:13px;
+  font-weight:600;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.cursista-smp-form .smp-kid-summary-value::before {
+  content:'— ';
+}
+
 .cursista-smp-form .kids-row {
   border-top:0;
   padding:6px 0;
+}
+
+.cursista-smp-form .smp-kid-panel > .kids-row {
+  padding:14px;
 }
 
 .cursista-smp-form .epc-kid-care,
