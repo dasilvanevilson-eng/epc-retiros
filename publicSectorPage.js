@@ -103,7 +103,7 @@ function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
 
 function intolerancePrintPageHtml({ retreat, sector, intolerances, intoleranceLoadError = '' }) {
   const title = `Cursistas com intoler\u00e2ncia alimentar - ${retreat.nome}`;
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#203c26;background:#fff;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:24px}p{margin:0 0 16px;color:#5f685f;font-size:13px}.eyebrow{margin:0 0 5px;color:#2b76b7;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.intolerance-list{margin:16px 0;padding:0;list-style:none;border-top:1px solid #e1d6c5}.intolerance-list li{padding:10px 0;border-bottom:1px solid #e1d6c5;break-inside:avoid}.intolerance-list strong,.intolerance-list span,.intolerance-list small{display:block}.intolerance-list span{margin-top:4px;color:#203c26;font-size:13px}.intolerance-list small{margin-top:3px;color:#5f685f}.sector-public-empty{padding:18px 0;color:#5f685f}</style></head><body><p class="eyebrow">Acompanhamento do setor ${escapeHtml(sector)}</p><h1>Cursistas com intoler&acirc;ncia alimentar</h1>${intoleranceLoadError ? `<div class="sector-public-empty">${escapeHtml(intoleranceLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${intolerances.length} cursista(s) com intoler&acirc;ncia informada.</p>${intolerances.length ? `<ul class="intolerance-list">${intolerances.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(person.intolerance)}</span><small>Comunidade: ${escapeHtml(person.community)}</small></li>`).join('')}</ul>` : '<div class="sector-public-empty">Nenhum cursista com intoler&acirc;ncia alimentar informada neste retiro.</div>'}`}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150),{once:true});</script></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#203c26;background:#fff;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:24px}p{margin:0 0 16px;color:#5f685f;font-size:13px}.eyebrow{margin:0 0 5px;color:#2b76b7;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.intolerance-list{margin:16px 0;padding:0;list-style:none;border-top:1px solid #e1d6c5}.intolerance-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.8fr);grid-template-rows:auto auto;gap:3px 18px;align-items:center;padding:10px 0;border-bottom:1px solid #e1d6c5;break-inside:avoid}.intolerance-list strong,.intolerance-list span,.intolerance-list small{display:block;min-width:0;overflow-wrap:anywhere}.intolerance-list strong{grid-column:1;grid-row:1}.intolerance-list small{grid-column:1;grid-row:2;color:#5f685f}.intolerance-list span{grid-column:2;grid-row:1 / span 2;align-self:center;color:#203c26;font-size:13px}.sector-public-empty{padding:18px 0;color:#5f685f}</style></head><body><p class="eyebrow">Acompanhamento do setor ${escapeHtml(sector)}</p><h1>Cursistas com intoler&acirc;ncia alimentar</h1>${intoleranceLoadError ? `<div class="sector-public-empty">${escapeHtml(intoleranceLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${intolerances.length} cursista(s) com intoler&acirc;ncia informada.</p>${intolerances.length ? `<ul class="intolerance-list">${intolerances.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(person.intolerance)}</span><small>Comunidade: ${escapeHtml(person.community)}</small></li>`).join('')}</ul>` : '<div class="sector-public-empty">Nenhum cursista com intoler&acirc;ncia alimentar informada neste retiro.</div>'}`}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150),{once:true});</script></body></html>`;
 }
 
 function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleranceLoadError = '', showIntoleranceView = supportsIntoleranceView(sector) }) {
@@ -154,11 +154,12 @@ function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleran
       .sector-public-view{min-height:0;display:flex;flex-direction:column}
       .sector-public-view[hidden]{display:none}
       .intolerance-public-list{overflow-y:auto;margin:18px 0;padding:0;border-top:1px solid #e7ddca;border-bottom:1px solid #e7ddca}
-      .intolerance-public-list li{list-style:none;padding:12px 4px;border-bottom:1px solid #eee6d8;color:#203c26}
+      .intolerance-public-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.8fr);grid-template-rows:auto auto;gap:4px 14px;align-items:center;list-style:none;padding:12px 4px;border-bottom:1px solid #eee6d8;color:#203c26}
       .intolerance-public-list li:last-child{border-bottom:0}
-      .intolerance-public-list strong,.intolerance-public-list span,.intolerance-public-list small{display:block}
-      .intolerance-public-list span{margin-top:4px;color:#203c26;font-size:13px;font-weight:700}
-      .intolerance-public-list small{margin-top:4px;color:#6c7469;font-size:13px}
+      .intolerance-public-list strong,.intolerance-public-list span,.intolerance-public-list small{display:block;min-width:0;overflow-wrap:anywhere}
+      .intolerance-public-list strong{grid-column:1;grid-row:1}
+      .intolerance-public-list small{grid-column:1;grid-row:2;color:#6c7469;font-size:13px}
+      .intolerance-public-list span{grid-column:2;grid-row:1 / span 2;align-self:center;color:#203c26;font-size:13px;font-weight:700}
       @media print{
         body{display:block;min-height:auto;padding:0;background:#fff}
         .sector-public-modal{display:block;width:auto;max-height:none;padding:0;border:0;border-radius:0;box-shadow:none}
@@ -167,7 +168,7 @@ function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleran
         .sector-public-actions{display:none}
         .sector-public-tabs{display:none}
       }
-      @media(max-width:520px){.sector-public-tabs{grid-template-columns:1fr}.sector-public-actions{display:grid;grid-template-columns:1fr}.sector-public-actions button{width:100%}}
+      @media(max-width:520px){.sector-public-tabs{grid-template-columns:1fr}.sector-public-actions{display:grid;grid-template-columns:1fr}.sector-public-actions button{width:100%}.intolerance-public-list li{grid-template-columns:minmax(0,1fr) minmax(92px,.75fr);gap:4px 9px}}
     </style>
   </head>
   <body>

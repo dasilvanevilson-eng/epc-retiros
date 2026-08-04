@@ -65,6 +65,9 @@ assert.match(eligibleHtml, /Comunidade Verde/);
 assert.match(eligibleHtml, /Lactose/);
 assert.doesNotMatch(eligibleHtml, /11111111111|47999999999|Rua secreta/);
 assert.match(eligibleHtml, /printableReports\[activeSectorView\]/);
+assert.match(eligibleHtml, /\.intolerance-public-list li\{display:grid;grid-template-columns:/);
+assert.match(eligibleHtml, /\.intolerance-list li\{display:grid;grid-template-columns:/);
+assert.match(eligibleHtml, /grid-column:2;grid-row:1 \/ span 2/);
 
 const regularHtml = sectorPageHtml({
   retreat: { id: 'r-ind', nome: 'Retiro teste', dias: ['Sábado'] },
