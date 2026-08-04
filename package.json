@@ -7,6 +7,7 @@
     "test:backup": "node scripts/test-backup-service.js",
     "test:epc": "node scripts/test-cursista-epc-migration.js",
     "test:reports": "node scripts/test-report-builder.js",
+    "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "audit:registrations": "node scripts/audit-registration-integrity.js"
