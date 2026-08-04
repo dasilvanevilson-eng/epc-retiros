@@ -2859,7 +2859,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>5.</span><div><h2>Espaço Kids</h2></div></div>
-      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
+      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> ${active === 'cursista-smp' ? 'Não necessita do Espaço Kids' : 'Não necessito do Espaço Kids'}</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>6.</span><div><h2>Saúde e acolhimento</h2></div></div>
@@ -3130,6 +3130,30 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const openIndex = firstPanelWithData >= 0 ? firstPanelWithData : 0;
     smpKidPanels.forEach((panel, index) => { panel.open = index === openIndex; });
   };
+  const smpKidsNotNeededInput = expectedType === 'cursista-smp' ? form.elements.smpKidsNotNeeded : null;
+  const smpKidsList = smpKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-list');
+  const smpKidsHint = smpKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-hint');
+  const clearSmpKidFields = () => {
+    smpKidPanels.forEach((panel) => {
+      panel.querySelectorAll('input, select, textarea').forEach((control) => {
+        if (['checkbox', 'radio'].includes(control.type)) control.checked = false;
+        else control.value = '';
+        control.setCustomValidity?.('');
+      });
+    });
+    syncChoiceStates(form);
+    syncSmpKidPanels();
+  };
+  const syncSmpKidsNeedVisibility = ({ clearChildren = false } = {}) => {
+    if (!smpKidsNotNeededInput) return;
+    const notNeeded = smpKidsNotNeededInput.checked;
+    if (notNeeded && clearChildren) clearSmpKidFields();
+    smpKidsList?.classList.toggle('is-disabled', notNeeded);
+    smpKidsList?.toggleAttribute('hidden', notNeeded);
+    smpKidsHint?.toggleAttribute('hidden', notNeeded);
+    if (notNeeded) smpKidPanels.forEach((panel) => { panel.open = false; });
+    else syncSmpKidPanels({ resetOpen: true });
+  };
 
   const setMessage = (text = '') => { if (message) message.textContent = text; };
   const canUseSmp = () => {
@@ -3198,6 +3222,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (retreat?.valorInscricaoCursista && form.elements.valorInscricaoSmp) form.elements.valorInscricaoSmp.value = currency(retreat.valorInscricaoCursista);
     form.dataset.smpPaymentTouched = 'false';
     setSmpPaymentDetails({ paidAmount: 0 });
+    syncSmpKidsNeedVisibility();
     syncSmpKidPanels({ resetOpen: true });
     setLocked(!unlock);
     setMessage(notice);
@@ -3226,6 +3251,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (form.elements.smpKidsNotNeeded) form.elements.smpKidsNotNeeded.checked = Boolean(record.smpKidsNotNeeded);
     syncChoiceStates(form);
     syncSmpKidPanels({ resetOpen: true });
+    syncSmpKidsNeedVisibility();
     deleteButton.hidden = !canDeleteSmp();
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
@@ -3277,6 +3303,12 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     radioNames.forEach((name) => {
       if (form.elements[name]) record[name] = values.get(name) || '';
     });
+    if (expectedType === 'cursista-smp' && record.smpKidsNotNeeded) {
+      Array.from({ length: 5 }, (_, index) => index + 1).forEach((kidNumber) => {
+        [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`, `smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`, `smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`]
+          .forEach((name) => { record[name] = ''; });
+      });
+    }
     record.cpfDele = normalizeCpf(record.cpfDele);
     record.cpfDela = normalizeCpf(record.cpfDela);
     record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);
@@ -3414,12 +3446,27 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
 
   wireCepLookup(form);
+  smpKidsNotNeededInput?.addEventListener('change', () => {
+    if (!smpKidsNotNeededInput.checked) {
+      syncSmpKidsNeedVisibility();
+      return;
+    }
+    const hasRegisteredKid = smpKidPanels.some(smpKidPanelHasData);
+    if (hasRegisteredKid && !confirm('Esta ação limpará todos os dados das crianças desta ficha quando ela for salva. Deseja continuar?')) {
+      smpKidsNotNeededInput.checked = false;
+      syncSmpKidsNeedVisibility();
+      return;
+    }
+    syncSmpKidsNeedVisibility({ clearChildren: true });
+    if (hasRegisteredKid) setMessage('Dados das crianças removidos do formulário. Clique em Salvar para confirmar a alteração.');
+  });
   const syncChangedSmpKidPanel = (event) => {
     if (event.target.closest('[data-smp-kid-panel]')) syncSmpKidPanels();
   };
   form.addEventListener('input', syncChangedSmpKidPanel);
   form.addEventListener('change', syncChangedSmpKidPanel);
   syncSmpKidPanels({ resetOpen: true });
+  syncSmpKidsNeedVisibility();
   form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
   cpfFields.forEach((name) => {
     const input = form.elements[name];
