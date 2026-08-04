@@ -636,6 +636,13 @@ async function loadData() {
   normalizeRetreatSectorsForDisplay();
 }
 
+async function ensureRetreatFocusLoaded() {
+  if (retreats.length) return;
+  retreats = await dataService.listRetiros();
+  retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  normalizeRetreatSectorsForDisplay();
+}
+
 function ageFromBirth(dateOfBirth) {
   if (!dateOfBirth) return null;
   const today = new Date(); const birth = new Date(`${dateOfBirth}T12:00:00`);
@@ -704,7 +711,8 @@ function setupMetricSearch() {
 
 function layout(content, active = 'inicio') {
   const isPublicReceiverView = Boolean(publicReceiverToken);
-  const activeStudentNavId = studentFormNavIds[selectedRetreat()?.tipoFichaCursista || defaultStudentFormType] || studentFormNavIds[defaultStudentFormType];
+  const focusedRetreat = selectedRetreat();
+  const activeStudentNavId = studentFormNavIds[focusedRetreat?.tipoFichaCursista || defaultStudentFormType] || studentFormNavIds[defaultStudentFormType];
   const studentNavIds = new Set(Object.values(studentFormNavIds));
   const isVisibleStudentNav = (id) => !studentNavIds.has(id) || id === activeStudentNavId;
   const navItems = [
@@ -734,7 +742,7 @@ function layout(content, active = 'inicio') {
       </aside>
       <div class="admin-workspace">
         <header class="admin-header">
-          ${currentUser ? `<div class="mobile-session-user" title="Login ativo: ${escapeHtml(currentUser.username)}" aria-label="Login ativo: ${escapeHtml(currentUser.username)}"><span>Logado:</span><strong>${escapeHtml(currentUser.username)}</strong></div>` : ''}
+          ${currentUser ? `<div class="mobile-session-user" title="Login ativo: ${escapeHtml(currentUser.username)}${focusedRetreat?.nome ? ` · Retiro em foco: ${escapeHtml(focusedRetreat.nome)}` : ''}" aria-label="Login ativo: ${escapeHtml(currentUser.username)}${focusedRetreat?.nome ? `. Retiro em foco: ${escapeHtml(focusedRetreat.nome)}` : ''}"><div class="mobile-session-login"><span>Logado:</span><strong>${escapeHtml(currentUser.username)}</strong></div>${focusedRetreat?.nome ? `<small class="mobile-session-retreat">Retiro: ${escapeHtml(focusedRetreat.nome)}</small>` : ''}</div>` : ''}
           <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
         </header><nav class="main-nav admin-menu-nav" aria-label="Menu principal">
           ${navItems.map(([id, label]) => `<a href="#${id}" class="${active === id ? 'is-active' : ''}">${label}</a>`).join('')}
@@ -6554,8 +6562,8 @@ async function route() {
     }
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
     const target = location.hash.slice(1) || firstAllowedSection();
-    if (target === 'usuarios') return renderUsuarios();
-    if (target === 'backup') return renderBackup();
+    if (target === 'usuarios') { await ensureRetreatFocusLoaded(); return renderUsuarios(); }
+    if (target === 'backup') { await ensureRetreatFocusLoaded(); return renderBackup(); }
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     if (target === 'cursista-epc') {
