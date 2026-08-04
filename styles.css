@@ -2275,6 +2275,46 @@ button:hover,
   color:#285130;
 }
 
+.mobile-session-user {
+  display:none;
+}
+
+@media(max-width:1180px) {
+  .admin-header {
+    gap:8px;
+    max-width:calc(100vw - 32px);
+  }
+
+  .mobile-session-user {
+    display:flex;
+    align-items:center;
+    min-width:0;
+    max-width:min(240px, calc(100vw - 96px));
+    height:48px;
+    padding:0 13px;
+    border:1px solid rgba(198,154,69,.30);
+    border-radius:12px;
+    background:#fffdf7;
+    color:#667268;
+    font-size:12px;
+    line-height:1;
+    box-shadow:0 12px 30px rgba(41,33,19,.14);
+  }
+
+  .mobile-session-user span {
+    flex:0 0 auto;
+    margin-right:5px;
+  }
+
+  .mobile-session-user strong {
+    min-width:0;
+    overflow:hidden;
+    color:#25332a;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+}
+
 .admin-menu-nav {
   position:fixed !important;
   top:58px !important;
@@ -2346,9 +2386,17 @@ button:hover,
   .admin-header {
     top:12px;
     right:12px;
+    max-width:calc(100vw - 24px);
     min-height:0;
     padding:0;
     border-radius:0;
+  }
+
+  .mobile-session-user {
+    max-width:calc(100vw - 80px);
+    height:44px;
+    padding:0 11px;
+    border-radius:10px;
   }
 
   .admin-menu-nav {

@@ -716,7 +716,10 @@ function layout(content, active = 'inicio') {
         <div class="sidebar-ornament" aria-hidden="true"></div>
       </aside>
       <div class="admin-workspace">
-        <header class="admin-header"><button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button></header><nav class="main-nav admin-menu-nav" aria-label="Menu principal">
+        <header class="admin-header">
+          ${currentUser ? `<div class="mobile-session-user" title="Login ativo: ${escapeHtml(currentUser.username)}" aria-label="Login ativo: ${escapeHtml(currentUser.username)}"><span>Logado:</span><strong>${escapeHtml(currentUser.username)}</strong></div>` : ''}
+          <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+        </header><nav class="main-nav admin-menu-nav" aria-label="Menu principal">
           ${navItems.map(([id, label]) => `<a href="#${id}" class="${active === id ? 'is-active' : ''}">${label}</a>`).join('')}
           <button type="button" class="logout-link" id="logout-button">Sair do sistema</button>
         </nav>
