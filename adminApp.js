@@ -2892,7 +2892,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       <div class="fields three-columns"><label class="field"><span>Valor da inscrição</span><input name="valorInscricaoSmp" type="text" inputmode="decimal" placeholder="R$ 0,00"></label><label class="field"><span>Valor pago</span><input name="valorPagoSmp" type="text" inputmode="decimal" readonly placeholder="R$ 0,00"><div class="student-payment-actions"><button type="button" id="set-smp-payment">Informar pagamento</button><button type="button" id="clear-smp-payment" hidden>Limpar</button></div><small class="student-payment-comment" hidden></small></label><label class="field"><span>Saldo a pagar</span><input name="saldoPagarSmp" type="text" readonly placeholder="R$ 0,00"></label></div><input type="hidden" name="recebedorValorPagoSmp"><input type="hidden" name="recebedorTaxaPagaSmp"><input type="hidden" name="recebedorFormaPagamentoSmp"><input type="hidden" name="recebedorObservacaoSmp">
     </section>
     <p id="cursista-smp-message" class="form-message"></p>
-    <div class="form-actions cursista-smp-actions">${active === 'cursista-smp' ? '' : '<p>Revise os dados antes de salvar a ficha.</p>'}<div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
+    <div class="form-actions cursista-smp-actions"><div><button type="button" id="save-cursista-smp">Salvar</button><button type="button" id="save-new-cursista-smp" class="secondary-button">Salvar e novo</button><button type="button" id="delete-cursista-smp" class="delete-registration" hidden>Excluir</button><button type="button" class="clear-student-form" id="cancel-cursista-smp">Cancelar</button></div></div>
   </form>`, active);
   if (!['cursista-smp', 'cursista-epc'].includes(active)) return;
   const markOwner = (owner, fieldNames = []) => {
@@ -3167,7 +3167,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const canDeleteSmp = () => canAccess(`${permissionPrefix}.excluir`);
   const smpPermissionMessage = (action) => `Voce nao tem permissao para ${action} ${label}.`;
   const actionBlockedReason = (permission, action) => canUseSmp() || (!canAccess(permission) ? smpPermissionMessage(action) : '');
-  const idleNotice = () => canUseSmp() || (expectedType === 'cursista-smp' ? '' : `Clique em Novo para iniciar uma ficha ${label}.`);
+  const idleNotice = () => canUseSmp();
   const setLocked = (locked) => {
     allFormControls().forEach((control) => { control.disabled = locked; });
     if (fileNumberInput && expectedType === 'cursista-smp') fileNumberInput.disabled = !retreat;
