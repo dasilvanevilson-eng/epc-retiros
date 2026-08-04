@@ -2787,7 +2787,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => {
     const kidNumber = index + 1;
     const row = `<div class="kids-row" data-smp-kid-row="${kidNumber}"><span>${kidNumber}</span><label class="field"><span>Nome</span><input name="smpKidNome${kidNumber}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${kidNumber}" ${dateInputAttributes}></label></div>`;
-    if (active !== 'cursista-smp') return row;
+    if (!['cursista-smp', 'cursista-epc'].includes(active)) return row;
     return `<details class="smp-kid-panel" data-smp-kid-panel="${kidNumber}" ${index === 0 ? 'open' : ''}><summary><strong>Criança ${kidNumber}</strong><span class="smp-kid-summary-value">Não preenchida</span></summary>${row}</details>`;
   }).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div>${active === 'cursista-smp' ? '<button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button>' : ''}</section>
@@ -3070,10 +3070,11 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     });
     form.querySelectorAll('[type="hidden"]').forEach((input) => commonFields.append(input));
     form.querySelectorAll('.cursista-smp-section').forEach((item) => item.remove());
+    form.classList.add('smp-three-section-layout');
     form.insertBefore(section('1', 'Informações dele', himFields), message);
     form.insertBefore(section('2', 'Informações dela', herFields), message);
-    const commonSection = section('3', 'Informações comuns', commonFields);
-    commonSection.classList.add('cursista-epc-common-section');
+    const commonSection = section('3', 'Informações em comum', commonFields);
+    commonSection.classList.add('cursista-epc-common-section', 'student-registration-value');
     form.insertBefore(commonSection, message);
     if (actions) form.append(actions);
   }
@@ -3110,7 +3111,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   let selectedId = '';
   let searchRequest = 0;
   let searchOpen = false;
-  const smpKidPanels = expectedType === 'cursista-smp' ? [...form.querySelectorAll('[data-smp-kid-panel]')] : [];
+  const smpKidPanels = ['cursista-smp', 'cursista-epc'].includes(expectedType) ? [...form.querySelectorAll('[data-smp-kid-panel]')] : [];
   const smpKidPanelHasData = (panel) => [...panel.querySelectorAll('input, select, textarea')].some((control) => {
     if (['checkbox', 'radio'].includes(control.type)) return control.checked;
     return Boolean(String(control.value || '').trim());
@@ -3129,9 +3130,9 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const openIndex = firstPanelWithData >= 0 ? firstPanelWithData : 0;
     smpKidPanels.forEach((panel, index) => { panel.open = index === openIndex; });
   };
-  const smpKidsNotNeededInput = expectedType === 'cursista-smp' ? form.elements.smpKidsNotNeeded : null;
-  const smpKidsList = smpKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-list');
-  const smpKidsHint = smpKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-hint');
+  const coupleKidsNotNeededInput = ['cursista-smp', 'cursista-epc'].includes(expectedType) ? form.elements.smpKidsNotNeeded : null;
+  const smpKidsList = coupleKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-list');
+  const smpKidsHint = coupleKidsNotNeededInput?.closest('.choice-block')?.querySelector('.kids-hint');
   const clearSmpKidFields = () => {
     smpKidPanels.forEach((panel) => {
       panel.querySelectorAll('input, select, textarea').forEach((control) => {
@@ -3144,8 +3145,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     syncSmpKidPanels();
   };
   const syncSmpKidsNeedVisibility = ({ clearChildren = false } = {}) => {
-    if (!smpKidsNotNeededInput) return;
-    const notNeeded = smpKidsNotNeededInput.checked;
+    if (!coupleKidsNotNeededInput) return;
+    const notNeeded = coupleKidsNotNeededInput.checked;
     if (notNeeded && clearChildren) clearSmpKidFields();
     smpKidsList?.classList.toggle('is-disabled', notNeeded);
     smpKidsList?.toggleAttribute('hidden', notNeeded);
@@ -3445,14 +3446,18 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
 
   wireCepLookup(form);
-  smpKidsNotNeededInput?.addEventListener('change', () => {
-    if (!smpKidsNotNeededInput.checked) {
+  coupleKidsNotNeededInput?.addEventListener('change', () => {
+    if (expectedType !== 'cursista-smp') {
+      syncSmpKidsNeedVisibility();
+      return;
+    }
+    if (!coupleKidsNotNeededInput.checked) {
       syncSmpKidsNeedVisibility();
       return;
     }
     const hasRegisteredKid = smpKidPanels.some(smpKidPanelHasData);
     if (hasRegisteredKid && !confirm('Esta ação limpará todos os dados das crianças desta ficha quando ela for salva. Deseja continuar?')) {
-      smpKidsNotNeededInput.checked = false;
+      coupleKidsNotNeededInput.checked = false;
       syncSmpKidsNeedVisibility();
       return;
     }
