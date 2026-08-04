@@ -2704,12 +2704,88 @@ async function renderPessoa(id, retreatId, source = '') {
   });
 }
 
+const financialSummaryTotals = (rows) => rows.reduce((totals, row) => ({
+  valorInscricao: totals.valorInscricao + row.valorInscricao,
+  valorPago: totals.valorPago + row.valorPago,
+  saldoPagar: totals.saldoPagar + row.saldoPagar,
+}), { valorInscricao: 0, valorPago: 0, saldoPagar: 0 });
+
+const financialSummaryTable = (rows, { firstColumnLabel, emptyMessage }) => {
+  const totals = financialSummaryTotals(rows);
+  const body = rows.map((row) => {
+    const detail = row.detalhe ? `<small class="student-financial-summary-detail">${escapeHtml(row.detalhe)}</small>` : '';
+    return `<tr class="${row.saldoPagar > 0 ? 'has-student-balance' : ''}"><td>${escapeHtml(row.nome)}${detail}</td><td>${currency(row.valorInscricao)}</td><td>${currency(row.valorPago)}</td><td>${currency(row.saldoPagar)}</td></tr>`;
+  }).join('') || `<tr><td colspan="4">${escapeHtml(emptyMessage)}</td></tr>`;
+  return `<div class="receiver-report-preview student-financial-summary-preview"><table><thead><tr><th>${escapeHtml(firstColumnLabel)}</th><th>Valor da inscrição</th><th>Valor pago</th><th>Saldo a pagar</th></tr></thead><tbody>${body}</tbody><tfoot><tr><th>Total</th><td>${currency(totals.valorInscricao)}</td><td>${currency(totals.valorPago)}</td><td>${currency(totals.saldoPagar)}</td></tr></tfoot></table></div>`;
+};
+
+const financialSummaryDocument = (rows, options) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(options.title)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}.has-student-balance td{font-weight:700}.student-financial-summary-detail{display:block;margin-top:3px;color:#667268;font-size:10px;font-weight:400}tfoot th,tfoot td{background:#f6fbf2;font-weight:700}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(options.title)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${financialSummaryTable(rows, options)}</body></html>`;
+
+const printFinancialSummary = (rows, options, pdf = false) => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+  printWindow.document.open();
+  printWindow.document.write(financialSummaryDocument(rows, options));
+  printWindow.document.close();
+  if (pdf) alert('Na janela de impressão, escolha "Salvar como PDF".');
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+  }, 250);
+};
+
+const downloadFinancialSummarySpreadsheet = (rows, options) => {
+  const totals = financialSummaryTotals(rows);
+  const headers = [options.firstColumnLabel, 'Valor da inscrição', 'Valor pago', 'Saldo a pagar'];
+  const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const lines = [
+    headers.map(csvValue).join(';'),
+    ...rows.map((row) => [row.detalhe ? `${row.nome} - ${row.detalhe}` : row.nome, currency(row.valorInscricao), currency(row.valorPago), currency(row.saldoPagar)].map(csvValue).join(';')),
+    ['Total', currency(totals.valorInscricao), currency(totals.valorPago), currency(totals.saldoPagar)].map(csvValue).join(';'),
+  ];
+  const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${normalizeText(options.title).replace(/\s+/g, '-') || options.filenameFallback}.csv`;
+  document.body.append(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+};
+
+const openFinancialSummary = (rows, options) => {
+  const overlay = document.createElement('section');
+  overlay.className = 'receiver-sector-overlay student-financial-summary-overlay';
+  overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog student-financial-summary-dialog"><div class="panel-heading"><div><p class="eyebrow">${escapeHtml(options.eyebrow)}</p><h2>${escapeHtml(options.title)}</h2><p>${escapeHtml(options.description)}</p></div></div><div id="student-financial-summary-table">${financialSummaryTable(rows, options)}</div><div class="receiver-report-actions"><button type="button" id="student-summary-pdf">Salvar PDF</button><button type="button" id="student-summary-sheet">Salvar planilha</button><button type="button" id="student-summary-print">Imprimir</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
+  overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#student-summary-pdf').addEventListener('click', () => printFinancialSummary(rows, options, true));
+  overlay.querySelector('#student-summary-sheet').addEventListener('click', () => downloadFinancialSummarySpreadsheet(rows, options));
+  overlay.querySelector('#student-summary-print').addEventListener('click', () => printFinancialSummary(rows, options, false));
+  app.append(overlay);
+};
+
+const wireFinancialSummaryButton = ({ buttonSelector, loadRows, ...options }) => {
+  const button = app.querySelector(buttonSelector);
+  if (!button) return;
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      openFinancialSummary(await loadRows(), options);
+    } catch (error) {
+      alert(error.message || 'Não foi possível carregar o resumo financeiro.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+};
+
 function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-smp' } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const dateInputAttributes = active === 'cursista-smp' ? 'type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"' : 'type="date"';
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="smpKidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${index + 1}" ${dateInputAttributes}></label></div>`).join('');
-  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div></section>
+  layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div>${active === 'cursista-smp' ? '<button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button>' : ''}</section>
   <section class="admin-registration-tools cursista-smp-tools panel">
     <label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label>
     <div id="cursista-smp-search-results" class="registration-search-results" hidden></div>
@@ -3113,6 +3189,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       if (!form.elements[name]) return;
       const value = record[name];
       if (['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp'].includes(name)) form.elements[name].value = currency(value);
+      else if (cpfFields.includes(name)) form.elements[name].value = formatCpf(value);
       else if (phoneFields.includes(name)) form.elements[name].value = formatBrazilianPhone(value);
       else if (typedDateFields.includes(name)) form.elements[name].value = formatDateInput(value) || value || '';
       else form.elements[name].value = value || '';
@@ -3286,8 +3363,12 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
   cpfFields.forEach((name) => {
     const input = form.elements[name];
-    input?.addEventListener('input', () => formatCpfField(input));
-    input?.addEventListener('change', () => formatCpfField(input));
+    if (!input) return;
+    input.maxLength = 14;
+    input.pattern = '\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\d{11}';
+    input.title = 'Informe um CPF válido';
+    input.addEventListener('input', () => formatCpfField(input));
+    input.addEventListener('change', () => formatCpfField(input));
   });
   phoneFields.forEach((name) => {
     const input = form.elements[name];
@@ -3377,8 +3458,44 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   }
 }
 
+function setupCursistaSmpFinancialSummary() {
+  const retreat = selectedRetreat();
+  wireFinancialSummaryButton({
+    buttonSelector: '#smp-financial-summary',
+    title: `Resumo financeiro dos casais cursistas${retreat ? ` - ${retreat.nome}` : ''}`,
+    eyebrow: 'Cursista SMP',
+    description: 'Valores buscados somente nas fichas dos casais cursistas.',
+    firstColumnLabel: 'Casal cursista',
+    emptyMessage: 'Nenhuma ficha SMP encontrada neste retiro.',
+    filenameFallback: 'resumo-financeiro-cursista-smp',
+    loadRows: async () => {
+      if (!retreat?.id) return [];
+      const records = await dataService.listCursistasSmp(retreat.id);
+      return records
+        .filter((record) => !record.retiroId || record.retiroId === retreat.id)
+        .map((record) => {
+          const names = [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean);
+          const valorInscricao = parseCurrency(record.valorInscricaoSmp);
+          const valorPago = parseCurrency(record.valorPagoSmp);
+          const saldoInformado = parseCurrency(record.saldoPagarSmp);
+          const saldoPagar = record.saldoPagarSmp ? saldoInformado : Math.max(0, valorInscricao - valorPago);
+          const fileNumber = String(record.numeroFichaSmp || record.id || '').trim();
+          return {
+            nome: names.join(' e ') || 'Sem nomes informados',
+            detalhe: fileNumber ? `Ficha ${fileNumber}` : 'Ficha sem número',
+            valorInscricao,
+            valorPago,
+            saldoPagar,
+          };
+        })
+        .sort((first, second) => first.nome.localeCompare(second.nome, 'pt-BR', { sensitivity: 'base' }));
+    },
+  });
+}
+
 async function renderCursistaSmp() {
   renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
+  setupCursistaSmpFinancialSummary();
   await setupCursistaSmpTestCrud({ expectedType: 'cursista-smp', permissionPrefix: 'cursista-smp', label: 'Cursista SMP' });
 }
 
@@ -3503,70 +3620,27 @@ async function renderCursista() {
     return Number.isInteger(number) && number > 0 ? String(number) : '';
   };
   const financialSummaryTitle = `Resumo financeiro dos cursistas${focusStudentRetreat ? ` - ${focusStudentRetreat.nome}` : ''}`;
-  const financialSummaryRows = async () => {
-    const students = await dataService.listCursistas();
-    return students
-      .filter((student) => !focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
-      .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }))
-      .map((student) => {
-        const valorInscricao = parseCurrency(student.valorInscricao);
-        const valorPago = parseCurrency(student.valorPago);
-        const saldoInformado = parseCurrency(student.saldoPagar);
-        const saldoPagar = student.saldoPagar ? saldoInformado : Math.max(0, valorInscricao - valorPago);
-        return { nome: student.nome || 'Sem nome', valorInscricao, valorPago, saldoPagar };
-      });
-  };
-  const financialSummaryTotals = (rows) => rows.reduce((totals, row) => ({
-    valorInscricao: totals.valorInscricao + row.valorInscricao,
-    valorPago: totals.valorPago + row.valorPago,
-    saldoPagar: totals.saldoPagar + row.saldoPagar,
-  }), { valorInscricao: 0, valorPago: 0, saldoPagar: 0 });
-  const financialSummaryTable = (rows) => {
-    const totals = financialSummaryTotals(rows);
-    return `<div class="receiver-report-preview student-financial-summary-preview"><table><thead><tr><th>Nome completo do cursista</th><th>Valor da inscrição</th><th>Valor pago</th><th>Saldo a pagar</th></tr></thead><tbody>${rows.map((row) => `<tr class="${row.saldoPagar > 0 ? 'has-student-balance' : ''}"><td>${escapeHtml(row.nome)}</td><td>${currency(row.valorInscricao)}</td><td>${currency(row.valorPago)}</td><td>${currency(row.saldoPagar)}</td></tr>`).join('') || '<tr><td colspan="4">Nenhum cursista encontrado.</td></tr>'}</tbody><tfoot><tr><th>Total</th><td>${currency(totals.valorInscricao)}</td><td>${currency(totals.valorPago)}</td><td>${currency(totals.saldoPagar)}</td></tr></tfoot></table></div>`;
-  };
-  const financialSummaryDocument = (rows) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(financialSummaryTitle)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}.has-student-balance td{font-weight:700}tfoot th,tfoot td{background:#f6fbf2;font-weight:700}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(financialSummaryTitle)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${financialSummaryTable(rows)}</body></html>`;
-  const printFinancialSummary = (rows, pdf = false) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
-    printWindow.document.open();
-    printWindow.document.write(financialSummaryDocument(rows));
-    printWindow.document.close();
-    if (pdf) alert('Na janela de impressão, escolha "Salvar como PDF".');
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 250);
-  };
-  const downloadFinancialSummarySpreadsheet = (rows) => {
-    const totals = financialSummaryTotals(rows);
-    const headers = ['Nome completo do cursista', 'Valor da inscrição', 'Valor pago', 'Saldo a pagar'];
-    const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const lines = [
-      headers.map(csvValue).join(';'),
-      ...rows.map((row) => [row.nome, currency(row.valorInscricao), currency(row.valorPago), currency(row.saldoPagar)].map(csvValue).join(';')),
-      ['Total', currency(totals.valorInscricao), currency(totals.valorPago), currency(totals.saldoPagar)].map(csvValue).join(';'),
-    ];
-    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${normalizeText(financialSummaryTitle).replace(/\s+/g, '-') || 'resumo-financeiro-cursistas'}.csv`;
-    document.body.append(link);
-    link.click();
-    URL.revokeObjectURL(link.href);
-    link.remove();
-  };
-  app.querySelector('#student-financial-summary').addEventListener('click', async () => {
-    const rows = await financialSummaryRows();
-    const overlay = document.createElement('section');
-    overlay.className = 'receiver-sector-overlay student-financial-summary-overlay';
-    overlay.innerHTML = `<div class="receiver-sector-dialog receiver-report-dialog student-financial-summary-dialog"><div class="panel-heading"><div><p class="eyebrow">Cursistas</p><h2>${escapeHtml(financialSummaryTitle)}</h2><p>Valores buscados somente nas fichas dos cursistas.</p></div></div><div id="student-financial-summary-table">${financialSummaryTable(rows)}</div><div class="receiver-report-actions"><button type="button" id="student-summary-pdf">Salvar PDF</button><button type="button" id="student-summary-sheet">Salvar planilha</button><button type="button" id="student-summary-print">Imprimir</button><button type="button" class="close-sector-view">Fechar</button></div></div>`;
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) overlay.remove(); });
-    overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#student-summary-pdf').addEventListener('click', () => printFinancialSummary(rows, true));
-    overlay.querySelector('#student-summary-sheet').addEventListener('click', () => downloadFinancialSummarySpreadsheet(rows));
-    overlay.querySelector('#student-summary-print').addEventListener('click', () => printFinancialSummary(rows, false));
-    app.append(overlay);
+  wireFinancialSummaryButton({
+    buttonSelector: '#student-financial-summary',
+    title: financialSummaryTitle,
+    eyebrow: 'Cursistas',
+    description: 'Valores buscados somente nas fichas dos cursistas.',
+    firstColumnLabel: 'Nome completo do cursista',
+    emptyMessage: 'Nenhum cursista encontrado.',
+    filenameFallback: 'resumo-financeiro-cursistas',
+    loadRows: async () => {
+      const students = await dataService.listCursistas();
+      return students
+        .filter((student) => !focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
+        .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }))
+        .map((student) => {
+          const valorInscricao = parseCurrency(student.valorInscricao);
+          const valorPago = parseCurrency(student.valorPago);
+          const saldoInformado = parseCurrency(student.saldoPagar);
+          const saldoPagar = student.saldoPagar ? saldoInformado : Math.max(0, valorInscricao - valorPago);
+          return { nome: student.nome || 'Sem nome', valorInscricao, valorPago, saldoPagar };
+        });
+    },
   });
   const findPersonFromArchive = async (cpf) => {
     const currentPeople = people.length ? people : await dataService.listPessoas();
