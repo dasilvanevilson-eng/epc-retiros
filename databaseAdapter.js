@@ -25,6 +25,7 @@ const tableByStore = {
   perfil_permissoes: 'perfil_permissoes',
   usuario_permissoes: 'usuario_permissoes',
   usuario_retiros: 'usuario_retiros',
+  relatorio_modelos: 'relatorio_modelos',
 };
 
 async function withLocalFallback(action) {
@@ -183,9 +184,18 @@ async function deleteWhere(table, filter) {
   });
 }
 
+async function pagedRows(pathname, pageSize = 1000) {
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await supabaseRequest(`${pathname}&limit=${pageSize}&offset=${offset}`);
+    rows.push(...array(page));
+    if (!Array.isArray(page) || page.length < pageSize) return rows;
+  }
+}
+
 async function allRows(table, order = 'updated_at.desc') {
   const orderQuery = order ? `&order=${order}` : '';
-  return supabaseRequest(`${table}?select=*&limit=10000${orderQuery}`);
+  return pagedRows(`${table}?select=*${orderQuery}`);
 }
 
 const isMissingRelationError = (error, table) => {
@@ -205,7 +215,7 @@ async function optionalAllRows(table, order = '') {
 
 async function rowsWhere(table, filter, order = '') {
   const orderQuery = order ? `&order=${order}` : '';
-  return supabaseRequest(`${table}?${filter}&select=*&limit=10000${orderQuery}`);
+  return pagedRows(`${table}?${filter}&select=*${orderQuery}`);
 }
 
 async function oneWhere(table, filter) {
@@ -1318,6 +1328,7 @@ const simpleMappers = {
   perfil_permissoes: (row) => ({ id: `${row.perfil_id}:${row.permissao_id}`, perfilId: row.perfil_id, permissaoId: row.permissao_id, permitido: row.permitido }),
   usuario_permissoes: (row) => ({ id: `${row.usuario_id}:${row.permissao_id}`, usuarioId: row.usuario_id, permissaoId: row.permissao_id, permitido: row.permitido }),
   usuario_retiros: (row) => ({ id: `${row.usuario_id}:${row.retiro_id}`, usuarioId: row.usuario_id, retiroId: row.retiro_id, papel: row.papel || '' }),
+  relatorio_modelos: (row) => ({ id: row.id, usuarioId: row.usuario_id, nome: row.nome, descricao: row.descricao || '', configuracao: row.configuracao || {}, compartilhado: Boolean(row.compartilhado), createdAt: row.created_at, updatedAt: row.updated_at }),
 };
 
 async function saveSimple(storeName, record) {
@@ -1356,6 +1367,10 @@ async function saveSimple(storeName, record) {
   if (storeName === 'usuario_retiros') {
     const row = await upsert('usuario_retiros', { usuario_id: record.usuarioId, retiro_id: record.retiroId, papel: record.papel || '' }, 'usuario_id,retiro_id');
     return simpleMappers.usuario_retiros(row);
+  }
+  if (storeName === 'relatorio_modelos') {
+    const row = await upsert('relatorio_modelos', { id: record.id, usuario_id: record.usuarioId, nome: record.nome || 'Modelo sem nome', descricao: record.descricao || '', configuracao: record.configuracao || {}, compartilhado: Boolean(record.compartilhado), created_at: record.createdAt || undefined, updated_at: record.updatedAt || undefined });
+    return simpleMappers.relatorio_modelos(row);
   }
   throw new Error(`Store sem mapeamento de gravacao: ${storeName}`);
 }
@@ -1412,6 +1427,7 @@ async function deleteRelational(storeName, id) {
     const [usuarioId, retiroId] = String(id).split(':');
     return deleteWhere('usuario_retiros', `usuario_id=eq.${enc(usuarioId)}&retiro_id=eq.${enc(retiroId)}`);
   }
+  if (storeName === 'relatorio_modelos') return deleteWhere('relatorio_modelos', `id=eq.${enc(id)}`);
   const table = tableByStore[storeName];
   if (!table) throw new Error(`Store nao mapeada: ${storeName}`);
   return deleteWhere(table, `id=eq.${enc(id)}`);

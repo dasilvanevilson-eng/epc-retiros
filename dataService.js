@@ -1,6 +1,6 @@
 const DATABASE = 'familiaepcindaial';
-const VERSION = 5;
-const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
+const VERSION = 6;
+const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros', 'relatorio_modelos'];
 
 const randomBytes = (length) => {
   const bytes = new Uint8Array(length);
@@ -77,6 +77,31 @@ async function api(path, options = {}) {
   }
   if (response.status === 204) return null;
   return response.json();
+}
+
+async function apiBlob(path, options = {}) {
+  const timeoutMs = options.timeoutMs || 120000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(`/api${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      credentials: 'same-origin',
+      ...options,
+      signal: options.signal || controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Tempo esgotado ao gerar o arquivo.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new Error(details.error || `Falha ao gerar o arquivo (${response.status})`);
+  }
+  return response.blob();
 }
 
 async function ensureBackend() {
@@ -229,6 +254,16 @@ export const dataService = {
   previewBackupRestore: (operationId) => api(`/backup/preview/${encodeURIComponent(operationId)}`, { timeoutMs: 120000 }),
   commitBackupRestore: (operationId) => api(`/backup/commit/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 120000 }),
   cancelBackupOperation: (operationId) => api(`/backup/cancel/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 30000 }),
+  getReportCatalog: () => api('/reports/catalog', { timeoutMs: 120000 }),
+  previewReport: (configuration) => api('/reports/preview', { method: 'POST', body: JSON.stringify(configuration), timeoutMs: 120000 }),
+  exportReportCsv: (configuration) => apiBlob('/reports/export', { method: 'POST', body: JSON.stringify(configuration), timeoutMs: 120000 }),
+  listReportModels: () => api('/reports/models', { timeoutMs: 120000 }),
+  saveReportModel: (model) => api(`/reports/models${model.id ? `/${encodeURIComponent(model.id)}` : ''}`, {
+    method: model.id ? 'PUT' : 'POST',
+    body: JSON.stringify(model),
+    timeoutMs: 120000,
+  }),
+  deleteReportModel: (id) => api(`/reports/models/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),

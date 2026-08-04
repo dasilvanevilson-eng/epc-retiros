@@ -66,6 +66,7 @@ as $$
     ('crachas', 210, true),
     ('configuracoes', 220, true),
     ('usuarios', 230, true),
+    ('relatorio_modelos', 235, true),
     ('perfil_permissoes', 240, true),
     ('usuario_permissoes', 250, true),
     ('usuario_retiros', 260, true),
@@ -158,7 +159,7 @@ begin
     'operationId', v_operation_id,
     'format', 'familia-epc-backup',
     'version', 1,
-    'schemaVersion', 'supabase-relational-2026-08-v2',
+    'schemaVersion', 'supabase-relational-2026-08-v3',
     'storage', 'supabase-relational',
     'createdAt', to_char(v_created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'counts', v_counts,
@@ -184,7 +185,7 @@ begin
   if jsonb_typeof(p_manifest) is distinct from 'object'
     or p_manifest->>'format' is distinct from 'familia-epc-backup'
     or p_manifest->>'version' is distinct from '1'
-    or p_manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v2'
+    or p_manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v3'
     or p_manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(p_manifest->'counts') is distinct from 'object'
     or jsonb_typeof(p_manifest->'tableNames') is distinct from 'array'
@@ -231,7 +232,7 @@ begin
   if jsonb_typeof(v_operation.manifest) is distinct from 'object'
     or v_operation.manifest->>'format' is distinct from 'familia-epc-backup'
     or v_operation.manifest->>'version' is distinct from '1'
-    or v_operation.manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v2'
+    or v_operation.manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v3'
     or v_operation.manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(v_operation.manifest->'counts') is distinct from 'object'
     or jsonb_typeof(v_operation.manifest->'tableNames') is distinct from 'array'
@@ -410,4 +411,5 @@ notify pgrst, 'reload schema';
 -- union all select 'cursista_smp', count(*) from public.cursista_smp
 -- union all select 'cursista_epc', count(*) from public.cursista_epc
 -- union all select 'comunidade_cursistas_epc', count(*) from public.comunidade_cursistas_epc
+-- union all select 'relatorio_modelos', count(*) from public.relatorio_modelos
 -- union all select 'comunidades', count(*) from public.comunidades;

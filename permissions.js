@@ -39,6 +39,7 @@ const allPermissions = [
   ['quadrante.imprimir', 'Quadrante', 'Imprimir quadrante'],
   ['recebedor.ver', 'Recebedor', 'Ver recebedor'],
   ['recebedor.editar', 'Recebedor', 'Editar pagamentos'],
+  ['relatorios.ver', 'Relatorios', 'Acessar todas as opcoes de relatorios'],
   ['usuarios.ver', 'Usuarios e permissoes', 'Ver usuarios e permissoes'],
   ['usuarios.criar', 'Usuarios e permissoes', 'Criar usuarios'],
   ['usuarios.editar', 'Usuarios e permissoes', 'Editar usuarios e permissoes'],
@@ -61,7 +62,7 @@ const defaultProfiles = [
     nome: 'Coordenador Geral',
     codigo: 'coordenador_geral',
     descricao: 'Acesso amplo, exceto exclusoes sensiveis de usuarios.',
-    permissions: permissionIds.filter((id) => id !== 'usuarios.excluir' && !id.startsWith('cursista-smp.') && !id.startsWith('cursista-epc.')),
+    permissions: permissionIds.filter((id) => id !== 'usuarios.excluir' && id !== 'relatorios.ver' && !id.startsWith('cursista-smp.') && !id.startsWith('cursista-epc.')),
   },
   {
     id: 'coordenador_retiro',
