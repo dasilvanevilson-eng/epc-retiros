@@ -58,6 +58,9 @@ const eligibleHtml = sectorPageHtml({
 });
 assert.match(eligibleHtml, /sector-tab-entries/);
 assert.match(eligibleHtml, /sector-tab-intolerances/);
+assert.match(eligibleHtml, /Ades&otilde;es deste setor/);
+assert.match(eligibleHtml, /Intoler&acirc;ncia alimentar dos cursistas/);
+assert.doesNotMatch(eligibleHtml, /Ades&otilde;es do setor|Intoler&acirc;ncias dos cursistas/);
 assert.match(eligibleHtml, /Comunidade Verde/);
 assert.match(eligibleHtml, /Lactose/);
 assert.doesNotMatch(eligibleHtml, /11111111111|47999999999|Rua secreta/);
