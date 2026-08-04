@@ -5462,6 +5462,34 @@ body:has(.login-shell) {
   grid-column:1 / -1;
 }
 
+.cursista-smp-form .cursista-smp-common-fields {
+  grid-template-columns:repeat(12, minmax(0, 1fr));
+  grid-auto-flow:row;
+}
+
+.cursista-smp-common-fields > .field:has([name="cep"]) { grid-column:1 / span 2; }
+.cursista-smp-common-fields > .field:has([name="endereco"]) { grid-column:3 / span 5; }
+.cursista-smp-common-fields > .field:has([name="numero"]) { grid-column:8 / span 2; }
+.cursista-smp-common-fields > .field:has([name="nrApto"]) { grid-column:10 / span 3; }
+.cursista-smp-common-fields > .field:has([name="bairro"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > .field:has([name="cidade"]) { grid-column:5 / span 5; }
+.cursista-smp-common-fields > .field:has([name="estadoSmp"]) { grid-column:10 / span 3; }
+.cursista-smp-common-fields > .field:has([name="uniaoCasal"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > .field:has([name="filhosUniao"]) { grid-column:5 / span 4; }
+.cursista-smp-common-fields > fieldset:has([name="outrasUnioes"]) { grid-column:9 / span 4; }
+.cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) { grid-column:1 / -1; }
+.cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > .field:has([name="nomeApresentante"]) { grid-column:1 / span 6; }
+.cursista-smp-common-fields > .field:has([name="foneApresentante"]) { grid-column:7 / span 3; }
+.cursista-smp-common-fields > .field:has([name="cursoApresentante"]) { grid-column:10 / span 3; }
+.cursista-smp-common-fields > .field:has([name="cidadeApresentante"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > .field:has([name="paroquiaApresentante"]) { grid-column:5 / span 8; }
+.cursista-smp-common-fields > .field:has([name="familiarAmigo"]) { grid-column:1 / span 8; }
+.cursista-smp-common-fields > .field:has([name="foneFamiliar"]) { grid-column:9 / span 4; }
+.cursista-smp-common-fields > .field:has([name="valorInscricaoSmp"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > .field:has([name="valorPagoSmp"]) { grid-column:5 / span 4; }
+.cursista-smp-common-fields > .field:has([name="saldoPagarSmp"]) { grid-column:9 / span 4; }
+
 .cursista-smp-form .three-columns.cursista-epc-common-fields {
   grid-template-columns:repeat(12, minmax(0, 1fr));
   grid-auto-flow:row dense;
@@ -5797,6 +5825,49 @@ body:has(.login-shell) {
   .cursista-smp-form .cursista-epc-common-fields > fieldset,
   .cursista-smp-form .cursista-epc-common-fields > .choice-block {
     grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields {
+    grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    grid-auto-flow:row;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields > .field,
+  .cursista-smp-form .cursista-smp-common-fields > fieldset {
+    grid-column:auto;
+    min-width:0;
+    width:100%;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="endereco"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="nomeApresentante"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="paroquiaApresentante"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="familiarAmigo"]),
+  .cursista-smp-form .cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) {
+    grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields .kids-row {
+    grid-template-columns:28px minmax(0, 1fr);
+    align-items:start;
+    min-width:0;
+    width:100%;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields .kids-row > span {
+    grid-column:1;
+    grid-row:1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields .kids-row > .field,
+  .cursista-smp-form .cursista-smp-common-fields .smp-kid-care {
+    grid-column:2;
+    min-width:0;
+    width:100%;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields .smp-kid-care-row {
+    grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   }
 
   .cursista-smp-form .epc-kid-care,
