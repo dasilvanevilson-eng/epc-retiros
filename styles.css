@@ -5957,6 +5957,118 @@ body:has(.login-shell) {
   }
 }
 
+.backup-alert {
+  margin-top:24px;
+  padding:18px 20px;
+  border:2px solid #b94137;
+  border-radius:12px;
+  color:#6f201b;
+  background:#fff1ef;
+  box-shadow:0 10px 24px rgba(185,65,55,.12);
+}
+
+.backup-alert strong {
+  display:block;
+  margin-bottom:5px;
+  font-size:17px;
+}
+
+.backup-alert p {
+  margin:0;
+  line-height:1.55;
+}
+
+.backup-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  align-items:start;
+}
+
+.backup-panel {
+  min-width:0;
+}
+
+.backup-restore-panel {
+  border-color:#e4b0ab;
+}
+
+.backup-summary {
+  margin:22px 0 0;
+  padding:15px;
+  border-radius:9px;
+  background:#f5f7f2;
+}
+
+.backup-summary dt {
+  color:var(--muted);
+  font-size:12px;
+}
+
+.backup-summary dd {
+  margin:5px 0 0;
+  font-weight:800;
+}
+
+.backup-preview {
+  margin-top:20px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fbfcf8;
+}
+
+.backup-preview h3 {
+  margin:0;
+}
+
+.backup-preview>p {
+  margin:6px 0 15px;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+.backup-preview table {
+  min-width:660px;
+}
+
+.backup-preview th,
+.backup-preview td {
+  padding:9px 10px;
+  text-align:left;
+  font-size:12px;
+}
+
+.backup-delete-count {
+  color:#a52f27;
+  font-weight:800;
+}
+
+.backup-confirm-field {
+  margin-top:20px;
+}
+
+.backup-confirm-field input {
+  border-color:#cf766e;
+  font-weight:800;
+  letter-spacing:.03em;
+}
+
+.backup-panel .danger-button {
+  background:#a52f27;
+  box-shadow:0 8px 16px rgba(165,47,39,.24);
+}
+
+.backup-panel .danger-button:hover {
+  background:#84231d;
+}
+
+@media(max-width:900px) {
+  .backup-grid {
+    grid-template-columns:1fr;
+  }
+}
+
 @media(max-width:430px) {
   .cursista-smp-form .cursista-smp-common-fields > .field,
   .cursista-smp-form .cursista-smp-common-fields > fieldset {

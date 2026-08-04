@@ -22,6 +22,8 @@ let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
 let closeAdminMenuOnOutsidePointer = null;
+let lastBackupGeneratedAt = '';
+let pendingRestoreOperationId = '';
 const selectedRetreatStorageKey = 'epc-selected-retreat-id';
 
 const viewPermissions = {
@@ -39,6 +41,7 @@ const viewPermissions = {
   recebedor: 'recebedor.ver',
   'alterar-senha': null,
   usuarios: 'usuarios.ver',
+  backup: 'backup.admin',
 };
 
 const defaultStudentFormType = 'cursista-individual';
@@ -201,6 +204,19 @@ const studentCommunityDetail = (student, details) => {
   }
   return { name: 'Sem comunidade', order: Number.MAX_SAFE_INTEGER };
 };
+const smpCommunityDetails = (communities = []) => {
+  const details = new Map();
+  sortCommunitiesByPosition(communities).forEach((community, index) => {
+    const detail = { name: communityLabel(community, index), order: Number(community.ordem) || index + 1 };
+    (community.membroSmpIds || []).forEach((memberId) => {
+      const key = String(memberId || '').trim();
+      if (key) details.set(key, detail);
+    });
+  });
+  return details;
+};
+const smpCommunityDetail = (record, details) => details.get(String(record?.id || record?.numeroFichaSmp || '').trim())
+  || { name: 'Sem comunidade', order: Number.MAX_SAFE_INTEGER };
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 const passwordToggleHtml = '<button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">👁</button>';
@@ -485,7 +501,7 @@ const removeStudentFromCommunities = async (studentOrId) => {
   await Promise.all(communities.map((community) => {
     const currentMemberIds = community.membroIds || [];
     const membroIds = currentMemberIds.filter((memberId) => !identifiers.has(memberId) && !identifiers.has(normalizeCpf(memberId)));
-    return membroIds.length === currentMemberIds.length ? null : dataService.saveComunidade({ ...community, membroIds });
+    return membroIds.length === currentMemberIds.length ? null : dataService.saveComunidadeMembros(community, 'individual', membroIds);
   }).filter(Boolean));
 };
 function standardSectors() {
@@ -705,6 +721,7 @@ function layout(content, active = 'inicio') {
     ['quadrante', 'Quadrante'],
     ['recebedor', 'Recebedor'],
     ['alterar-senha', 'Alterar senha'],
+    ['backup', 'Backup e restaura&ccedil;&atilde;o'],
     ['usuarios', 'Usuarios'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
   app.innerHTML = `
@@ -985,7 +1002,9 @@ async function renderHome() {
       return [];
     }) : Promise.resolve([]),
   ]);
-  const activeCommunityDetails = active ? studentCommunityDetails(allCommunities.filter((community) => community.retiroId === active.id)) : new Map();
+  const activeCommunities = active ? allCommunities.filter((community) => community.retiroId === active.id) : [];
+  const activeCommunityDetails = studentCommunityDetails(activeCommunities);
+  const activeSmpCommunityDetails = smpCommunityDetails(activeCommunities);
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
   const coupleStudentTitle = activeStudentFormType === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';
   const smpYes = (value) => normalizeText(value) === 'sim';
@@ -993,7 +1012,7 @@ async function renderHome() {
   const smpPeople = coupleStudents.flatMap((record) => [
     { record, side: 'Dele', name: record.nomeDele || 'Ele', health: record.saudeDele, healthDetail: record.qualSaudeDele, intolerance: record.intoleranciaAlimentarDele, intoleranceDetail: record.qualIntoleranciaAlimentarDele, shirt: record.manequimDele },
     { record, side: 'Dela', name: record.nomeDela || 'Ela', health: record.saudeDela, healthDetail: record.qualSaudeDela, intolerance: record.intoleranciaAlimentarDela, intoleranceDetail: record.qualIntoleranciaAlimentarDela, shirt: record.manequimDela },
-  ].map((person) => ({ ...person, couple: smpCoupleName(record) })));
+  ].map((person) => ({ ...person, couple: smpCoupleName(record), community: smpCommunityDetail(record, activeSmpCommunityDetails) })));
   const smpIntolerancePeople = smpPeople.filter((person) => smpYes(person.intolerance) || String(person.intoleranceDetail || '').trim());
   const smpHealthPeople = smpPeople.filter((person) => smpYes(person.health) || String(person.healthDetail || '').trim());
   const smpAcolhimentoCouples = coupleStudents.filter((record) => smpYes(record.precisaAcolhimento));
@@ -1175,7 +1194,7 @@ async function renderHome() {
     const community = options.showCommunity ? studentCommunityDetail(student, options.communityDetails) : null;
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong>${community ? `<small>Comunidade: ${escapeHtml(community.name)}</small>` : ''}</div><span>${escapeHtml(String(student[field] || '').trim() || fallback)}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
-  const smpPersonRows = (rows, field, fallback) => rows.length ? `<div class="student-health-list">${rows.map((person) => `<div><div class="student-health-person"><strong>${escapeHtml(person.name || 'Sem nome')}</strong><small>${escapeHtml(person.side)} - ${escapeHtml(person.couple || 'Casal sem nome')}</small></div><span>${escapeHtml(String(person[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
+  const smpPersonRows = (rows, field, fallback) => rows.length ? `<div class="student-health-list">${rows.map((person) => `<div><div class="student-health-person"><strong>${escapeHtml(person.name || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(person.community?.name || 'Sem comunidade')}</small></div><span>${escapeHtml(String(person[field] || '').trim() || fallback)}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const smpAcolhimentoRows = (rows) => rows.length ? `<div class="student-health-list">${rows.map((record) => {
     const details = [
       record.foneDele ? `Fone dele: ${record.foneDele}` : '',
@@ -1263,8 +1282,8 @@ async function renderHome() {
     allergy: `<div class="panel-heading"><div><h2>Alérgicos a Medicamentos</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(allergyStudents, 'qualAlergia', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'continuous-medication': `<div class="panel-heading"><div><h2>Tomam medicamento contínuo</h2><p>Comunidade, nome do cursista e medicamento informado na ficha.</p></div></div>${healthRows(continuousMedicationStudents, 'qualMedicamentoContinuo', 'Medicamento não detalhado', { showCommunity: true, communityDetails: activeCommunityDetails })}`,
     'parent-suggested-medication': `<div class="panel-heading"><div><h2>Medicação sugerida pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, activeCommunityDetails)}`,
-    'smp-intolerance': `<div class="panel-heading"><div><h2>Possui intolerância alimentar</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por pessoa.</p></div></div>${smpPersonRows(smpIntolerancePeople, 'intoleranceDetail', 'Intolerância não detalhada')}`,
-    'smp-health': `<div class="panel-heading"><div><h2>Possui problema de saúde</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por pessoa.</p></div></div>${smpPersonRows(smpHealthPeople, 'healthDetail', 'Problema de saúde não detalhado')}`,
+    'smp-intolerance': `<div class="panel-heading"><div><h2>Possui intolerância alimentar</h2><p>Comunidade, nome da pessoa e intolerância informada na ficha ${escapeHtml(coupleStudentTitle)}.</p></div></div>${smpPersonRows(smpIntolerancePeople, 'intoleranceDetail', 'Intolerância não detalhada')}`,
+    'smp-health': `<div class="panel-heading"><div><h2>Possui problema de saúde</h2><p>Comunidade, nome da pessoa e problema informado na ficha ${escapeHtml(coupleStudentTitle)}.</p></div></div>${smpPersonRows(smpHealthPeople, 'healthDetail', 'Problema de saúde não detalhado')}`,
     'smp-acolhimento': `<div class="panel-heading"><div><h2>Precisa de acolhimento</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por casal.</p></div></div>${smpAcolhimentoRows(smpAcolhimentoCouples)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
@@ -3756,23 +3775,51 @@ async function renderCursistaDetalhe(id) {
 async function renderComunidades() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
-  const [students, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
+  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  if (studentFormType === 'cursista-epc') {
+    layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)}</p></div></section><section class="panel"><h2>Cursista EPC ainda indisponível</h2><p class="empty-state">A distribuição em comunidades será habilitada quando a tabela própria cursista_epc estiver disponível. Nenhuma ficha SMP será usada neste retiro.</p></section>`, 'comunidades');
+    return;
+  }
+  const usesSmpStudents = studentFormType === 'cursista-smp';
+  const [sourceStudents, allCommunities] = await Promise.all([
+    usesSmpStudents ? dataService.listCursistasSmp(retreat.id) : dataService.listCursistas(),
+    dataService.listComunidades(),
+  ]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id));
   const leaders = [...new Set(entries.filter((entry) => entry.casalId && entryHasSector(entry, 'Tios de comunidade')).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
   const monitorCandidates = [...new Set(entries.filter((entry) => entry.casalId && (entry.setores || []).some((sector) => normalizeText(sector).includes('monitor'))).map((entry) => entry.casalId))].map((casalId) => { const pair = entries.filter((entry) => entry.casalId === casalId); return { casalId, label: pair.map((entry) => entry.nome).join(' e ') }; });
-  const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
-  const retreatStudents = uniqueByParticipant(retreatStudentRecords);
+  const retreatStudentRecords = usesSmpStudents ? sourceStudents : sourceStudents.filter((student) => student.retiroId === retreat.id);
+  const smpCoupleName = (record = {}) => [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || `Ficha ${record.numeroFichaSmp || record.id || 'sem número'}`;
+  const averageSmpBirthTime = (record = {}) => {
+    const dates = [record.nascimentoDele, record.nascimentoDela].map(parseLocalDate);
+    if (dates.some((value) => !value)) return Number.NEGATIVE_INFINITY;
+    return dates.reduce((total, value) => total + value.getTime(), 0) / dates.length;
+  };
+  const toCommunityStudent = (student) => usesSmpStudents
+    ? { ...student, id: String(student.id || student.numeroFichaSmp || ''), nome: smpCoupleName(student), detail: `Ficha ${student.numeroFichaSmp || student.id || 'sem número'}`, ageSort: averageSmpBirthTime(student) }
+    : { ...student, detail: ageInYearsAndMonths(student.nascimento), ageSort: parseLocalDate(student.nascimento)?.getTime() ?? Number.NEGATIVE_INFINITY };
+  const retreatStudents = (usesSmpStudents ? retreatStudentRecords : uniqueByParticipant(retreatStudentRecords)).map(toCommunityStudent);
+  const membershipType = usesSmpStudents ? 'smp' : 'individual';
+  const memberField = usesSmpStudents ? 'membroSmpIds' : 'membroIds';
+  const memberIdsFor = (community) => community[memberField] || [];
+  const communityMembers = (community) => {
+    const memberIds = new Set(memberIdsFor(community).map(String));
+    const records = retreatStudentRecords.filter((student) => memberIds.has(String(student.id)));
+    return (usesSmpStudents ? records : uniqueByParticipant(records)).map(toCommunityStudent).sort((first, second) => second.ageSort - first.ageSort);
+  };
   const canEditCommunities = canModifyRetreat(retreat);
-  const assignedStudentIds = new Set(communities.flatMap((community) => community.membroIds || []));
-  const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
-  const studentsWithoutCommunity = retreatStudents.filter((student) => !assignedStudentKeys.has(participantIdentity(student))).length;
+  const assignedStudentIds = new Set(communities.flatMap(memberIdsFor).map(String));
+  const assignedStudentKeys = usesSmpStudents ? assignedStudentIds : new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(String(student.id))).map(participantIdentity));
+  const studentsWithoutCommunity = retreatStudents.filter((student) => usesSmpStudents ? !assignedStudentIds.has(String(student.id)) : !assignedStudentKeys.has(participantIdentity(student))).length;
   const communitiesWithoutLeaders = communities.filter((community) => !community.liderCasalId).length;
   const communitiesWithoutMonitor = communities.filter((community) => !community.monitorCasalId && !(community.monitorIds || []).length).length;
+  const participantLabel = usesSmpStudents ? 'Casais' : 'Cursistas';
+  const participantLabelLower = usesSmpStudents ? 'casais' : 'cursistas';
   const leaderOptions = (selected) => `<option value="">Buscar tios da comunidade</option>${leaders.map((leader) => `<option value="${leader.casalId}" ${leader.casalId === selected ? 'selected' : ''}>${escapeHtml(leader.label)}</option>`).join('')}`;
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os cursistas.</p><div class="community-overview"><article><span>Cursistas sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir cursistas</button></div></section><section class="community-grid">${communities.map((community, index) => { const memberIds = new Set(community.membroIds || []); const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id))).sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>Cursistas</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${ageInYearsAndMonths(student.nascimento)}</small></span><select data-move-student="${student.id}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${student.id}">Remover</button></div>`).join('') : '<p>Nenhum cursista alocado.</p>'}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${members.length ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os ${participantLabelLower}.</p><div class="community-overview"><article><span>${participantLabel} sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir ${participantLabelLower}</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = communityMembers(community); const hasHistoricalMembers = (community.membroIds || []).length || (community.membroSmpIds || []).length; return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>${participantLabel}</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${escapeHtml(student.detail)}</small></span><select data-move-student="${escapeHtml(student.id)}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${escapeHtml(student.id)}">Remover</button></div>`).join('') : `<p>Nenhum ${usesSmpStudents ? 'casal' : 'cursista'} alocado.</p>`}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${hasHistoricalMembers ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
   if (!canAccess('comunidades.criar') || !canEditCommunities) app.querySelector('#add-community')?.remove();
   if (!canAccess('comunidades.editar') || !canEditCommunities) {
     app.querySelector('#distribute-students')?.remove();
@@ -3784,7 +3831,7 @@ async function renderComunidades() {
     if (!ensureRetreatCanBeChanged(retreat, 'incluir comunidades')) return;
     const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
-    await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
+    await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], membroSmpIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
     renderComunidades();
   });
   app.querySelectorAll('[data-community-name]').forEach((input) => input.addEventListener('change', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === input.dataset.communityName); community.nome = input.value.trim() || `Comunidade ${community.ordem}`; await dataService.saveComunidade(community); input.value = community.nome; }));
@@ -3799,23 +3846,38 @@ async function renderComunidades() {
     const targetCommunityId = select.value;
     if (!studentId || !targetCommunityId) return;
     select.disabled = true;
-    const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
-    for (const community of latestCommunities) {
-      const memberIds = (community.membroIds || []).filter((id) => id !== studentId);
-      if (community.id === targetCommunityId) memberIds.push(studentId);
-      await dataService.saveComunidade({ ...community, membroIds: [...new Set(memberIds)] });
+    try {
+      const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
+      for (const community of latestCommunities.filter((item) => item.id !== targetCommunityId)) {
+        await dataService.saveComunidadeMembros(community, membershipType, memberIdsFor(community).filter((id) => String(id) !== studentId));
+      }
+      const targetCommunity = latestCommunities.find((community) => community.id === targetCommunityId);
+      await dataService.saveComunidadeMembros(targetCommunity, membershipType, [...memberIdsFor(targetCommunity), studentId]);
+      renderComunidades();
+    } catch (error) {
+      alert(error.message || 'Não foi possível mover o cursista.');
+      renderComunidades();
     }
-    renderComunidades();
   }));
-  app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return; const community = communities.find((item) => item.id === button.dataset.removeMember); community.membroIds = (community.membroIds || []).filter((id) => id !== button.dataset.student); await dataService.saveComunidade(community); renderComunidades(); }));
+  app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => {
+    if (!ensureRetreatCanBeChanged(retreat, 'alterar comunidades')) return;
+    const community = communities.find((item) => item.id === button.dataset.removeMember);
+    const memberIds = memberIdsFor(community).filter((id) => String(id) !== button.dataset.student);
+    try {
+      await dataService.saveComunidadeMembros(community, membershipType, memberIds);
+      renderComunidades();
+    } catch (error) {
+      alert(error.message || 'Não foi possível remover o cursista da comunidade.');
+    }
+  }));
   app.querySelectorAll('[data-delete-community]').forEach((button) => button.addEventListener('click', async () => { if (!ensureRetreatCanBeChanged(retreat, 'excluir comunidades')) return; const community = communities.find((item) => item.id === button.dataset.deleteCommunity); if (!confirm(`Excluir ${community.nome}?`)) return; await dataService.deleteComunidade(community.id); renderComunidades(); }));
   app.querySelector('#distribute-students')?.addEventListener('click', () => {
     if (!ensureRetreatCanBeChanged(retreat, 'distribuir cursistas em comunidades')) return;
     const overlay = document.createElement('section'); overlay.className = 'receiver-sector-overlay';
     const communityOptions = (selected = '') => `<option value="">Sem comunidade</option>${communities.map((community) => `<option value="${community.id}" ${community.id === selected ? 'selected' : ''}>${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de cursistas</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada cursista e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => (community.membroIds || []).includes(student.id)); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${ageInYearsAndMonths(student.nascimento)}</span><select data-student-community="${student.id}">${communityOptions(current?.id)}</select></div>`; }).join('') || '<p>Nenhum cursista cadastrado.</p>'}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
+    overlay.innerHTML = `<div class="receiver-sector-dialog"><div class="panel-heading"><div><p class="eyebrow">Distribuição de ${participantLabelLower}</p><h2>Exportar para a comunidade</h2><p>Escolha a comunidade de cada ${usesSmpStudents ? 'casal' : 'cursista'} e clique em exportar para a comunidade.</p></div></div><div class="community-export-list">${retreatStudents.map((student) => { const current = communities.find((community) => memberIdsFor(community).map(String).includes(String(student.id))); return `<div><strong>${escapeHtml(student.nome)}</strong><span>${escapeHtml(student.detail)}</span><select data-student-community="${escapeHtml(student.id)}">${communityOptions(current?.id)}</select></div>`; }).join('') || `<p>Nenhum ${usesSmpStudents ? 'casal SMP' : 'cursista'} cadastrado.</p>`}</div><p id="community-export-message" class="form-message"></p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="button" class="suggest-by-age" id="suggest-by-age" ${communities.length && retreatStudents.length ? '' : 'disabled'}>Fazer uma sugestão por idade</button><button type="button" id="export-students" class="is-couple-continue">Exportar para a comunidade</button></div></div>`;
     overlay.querySelector('.close-sector-view').addEventListener('click', () => overlay.remove());
-    overlay.querySelector('#suggest-by-age').addEventListener('click', () => { const ordered = [...retreatStudents].sort((first, second) => new Date(second.nascimento) - new Date(first.nascimento)); const base = Math.floor(ordered.length / communities.length); const extra = ordered.length % communities.length; let cursor = 0; communities.forEach((community, index) => { const size = base + (index >= communities.length - extra ? 1 : 0); ordered.slice(cursor, cursor + size).forEach((student) => { overlay.querySelector(`[data-student-community="${student.id}"]`).value = community.id; }); cursor += size; }); });
+    overlay.querySelector('#suggest-by-age').addEventListener('click', () => { const ordered = [...retreatStudents].sort((first, second) => second.ageSort - first.ageSort); const base = Math.floor(ordered.length / communities.length); const extra = ordered.length % communities.length; let cursor = 0; communities.forEach((community, index) => { const size = base + (index >= communities.length - extra ? 1 : 0); ordered.slice(cursor, cursor + size).forEach((student) => { const control = [...overlay.querySelectorAll('[data-student-community]')].find((input) => input.dataset.studentCommunity === String(student.id)); if (control) control.value = community.id; }); cursor += size; }); });
     overlay.querySelector('#export-students').addEventListener('click', async () => {
       const exportButton = overlay.querySelector('#export-students');
       const message = overlay.querySelector('#community-export-message');
@@ -3836,7 +3898,7 @@ async function renderComunidades() {
           if (selectedByCommunity.has(selection.communityId)) selectedByCommunity.get(selection.communityId).push(selection.studentId);
         });
         for (const community of latestCommunities) {
-          await dataService.saveComunidade({ ...community, membroIds: selectedByCommunity.get(community.id) || [] });
+          await dataService.saveComunidadeMembros(community, membershipType, selectedByCommunity.get(community.id) || []);
         }
         overlay.remove();
         await renderComunidades();
@@ -4778,6 +4840,209 @@ function renderAlterarSenha() {
       message.textContent = error.message || 'Nao foi possivel alterar a senha.';
     } finally {
       button.disabled = false;
+    }
+  });
+}
+
+const backupStableValue = (value) => {
+  if (Array.isArray(value)) return value.map(backupStableValue);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, backupStableValue(value[key])]));
+  return value;
+};
+const backupChecksum = async (backup) => {
+  if (!globalThis.crypto?.subtle) throw new Error('Este navegador nao oferece o recurso seguro necessario para validar o backup.');
+  const source = JSON.stringify(backupStableValue({
+    format: backup.format,
+    version: backup.version,
+    schemaVersion: backup.schemaVersion,
+    storage: backup.storage,
+    createdAt: backup.createdAt,
+    tables: backup.tables,
+  }));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+const backupFileTimestamp = (date = new Date()) => {
+  const part = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${part(date.getMonth() + 1)}-${part(date.getDate())}-${part(date.getHours())}${part(date.getMinutes())}`;
+};
+const downloadBackupJson = (backup, safety = false) => {
+  const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `familia-epc-${safety ? 'backup-seguranca' : 'backup'}-${backupFileTimestamp()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+async function generateCompleteBackup({ safety = false } = {}) {
+  const manifest = await dataService.startBackupExport();
+  const tables = Object.fromEntries((manifest.tableNames || Object.keys(manifest.counts || {})).map((name) => [name, []]));
+  let offset = 0;
+  try {
+    while (true) {
+      const page = await dataService.listBackupChunks(manifest.operationId, offset, 25);
+      page.chunks.forEach((chunk) => {
+        if (!tables[chunk.tableName]) tables[chunk.tableName] = [];
+        tables[chunk.tableName].push(...chunk.rows);
+      });
+      offset += page.chunks.length;
+      if (!page.hasMore) break;
+    }
+    const backup = {
+      format: manifest.format,
+      version: manifest.version,
+      schemaVersion: manifest.schemaVersion,
+      storage: manifest.storage,
+      createdAt: manifest.createdAt,
+      counts: manifest.counts,
+      tables,
+    };
+    backup.checksum = await backupChecksum(backup);
+    downloadBackupJson(backup, safety);
+    if (!safety) lastBackupGeneratedAt = backup.createdAt;
+    return backup;
+  } finally {
+    await dataService.cancelBackupOperation(manifest.operationId).catch(() => null);
+  }
+}
+async function validateBackupFile(backup) {
+  if (!backup || backup.format !== 'familia-epc-backup' || backup.version !== 1 || !backup.tables || typeof backup.tables !== 'object' || Array.isArray(backup.tables)) throw new Error('O arquivo selecionado nao e um backup valido do Familia EPC.');
+  if (!backup.createdAt || Number.isNaN(Date.parse(backup.createdAt))) throw new Error('O backup nao possui uma data valida.');
+  const counts = Object.fromEntries(Object.entries(backup.tables).map(([name, rows]) => {
+    if (!Array.isArray(rows)) throw new Error(`A tabela ${name} possui formato invalido.`);
+    return [name, rows.length];
+  }));
+  if (JSON.stringify(backupStableValue(counts)) !== JSON.stringify(backupStableValue(backup.counts || {}))) throw new Error('As contagens informadas no arquivo nao conferem.');
+  if (!/^[a-f0-9]{64}$/.test(String(backup.checksum || '')) || await backupChecksum(backup) !== backup.checksum) throw new Error('O arquivo esta incompleto, corrompido ou foi alterado.');
+}
+async function stageBackupRestore(backup) {
+  const envelope = {
+    format: backup.format,
+    version: backup.version,
+    schemaVersion: backup.schemaVersion,
+    storage: backup.storage,
+    createdAt: backup.createdAt,
+    counts: backup.counts,
+    checksum: backup.checksum,
+  };
+  const operation = await dataService.startBackupRestore(envelope);
+  try {
+    for (const [tableName, rows] of Object.entries(backup.tables)) {
+      const totalChunks = Math.max(1, Math.ceil(rows.length / 200));
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        await dataService.uploadBackupChunk(operation.operationId, { tableName, chunkIndex, rows: rows.slice(chunkIndex * 200, (chunkIndex + 1) * 200) });
+      }
+    }
+    return operation.operationId;
+  } catch (error) {
+    await dataService.cancelBackupOperation(operation.operationId).catch(() => null);
+    throw error;
+  }
+}
+
+async function renderBackup() {
+  if (!hasGlobalRetreatAccess()) return renderDenied();
+  layout(`<section class="page-heading"><div><p class="eyebrow">Administra&ccedil;&atilde;o</p><h1>Backup e restaura&ccedil;&atilde;o</h1><p>Proteja todos os dados cadastrados no sistema e recupere uma fotografia anterior quando necess&aacute;rio.</p></div></section>
+    <section class="backup-alert" role="alert"><strong>Arquivo confidencial</strong><p>O JSON cont&eacute;m dados pessoais, informa&ccedil;&otilde;es de sa&uacute;de, pagamentos e hashes de senha. Guarde-o em local privado e n&atilde;o envie por canais sem prote&ccedil;&atilde;o.</p></section>
+    <div class="backup-grid">
+      <section class="panel backup-panel"><div class="panel-heading"><div><p class="eyebrow">C&oacute;pia integral</p><h2>Gerar Backup</h2><p>A opera&ccedil;&atilde;o somente consulta o banco e baixa uma fotografia consistente em JSON.</p></div></div>
+        <dl class="backup-summary"><div><dt>&Uacute;ltimo backup nesta sess&atilde;o</dt><dd id="last-backup-at">${lastBackupGeneratedAt ? escapeHtml(new Date(lastBackupGeneratedAt).toLocaleString('pt-BR')) : 'Nenhum'}</dd></div></dl>
+        <p class="form-message" id="backup-export-message"></p>
+        <div class="form-actions"><p>Nenhum cadastro atual ser&aacute; alterado.</p><button type="button" id="generate-backup">Gerar e baixar JSON <span>→</span></button></div>
+      </section>
+      <section class="panel backup-panel backup-restore-panel"><div class="panel-heading"><div><p class="eyebrow">A&ccedil;&atilde;o destrutiva</p><h2>Restaurar Backup</h2><p>Os dados atuais ser&atilde;o substitu&iacute;dos pelo estado existente no arquivo.</p></div></div>
+        <label class="field"><span>Arquivo JSON de backup <b>*</b></span><input id="restore-backup-file" type="file" accept="application/json,.json"></label>
+        <div id="backup-preview" class="backup-preview" hidden></div>
+        <label class="field backup-confirm-field" hidden><span>Digite <b>RESTAURAR BACKUP</b> para confirmar</span><input id="restore-backup-confirmation" autocomplete="off"></label>
+        <p class="form-message" id="backup-restore-message"></p>
+        <div class="form-actions"><p>Um backup de seguran&ccedil;a do estado atual ser&aacute; baixado primeiro.</p><button type="button" class="danger-button" id="restore-backup" disabled>Restaurar dados <span>→</span></button></div>
+      </section>
+    </div>`, 'backup');
+
+  const exportButton = app.querySelector('#generate-backup');
+  const exportMessage = app.querySelector('#backup-export-message');
+  exportButton.addEventListener('click', async () => {
+    if (!confirm('ATENCAO: o JSON contera todos os dados pessoais e confidenciais do sistema. Deseja gerar e baixar o backup agora?')) return;
+    exportButton.disabled = true;
+    exportMessage.textContent = 'Preparando uma fotografia completa do banco...';
+    try {
+      const backup = await generateCompleteBackup();
+      app.querySelector('#last-backup-at').textContent = new Date(backup.createdAt).toLocaleString('pt-BR');
+      exportMessage.textContent = `Backup concluido com ${Object.values(backup.counts).reduce((total, count) => total + Number(count || 0), 0)} registros. Confirme o arquivo na pasta de downloads.`;
+    } catch (error) {
+      exportMessage.textContent = `Nao foi possivel gerar o backup. ${error.message || ''}`;
+    } finally {
+      exportButton.disabled = false;
+    }
+  });
+
+  const fileInput = app.querySelector('#restore-backup-file');
+  const previewBox = app.querySelector('#backup-preview');
+  const confirmationField = app.querySelector('.backup-confirm-field');
+  const confirmationInput = app.querySelector('#restore-backup-confirmation');
+  const restoreButton = app.querySelector('#restore-backup');
+  const restoreMessage = app.querySelector('#backup-restore-message');
+  fileInput.addEventListener('change', async () => {
+    restoreButton.disabled = true;
+    previewBox.hidden = true;
+    confirmationField.hidden = true;
+    confirmationInput.value = '';
+    restoreMessage.textContent = '';
+    if (pendingRestoreOperationId) {
+      await dataService.cancelBackupOperation(pendingRestoreOperationId).catch(() => null);
+      pendingRestoreOperationId = '';
+    }
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    restoreMessage.textContent = 'Validando o arquivo sem alterar o banco...';
+    try {
+      const backup = JSON.parse(await file.text());
+      await validateBackupFile(backup);
+      pendingRestoreOperationId = await stageBackupRestore(backup);
+      const preview = await dataService.previewBackupRestore(pendingRestoreOperationId);
+      const changedRows = Object.entries(preview.differences).filter(([, difference]) => difference.added || difference.changed || difference.deleted);
+      previewBox.innerHTML = `<h3>Pr&eacute;via da restaura&ccedil;&atilde;o</h3><p>Backup de <strong>${escapeHtml(new Date(preview.backupCreatedAt).toLocaleString('pt-BR'))}</strong>. Confira o impacto antes de continuar.</p><div class="table-wrapper"><table><thead><tr><th>Tabela</th><th>Atual</th><th>Backup</th><th>Novos</th><th>Alterados</th><th>Exclu&iacute;dos</th></tr></thead><tbody>${changedRows.length ? changedRows.map(([name, difference]) => `<tr><td>${escapeHtml(name)}</td><td>${difference.current}</td><td>${difference.backup}</td><td>${difference.added}</td><td>${difference.changed}</td><td class="backup-delete-count">${difference.deleted}</td></tr>`).join('') : '<tr><td colspan="6">O banco j&aacute; corresponde ao conte&uacute;do do backup.</td></tr>'}</tbody></table></div>`;
+      previewBox.hidden = false;
+      confirmationField.hidden = false;
+      restoreMessage.textContent = 'Arquivo validado. A restauracao ainda nao alterou nenhum cadastro.';
+    } catch (error) {
+      if (pendingRestoreOperationId) await dataService.cancelBackupOperation(pendingRestoreOperationId).catch(() => null);
+      pendingRestoreOperationId = '';
+      restoreMessage.textContent = `Arquivo recusado. ${error.message || 'Confira o JSON selecionado.'}`;
+    }
+  });
+  confirmationInput.addEventListener('input', () => { restoreButton.disabled = !pendingRestoreOperationId || confirmationInput.value.trim() !== 'RESTAURAR BACKUP'; });
+  restoreButton.addEventListener('click', async () => {
+    if (!pendingRestoreOperationId || confirmationInput.value.trim() !== 'RESTAURAR BACKUP') return;
+    if (!confirm('PERIGO: esta acao substituira os dados atuais e removera tudo que nao existia no backup. Deseja preparar o backup de seguranca e continuar?')) return;
+    restoreButton.disabled = true;
+    fileInput.disabled = true;
+    confirmationInput.disabled = true;
+    restoreMessage.textContent = 'Gerando e baixando o backup de seguranca do estado atual...';
+    try {
+      await generateCompleteBackup({ safety: true });
+      if (!confirm('O backup de seguranca foi enviado para a pasta de downloads. Confirma que o arquivo foi salvo e deseja iniciar a substituicao agora?')) {
+        restoreMessage.textContent = 'Restauracao cancelada. Os dados atuais nao foram alterados.';
+        restoreButton.disabled = false;
+        fileInput.disabled = false;
+        confirmationInput.disabled = false;
+        return;
+      }
+      restoreMessage.textContent = 'Restaurando o banco. Nao feche esta pagina...';
+      await dataService.commitBackupRestore(pendingRestoreOperationId);
+      pendingRestoreOperationId = '';
+      alert('Restauracao concluida com sucesso. Entre novamente no sistema para carregar os dados restaurados.');
+      currentUser = null;
+      authChecked = false;
+      location.href = 'index.html';
+    } catch (error) {
+      restoreMessage.textContent = `A restauracao nao foi concluida. ${error.message || 'Os dados foram revertidos.'}`;
+      restoreButton.disabled = false;
+      fileInput.disabled = false;
+      confirmationInput.disabled = false;
     }
   });
 }
@@ -6290,6 +6555,7 @@ async function route() {
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
     const target = location.hash.slice(1) || firstAllowedSection();
     if (target === 'usuarios') return renderUsuarios();
+    if (target === 'backup') return renderBackup();
     const section = target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     if (target === 'cursista-epc') {

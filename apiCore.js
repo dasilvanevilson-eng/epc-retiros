@@ -2,6 +2,7 @@ const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
 const { checkDatabaseConnection, deleteCursistaSmp, getRecord, importDatabase, listCursistasSmp, listRecords, readDatabase, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
+const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
@@ -359,6 +360,10 @@ async function handleApi(req, res, pathname) {
   }
   if (resource === 'auth' && id === 'logout' && req.method === 'POST') return sendNoContent(res, { 'Set-Cookie': clearSessionCookie() });
 
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !['auth', 'backup'].includes(resource) && await isMaintenanceActive()) {
+    return sendError(res, 503, 'O sistema esta temporariamente em manutencao para restauracao de backup. Tente novamente em alguns minutos.');
+  }
+
   const session = await currentSession(req);
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
@@ -384,6 +389,32 @@ async function handleApi(req, res, pathname) {
     if (denyIfMissingPermission(res, session, 'usuarios.excluir')) return;
     await deleteAccessUser(decodeURIComponent(action));
     return sendNoContent(res);
+  }
+
+  if (resource === 'backup') {
+    if (!hasGlobalRetreatAccess(session)) return sendError(res, 403, 'Apenas administradores podem acessar backup e restauracao.');
+    if (id === 'export' && !action && req.method === 'POST') return sendJson(res, 201, await createSnapshot(session));
+    if (id === 'chunks' && action && req.method === 'GET') {
+      const url = new URL(req.url || '/', 'https://familiaepcindaial.local');
+      return sendJson(res, 200, await listChunks(session, decodeURIComponent(action), Number(url.searchParams.get('offset')) || 0, Number(url.searchParams.get('limit')) || 25));
+    }
+    if (id === 'restore' && !action && req.method === 'POST') return sendJson(res, 201, await createRestore(session, await readBody(req)));
+    if (id === 'restore' && action && req.method === 'POST') {
+      await uploadRestoreChunk(session, decodeURIComponent(action), await readBody(req));
+      return sendNoContent(res);
+    }
+    if (id === 'preview' && action && req.method === 'GET') return sendJson(res, 200, await previewRestore(session, decodeURIComponent(action)));
+    if (id === 'commit' && action && req.method === 'POST') {
+      const operationId = decodeURIComponent(action);
+      await commitRestore(session, operationId);
+      await cancelOperation(session, operationId).catch(() => null);
+      return sendJson(res, 200, { restored: true }, { 'Set-Cookie': clearSessionCookie() });
+    }
+    if ((id === 'cancel' && action && req.method === 'POST') || (id === 'operations' && action && req.method === 'DELETE')) {
+      await cancelOperation(session, decodeURIComponent(action));
+      return sendNoContent(res);
+    }
+    return sendError(res, 405, 'Operacao de backup nao permitida.');
   }
 
   if (resource === 'database' && req.method === 'GET') {

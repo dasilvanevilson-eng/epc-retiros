@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node localServer.js",
+    "test:backup": "node scripts/test-backup-service.js",
+    "audit:backup": "node scripts/audit-backup-readiness.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "audit:registrations": "node scripts/audit-registration-integrity.js"
   }

@@ -185,6 +185,21 @@ async function allRows(table, order = 'updated_at.desc') {
   return supabaseRequest(`${table}?select=*&limit=10000${orderQuery}`);
 }
 
+const isMissingRelationError = (error, table) => {
+  const message = String(error?.message || '');
+  return message.includes('PGRST205')
+    && (message.includes(`public.${table}`) || message.includes(`'${table}'`) || message.includes(`\"${table}\"`));
+};
+
+async function optionalAllRows(table, order = '') {
+  try {
+    return await allRows(table, order);
+  } catch (error) {
+    if (isMissingRelationError(error, table)) return [];
+    throw error;
+  }
+}
+
 async function rowsWhere(table, filter, order = '') {
   const orderQuery = order ? `&order=${order}` : '';
   return supabaseRequest(`${table}?${filter}&select=*&limit=10000${orderQuery}`);
@@ -997,6 +1012,7 @@ function mapCommunity(row, lookups = {}) {
     monitorCasalId: row.monitor_casal_id || row.extras?.monitorCasalId || '',
     monitorIds: array(lookups.monitorsByCommunity?.get(row.id)).map(rowId),
     membroIds: array(lookups.studentsByCommunity?.get(row.id)).map((item) => item.id),
+    membroSmpIds: array(lookups.smpStudentsByCommunity?.get(row.id)).map((item) => item.cursista_id),
     ordem: row.ordem,
     criadoEm: row.criado_em,
     createdAt: row.created_at,
@@ -1006,11 +1022,12 @@ function mapCommunity(row, lookups = {}) {
 
 async function communityLookups(rows) {
   const ids = new Set(rows.map((row) => row.id));
-  const [linksMonitors, people, linksStudents, students] = await Promise.all([
+  const [linksMonitors, people, linksStudents, students, linksSmpStudents] = await Promise.all([
     allRows('comunidade_monitores', ''),
     allRows('pessoas'),
     allRows('comunidade_cursistas', ''),
     allRows('cursistas'),
+    optionalAllRows('comunidade_cursistas_smp', ''),
   ]);
   const personById = new Map(people.map((item) => [item.id, item]));
   const studentById = new Map(students.map((item) => [item.id, item]));
@@ -1026,11 +1043,51 @@ async function communityLookups(rows) {
     if (studentById.has(item.cursista_id)) list.push(studentById.get(item.cursista_id));
     studentsByCommunity.set(item.comunidade_id, list);
   });
-  return { monitorsByCommunity, studentsByCommunity };
+  const smpStudentsByCommunity = new Map();
+  linksSmpStudents.filter((item) => ids.has(item.comunidade_id)).forEach((item) => {
+    const list = smpStudentsByCommunity.get(item.comunidade_id) || [];
+    list.push(item);
+    smpStudentsByCommunity.set(item.comunidade_id, list);
+  });
+  return { monitorsByCommunity, studentsByCommunity, smpStudentsByCommunity };
+}
+
+async function syncIndividualCommunityMembers(communityId, retreatId, memberIds = []) {
+  const desiredRows = (await Promise.all([...new Set(array(memberIds))].map((id) => findStudentRowForRetreat(id, retreatId)))).filter(Boolean);
+  if (desiredRows.length !== new Set(array(memberIds)).size) throw new Error('Um ou mais cursistas individuais nao foram encontrados neste retiro. Nenhum vinculo foi alterado.');
+  const desiredIds = new Set(desiredRows.map((student) => student.id));
+  const currentRows = await rowsWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}`);
+  const currentIds = new Set(currentRows.map((item) => item.cursista_id));
+  const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, cursista_id: id }));
+  if (additions.length) await upsert('comunidade_cursistas', additions, 'comunidade_id,cursista_id');
+  for (const id of currentIds) {
+    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}&cursista_id=eq.${enc(id)}`);
+  }
+}
+
+async function syncSmpCommunityMembers(communityId, retreatId, memberIds = []) {
+  const desiredIds = new Set(array(memberIds).map((id) => String(id || '').trim()).filter(Boolean));
+  const availableIds = new Set((await rowsWhere('cursista_smp', `retiro_id=eq.${enc(retreatId)}`, '')).map((item) => String(item.id)));
+  const missingIds = [...desiredIds].filter((id) => !availableIds.has(id));
+  if (missingIds.length) throw new Error('Uma ou mais fichas SMP nao foram encontradas neste retiro. Nenhum vinculo foi alterado.');
+  let currentRows;
+  try {
+    currentRows = await rowsWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}`, '');
+  } catch (error) {
+    if (isMissingRelationError(error, 'comunidade_cursistas_smp')) throw new Error('A migracao comunidade_cursistas_smp ainda nao foi aplicada ao banco.');
+    throw error;
+  }
+  const currentIds = new Set(currentRows.map((item) => String(item.cursista_id)));
+  const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, retiro_id: retreatId, cursista_id: id }));
+  if (additions.length) await upsert('comunidade_cursistas_smp', additions, 'comunidade_id,retiro_id,cursista_id');
+  for (const id of currentIds) {
+    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=eq.${enc(id)}`);
+  }
 }
 
 async function saveCommunity(record) {
-  const mappedKeys = new Set(['id', 'retiroId', 'nome', 'liderCasalId', 'monitorCasalId', 'monitorIds', 'membroIds', 'ordem', 'criadoEm', 'createdAt', 'updatedAt']);
+  const membershipType = record.__membershipType || '';
+  const mappedKeys = new Set(['id', 'retiroId', 'nome', 'liderCasalId', 'monitorCasalId', 'monitorIds', 'membroIds', 'membroSmpIds', '__membershipType', 'ordem', 'criadoEm', 'createdAt', 'updatedAt']);
   await upsert('comunidades', compact({
     id: record.id,
     retiro_id: record.retiroId,
@@ -1045,14 +1102,13 @@ async function saveCommunity(record) {
   }));
   await Promise.all([
     deleteWhere('comunidade_monitores', `comunidade_id=eq.${enc(record.id)}`),
-    deleteWhere('comunidade_cursistas', `comunidade_id=eq.${enc(record.id)}`),
   ]);
   const monitorRows = (await Promise.all(array(record.monitorIds).map(findPersonRow))).filter(Boolean);
-  const studentRows = (await Promise.all(array(record.membroIds).map((id) => findStudentRowForRetreat(id, record.retiroId)))).filter(Boolean);
   await Promise.all([
     monitorRows.length ? upsert('comunidade_monitores', monitorRows.map((person) => ({ comunidade_id: record.id, pessoa_id: person.id })), 'comunidade_id,pessoa_id') : null,
-    studentRows.length ? upsert('comunidade_cursistas', studentRows.map((student) => ({ comunidade_id: record.id, cursista_id: student.id })), 'comunidade_id,cursista_id') : null,
   ]);
+  if (membershipType === 'individual') await syncIndividualCommunityMembers(record.id, record.retiroId, record.membroIds);
+  if (membershipType === 'smp') await syncSmpCommunityMembers(record.id, record.retiroId, record.membroSmpIds);
   return getRecord('comunidades', record.id);
 }
 
@@ -1195,9 +1251,21 @@ async function importDatabase(incoming) {
   }
   for (const storeName of stores) {
     for (const record of array(incoming[storeName])) {
-      if (record?.id) await saveRelational(storeName, record);
+      if (!record?.id) continue;
+      if (storeName === 'comunidades') {
+        await saveRelational(storeName, { ...record, __membershipType: 'individual' });
+        if (Object.prototype.hasOwnProperty.call(record, 'membroSmpIds')) await saveRelational(storeName, { ...record, __membershipType: 'smp' });
+      } else {
+        await saveRelational(storeName, record);
+      }
     }
   }
+}
+
+async function replaceDatabase(incoming) {
+  if (hasSupabase()) throw new Error('A substituicao do Supabase deve usar a restauracao transacional de backup.');
+  const replacement = Object.fromEntries(stores.map((store) => [store, Array.isArray(incoming?.[store]) ? incoming[store] : []]));
+  await writeFileDatabase(replacement);
 }
 
 async function listRecords(storeName) {
@@ -1211,6 +1279,10 @@ async function getRecord(storeName, id) {
 async function saveRecord(storeName, record) {
   return withLocalFallback(async (useSupabase) => {
     if (useSupabase) return saveRelational(storeName, record);
+    if (storeName === 'comunidades' && Object.prototype.hasOwnProperty.call(record, '__membershipType')) {
+      record = { ...record };
+      delete record.__membershipType;
+    }
     const database = await readFileDatabase();
     const collection = database[storeName];
     if (storeName === 'adesoes' && record?.retiroId && record?.pessoaId) {
@@ -1274,6 +1346,7 @@ module.exports = {
   saveCursistaSmp,
   deleteCursistaSmp,
   readDatabase,
+  replaceDatabase,
   listRecords,
   getRecord,
   saveRecord,

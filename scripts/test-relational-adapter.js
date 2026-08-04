@@ -27,6 +27,7 @@ const runId = crypto.randomUUID();
 const suffix = runId.slice(0, 8);
 const retreatId = crypto.randomUUID();
 const secondRetreatId = crypto.randomUUID();
+const smpRetreatId = crypto.randomUUID();
 const personCpf = `90000${suffix.replace(/\D/g, '').padEnd(6, '0')}`.slice(0, 11);
 const studentCpf = `90100${suffix.replace(/\D/g, '').padEnd(6, '1')}`.slice(0, 11);
 const studentId = crypto.randomUUID();
@@ -36,6 +37,8 @@ const secondStudentCpf = `90400${suffix.replace(/\D/g, '').padEnd(6, '4')}`.slic
 const editedStudentCpf = `90500${suffix.replace(/\D/g, '').padEnd(6, '5')}`.slice(0, 11);
 const enrolmentId = crypto.randomUUID();
 const communityId = crypto.randomUUID();
+const smpCommunityId = crypto.randomUUID();
+const smpFileNumber = `smp-${suffix}`;
 const badgeId = crypto.randomUUID();
 const userId = crypto.randomUUID();
 const settingId = `smoke:${suffix}`;
@@ -75,7 +78,9 @@ async function cleanup() {
   await safeDelete('usuarios', userId);
   await safeDelete('configuracoes', settingId);
   await safeDelete('crachas', badgeId);
+  await safeDelete('comunidades', smpCommunityId);
   await safeDelete('comunidades', communityId);
+  try { await db.deleteCursistaSmp(smpRetreatId, smpFileNumber); } catch {}
   await safeDelete('adesoes', enrolmentId);
   await safeDelete('cursistas', studentId);
   await safeDelete('cursistas', secondRetreatStudentId);
@@ -83,6 +88,7 @@ async function cleanup() {
   await safeDelete('pessoas', personCpf);
   await safeDelete('retiros', retreatId);
   await safeDelete('retiros', secondRetreatId);
+  await safeDelete('retiros', smpRetreatId);
 }
 
 async function main() {
@@ -274,11 +280,46 @@ async function main() {
     nome: `Comunidade Smoke ${suffix}`,
     monitorIds: [personCpf],
     membroIds: [studentId],
+    __membershipType: 'individual',
     ordem: 1,
     criadoEm: new Date().toISOString(),
   });
   assert(community.monitorIds.includes(personCpf), 'Monitor da comunidade nao retornou.');
   assert(community.membroIds.includes(studentId), 'Cursista da comunidade nao retornou pelo UUID.');
+
+  const smpRetreat = await db.saveRecord('retiros', {
+    ...retreat,
+    id: smpRetreatId,
+    nome: `Smoke SMP ${suffix}`,
+    tipoFichaCursista: 'cursista-smp',
+    recebedorToken: publicToken(),
+  });
+  assert(smpRetreat.tipoFichaCursista === 'cursista-smp', 'Retiro SMP nao preservou o tipo de ficha.');
+  await db.saveCursistaSmp({
+    retiroId: smpRetreatId,
+    id: smpFileNumber,
+    numeroFichaSmp: smpFileNumber,
+    nomeDele: `Ele ${suffix}`,
+    nomeDela: `Ela ${suffix}`,
+    nascimentoDele: '1980-01-01',
+    nascimentoDela: '1982-01-01',
+  });
+  const smpCommunity = await db.saveRecord('comunidades', {
+    id: smpCommunityId,
+    retiroId: smpRetreatId,
+    nome: `Comunidade SMP ${suffix}`,
+    monitorIds: [],
+    membroIds: [],
+    membroSmpIds: [smpFileNumber],
+    __membershipType: 'smp',
+    ordem: 1,
+    criadoEm: new Date().toISOString(),
+  });
+  assert(smpCommunity.membroSmpIds.includes(smpFileNumber), 'Ficha SMP nao retornou vinculada a comunidade.');
+  const renamedSmpCommunity = await db.saveRecord('comunidades', { ...smpCommunity, nome: `${smpCommunity.nome} Editada` });
+  assert(renamedSmpCommunity.membroSmpIds.includes(smpFileNumber), 'Edicao dos metadados removeu o vinculo SMP.');
+  const reloadedIndividualCommunity = await db.getRecord('comunidades', communityId);
+  assert(reloadedIndividualCommunity.membroIds.includes(studentId), 'Operacao SMP alterou vinculo de cursista individual.');
 
   const registrationLink = await findPublicSectorLink({ token: secretariaRegistrationToken, type: 'cadastro' });
   assert(registrationLink?.retreatId === retreatId && registrationLink.sector === 'Secretaria', 'Resolucao do link publico de cadastro falhou.');
@@ -345,6 +386,7 @@ async function main() {
     db.getRecord('pessoas', personCpf),
     db.getRecord('cursistas', studentId),
     db.getRecord('comunidades', communityId),
+    db.getRecord('comunidades', smpCommunityId),
     db.getRecord('crachas', badgeId),
     db.getRecord('configuracoes', settingId),
     db.getRecord('usuarios', userId),
@@ -360,6 +402,7 @@ async function main() {
       'adesoes',
       'cursistas',
       'comunidades',
+      'comunidades SMP',
       'crachas',
       'configuracoes',
       'usuarios',

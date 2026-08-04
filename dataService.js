@@ -222,6 +222,13 @@ export const dataService = {
   getAccessData: () => api('/access'),
   saveAccessUser: (user) => api('/access/users', { method: 'POST', body: JSON.stringify(user) }),
   deleteAccessUser: (id) => api(`/access/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  startBackupExport: () => api('/backup/export', { method: 'POST', timeoutMs: 120000 }),
+  listBackupChunks: (operationId, offset = 0, limit = 25) => api(`/backup/chunks/${encodeURIComponent(operationId)}?offset=${offset}&limit=${limit}`, { timeoutMs: 120000 }),
+  startBackupRestore: (envelope) => api('/backup/restore', { method: 'POST', body: JSON.stringify(envelope), timeoutMs: 120000 }),
+  uploadBackupChunk: (operationId, chunk) => api(`/backup/restore/${encodeURIComponent(operationId)}`, { method: 'POST', body: JSON.stringify(chunk), timeoutMs: 120000 }),
+  previewBackupRestore: (operationId) => api(`/backup/preview/${encodeURIComponent(operationId)}`, { timeoutMs: 120000 }),
+  commitBackupRestore: (operationId) => api(`/backup/commit/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 120000 }),
+  cancelBackupOperation: (operationId) => api(`/backup/cancel/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 30000 }),
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),
@@ -244,6 +251,17 @@ export const dataService = {
   deleteCursistaSmp: (retiroId, numeroFicha) => api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
   listComunidades: () => list('comunidades'),
   saveComunidade: (community) => save('comunidades', community),
+  saveComunidadeMembros: async (community, membershipType, memberIds = []) => {
+    const memberField = membershipType === 'smp' ? 'membroSmpIds' : 'membroIds';
+    const nextCommunity = { ...community, [memberField]: [...new Set(memberIds)] };
+    if ((await ensureBackend()) === 'file') {
+      return api(`/comunidades/${encodeURIComponent(nextCommunity.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...nextCommunity, __membershipType: membershipType }),
+      });
+    }
+    return legacyStore.save('comunidades', nextCommunity);
+  },
   deleteComunidade: (id) => remove('comunidades', id),
   listCrachas: () => list('crachas'),
   saveCracha: (badgeProfile) => save('crachas', badgeProfile),
