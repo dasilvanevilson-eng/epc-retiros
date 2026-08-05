@@ -4519,13 +4519,14 @@ async function renderCrachas() {
   const stepper = (label, name, min, max, step, value, hideValue = false) => `<label class="badge-stepper${hideValue ? ' is-value-hidden' : ''}"><span>${label}<button type="button" data-step-target="${name}" data-step="-${step}">-</button><button type="button" data-step-target="${name}" data-step="${step}">+</button></span><input name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${escapeHtml(value)}"></label>`;
   layout(`<section class="page-heading badge-page-heading"><div><p class="eyebrow">Modelos de identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>${escapeHtml(retreat.nome)} - Configure modelos ou selecione um modelo salvo para impress&atilde;o.</p></div></section>
   <section class="panel badge-start-panel" id="badge-start-panel">
-    ${canConfigureBadges ? '<button type="button" class="primary-button" data-badge-view="config">Configurar crach&aacute;s</button>' : ''}
-    ${canPrintBadges ? '<button type="button" class="secondary-button" data-badge-view="print">Imprimir crach&aacute;s</button>' : ''}
+    ${canPrintBadges ? '<button type="button" class="badge-start-option" data-badge-view="print"><strong>Imprimir</strong><span>Selecione o modelo e gere os crach&aacute;s por setor ou comunidade.</span></button>' : ''}
+    ${canConfigureBadges ? '<button type="button" class="badge-start-option" data-badge-view="assignments"><strong>Definir crach&aacute;s por setor</strong><span>Associe modelos aos setores e comunidades do retiro.</span></button>' : ''}
+    ${canConfigureBadges ? '<button type="button" class="badge-start-option" data-badge-view="config"><strong>Configurar crach&aacute;s</strong><span>Crie, personalize e gerencie os modelos de crach&aacute;.</span></button>' : ''}
     ${!canConfigureBadges && !canPrintBadges ? '<p class="empty-state">Seu usuario pode visualizar a tela, mas nao possui permissao para configurar ou imprimir crachas.</p>' : ''}
   </section>
   <section class="badge-active-area" id="badge-active-area" hidden>
     <section class="panel badge-view-toolbar" id="badge-config-toolbar" hidden>
-      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div>${canPrintBadges ? '<button type="button" class="secondary-button badge-view-switch" data-badge-view="print">Imprimir crach&aacute;s</button>' : ''}</div>
+      <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
       <div class="badge-heading-tools">
       <div class="field badge-profile-picker-field"><span>Modelo do crach&aacute;</span><select id="badge-config-select" hidden tabindex="-1" aria-hidden="true">${profileOptions()}</select><div class="badge-profile-picker"><button type="button" class="badge-profile-trigger" id="badge-profile-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="badge-profile-menu">Selecione um modelo</button><div class="badge-profile-menu" id="badge-profile-menu" role="listbox" hidden>${profilePickerOptions()}</div></div></div>
       <div class="badge-config-controls" hidden>
@@ -4535,10 +4536,11 @@ async function renderCrachas() {
         <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
       <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button></div>
-      <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button><button class="secondary-button" id="badge-sector-models-tab" type="button">Definir crach&aacute;s por setor</button>' : ''}</div>
+      <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button>' : ''}</div>
     </div></section>
-  <section class="badge-workbench">
-    <section class="panel badge-preview-panel">
+    <section class="panel badge-assignment-panel" id="badge-assignment-panel" hidden></section>
+  <section class="badge-workbench" id="badge-workbench">
+    <section class="panel badge-preview-panel" id="badge-preview-panel">
       <div class="panel-heading"><div><h2>Pr&eacute;via</h2><p id="badge-print-summary">${entries.length} crach&aacute;(s) dispon&iacute;vel(is).</p></div></div>
       <div class="badge-preview" id="badge-preview"></div>
     </section>
@@ -4559,7 +4561,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
-      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div>${canConfigureBadges ? '<button type="button" class="secondary-button badge-view-switch" data-badge-view="config">Configurar crach&aacute;s</button>' : ''}</div>
+      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
       <div class="badge-heading-tools">
         <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
         <div class="badge-print-controls">
@@ -4579,6 +4581,9 @@ async function renderCrachas() {
   const startPanel = app.querySelector('#badge-start-panel');
   const activeArea = app.querySelector('#badge-active-area');
   const configToolbar = app.querySelector('#badge-config-toolbar');
+  const assignmentPanel = app.querySelector('#badge-assignment-panel');
+  const workbench = app.querySelector('#badge-workbench');
+  const previewPanel = app.querySelector('#badge-preview-panel');
   const printPanel = app.querySelector('#badge-print-panel');
   const mode = printPanel.querySelector('#badge-mode');
   const sectorSelect = printPanel.querySelector('#badge-sector');
@@ -4610,17 +4615,24 @@ async function renderCrachas() {
   };
   tabButtons.forEach((button) => button.addEventListener('click', () => openBadgePanel(button.dataset.badgeTab)));
   const showBadgeView = (view) => {
-    if (view === 'config' && !canConfigureBadges) return;
+    if (['config', 'assignments'].includes(view) && !canConfigureBadges) return;
     if (view === 'print' && !canPrintBadges) return;
     activeBadgeView = view;
-    activeArea.hidden = false;
-    startPanel.hidden = true;
+    const isHome = !view;
+    activeArea.hidden = isHome;
+    startPanel.hidden = !isHome;
+    if (isHome) return;
     const isPrint = view === 'print';
-    configToolbar.hidden = isPrint;
-    form.hidden = isPrint;
+    const isAssignment = view === 'assignments';
+    configToolbar.hidden = view !== 'config';
+    assignmentPanel.hidden = !isAssignment;
+    workbench.hidden = isAssignment;
+    previewPanel.hidden = isAssignment;
+    form.hidden = view !== 'config';
     printPanel.hidden = !isPrint;
-    if (!isPrint) openBadgePanel('logo');
-    renderBadges();
+    if (view === 'config') openBadgePanel('logo');
+    if (isAssignment) renderBadgeAssignmentsPanel();
+    else renderBadges();
   };
   const syncTextTargetControls = (source = settings) => {
     const target = form.elements.textTarget?.value || 'name';
@@ -4961,11 +4973,8 @@ async function renderCrachas() {
     input.focus();
     input.select();
   };
-  const openBadgeSectorModelsDialog = () => {
+  const renderBadgeAssignmentsPanel = () => {
     if (!canConfigureBadges) return;
-    const overlay = document.createElement('section');
-    overlay.className = 'receiver-sector-overlay';
-    const close = () => overlay.remove();
     const profileSelectOptions = (selectedId = '') => `<option value="">Nenhum modelo definido</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}" ${profile.id === selectedId ? 'selected' : ''}>${escapeHtml(profile.name)}</option>`).join('')}`;
     const currentAssignment = (kind, key) => {
       const profileId = kind === 'communities' ? assignedProfileIdForCommunity(key) : assignedProfileIdForSector(key);
@@ -4977,9 +4986,9 @@ async function renderCrachas() {
       return `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(label)}</strong><div><input type="search" data-badge-sector-model-search placeholder="Buscar modelo de crach&aacute;" autocomplete="off"><select data-badge-sector-model-select data-assignment-kind="${kind}" data-assignment-key="${escapeHtml(key)}">${profileSelectOptions(currentAssignment(kind, key))}</select></div></div>`;
     }).join('');
     const hasAssignmentTargets = sectors.length || badgeCommunities.length;
-    overlay.innerHTML = `<form class="receiver-sector-dialog badge-sector-model-dialog" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute;s por setor</h2><p>Associe os setores e as comunidades do retiro em foco aos modelos de crach&aacute; salvos.</p></div></div><section class="badge-assignment-group"><h3>Setores</h3><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(sectors, 'sectors') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div></section><section class="badge-assignment-group"><h3>Comunidades</h3><div class="badge-sector-model-heading"><strong>Comunidade</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(badgeCommunities, 'communities') || '<p class="empty-state">Nenhuma comunidade cadastrada neste retiro.</p>'}</div></section><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="submit" class="is-couple-continue" ${hasAssignmentTargets ? '' : 'disabled'}>Salvar</button></div></form>`;
-    const formElement = overlay.querySelector('#badge-sector-model-form');
-    const message = overlay.querySelector('#badge-sector-model-message');
+    assignmentPanel.innerHTML = `<form class="badge-sector-model-dialog badge-sector-model-page" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute;s por setor</h2><p>Associe os setores e as comunidades do retiro em foco aos modelos de crach&aacute; salvos.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div><section class="badge-assignment-group"><h3>Setores</h3><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(sectors, 'sectors') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div></section><section class="badge-assignment-group"><h3>Comunidades</h3><div class="badge-sector-model-heading"><strong>Comunidade</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(badgeCommunities, 'communities') || '<p class="empty-state">Nenhuma comunidade cadastrada neste retiro.</p>'}</div></section><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="submit" class="is-couple-continue" ${hasAssignmentTargets ? '' : 'disabled'}>Salvar</button></div></form>`;
+    const formElement = assignmentPanel.querySelector('#badge-sector-model-form');
+    const message = assignmentPanel.querySelector('#badge-sector-model-message');
     formElement.querySelectorAll('[data-badge-sector-model-search]').forEach((search) => search.addEventListener('input', () => {
       const select = search.closest('.badge-sector-model-row').querySelector('[data-badge-sector-model-select]');
       const query = normalizeText(search.value);
@@ -5007,9 +5016,7 @@ async function renderCrachas() {
         saveButton.disabled = false;
       }
     });
-    overlay.querySelector('.close-sector-view').addEventListener('click', close);
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-    app.append(overlay);
+    assignmentPanel.querySelector('[data-badge-home]').addEventListener('click', () => showBadgeView(''));
     formElement.querySelector('[data-badge-sector-model-search]')?.focus();
   };
   const deleteCurrentProfile = async () => {
@@ -5152,6 +5159,7 @@ async function renderCrachas() {
   });
   [sectorSelect, personSelect].forEach((control) => control.addEventListener('change', renderBadges));
   app.querySelectorAll('[data-badge-view]').forEach((button) => button.addEventListener('click', () => showBadgeView(button.dataset.badgeView)));
+  app.querySelectorAll('[data-badge-home]').forEach((button) => button.addEventListener('click', () => showBadgeView('')));
   const setProfileMenuOpen = (open) => {
     if (!profileMenu || !profileTrigger) return;
     profileMenu.hidden = !open;
@@ -5202,7 +5210,6 @@ async function renderCrachas() {
   configSelect?.addEventListener('change', loadSelectedProfile);
   printModelSelect?.addEventListener('change', loadPrintProfile);
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
-  app.querySelector('#badge-sector-models-tab')?.addEventListener('click', openBadgeSectorModelsDialog);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
   printPanel.querySelector('#badge-print')?.addEventListener('click', printBadges);

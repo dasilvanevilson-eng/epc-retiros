@@ -9,8 +9,10 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(appSource, /const badgeSectorAssignmentsType = 'sector-model-assignments'/);
 assert.match(appSource, /profile\.tipo !== badgeSectorAssignmentsType/, 'A configuração por setor não pode aparecer como modelo de crachá.');
-assert.match(appSource, /badge-model-toolbar[^`]*badge-sector-models-tab[^`]*Definir crach&aacute;s por setor/);
-assert.doesNotMatch(appSource, /badge-function-tabs[^`]*badge-sector-models-tab/, 'O botão não deve permanecer nas abas de personalização.');
+assert.match(appSource, /data-badge-view="assignments"><strong>Definir crach&aacute;s por setor/);
+assert.match(appSource, /id="badge-assignment-panel" hidden/);
+assert.match(appSource, /const renderBadgeAssignmentsPanel = \(\) =>/);
+assert.doesNotMatch(appSource, /badge-sector-models-tab/, 'A definição não deve permanecer dentro da configuração de modelos.');
 assert.match(appSource, /<h3>Setores<\/h3>/);
 assert.match(appSource, /<h3>Comunidades<\/h3>/);
 assert.match(appSource, /assignmentRows\(sectors, 'sectors'\)/);
