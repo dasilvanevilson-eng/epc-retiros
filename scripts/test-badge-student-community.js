@@ -52,7 +52,7 @@ const path = require('node:path');
   assert.match(adminSource, /buildCommunityStudentBadgeEntries\(\{/);
   assert.match(adminSource, /const preparedName = String\(entry\.badgeName/);
   assert.match(adminSource, /badgeUsesCoupleStudentForm \? badgeCoupleStudentSource\.list\(retreat\.id\)/);
-  assert.match(adminSource, /printModelSelected \? \(first \? badgeCard\(first\.entry, next, first\.sector\)/, 'A prévia de impressão deve usar o participante selecionado.');
+  assert.match(adminSource, /first && selected\.length \? badgeCard\(first\.entry, firstSettings, first\.sector\)/, 'A prévia de impressão deve usar o participante e o modelo do grupo selecionado.');
 
   console.log('Crachás: comunidade dos cursistas individuais, SMP e EPC validada.');
 })().catch((error) => {
