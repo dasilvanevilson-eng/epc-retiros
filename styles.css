@@ -123,6 +123,8 @@
 .receiver-report-preview th:first-child,.receiver-report-preview td:first-child { width:auto; overflow-wrap:anywhere; word-break:normal; }
 .receiver-report-preview th:nth-child(2),.receiver-report-preview th:nth-child(3),.receiver-report-preview td:nth-child(2),.receiver-report-preview td:nth-child(3) { width:118px; white-space:nowrap; font-weight:700; }
 .student-financial-summary-preview th:nth-child(2),.student-financial-summary-preview th:nth-child(3),.student-financial-summary-preview th:nth-child(4),.student-financial-summary-preview td:nth-child(2),.student-financial-summary-preview td:nth-child(3),.student-financial-summary-preview td:nth-child(4) { width:118px; white-space:nowrap; font-weight:700; }
+.student-financial-summary-preview th:nth-child(5),.student-financial-summary-preview td:nth-child(5) { width:150px; overflow-wrap:anywhere; }
+.student-financial-summary-preview th:nth-child(6),.student-financial-summary-preview td:nth-child(6) { width:220px; overflow-wrap:anywhere; }
 .student-financial-summary-preview tr.has-student-balance td { font-weight:900; }
 .student-financial-summary-detail { display:block; margin-top:3px; color:var(--muted); font-size:11px; font-weight:500; }
 .student-financial-summary-preview tfoot th,.student-financial-summary-preview tfoot td { position:sticky; bottom:0; background:#f6fbf2; color:#285130; font-weight:900; }
@@ -3259,7 +3261,7 @@ select:focus {
   }
 
   .student-financial-summary-preview table {
-    min-width:0;
+    min-width:720px;
     table-layout:fixed;
   }
 
@@ -3285,6 +3287,16 @@ select:focus {
   .student-financial-summary-preview td:nth-child(4) {
     width:72px;
     white-space:normal;
+  }
+
+  .student-financial-summary-preview th:nth-child(5),
+  .student-financial-summary-preview td:nth-child(5) {
+    width:105px;
+  }
+
+  .student-financial-summary-preview th:nth-child(6),
+  .student-financial-summary-preview td:nth-child(6) {
+    width:145px;
   }
 
   .student-financial-summary-preview tfoot th,

@@ -2763,12 +2763,12 @@ const financialSummaryTable = (rows, { firstColumnLabel, emptyMessage }) => {
   const totals = financialSummaryTotals(rows);
   const body = rows.map((row) => {
     const detail = row.detalhe ? `<small class="student-financial-summary-detail">${escapeHtml(row.detalhe)}</small>` : '';
-    return `<tr class="${row.saldoPagar > 0 ? 'has-student-balance' : ''}"><td>${escapeHtml(row.nome)}${detail}</td><td>${currency(row.valorInscricao)}</td><td>${currency(row.valorPago)}</td><td>${currency(row.saldoPagar)}</td></tr>`;
-  }).join('') || `<tr><td colspan="4">${escapeHtml(emptyMessage)}</td></tr>`;
-  return `<div class="receiver-report-preview student-financial-summary-preview"><table><thead><tr><th>${escapeHtml(firstColumnLabel)}</th><th>Valor da inscrição</th><th>Valor pago</th><th>Saldo a pagar</th></tr></thead><tbody>${body}</tbody><tfoot><tr><th>Total</th><td>${currency(totals.valorInscricao)}</td><td>${currency(totals.valorPago)}</td><td>${currency(totals.saldoPagar)}</td></tr></tfoot></table></div>`;
+    return `<tr class="${row.saldoPagar > 0 ? 'has-student-balance' : ''}"><td>${escapeHtml(row.nome)}${detail}</td><td>${currency(row.valorInscricao)}</td><td>${currency(row.valorPago)}</td><td>${currency(row.saldoPagar)}</td><td>${escapeHtml(row.formaPagamento || 'Não informado')}</td><td>${escapeHtml(row.observacao || '—')}</td></tr>`;
+  }).join('') || `<tr><td colspan="6">${escapeHtml(emptyMessage)}</td></tr>`;
+  return `<div class="receiver-report-preview student-financial-summary-preview"><table><thead><tr><th>${escapeHtml(firstColumnLabel)}</th><th>Valor da inscrição</th><th>Valor pago</th><th>Saldo a pagar</th><th>Forma de pagamento</th><th>Observação</th></tr></thead><tbody>${body}</tbody><tfoot><tr><th>Total</th><td>${currency(totals.valorInscricao)}</td><td>${currency(totals.valorPago)}</td><td>${currency(totals.saldoPagar)}</td><td></td><td></td></tr></tfoot></table></div>`;
 };
 
-const financialSummaryDocument = (rows, options) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(options.title)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}th,td{padding:8px;border:1px solid #d9d1c3;text-align:left;vertical-align:top}th{background:#edf5e9;color:#285130}.has-student-balance td{font-weight:700}.student-financial-summary-detail{display:block;margin-top:3px;color:#667268;font-size:10px;font-weight:400}tfoot th,tfoot td{background:#f6fbf2;font-weight:700}th:first-child,td:first-child{width:auto;overflow-wrap:anywhere;word-break:normal}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){width:105px;white-space:nowrap;font-weight:700}</style></head><body><h1>${escapeHtml(options.title)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${financialSummaryTable(rows, options)}</body></html>`;
+const financialSummaryDocument = (rows, options) => `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(options.title)}</title><style>@page{size:A4;margin:10mm}body{margin:0;color:#26382c;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:22px}p{margin:0 0 18px;color:#667268}table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:10px}th,td{padding:6px;border:1px solid #d9d1c3;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:normal}th{background:#edf5e9;color:#285130}.has-student-balance td{font-weight:700}.student-financial-summary-detail{display:block;margin-top:3px;color:#667268;font-size:9px;font-weight:400}tfoot th,tfoot td{background:#f6fbf2;font-weight:700}th:first-child,td:first-child{width:auto}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){width:72px;white-space:nowrap;font-weight:700}th:nth-child(5),td:nth-child(5){width:95px}th:nth-child(6),td:nth-child(6){width:150px}</style></head><body><h1>${escapeHtml(options.title)}</h1><p>Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}</p>${financialSummaryTable(rows, options)}</body></html>`;
 
 const printFinancialSummary = (rows, options, pdf = false) => {
   const printWindow = window.open('', '_blank');
@@ -2785,12 +2785,12 @@ const printFinancialSummary = (rows, options, pdf = false) => {
 
 const downloadFinancialSummarySpreadsheet = (rows, options) => {
   const totals = financialSummaryTotals(rows);
-  const headers = [options.firstColumnLabel, 'Valor da inscrição', 'Valor pago', 'Saldo a pagar'];
+  const headers = [options.firstColumnLabel, 'Valor da inscrição', 'Valor pago', 'Saldo a pagar', 'Forma de pagamento', 'Observação'];
   const csvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
   const lines = [
     headers.map(csvValue).join(';'),
-    ...rows.map((row) => [row.detalhe ? `${row.nome} - ${row.detalhe}` : row.nome, currency(row.valorInscricao), currency(row.valorPago), currency(row.saldoPagar)].map(csvValue).join(';')),
-    ['Total', currency(totals.valorInscricao), currency(totals.valorPago), currency(totals.saldoPagar)].map(csvValue).join(';'),
+    ...rows.map((row) => [row.detalhe ? `${row.nome} - ${row.detalhe}` : row.nome, currency(row.valorInscricao), currency(row.valorPago), currency(row.saldoPagar), row.formaPagamento || '', row.observacao || ''].map(csvValue).join(';')),
+    ['Total', currency(totals.valorInscricao), currency(totals.valorPago), currency(totals.saldoPagar), '', ''].map(csvValue).join(';'),
   ];
   const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
@@ -3675,6 +3675,8 @@ function setupCoupleStudentFinancialSummary(studentFormType = 'cursista-smp') {
             valorInscricao,
             valorPago,
             saldoPagar,
+            formaPagamento: record.recebedorFormaPagamentoSmp || '',
+            observacao: record.recebedorObservacaoSmp || '',
           };
         })
         .sort((first, second) => first.nome.localeCompare(second.nome, 'pt-BR', { sensitivity: 'base' }));
@@ -3828,7 +3830,14 @@ async function renderCursista() {
           const valorPago = parseCurrency(student.valorPago);
           const saldoInformado = parseCurrency(student.saldoPagar);
           const saldoPagar = student.saldoPagar ? saldoInformado : Math.max(0, valorInscricao - valorPago);
-          return { nome: student.nome || 'Sem nome', valorInscricao, valorPago, saldoPagar };
+          return {
+            nome: student.nome || 'Sem nome',
+            valorInscricao,
+            valorPago,
+            saldoPagar,
+            formaPagamento: student.formaPagamento || student.recebedorFormaPagamento || '',
+            observacao: student.observacaoPagamento || student.recebedorObservacao || '',
+          };
         });
     },
   });
