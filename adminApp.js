@@ -5719,8 +5719,7 @@ async function renderQuadrante() {
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
   const quadranteActions = [
     canAccess('quadrante.editar') && canModifyRetreat(retreat) ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
-    canAccess('quadrante.imprimir') ? '<button class="primary-button" id="print-quadrante" type="button">Imprimir relatório completo</button>' : '',
-    canAccess('quadrante.imprimir') ? '<button class="secondary-button" id="print-secret-friend" type="button">Imprimir relatório para amigo secreto</button>' : '',
+    canAccess('quadrante.imprimir') ? '<div class="quadrante-print-actions"><button class="primary-button" id="print-quadrante" type="button">Imprimir relatório completo</button><button class="primary-button" id="print-secret-friend" type="button">Imprimir relatório para amigo secreto</button></div>' : '',
   ].join('');
   const quadrantePrintDocument = (content) => `<!doctype html>
 <html lang="pt-BR">

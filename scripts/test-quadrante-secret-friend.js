@@ -10,7 +10,7 @@ const quadranteEnd = source.indexOf('\nfunction choices(', quadranteStart);
 assert(quadranteStart >= 0 && quadranteEnd > quadranteStart, 'Renderização do Quadrante não encontrada.');
 const quadranteSource = source.slice(quadranteStart, quadranteEnd);
 
-assert.match(quadranteSource, /id="print-secret-friend"[^>]*>Imprimir relatório para amigo secreto<\/button>/, 'O botão do relatório para amigo secreto deve estar disponível no Quadrante.');
+assert.match(quadranteSource, /class="quadrante-print-actions"><button class="primary-button" id="print-quadrante"[^>]*>Imprimir relatório completo<\/button><button class="primary-button" id="print-secret-friend"[^>]*>Imprimir relatório para amigo secreto<\/button><\/div>/, 'Os botões de impressão devem ter a mesma aparência e ficar empilhados no Quadrante.');
 assert.match(quadranteSource, /const secretFriendRows = sectors\s*\.filter\(\(sector\) => sectorArea\(sector\) === 'escondida'\)/, 'Somente setores configurados e classificados como Equipe escondida devem ser considerados.');
 assert.match(quadranteSource, /\.filter\(\(entry\) => entryHasSector\(entry, sector\)\)/, 'As pessoas devem ser vinculadas ao respectivo setor.');
 assert.match(quadranteSource, /\.sort\(\(first, second\) => byName\(first\.person, second\.person\)\)/, 'Os nomes devem ser ordenados alfabeticamente dentro de cada setor.');
