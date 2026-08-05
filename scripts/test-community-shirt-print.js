@@ -10,7 +10,8 @@ const communitiesEnd = source.indexOf('\nconst badgeSettingsKey', communitiesSta
 assert(communitiesStart >= 0 && communitiesEnd > communitiesStart, 'Renderização das Comunidades não encontrada.');
 const communitiesSource = source.slice(communitiesStart, communitiesEnd);
 
-assert.match(communitiesSource, /id="print-community-shirts"[^>]*>Imprimir Nr camisetas por comunidade<\/button>/, 'O botão de impressão deve estar disponível em Comunidades.');
+assert.match(communitiesSource, /class="primary-button" id="distribute-students"/, 'Distribuir cursistas deve usar a mesma aparência principal de Incluir comunidade.');
+assert.match(communitiesSource, /class="primary-button" id="print-community-shirts"[^>]*>Imprimir Nr camisetas por comunidade<\/button>/, 'O botão de impressão deve usar a mesma aparência principal em Comunidades.');
 assert.match(communitiesSource, /const communityShirtSections = communities\.map/, 'O relatório deve respeitar as comunidades do retiro em foco.');
 assert.match(communitiesSource, /\{ name: student\.nomeDele, shirt: student\.manequimDele \}/, 'O integrante masculino de SMP/EPC deve usar seu próprio nome e camiseta.');
 assert.match(communitiesSource, /\{ name: student\.nomeDela, shirt: student\.manequimDela \}/, 'A integrante feminina de SMP/EPC deve usar seu próprio nome e camiseta.');
@@ -20,6 +21,8 @@ assert.match(communitiesSource, /@page \{ size:A4 portrait; margin:10mm; \}/, 'A
 assert.match(communitiesSource, /font-size:25pt/, 'O relatório deve usar fonte de 25pt.');
 assert.match(communitiesSource, /column-count:2/, 'O conteúdo deve ser distribuído em duas colunas verticais.');
 assert.match(communitiesSource, /grid-template-columns:minmax\(0,1fr\) auto/, 'Nome e camiseta devem aparecer lado a lado.');
+assert.match(communitiesSource, /<small>Comunidade: \$\{escapeHtml\(community\.name\)\}<\/small>/, 'A comunidade deve ser exibida como comentário abaixo de cada cursista.');
+assert.match(communitiesSource, /\.community-shirt-person small \{[^}]*font-size:15pt;/, 'O comentário da comunidade deve ter apresentação secundária.');
 assert.match(communitiesSource, /Não há cursistas vinculados às comunidades deste retiro\./, 'Uma impressão vazia deve ser bloqueada com aviso.');
 
 console.log('Comunidades: impressão de camisetas em A4, duas colunas e fonte 25pt validada.');
