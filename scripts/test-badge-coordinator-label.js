@@ -16,6 +16,10 @@ assert.equal(badgeSectorText({ coordenacaoSetor: true, setores: ['coordenacao ge
 assert.equal(badgeSectorText({ coordenacaoSetor: false, setores: ['CASAL BEM-ESTAR'] }), 'BEM-ESTAR');
 assert.equal(badgeSectorText({ coordenacaoSetor: true, setores: ['CASAL BEM-ESTAR'] }), 'Coord BEM-ESTAR');
 assert.equal(badgeSectorText({ coordenacaoSetor: false, setores: [] }, 'Casal Bem Estar'), 'BEM-ESTAR');
+assert.equal(badgeSectorText({ coordenacaoSetor: false, setores: ['RECEBEDOR(ES)'] }), 'RECEBEDOR');
+assert.equal(badgeSectorText({ coordenacaoSetor: true, setores: ['Recebedor(es)'] }), 'Coord RECEBEDOR');
+assert.equal(badgeSectorText({ coordenacaoSetor: false, setores: ['SINETEIRA(S)'] }), 'SINETEIRA');
+assert.equal(badgeSectorText({ coordenacaoSetor: true, setores: ['Sineteira(s)'] }), 'Coord SINETEIRA');
 assert.equal(badgeSectorText({ coordenacaoSetor: false, setores: ['Cozinha'] }), 'Cozinha');
 assert.equal(badgeSectorText({ setores: ['Cozinha', 'Secretaria'] }), 'Cozinha, Secretaria');
 assert.equal(badgeSectorText({ coordenacaoSetor: true, setores: ['Cozinha'] }, 'Espaço Kids'), 'Coord Espaço Kids');

@@ -4384,7 +4384,13 @@ const badgeDisplayName = (entry) => {
 const badgeSectorText = (entry, sector = '') => {
   const sourceLabel = sector || (entry.setores || []).join(', ') || 'Sem setor';
   const normalizedSourceLabel = sourceLabel.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ').trim();
-  const label = ['casal bem-estar', 'casal bem estar'].includes(normalizedSourceLabel) ? 'BEM-ESTAR' : sourceLabel;
+  const badgeSectorAliases = {
+    'casal bem-estar': 'BEM-ESTAR',
+    'casal bem estar': 'BEM-ESTAR',
+    'recebedor(es)': 'RECEBEDOR',
+    'sineteira(s)': 'SINETEIRA',
+  };
+  const label = badgeSectorAliases[normalizedSourceLabel] || sourceLabel;
   const labelAlreadyIdentifiesCoordination = normalizedSourceLabel.includes('coordenacao');
   return entry.coordenacaoSetor && !labelAlreadyIdentifiesCoordination ? `Coord ${label}` : label;
 };
