@@ -1,5 +1,6 @@
 import { dataService, retreatDefaults } from './dataService.js';
 import { buildKidsCareSummary } from './kidsCareSummary.js';
+import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -4341,6 +4342,8 @@ const firstName = (name = '') => String(name).trim().split(/\s+/)[0] || 'Volunta
 const personForBadge = (entry) => people.find((person) => person.id === entry.pessoaId) || entry.dadosPessoais || entry;
 const genderedLabel = (person, feminine, masculine) => normalizeText(person?.genero) === 'feminino' ? feminine : masculine;
 const badgeDisplayName = (entry) => {
+  const preparedName = String(entry.badgeName || '').trim();
+  if (preparedName) return preparedName;
   const person = personForBadge(entry);
   return firstName(person.nome || entry.nome);
 };
@@ -4432,9 +4435,17 @@ async function renderCrachas() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>Crie ou publique um retiro para gerar os crach&aacute;s.</p></div></section>', 'crachas'); return; }
   let settings = loadBadgeSettings();
-  const [allCommunities, allStudents] = await Promise.all([dataService.listComunidades(), dataService.listCursistas()]);
+  const badgeStudentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const badgeUsesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(badgeStudentFormType);
+  const badgeCoupleStudentSource = badgeUsesCoupleStudentForm ? coupleStudentSource(badgeStudentFormType) : null;
+  const [allCommunities, allStudents] = await Promise.all([
+    dataService.listComunidades(),
+    badgeUsesCoupleStudentForm ? badgeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(),
+  ]);
   const badgeCommunities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
-  const badgeStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === retreat.id));
+  const badgeStudents = badgeUsesCoupleStudentForm
+    ? allStudents.filter((student) => !student.retiroId || student.retiroId === retreat.id)
+    : uniqueByParticipant(allStudents.filter((student) => student.retiroId === retreat.id));
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length))
     .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
   const sectors = sortSectors(uniqueSectors([...(retreat.setores || []), ...entries.flatMap((entry) => entry.setores || [])]));
@@ -4657,14 +4668,12 @@ async function renderCrachas() {
     entries
       .filter((entry) => (community.monitorIds || []).includes(entry.id) || (entry.casalId && monitorCasalIds.has(entry.casalId)))
       .forEach((entry) => addEntry(entry, 'Cursista'));
-    badgeStudents
-      .filter((student) => (community.membroIds || []).includes(student.id))
-      .forEach((student) => {
-        selected.set(`student-${student.id}`, {
-          entry: { id: `student-${student.id}`, nome: student.nome, setores: ['Cursista'] },
-          sector: 'Cursista',
-        });
-      });
+    buildCommunityStudentBadgeEntries({
+      community,
+      students: badgeStudents,
+      studentFormType: badgeStudentFormType,
+      retreatId: retreat.id,
+    }).forEach((item) => selected.set(item.entry.id, item));
     return [...selected.values()].sort((first, second) => String(first.entry.nome || '').localeCompare(String(second.entry.nome || ''), 'pt-BR', { sensitivity: 'base' }));
   };
   const openBadgeSectorPicker = () => {
@@ -4783,7 +4792,7 @@ async function renderCrachas() {
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
     const printModelSelected = Boolean(printModelSelect?.value);
     const configModelSelected = Boolean(selectedProfileId || blankPreview);
-    preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? sampleBadgeCard(next) : '') : activeBadgeView === 'config' && !configModelSelected ? '' : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector);
+    preview.innerHTML = activeBadgeView === 'print' ? (printModelSelected ? (first ? badgeCard(first.entry, next, first.sector) : sampleBadgeCard(next)) : '') : activeBadgeView === 'config' && !configModelSelected ? '' : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector);
     badgePrintEntries = selected;
     const selectedCommunity = badgeCommunities.find((community) => community.id === selectedCommunityId);
     badgePrintTitle = activePrintMode === 'sector' ? `Crach\u00e1s - ${sectorSelect.value}` : activePrintMode === 'community' ? `Crach\u00e1s - ${communityName(selectedCommunity)}` : `Crach\u00e1s - ${retreat.nome}`;
