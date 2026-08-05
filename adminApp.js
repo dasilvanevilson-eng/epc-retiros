@@ -5737,7 +5737,7 @@ async function renderQuadrante() {
     .quadrante-birthday-col { width:9%; }
     .quadrante-contact-col { width:17%; }
     .quadrante-sector,.quadrante-communities article { margin:0 0 1.2mm; padding:.6mm 0 0; border:0; break-inside:auto; page-break-inside:auto; }
-    .quadrante-sector h3,.quadrante-communities h3 { margin:0 0 .35mm; color:#285130; font-size:10pt; line-height:1.15; break-after:avoid; page-break-after:avoid; }
+    .quadrante-sector h3,.quadrante-communities h3 { width:100%; margin:0 0 .6mm; padding:0 0 .35mm; border-bottom:.25mm solid #7f927f; color:#285130; font-size:12pt; line-height:1.15; break-after:avoid; page-break-after:avoid; }
     .quadrante-sector>table,.quadrante-communities article>table { break-before:avoid; page-break-before:avoid; }
     .quadrante-person-group,.quadrante-person-group tr { break-inside:avoid; page-break-inside:avoid; }
     .quadrante-report .community-tio td,.quadrante-report .community-monitor td,.quadrante-report .sector-coordinator td { font-weight:700; }

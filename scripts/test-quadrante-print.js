@@ -18,6 +18,7 @@ assert.match(quadranteSource, /\.quadrante-sector,\.quadrante-communities articl
 assert.match(quadranteSource, /\.quadrante-person-group,\.quadrante-person-group tr \{ break-inside:avoid; page-break-inside:avoid; \}/);
 assert.match(quadranteSource, /height:auto;[^}]*white-space:normal;[^}]*overflow-wrap:anywhere;[^}]*word-break:normal;/);
 assert.match(quadranteSource, /font-size:9pt; line-height:1\.2;/);
+assert.match(quadranteSource, /\.quadrante-sector h3,\.quadrante-communities h3 \{[^}]*width:100%;[^}]*border-bottom:\.25mm solid #7f927f;[^}]*font-size:12pt;/, 'Setores e comunidades devem ficar 20% maiores e sublinhados até o fim da linha.');
 assert.match(quadranteSource, /quadrantePrintDocument\(report\.outerHTML\)/, 'Somente o relatório deve ser enviado à janela de impressão.');
 assert.match(quadranteSource, /addEventListener\('click', printQuadrante\)/);
 assert.doesNotMatch(quadranteSource, /#print-quadrante'\)\?\.addEventListener\('click', \(\) => window\.print\(\)\)/);
