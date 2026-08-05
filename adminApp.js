@@ -5667,14 +5667,15 @@ async function renderQuadrante() {
     });
     return groups.map((group) => {
       const groupCoordinator = group.some((row) => row.coordenacaoSetor);
-      return group.map((row, index) => {
-      const sharedAddress = group.length > 1 && row.casalId;
-      const addressCell = sharedAddress
-        ? (index === 0 ? `<td class="shared-couple-address" rowspan="${group.length}">${escapeHtml(group[0].address)}</td>` : '')
-        : `<td>${escapeHtml(row.address)}</td>`;
-      const classes = [className, groupCoordinator ? 'sector-coordinator' : ''].filter(Boolean).join(' ');
-      return `<tr${rowClass(classes)}>${nameCell(row.person, className)}${addressCell}${detailCells(row.person)}</tr>`;
-    }).join('');
+      const groupRows = group.map((row, index) => {
+        const sharedAddress = group.length > 1 && row.casalId;
+        const addressCell = sharedAddress
+          ? (index === 0 ? `<td class="shared-couple-address" rowspan="${group.length}">${escapeHtml(group[0].address)}</td>` : '')
+          : `<td>${escapeHtml(row.address)}</td>`;
+        const classes = [className, groupCoordinator ? 'sector-coordinator' : ''].filter(Boolean).join(' ');
+        return `<tr${rowClass(classes)}>${nameCell(row.person, className)}${addressCell}${detailCells(row.person)}</tr>`;
+      }).join('');
+      return `<tbody class="quadrante-person-group">${groupRows}</tbody>`;
     }).join('');
   };
   const presentSectors = [...new Set(entries.flatMap((entry) => entry.setores || []))].filter((sector) => normalizeText(sector) !== 'tios de comunidade');
@@ -5687,7 +5688,7 @@ async function renderQuadrante() {
     const sectorEntries = entries
       .filter((entry) => entryHasSector(entry, sector))
       .map((entry) => { const person = personForEntry(entry); return { person, casalId: entry.casalId, address: addressForPerson(person), coordenacaoSetor: Boolean(entry.coordenacaoSetor) }; });
-    return `<article class="quadrante-sector"><h3>${escapeHtml(sector)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(sectorEntries)}</tbody></table></article>`;
+    return `<article class="quadrante-sector"><h3>${escapeHtml(sector)}</h3><table>${quadranteColgroup}${groupedParticipantRows(sectorEntries)}</table></article>`;
   }).join('');
   const assignedStudentIds = new Set(reportCommunities.flatMap((community) => community.membroIds || []));
   const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
@@ -5707,13 +5708,60 @@ async function renderQuadrante() {
     const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id)))
       .sort(byName)
       .map((student) => ({ person: student, address: addressForStudent(student) }));
-    return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}<tbody>${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tr><td colspan="4">Nenhum cursista alocado.</td></tr>' : '')}</tbody></table></article>`;
+    return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tbody class="quadrante-person-group"><tr><td colspan="4">Nenhum cursista alocado.</td></tr></tbody>' : '')}</table></article>`;
   }).join('');
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;
   const quadranteActions = [
     canAccess('quadrante.editar') && canModifyRetreat(retreat) ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
     canAccess('quadrante.imprimir') ? '<button class="primary-button" id="print-quadrante" type="button">Imprimir relatório</button>' : '',
   ].join('');
+  const quadrantePrintDocument = (content) => `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quadrante - ${escapeHtml(retreat.nome)}</title>
+  <style>
+    @page { size:A4 portrait; margin:9mm 10mm; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; background:#fff; color:#1f2c3f; }
+    body { font-family:"Times New Roman",Times,serif; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    h1 { margin:0 0 4mm; font-size:16pt; line-height:1.15; }
+    .quadrante-report { width:100%; margin:0; padding:0; border:0; background:#fff; box-shadow:none; overflow:visible; }
+    .quadrante-report table { width:100%; margin:0; border-collapse:collapse; table-layout:fixed; font-size:9pt; line-height:1.2; break-inside:auto; page-break-inside:auto; }
+    .quadrante-report th,.quadrante-report td { height:auto; padding:.6mm 1mm; border:0; text-align:left; vertical-align:top; white-space:normal; overflow-wrap:anywhere; word-break:normal; }
+    .quadrante-report th { padding-top:0; padding-bottom:.8mm; border-bottom:.25mm solid #aeb7ae; color:#4f5b52; font-size:7.5pt; text-transform:uppercase; letter-spacing:.03em; }
+    .quadrante-column-head { margin-bottom:1.5mm !important; }
+    .quadrante-name-col { width:29%; }
+    .quadrante-address-col { width:45%; }
+    .quadrante-birthday-col { width:9%; }
+    .quadrante-contact-col { width:17%; }
+    .quadrante-sector,.quadrante-communities article { margin:0 0 1.2mm; padding:.6mm 0 0; border:0; break-inside:auto; page-break-inside:auto; }
+    .quadrante-sector h3,.quadrante-communities h3 { margin:0 0 .35mm; color:#285130; font-size:10pt; line-height:1.15; break-after:avoid; page-break-after:avoid; }
+    .quadrante-sector>table,.quadrante-communities article>table { break-before:avoid; page-break-before:avoid; }
+    .quadrante-person-group,.quadrante-person-group tr { break-inside:avoid; page-break-inside:avoid; }
+    .quadrante-report .community-tio td,.quadrante-report .community-monitor td,.quadrante-report .sector-coordinator td { font-weight:700; }
+    .quadrante-report .shared-couple-address { vertical-align:middle; }
+    .quadrante-communities { margin:0; padding:0; border:0; }
+    .empty-state { margin:1mm 0; }
+  </style>
+</head>
+<body><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1>${content}</body>
+</html>`;
+  const printQuadrante = () => {
+    const report = app.querySelector('#quadrante-report');
+    if (!report) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+    printWindow.document.open();
+    printWindow.document.write(quadrantePrintDocument(report.outerHTML));
+    printWindow.document.close();
+    const triggerPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+    printWindow.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
+  };
   layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div>${quadranteActions ? `<div class="detail-actions">${quadranteActions}</div>` : ''}</section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
   app.querySelector('#order-quadrante')?.addEventListener('click', () => {
     if (!ensureRetreatCanBeChanged(retreat, 'ordenar o quadrante')) return;
@@ -5744,7 +5792,7 @@ async function renderQuadrante() {
     });
     app.append(overlay);
   });
-  app.querySelector('#print-quadrante')?.addEventListener('click', () => window.print());
+  app.querySelector('#print-quadrante')?.addEventListener('click', printQuadrante);
 }
 
 function choices(name, options, multiple = true) { const visibleOptions = options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }
