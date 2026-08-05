@@ -4186,7 +4186,7 @@ const badgeSettingsKey = 'epc-badge-settings';
 const badgeProfilesKey = 'epc-badge-profiles';
 const badgeProfilesMigratedKey = 'epc-badge-profiles-migrated';
 const badgeSectorAssignmentsType = 'sector-model-assignments';
-const badgeSectorAssignmentsId = (retreatId = '') => `badge-sector-assignments-${retreatId}`;
+const badgeAssignmentUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const badgeSettingsVersion = 2;
 const defaultBadgeSettings = {
   version: badgeSettingsVersion,
@@ -4292,16 +4292,34 @@ const loadBadgeProfiles = async (retreatId = '') => {
 };
 const saveBadgeProfile = (profile) => dataService.saveCracha(normalizeBadgeProfile(profile, profile.retiroId));
 const deleteBadgeProfile = (profileId) => dataService.deleteCracha(profileId);
-const loadBadgeSectorAssignments = async (retreatId = '') => {
-  const record = (await dataService.listCrachas()).find((item) => item.id === badgeSectorAssignmentsId(retreatId) && item.tipo === badgeSectorAssignmentsType);
-  return { ...(record?.assignments || {}) };
+const normalizeBadgeSectorAssignments = (assignments = {}) => {
+  const hasGroupedAssignments = assignments?.sectors && typeof assignments.sectors === 'object'
+    || assignments?.communities && typeof assignments.communities === 'object';
+  if (!hasGroupedAssignments) return { sectors: { ...(assignments || {}) }, communities: {} };
+  return {
+    sectors: { ...(assignments.sectors || {}) },
+    communities: { ...(assignments.communities || {}) },
+  };
 };
-const saveBadgeSectorAssignments = (retreatId, assignments = {}) => dataService.saveCracha({
-  id: badgeSectorAssignmentsId(retreatId),
+const loadBadgeSectorAssignments = async (retreatId = '') => {
+  const records = (await dataService.listCrachas())
+    .filter((item) => item.retiroId === retreatId && item.tipo === badgeSectorAssignmentsType)
+    .sort((first, second) => {
+      const uuidDifference = Number(badgeAssignmentUuidPattern.test(second.id || '')) - Number(badgeAssignmentUuidPattern.test(first.id || ''));
+      return uuidDifference || String(second.updatedAt || '').localeCompare(String(first.updatedAt || ''));
+    });
+  const record = records[0];
+  return {
+    id: badgeAssignmentUuidPattern.test(record?.id || '') ? record.id : '',
+    assignments: normalizeBadgeSectorAssignments(record?.assignments),
+  };
+};
+const saveBadgeSectorAssignments = (retreatId, assignments = {}, recordId = '') => dataService.saveCracha({
+  id: badgeAssignmentUuidPattern.test(recordId) ? recordId : createId(),
   retiroId: retreatId,
-  name: 'Modelos de crachá por setor',
+  name: 'Modelos de crachá por setor e comunidade',
   tipo: badgeSectorAssignmentsType,
-  assignments,
+  assignments: normalizeBadgeSectorAssignments(assignments),
   updatedAt: new Date().toISOString(),
 });
 const copyBadgeProfilesToRetreat = async (sourceRetreatId, targetRetreatId) => {
@@ -4467,7 +4485,9 @@ async function renderCrachas() {
   const sectors = sortSectors(uniqueSectors([...(retreat.setores || []), ...entries.flatMap((entry) => entry.setores || [])]));
   const badgeSectorCount = (sector) => entries.filter((entry) => entryHasSector(entry, sector)).length;
   let badgeProfiles = await loadBadgeProfiles(retreat.id);
-  let badgeSectorAssignments = await loadBadgeSectorAssignments(retreat.id);
+  const loadedBadgeSectorAssignments = await loadBadgeSectorAssignments(retreat.id);
+  let badgeSectorAssignmentsRecordId = loadedBadgeSectorAssignments.id;
+  let badgeSectorAssignments = loadedBadgeSectorAssignments.assignments;
   let selectedProfileId = '';
   let blankPreview = false;
   let selectedCommunityId = badgeCommunities[0]?.id || '';
@@ -4515,7 +4535,7 @@ async function renderCrachas() {
         <select id="badge-person-unused" hidden>${entries.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.nome)} - ${escapeHtml((entry.setores || []).join(', '))}</option>`).join('')}</select>
       </div>
       <div class="badge-print-actions"><button class="secondary-button" id="badge-print" type="button">Imprimir</button></div>
-      <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button>' : ''}</div>
+      <div class="badge-model-toolbar">${canConfigureBadges ? '<button class="primary-button" id="badge-new-config" type="button">Novo modelo</button><button class="secondary-button" id="badge-sector-models-tab" type="button">Definir crach&aacute;s por setor</button>' : ''}</div>
     </div></section>
   <section class="badge-workbench">
     <section class="panel badge-preview-panel">
@@ -4529,7 +4549,6 @@ async function renderCrachas() {
         <button type="button" data-badge-tab="wallpaper">Papel de parede</button>
         <button type="button" data-badge-tab="watermark">Marca d'agua</button>
         <button type="button" data-badge-tab="text">Texto/tamanho</button>
-        ${canConfigureBadges ? '<button type="button" id="badge-sector-models-tab">Definir crach&aacute; por Setor</button>' : ''}
         ${canConfigureBadges ? '<button type="button" id="badge-save-tab">Salvar</button>' : ''}
         ${canDeleteBadges ? '<button type="button" class="badge-delete-tab" id="badge-delete-tab">Excluir</button>' : ''}
       </div>
@@ -4657,13 +4676,21 @@ async function renderCrachas() {
     renderBadges();
   };
   const assignedProfileIdForSector = (sector) => {
-    const direct = badgeSectorAssignments[sector];
+    const direct = badgeSectorAssignments.sectors[sector];
     if (direct) return direct;
-    const entry = Object.entries(badgeSectorAssignments).find(([savedSector]) => normalizeText(savedSector) === normalizeText(sector));
+    const entry = Object.entries(badgeSectorAssignments.sectors).find(([savedSector]) => normalizeText(savedSector) === normalizeText(sector));
     return entry?.[1] || '';
   };
+  const assignedProfileIdForCommunity = (communityId) => badgeSectorAssignments.communities[communityId] || '';
   const applyAssignedSectorProfile = (sector) => {
     const profile = badgeProfiles.find((item) => item.id === assignedProfileIdForSector(sector));
+    if (!profile) return false;
+    if (printModelSelect) printModelSelect.value = profile.id;
+    setActiveProfile(profile);
+    return true;
+  };
+  const applyAssignedCommunityProfile = (communityId) => {
+    const profile = badgeProfiles.find((item) => item.id === assignedProfileIdForCommunity(communityId));
     if (!profile) return false;
     if (printModelSelect) printModelSelect.value = profile.id;
     setActiveProfile(profile);
@@ -4791,6 +4818,7 @@ async function renderCrachas() {
     };
     const renderEntries = (communityId) => {
       selectedCommunityId = communityId;
+      applyAssignedCommunityProfile(communityId);
       const community = badgeCommunities.find((item) => item.id === communityId);
       const items = communityBadgeEntries(communityId);
       overlay.innerHTML = `<div class="receiver-sector-dialog"><button type="button" class="receiver-sector-back" data-badge-back>← Escolher outra comunidade</button><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por comunidade</p><h2>${escapeHtml(communityName(community))}</h2><p>Marque os integrantes que deseja imprimir.</p></div></div><div class="badge-selection-tools"><button type="button" data-badge-clear-selection ${items.length ? '' : 'disabled'}>Limpar sele&ccedil;&atilde;o</button></div><div class="badge-print-member-list">${items.map(({ entry, sector }, index) => `<label><input type="checkbox" data-badge-print-entry="${index}" checked><span><strong>${escapeHtml(entry.nome)}</strong><small>${escapeHtml(sector)}</small></span></label>`).join('') || '<p class="empty-state">Nenhum integrante nesta comunidade.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="button" class="is-couple-continue" data-badge-print-selected ${items.length ? '' : 'disabled'}>Imprimir selecionados</button></div></div>`;
@@ -4939,11 +4967,17 @@ async function renderCrachas() {
     overlay.className = 'receiver-sector-overlay';
     const close = () => overlay.remove();
     const profileSelectOptions = (selectedId = '') => `<option value="">Nenhum modelo definido</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}" ${profile.id === selectedId ? 'selected' : ''}>${escapeHtml(profile.name)}</option>`).join('')}`;
-    const currentAssignment = (sector) => {
-      const profileId = assignedProfileIdForSector(sector);
+    const currentAssignment = (kind, key) => {
+      const profileId = kind === 'communities' ? assignedProfileIdForCommunity(key) : assignedProfileIdForSector(key);
       return badgeProfiles.some((profile) => profile.id === profileId) ? profileId : '';
     };
-    overlay.innerHTML = `<form class="receiver-sector-dialog badge-sector-model-dialog" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute; por Setor</h2><p>Associe cada setor do retiro a um dos modelos de crach&aacute; salvos.</p></div></div><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${sectors.map((sector) => `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(sector)}</strong><div><input type="search" data-badge-sector-model-search placeholder="Buscar modelo de crach&aacute;" autocomplete="off"><select data-badge-sector-model-select data-sector="${escapeHtml(sector)}">${profileSelectOptions(currentAssignment(sector))}</select></div></div>`).join('') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="submit" class="is-couple-continue" ${sectors.length ? '' : 'disabled'}>Salvar</button></div></form>`;
+    const assignmentRows = (items, kind) => items.map((item) => {
+      const key = kind === 'communities' ? item.id : item;
+      const label = kind === 'communities' ? communityName(item) : item;
+      return `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(label)}</strong><div><input type="search" data-badge-sector-model-search placeholder="Buscar modelo de crach&aacute;" autocomplete="off"><select data-badge-sector-model-select data-assignment-kind="${kind}" data-assignment-key="${escapeHtml(key)}">${profileSelectOptions(currentAssignment(kind, key))}</select></div></div>`;
+    }).join('');
+    const hasAssignmentTargets = sectors.length || badgeCommunities.length;
+    overlay.innerHTML = `<form class="receiver-sector-dialog badge-sector-model-dialog" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute;s por setor</h2><p>Associe os setores e as comunidades do retiro em foco aos modelos de crach&aacute; salvos.</p></div></div><section class="badge-assignment-group"><h3>Setores</h3><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(sectors, 'sectors') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div></section><section class="badge-assignment-group"><h3>Comunidades</h3><div class="badge-sector-model-heading"><strong>Comunidade</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(badgeCommunities, 'communities') || '<p class="empty-state">Nenhuma comunidade cadastrada neste retiro.</p>'}</div></section><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="submit" class="is-couple-continue" ${hasAssignmentTargets ? '' : 'disabled'}>Salvar</button></div></form>`;
     const formElement = overlay.querySelector('#badge-sector-model-form');
     const message = overlay.querySelector('#badge-sector-model-message');
     formElement.querySelectorAll('[data-badge-sector-model-search]').forEach((search) => search.addEventListener('input', () => {
@@ -4956,16 +4990,17 @@ async function renderCrachas() {
     formElement.addEventListener('submit', async (event) => {
       event.preventDefault();
       const saveButton = formElement.querySelector('button[type="submit"]');
-      const assignments = {};
+      const assignments = { sectors: {}, communities: {} };
       formElement.querySelectorAll('[data-badge-sector-model-select]').forEach((select) => {
-        assignments[select.dataset.sector] = select.value || '';
+        assignments[select.dataset.assignmentKind][select.dataset.assignmentKey] = select.value || '';
       });
       saveButton.disabled = true;
       message.textContent = 'Salvando...';
       try {
-        await saveBadgeSectorAssignments(retreat.id, assignments);
+        const savedRecord = await saveBadgeSectorAssignments(retreat.id, assignments, badgeSectorAssignmentsRecordId);
+        badgeSectorAssignmentsRecordId = savedRecord.id;
         badgeSectorAssignments = assignments;
-        message.textContent = 'Modelos por setor salvos.';
+        message.textContent = 'Modelos por setor e comunidade salvos.';
       } catch (error) {
         message.textContent = `Não foi possível salvar. ${error.message || 'Atualize a página e tente novamente.'}`;
       } finally {
@@ -4988,9 +5023,13 @@ async function renderCrachas() {
     if (!confirm(`Excluir o crach\u00e1 "${profile.name}"?`)) return;
     badgeProfiles = badgeProfiles.filter((item) => item.id !== profile.id);
     await deleteBadgeProfile(profile.id);
-    const cleanedAssignments = Object.fromEntries(Object.entries(badgeSectorAssignments).map(([sector, profileId]) => [sector, profileId === profile.id ? '' : profileId]));
+    const cleanedAssignments = {
+      sectors: Object.fromEntries(Object.entries(badgeSectorAssignments.sectors).map(([sector, profileId]) => [sector, profileId === profile.id ? '' : profileId])),
+      communities: Object.fromEntries(Object.entries(badgeSectorAssignments.communities).map(([communityId, profileId]) => [communityId, profileId === profile.id ? '' : profileId])),
+    };
     if (JSON.stringify(cleanedAssignments) !== JSON.stringify(badgeSectorAssignments)) {
-      await saveBadgeSectorAssignments(retreat.id, cleanedAssignments);
+      const savedRecord = await saveBadgeSectorAssignments(retreat.id, cleanedAssignments, badgeSectorAssignmentsRecordId);
+      badgeSectorAssignmentsRecordId = savedRecord.id;
       badgeSectorAssignments = cleanedAssignments;
     }
     selectedProfileId = '';
