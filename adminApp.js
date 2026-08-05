@@ -4079,6 +4079,15 @@ async function renderComunidades() {
     const records = retreatStudentRecords.filter((student) => memberIds.has(String(student.id)));
     return (usesCoupleStudents ? records : uniqueByParticipant(records)).map(toCommunityStudent).sort((first, second) => second.ageSort - first.ageSort);
   };
+  const communityShirtSections = communities.map((community, index) => {
+    const peopleRows = communityMembers(community).flatMap((student) => usesCoupleStudents ? [
+      { name: student.nomeDele, shirt: student.manequimDele },
+      { name: student.nomeDela, shirt: student.manequimDela },
+    ] : [{ name: student.nome, shirt: student.camiseta || student.camisetaOutro }])
+      .filter((person) => String(person.name || '').trim())
+      .sort((first, second) => String(first.name).localeCompare(String(second.name), 'pt-BR', { sensitivity: 'base' }));
+    return { name: community.nome || `Comunidade ${index + 1}`, peopleRows };
+  }).filter((community) => community.peopleRows.length);
   const canEditCommunities = canModifyRetreat(retreat);
   const assignedStudentIds = new Set(communities.flatMap(memberIdsFor).map(String));
   const assignedStudentKeys = usesCoupleStudents ? assignedStudentIds : new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(String(student.id))).map(participantIdentity));
@@ -4090,7 +4099,41 @@ async function renderComunidades() {
   const leaderOptions = (selected) => `<option value="">Buscar tios da comunidade</option>${leaders.map((leader) => `<option value="${leader.casalId}" ${leader.casalId === selected ? 'selected' : ''}>${escapeHtml(leader.label)}</option>`).join('')}`;
   const monitorOptions = (selected) => `<option value="">Buscar monitores da comunidade</option>${monitorCandidates.map((monitor) => `<option value="${monitor.casalId}" ${monitor.casalId === selected ? 'selected' : ''}>${escapeHtml(monitor.label)}</option>`).join('')}`;
   const moveOptions = (currentCommunityId) => `<option value="">Mover para...</option>${communities.filter((community) => community.id !== currentCommunityId).map((community) => `<option value="${community.id}">${escapeHtml(community.nome || `Comunidade ${community.ordem || ''}`)}</option>`).join('')}`;
-  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os ${participantLabelLower}.</p><div class="community-overview"><article><span>${participantLabel} sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir ${participantLabelLower}</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = communityMembers(community); const hasHistoricalMembers = (community.membroIds || []).length || (community.membroSmpIds || []).length || (community.membroEpcIds || []).length; return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>${participantLabel}</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${escapeHtml(student.detail)}</small></span><select data-move-student="${escapeHtml(student.id)}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${escapeHtml(student.id)}">Remover</button></div>`).join('') : `<p>Nenhum ${usesCoupleStudents ? 'casal' : 'cursista'} alocado.</p>`}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${hasHistoricalMembers ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
+  layout(`<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>${escapeHtml(retreat.nome)} · Forme grupos e distribua os ${participantLabelLower}.</p><div class="community-overview"><article><span>${participantLabel} sem comunidade</span><strong>${studentsWithoutCommunity}</strong></article><article><span>Comunidades sem tios</span><strong>${communitiesWithoutLeaders}</strong></article><article><span>Comunidades sem monitor</span><strong>${communitiesWithoutMonitor}</strong></article></div></div><div class="detail-actions"><button class="primary-button" id="add-community" type="button">Incluir comunidade</button><button class="secondary-button" id="distribute-students" type="button" ${communities.length ? '' : 'disabled'}>Distribuir ${participantLabelLower}</button><button class="secondary-button" id="print-community-shirts" type="button">Imprimir Nr camisetas por comunidade</button></div></section><section class="community-grid">${communities.map((community, index) => { const members = communityMembers(community); const hasHistoricalMembers = (community.membroIds || []).length || (community.membroSmpIds || []).length || (community.membroEpcIds || []).length; return `<article class="community-card"><div class="community-card-heading"><label class="field"><span>Nome da comunidade</span><input class="community-rename" data-community-name="${community.id}" value="${escapeHtml(community.nome || `Comunidade ${index + 1}`)}"></label><div class="community-order-summary"><label class="field community-order-field"><span>Ordem</span><input data-community-order="${community.id}" type="number" min="1" step="1" value="${Number(community.ordem) || index + 1}"></label><div class="community-count"><span>${participantLabel}</span><strong>${members.length}</strong></div></div></div><div class="community-role-grid"><label class="field"><span>Buscar tios da comunidade</span><div class="community-role-control"><select data-community-leader="${community.id}">${leaderOptions(community.liderCasalId)}</select>${community.liderCasalId ? `<button type="button" data-remove-community-leader="${community.id}">Remover</button>` : ''}</div></label><label class="field"><span>Buscar monitores da comunidade</span><div class="community-role-control"><select data-community-monitor="${community.id}">${monitorOptions(community.monitorCasalId || community.monitorIds?.[0] || '')}</select>${community.monitorCasalId ? `<button type="button" data-remove-community-monitor="${community.id}">Remover</button>` : ''}</div></label></div><div class="community-members">${members.length ? members.map((student) => `<div><span>${escapeHtml(student.nome)} <small>${escapeHtml(student.detail)}</small></span><select data-move-student="${escapeHtml(student.id)}" data-current-community="${community.id}">${moveOptions(community.id)}</select><button type="button" data-remove-member="${community.id}" data-student="${escapeHtml(student.id)}">Remover</button></div>`).join('') : `<p>Nenhum ${usesCoupleStudents ? 'casal' : 'cursista'} alocado.</p>`}</div><button type="button" class="delete-community" data-delete-community="${community.id}" ${hasHistoricalMembers ? 'disabled' : ''}>Excluir comunidade</button></article>`; }).join('') || '<div class="empty-state">Nenhuma comunidade criada ainda. Use Incluir comunidade para iniciar.</div>'}</section>`, 'comunidades');
+  app.querySelector('#print-community-shirts')?.addEventListener('click', () => {
+    if (!communityShirtSections.length) { alert('Não há cursistas vinculados às comunidades deste retiro.'); return; }
+    const communityContent = communityShirtSections.map((community) => `<section><h2>${escapeHtml(community.name)}</h2>${community.peopleRows.map((person) => `<div class="community-shirt-row"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(String(person.shirt || '').trim() || 'Não informado')}</span></div>`).join('')}</section>`).join('');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Número das camisetas por comunidade - ${escapeHtml(retreat.nome)}</title>
+  <style>
+    @page { size:A4 portrait; margin:10mm; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; background:#fff; color:#1f2c3f; }
+    body { font-family:"Times New Roman",Times,serif; font-size:25pt; line-height:1.15; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    h1 { margin:0 0 7mm; font-size:25pt; line-height:1.15; }
+    .community-shirt-report { column-count:2; column-gap:10mm; column-rule:.25mm solid #aeb7ae; }
+    section { width:100%; margin:0 0 6mm; break-inside:auto; page-break-inside:auto; }
+    h2 { margin:0 0 2mm; padding:0 0 1mm; border-bottom:.4mm solid #7f927f; color:#285130; font-size:25pt; line-height:1.15; break-after:avoid; page-break-after:avoid; }
+    .community-shirt-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4mm; padding:2mm 0; border-bottom:.25mm solid #d9d1c3; break-inside:avoid; page-break-inside:avoid; }
+    .community-shirt-row strong,.community-shirt-row span { min-width:0; font-size:25pt; overflow-wrap:anywhere; }
+  </style>
+</head>
+<body><h1>Número das camisetas por comunidade - ${escapeHtml(retreat.nome)}</h1><main class="community-shirt-report">${communityContent}</main></body>
+</html>`);
+    printWindow.document.close();
+    const triggerPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+    printWindow.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
+  });
   if (!canAccess('comunidades.criar') || !canEditCommunities) app.querySelector('#add-community')?.remove();
   if (!canAccess('comunidades.editar') || !canEditCommunities) {
     app.querySelector('#distribute-students')?.remove();
