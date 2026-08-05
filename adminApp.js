@@ -4345,9 +4345,8 @@ const badgeDisplayName = (entry) => {
   return firstName(person.nome || entry.nome);
 };
 const badgeSectorText = (entry, sector = '') => {
-  const person = personForBadge(entry);
   const label = sector || (entry.setores || []).join(', ') || 'Sem setor';
-  return entry.coordenacaoSetor ? `${genderedLabel(person, 'Coordenadora', 'Coordenador')} ${label}` : label;
+  return entry.coordenacaoSetor ? `Coord ${label}` : label;
 };
 const badgeInlineStyle = (settings) => [
   `--badge-bg:${settings.background}`,
