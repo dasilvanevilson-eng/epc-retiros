@@ -765,7 +765,7 @@ function layout(content, active = 'inicio') {
   const isVisibleStudentNav = (id) => !studentNavIds.has(id) || id === activeStudentNavId;
   const navItems = [
     ['inicio', 'Início'],
-    ['retiros', 'Retiros'],
+    ['retiros', 'Links de cadastro'],
     ['pessoas', 'Equipe de trabalho'],
     ['validacao-inscricoes', 'Validação'],
     ['cursista-epc', 'Cursista EPC'],

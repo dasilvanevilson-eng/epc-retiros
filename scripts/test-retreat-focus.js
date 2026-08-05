@@ -41,6 +41,7 @@ assert.match(homeSource, /enrolments\.filter\(\(item\) => item\.retiroId === act
 assert.match(homeSource, /coupleStudentSource\(activeStudentFormType\)\.list\(active\.id\)/, 'SMP/EPC devem carregar somente a fonte do foco.');
 assert.match(homeSource, /retreatId: active\?\.id \|\| ''/, 'Indicadores infantis devem receber explicitamente o retiro em foco.');
 assert.match(source, /const activeStudentNavId = studentFormNavIds\[focusedRetreat\?\.tipoFichaCursista/, 'O menu deve atualizar o tipo de ficha conforme o foco.');
+assert.match(source, /\['retiros', 'Links de cadastro'\]/, 'O menu principal deve identificar a opção como Links de cadastro.');
 const retreatListSource = section('async function renderRetiros', 'const sectorOptionHtml');
 assert.match(retreatListSource, /const retreat = selectedRetreat\(\)/, 'A opção Retiros deve usar o retiro que já está em foco.');
 assert.match(retreatListSource, /if \(retreat\) return renderRetreat\(retreat\.id\)/, 'A opção Retiros deve abrir diretamente a tela de links do foco.');
