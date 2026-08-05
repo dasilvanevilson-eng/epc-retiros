@@ -5684,6 +5684,12 @@ async function renderQuadrante() {
   const sectors = quadranteOrderForSectors(configuredSectors, orderSource);
   const orderableSectors = allQuadranteSectors([...orderSource, ...configuredSectors, ...presentSectors]);
   const orderableOrder = quadranteOrderForSectors(orderableSectors, orderSource);
+  const secretFriendRows = sectors
+    .filter((sector) => sectorArea(sector) === 'escondida')
+    .flatMap((sector) => entries
+      .filter((entry) => entryHasSector(entry, sector))
+      .map((entry) => ({ person: personForEntry(entry), sector }))
+      .sort((first, second) => byName(first.person, second.person)));
   const sectorSections = sectors.map((sector) => {
     const sectorEntries = entries
       .filter((entry) => entryHasSector(entry, sector))
@@ -5714,6 +5720,7 @@ async function renderQuadrante() {
   const quadranteActions = [
     canAccess('quadrante.editar') && canModifyRetreat(retreat) ? '<button class="secondary-button" id="order-quadrante" type="button">Ordenar quadrante</button>' : '',
     canAccess('quadrante.imprimir') ? '<button class="primary-button" id="print-quadrante" type="button">Imprimir relatório completo</button>' : '',
+    canAccess('quadrante.imprimir') ? '<button class="secondary-button" id="print-secret-friend" type="button">Imprimir relatório para amigo secreto</button>' : '',
   ].join('');
   const quadrantePrintDocument = (content) => `<!doctype html>
 <html lang="pt-BR">
@@ -5762,6 +5769,43 @@ async function renderQuadrante() {
     };
     printWindow.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
   };
+  const secretFriendPrintDocument = () => {
+    const rows = secretFriendRows.map(({ person, sector }) => `<tr><td>${escapeHtml(person.nome || 'Nome não informado')}</td><td>${escapeHtml(sector)}</td></tr>`).join('');
+    return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório para amigo secreto - ${escapeHtml(retreat.nome)}</title>
+  <style>
+    @page { size:A4 portrait; margin:12mm; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; background:#fff; color:#1f2c3f; }
+    body { font-family:"Times New Roman",Times,serif; font-size:20pt; line-height:1.2; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    h1 { margin:0 0 7mm; font-size:20pt; line-height:1.2; }
+    table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:20pt; line-height:1.2; }
+    th,td { padding:2mm 2.5mm; border-bottom:.25mm solid #aeb7ae; text-align:left; vertical-align:top; white-space:normal; overflow-wrap:anywhere; }
+    th { color:#285130; }
+    th:first-child,td:first-child { width:62%; }
+    tr { break-inside:avoid; page-break-inside:avoid; }
+  </style>
+</head>
+<body><h1>Relatório para amigo secreto - ${escapeHtml(retreat.nome)}</h1><table><thead><tr><th>Nome completo</th><th>Setor de trabalho</th></tr></thead><tbody>${rows}</tbody></table></body>
+</html>`;
+  };
+  const printSecretFriendReport = () => {
+    if (!secretFriendRows.length) { alert('Não há pessoas da Equipe escondida para imprimir neste retiro.'); return; }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.'); return; }
+    printWindow.document.open();
+    printWindow.document.write(secretFriendPrintDocument());
+    printWindow.document.close();
+    const triggerPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+    printWindow.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
+  };
   layout(`<section class="page-heading"><div><h1>Quadrante - ${escapeHtml(retreat.nome)}</h1></div>${quadranteActions ? `<div class="detail-actions">${quadranteActions}</div>` : ''}</section><section class="quadrante-report" id="quadrante-report">${reportHeader}${sectorSections || '<p class="empty-state">Nenhum voluntário com setor atribuído.</p>'}<section class="quadrante-communities">${communitySections || '<p>Nenhuma comunidade criada.</p>'}</section></section>`, 'quadrante');
   app.querySelector('#order-quadrante')?.addEventListener('click', () => {
     if (!ensureRetreatCanBeChanged(retreat, 'ordenar o quadrante')) return;
@@ -5793,6 +5837,7 @@ async function renderQuadrante() {
     app.append(overlay);
   });
   app.querySelector('#print-quadrante')?.addEventListener('click', printQuadrante);
+  app.querySelector('#print-secret-friend')?.addEventListener('click', printSecretFriendReport);
 }
 
 function choices(name, options, multiple = true) { const visibleOptions = options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }

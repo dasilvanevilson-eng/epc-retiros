@@ -15,6 +15,7 @@
     "test:badge-workflows": "node scripts/test-badge-workflows.js",
     "test:badge-multi-print": "node scripts/test-badge-multi-print.js",
     "test:quadrante-print": "node scripts/test-quadrante-print.js",
+    "test:quadrante-secret-friend": "node scripts/test-quadrante-secret-friend.js",
     "test:reports": "node scripts/test-report-builder.js",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",
