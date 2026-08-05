@@ -1308,7 +1308,7 @@ async function renderHome() {
         <section class="home-misc-box" aria-labelledby="home-kids-group-title">
           <h3 id="home-kids-group-title">Espaço Kids</h3>
           <div class="home-column-list">
-            ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
+            ${homeHealthCard('Total de crianças', spaceKidsRows.length, 'kids')}
             ${homeHealthCard('Crianças com intolerância alimentar', kidsCareSummary.intolerance.length, 'kids-intolerance')}
             ${homeHealthCard('Crianças com problema de saúde', kidsCareSummary.health.length, 'kids-health')}
           </div>
