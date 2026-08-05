@@ -13,6 +13,7 @@ const quadranteSource = source.slice(quadranteStart, quadranteEnd);
 assert.match(quadranteSource, /<tbody class="quadrante-person-group">\$\{groupRows\}<\/tbody>/, 'Cada pessoa ou casal deve formar um bloco indivisível.');
 assert.doesNotMatch(quadranteSource, /<tbody>\$\{groupedParticipantRows/, 'Os grupos não devem ficar presos em um único tbody por setor.');
 assert.match(quadranteSource, /const quadrantePrintDocument = \(content\) =>/);
+assert.match(quadranteSource, /id="print-quadrante"[^>]*>Imprimir relatório completo<\/button>/);
 assert.match(quadranteSource, /@page \{ size:A4 portrait; margin:9mm 10mm; \}/);
 assert.match(quadranteSource, /\.quadrante-sector,\.quadrante-communities article[^}]*break-inside:auto; page-break-inside:auto;/);
 assert.match(quadranteSource, /\.quadrante-person-group,\.quadrante-person-group tr \{ break-inside:avoid; page-break-inside:avoid; \}/);
