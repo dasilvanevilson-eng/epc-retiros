@@ -4185,6 +4185,8 @@ async function renderComunidades() {
 const badgeSettingsKey = 'epc-badge-settings';
 const badgeProfilesKey = 'epc-badge-profiles';
 const badgeProfilesMigratedKey = 'epc-badge-profiles-migrated';
+const badgeSectorAssignmentsType = 'sector-model-assignments';
+const badgeSectorAssignmentsId = (retreatId = '') => `badge-sector-assignments-${retreatId}`;
 const badgeSettingsVersion = 2;
 const defaultBadgeSettings = {
   version: badgeSettingsVersion,
@@ -4283,16 +4285,30 @@ const loadBadgeProfiles = async (retreatId = '') => {
   await migrateLegacyBadgeProfiles(retreatId);
   const profiles = await dataService.listCrachas();
   return profiles
+    .filter((profile) => profile.tipo !== badgeSectorAssignmentsType)
     .map((profile) => normalizeBadgeProfile(profile, retreatId))
     .filter((profile) => profile.name && profile.retiroId === retreatId)
     .sort((first, second) => String(second.updatedAt || '').localeCompare(String(first.updatedAt || '')));
 };
 const saveBadgeProfile = (profile) => dataService.saveCracha(normalizeBadgeProfile(profile, profile.retiroId));
 const deleteBadgeProfile = (profileId) => dataService.deleteCracha(profileId);
+const loadBadgeSectorAssignments = async (retreatId = '') => {
+  const record = (await dataService.listCrachas()).find((item) => item.id === badgeSectorAssignmentsId(retreatId) && item.tipo === badgeSectorAssignmentsType);
+  return { ...(record?.assignments || {}) };
+};
+const saveBadgeSectorAssignments = (retreatId, assignments = {}) => dataService.saveCracha({
+  id: badgeSectorAssignmentsId(retreatId),
+  retiroId: retreatId,
+  name: 'Modelos de crachá por setor',
+  tipo: badgeSectorAssignmentsType,
+  assignments,
+  updatedAt: new Date().toISOString(),
+});
 const copyBadgeProfilesToRetreat = async (sourceRetreatId, targetRetreatId) => {
   if (!sourceRetreatId || !targetRetreatId) return;
   await migrateLegacyBadgeProfiles(sourceRetreatId);
   const profiles = (await dataService.listCrachas())
+    .filter((profile) => profile.tipo !== badgeSectorAssignmentsType)
     .map((profile) => normalizeBadgeProfile(profile, sourceRetreatId))
     .filter((profile) => profile.retiroId === sourceRetreatId);
   const now = new Date().toISOString();
@@ -4451,6 +4467,7 @@ async function renderCrachas() {
   const sectors = sortSectors(uniqueSectors([...(retreat.setores || []), ...entries.flatMap((entry) => entry.setores || [])]));
   const badgeSectorCount = (sector) => entries.filter((entry) => entryHasSector(entry, sector)).length;
   let badgeProfiles = await loadBadgeProfiles(retreat.id);
+  let badgeSectorAssignments = await loadBadgeSectorAssignments(retreat.id);
   let selectedProfileId = '';
   let blankPreview = false;
   let selectedCommunityId = badgeCommunities[0]?.id || '';
@@ -4512,6 +4529,7 @@ async function renderCrachas() {
         <button type="button" data-badge-tab="wallpaper">Papel de parede</button>
         <button type="button" data-badge-tab="watermark">Marca d'agua</button>
         <button type="button" data-badge-tab="text">Texto/tamanho</button>
+        ${canConfigureBadges ? '<button type="button" id="badge-sector-models-tab">Definir crach&aacute; por Setor</button>' : ''}
         ${canConfigureBadges ? '<button type="button" id="badge-save-tab">Salvar</button>' : ''}
         ${canDeleteBadges ? '<button type="button" class="badge-delete-tab" id="badge-delete-tab">Excluir</button>' : ''}
       </div>
@@ -4638,6 +4656,19 @@ async function renderCrachas() {
     if (openEditor) openBadgePanel('logo');
     renderBadges();
   };
+  const assignedProfileIdForSector = (sector) => {
+    const direct = badgeSectorAssignments[sector];
+    if (direct) return direct;
+    const entry = Object.entries(badgeSectorAssignments).find(([savedSector]) => normalizeText(savedSector) === normalizeText(sector));
+    return entry?.[1] || '';
+  };
+  const applyAssignedSectorProfile = (sector) => {
+    const profile = badgeProfiles.find((item) => item.id === assignedProfileIdForSector(sector));
+    if (!profile) return false;
+    if (printModelSelect) printModelSelect.value = profile.id;
+    setActiveProfile(profile);
+    return true;
+  };
   const readSettings = () => {
     const data = new FormData(form);
     const next = { ...settings };
@@ -4703,6 +4734,7 @@ async function renderCrachas() {
     };
     const renderEntries = (sector) => {
       sectorSelect.value = sector;
+      applyAssignedSectorProfile(sector);
       const items = entries.filter((entry) => entryHasSector(entry, sector)).map((entry) => ({ entry, sector }));
       overlay.innerHTML = `<div class="receiver-sector-dialog"><button type="button" class="receiver-sector-back" data-badge-back>← Escolher outro setor</button><div class="panel-heading"><div><p class="eyebrow">Impress&atilde;o por setor</p><h2>${escapeHtml(sector)}</h2><p>Marque os integrantes que deseja imprimir.</p></div></div><div class="badge-selection-tools"><button type="button" data-badge-clear-selection ${items.length ? '' : 'disabled'}>Limpar sele&ccedil;&atilde;o</button></div><div class="badge-print-member-list">${items.map(({ entry }, index) => `<label><input type="checkbox" data-badge-print-entry="${index}" checked><span><strong>${escapeHtml(entry.nome)}</strong><small>${escapeHtml((entry.setores || []).join(', ') || sector)}</small></span></label>`).join('') || '<p class="empty-state">Nenhum integrante neste setor.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button><button type="button" class="is-couple-continue" data-badge-print-selected ${items.length ? '' : 'disabled'}>Imprimir selecionados</button></div></div>`;
       overlay.querySelector('[data-badge-back]').addEventListener('click', renderSectorList);
@@ -4901,6 +4933,50 @@ async function renderCrachas() {
     input.focus();
     input.select();
   };
+  const openBadgeSectorModelsDialog = () => {
+    if (!canConfigureBadges) return;
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay';
+    const close = () => overlay.remove();
+    const profileSelectOptions = (selectedId = '') => `<option value="">Nenhum modelo definido</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}" ${profile.id === selectedId ? 'selected' : ''}>${escapeHtml(profile.name)}</option>`).join('')}`;
+    const currentAssignment = (sector) => {
+      const profileId = assignedProfileIdForSector(sector);
+      return badgeProfiles.some((profile) => profile.id === profileId) ? profileId : '';
+    };
+    overlay.innerHTML = `<form class="receiver-sector-dialog badge-sector-model-dialog" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute; por Setor</h2><p>Associe cada setor do retiro a um dos modelos de crach&aacute; salvos.</p></div></div><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${sectors.map((sector) => `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(sector)}</strong><div><input type="search" data-badge-sector-model-search placeholder="Buscar modelo de crach&aacute;" autocomplete="off"><select data-badge-sector-model-select data-sector="${escapeHtml(sector)}">${profileSelectOptions(currentAssignment(sector))}</select></div></div>`).join('') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="button" class="close-sector-view">Fechar</button><button type="submit" class="is-couple-continue" ${sectors.length ? '' : 'disabled'}>Salvar</button></div></form>`;
+    const formElement = overlay.querySelector('#badge-sector-model-form');
+    const message = overlay.querySelector('#badge-sector-model-message');
+    formElement.querySelectorAll('[data-badge-sector-model-search]').forEach((search) => search.addEventListener('input', () => {
+      const select = search.closest('.badge-sector-model-row').querySelector('[data-badge-sector-model-select]');
+      const query = normalizeText(search.value);
+      [...select.options].forEach((option) => {
+        option.hidden = Boolean(option.value) && Boolean(query) && !normalizeText(option.textContent).includes(query);
+      });
+    }));
+    formElement.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const saveButton = formElement.querySelector('button[type="submit"]');
+      const assignments = {};
+      formElement.querySelectorAll('[data-badge-sector-model-select]').forEach((select) => {
+        assignments[select.dataset.sector] = select.value || '';
+      });
+      saveButton.disabled = true;
+      message.textContent = 'Salvando...';
+      try {
+        await saveBadgeSectorAssignments(retreat.id, assignments);
+        badgeSectorAssignments = assignments;
+        message.textContent = 'Modelos por setor salvos.';
+      } catch (error) {
+        message.textContent = `Não foi possível salvar. ${error.message || 'Atualize a página e tente novamente.'}`;
+      } finally {
+        saveButton.disabled = false;
+      }
+    });
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    app.append(overlay);
+    formElement.querySelector('[data-badge-sector-model-search]')?.focus();
+  };
   const deleteCurrentProfile = async () => {
     if (!canDeleteBadges) return;
     const profile = badgeProfiles.find((item) => item.id === selectedProfileId || item.id === configSelect?.value);
@@ -4912,6 +4988,11 @@ async function renderCrachas() {
     if (!confirm(`Excluir o crach\u00e1 "${profile.name}"?`)) return;
     badgeProfiles = badgeProfiles.filter((item) => item.id !== profile.id);
     await deleteBadgeProfile(profile.id);
+    const cleanedAssignments = Object.fromEntries(Object.entries(badgeSectorAssignments).map(([sector, profileId]) => [sector, profileId === profile.id ? '' : profileId]));
+    if (JSON.stringify(cleanedAssignments) !== JSON.stringify(badgeSectorAssignments)) {
+      await saveBadgeSectorAssignments(retreat.id, cleanedAssignments);
+      badgeSectorAssignments = cleanedAssignments;
+    }
     selectedProfileId = '';
     refreshProfileOptions('');
     if (configName) configName.value = '';
@@ -5082,6 +5163,7 @@ async function renderCrachas() {
   configSelect?.addEventListener('change', loadSelectedProfile);
   printModelSelect?.addEventListener('change', loadPrintProfile);
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
+  app.querySelector('#badge-sector-models-tab')?.addEventListener('click', openBadgeSectorModelsDialog);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);
   printPanel.querySelector('#badge-print')?.addEventListener('click', printBadges);
