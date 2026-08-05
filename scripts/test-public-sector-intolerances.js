@@ -1,10 +1,13 @@
 const assert = require('assert');
-const { buildIntoleranceRows, sectorPageHtml, supportsIntoleranceView } = require('../publicSectorPage');
+const { buildIntoleranceRows, buildKidsIntoleranceRows, sectorPageHtml, supportsIntoleranceView, supportsKidsIntoleranceView } = require('../publicSectorPage');
 
 assert.strictEqual(supportsIntoleranceView('Animação/Jovem de sala'), true);
 assert.strictEqual(supportsIntoleranceView('ANIMACAO/JOVEM DE SALA'), true);
 assert.strictEqual(supportsIntoleranceView('Cozinha'), true);
 assert.strictEqual(supportsIntoleranceView('Secretaria'), false);
+assert.strictEqual(supportsKidsIntoleranceView('COZINHA'), true);
+assert.strictEqual(supportsKidsIntoleranceView('Animação/Jovem de sala'), false);
+assert.strictEqual(supportsKidsIntoleranceView('Secretaria'), false);
 
 const communities = [
   { id: 'c1', retiroId: 'r-ind', nome: 'Comunidade Verde', membroIds: ['i1'] },
@@ -50,21 +53,71 @@ assert.deepStrictEqual(epcRows, [
   { name: 'Fernanda', community: 'Comunidade Dourada', intolerance: 'Frutos do mar' },
 ]);
 
+const kidsRows = buildKidsIntoleranceRows({
+  retreat: { id: 'r-smp', tipoFichaCursista: 'cursista-smp' },
+  communities,
+  entries: [{
+    id: 'a1', retiroId: 'r-smp', casalId: 'casal-1', nome: 'Responsável A', setores: ['Cozinha', 'Secretaria'],
+    espacoKids: [{ nome: 'Criança Equipe', nascimento: '2020-01-10', intoleranciaAlimentar: 'Sim', descricaoIntolerancia: 'Leite' }],
+  }, {
+    id: 'a2', retiroId: 'r-smp', casalId: 'casal-1', nome: 'Responsável B', setores: ['Secretaria', 'Recepção'],
+    espacoKids: [{ nome: 'Criança Equipe', nascimento: '2020-01-10', intoleranciaAlimentar: 'Sim', descricaoIntolerancia: 'Leite' }],
+  }, {
+    id: 'a3', retiroId: 'r-smp', nome: 'Responsável Individual', setores: ['Espaço Kids'],
+    espacoKids: [{ nome: 'Criança Descrição', nascimento: '2021-03-12', intoleranciaAlimentar: 'Não', descricaoIntolerancia: 'Corante' }],
+  }, {
+    id: 'fora', retiroId: 'outro-retiro', nome: 'Fora do retiro', setores: ['Cozinha'],
+    espacoKids: [{ nome: 'Criança fora', nascimento: '2022-01-01', intoleranciaAlimentar: 'Sim', descricaoIntolerancia: 'Soja' }],
+  }],
+  smpStudents: [{
+    id: '12', retiroId: 'r-smp', nomeDele: 'Daniel', nomeDela: 'Carla',
+    smpKidNome1: 'Criança Equipe', smpKidNascimento1: '2020-01-10', smpKidIntolerancia1: 'Sim', smpKidDescricaoIntolerancia1: 'Ovo',
+  }, {
+    id: '13', retiroId: 'r-smp', smpKidsNotNeeded: true,
+    smpKidNome1: 'Dado antigo ignorado', smpKidNascimento1: '2019-01-01', smpKidIntolerancia1: 'Sim', smpKidDescricaoIntolerancia1: 'Trigo',
+  }],
+});
+assert.strictEqual(kidsRows.length, 3, 'Casal da Equipe deve ser deduplicado, mas a mesma criança em outra origem deve contar novamente.');
+assert.strictEqual(kidsRows.filter((kid) => kid.name === 'Criança Equipe').length, 2);
+const teamCoupleKid = kidsRows.find((kid) => kid.name === 'Criança Equipe' && kid.origin === 'Equipe de trabalho');
+assert.strictEqual(teamCoupleKid.responsible, 'Responsável A e Responsável B');
+assert.strictEqual(teamCoupleKid.contextValue, 'Cozinha, Secretaria, Recepção');
+const studentKid = kidsRows.find((kid) => kid.origin === 'Cursista');
+assert.strictEqual(studentKid.contextValue, 'Comunidade Azul');
+assert.strictEqual(studentKid.intolerance, 'Ovo');
+assert(!JSON.stringify(kidsRows).includes('Dado antigo ignorado'));
+assert(!JSON.stringify(kidsRows).includes('Criança fora'));
+
+const epcKidsRows = buildKidsIntoleranceRows({
+  retreat: { id: 'r-epc', tipoFichaCursista: 'cursista-epc' },
+  communities,
+  epcStudents: [{ id: '7', retiroId: 'r-epc', nomeDele: 'Eduardo', nomeDela: 'Fernanda', smpKidNome1: 'Criança EPC', smpKidNascimento1: '2019-05-10', smpKidIntolerancia1Epc: 'Sim', smpKidDescricaoIntolerancia1Epc: '' }],
+});
+assert.strictEqual(epcKidsRows[0].contextValue, 'Comunidade Dourada');
+assert.strictEqual(epcKidsRows[0].intolerance, 'Não detalhado');
+
 const eligibleHtml = sectorPageHtml({
   retreat: { id: 'r-ind', nome: 'Retiro teste', dias: ['Sábado'], tipoFichaCursista: 'cursista-individual' },
   sector: 'Cozinha',
   entries: [{ nome: 'Voluntária', dias: ['Sábado'], retirosAnteriores: ['EPC'] }],
   intolerances: individualRows,
+  kidsIntolerances: kidsRows,
 });
 assert.match(eligibleHtml, /sector-tab-entries/);
 assert.match(eligibleHtml, /sector-tab-intolerances/);
+assert.match(eligibleHtml, /sector-tab-kids-intolerances/);
 assert.match(eligibleHtml, /Ades&otilde;es deste setor/);
 assert.match(eligibleHtml, /Cursistas com intoler&acirc;ncia alimentar/);
+assert.match(eligibleHtml, /Crian&ccedil;as espa&ccedil;o kids com intoler&acirc;ncia alimentar/);
+assert.match(eligibleHtml, /Responsável A e Responsável B/);
+assert.match(eligibleHtml, /Setor de trabalho: Cozinha, Secretaria, Recepção/);
+assert.match(eligibleHtml, /Problema descrito: Leite/);
 assert.doesNotMatch(eligibleHtml, /Ades&otilde;es do setor|Intoler&acirc;ncias dos cursistas|Intoler&acirc;ncia alimentar dos cursistas/);
 assert.match(eligibleHtml, /Comunidade Verde/);
 assert.match(eligibleHtml, /Lactose/);
 assert.doesNotMatch(eligibleHtml, /11111111111|47999999999|Rua secreta/);
 assert.match(eligibleHtml, /printableReports\[activeSectorView\]/);
+assert.match(eligibleHtml, /'kids-intolerances':/);
 assert.match(eligibleHtml, /\.intolerance-public-list li\{display:grid;grid-template-columns:/);
 assert.match(eligibleHtml, /\.intolerance-list li\{display:grid;grid-template-columns:/);
 assert.match(eligibleHtml, /grid-column:2;grid-row:1 \/ span 2/);
@@ -76,5 +129,14 @@ const regularHtml = sectorPageHtml({
 });
 assert.doesNotMatch(regularHtml, /id="sector-tab-entries"/);
 assert.doesNotMatch(regularHtml, /id="sector-view-intolerances"/);
+assert.doesNotMatch(regularHtml, /id="sector-view-kids-intolerances"/);
+
+const animationHtml = sectorPageHtml({
+  retreat: { id: 'r-ind', nome: 'Retiro teste', dias: ['Sábado'] },
+  sector: 'Animação/Jovem de sala',
+  entries: [],
+});
+assert.match(animationHtml, /id="sector-view-intolerances"/);
+assert.doesNotMatch(animationHtml, /id="sector-view-kids-intolerances"/);
 
 console.log('Acompanhamento por setor: fontes, exposição mínima, abas e impressão validadas.');
