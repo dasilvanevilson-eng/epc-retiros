@@ -19,16 +19,10 @@ const coupleName = (record = {}) => [record.nomeDele, record.nomeDela]
   .filter(Boolean)
   .join(' e ') || (record.numeroFichaSmp || record.id ? `Ficha ${record.numeroFichaSmp || record.id}` : 'Casal não informado');
 
-const coupleContact = (record = {}) => [record.foneDele, record.foneDela]
-  .map((phone) => String(phone || '').trim())
-  .filter(Boolean)
-  .join(' / ');
-
 const coupleStudentKids = ({ coupleStudents = [], studentFormType = '', retreatId = '' } = {}) => {
   if (!['cursista-smp', 'cursista-epc'].includes(studentFormType)) return [];
   const isEpc = studentFormType === 'cursista-epc';
   const suffix = isEpc ? 'Epc' : '';
-  const origin = isEpc ? 'Cursista EPC' : 'Cursista SMP';
   return coupleStudents
     .filter((record) => !retreatId || !record.retiroId || record.retiroId === retreatId)
     .filter((record) => !record.smpKidsNotNeeded)
@@ -41,9 +35,10 @@ const coupleStudentKids = ({ coupleStudents = [], studentFormType = '', retreatI
         descricaoSaude: String(record[`smpKidDescricaoSaude${kidNumber}${suffix}`] || '').trim(),
         intoleranciaAlimentar: record[`smpKidIntolerancia${kidNumber}${suffix}`] || '',
         descricaoIntolerancia: String(record[`smpKidDescricaoIntolerancia${kidNumber}${suffix}`] || '').trim(),
-        origin,
+        origin: 'Cursista',
         responsible: coupleName(record),
-        contact: coupleContact(record),
+        contextLabel: 'Comunidade',
+        contextValue: String(record.kidsCommunity || 'Sem comunidade').trim() || 'Sem comunidade',
       };
     }))
     .filter((kid) => kid.nome || kid.nascimento);
@@ -57,9 +52,10 @@ export function buildKidsCareSummary({ teamKids = [], coupleStudents = [], stude
     descricaoSaude: String(kid.descricaoSaude || '').trim(),
     intoleranciaAlimentar: kid.intoleranciaAlimentar || '',
     descricaoIntolerancia: String(kid.descricaoIntolerancia || '').trim(),
-    origin: 'Equipe de Trabalho',
-    responsible: kid.volunteer || 'Não informado',
-    contact: String(kid.contact || '').trim(),
+    origin: 'Equipe de trabalho',
+    responsible: kid.responsible || kid.volunteer || 'Não informado',
+    contextLabel: 'Setor de trabalho',
+    contextValue: Array.isArray(kid.sectors) && kid.sectors.length ? kid.sectors.join(', ') : 'Não informado',
   }));
   const children = [...normalizedTeamKids, ...coupleStudentKids({ coupleStudents, studentFormType, retreatId })];
   return {

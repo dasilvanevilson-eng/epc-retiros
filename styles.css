@@ -1804,6 +1804,23 @@ button:hover,
   line-height:1.45;
 }
 
+.kids-care-comment-list > div {
+  grid-template-columns:1fr;
+  gap:6px;
+}
+
+.kids-care-comments {
+  display:grid;
+  gap:3px;
+}
+
+.kids-care-comments small {
+  display:block;
+  color:#68727d;
+  font-size:12px;
+  line-height:1.45;
+}
+
 .kids-health-list>div {
   grid-template-columns:1fr;
   gap:5px;
