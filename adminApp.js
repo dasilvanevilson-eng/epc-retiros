@@ -5609,7 +5609,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   }
   const binaryChoices = (name, options) => choices(name, options, false);
   const contributionOptions = ['R$ 60,00 se o voluntário for o único da família', 'R$ 55,00 se o voluntário tiver mais pessoas da mesma família trabalhando no retiro'];
-  const kidsFields = Array.from({ length: 5 }, (_, index) => `<div class="kids-row"><span>${index + 1}</span><label class="field"><span>Nome</span><input name="kidNome${index + 1}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="kidNascimento${index + 1}" type="date"></label></div>`).join('');
+  const kidsFields = Array.from({ length: 5 }, (_, index) => {
+    const kidNumber = index + 1;
+    return `<details class="team-kid-panel" data-team-kid-panel="${kidNumber}" ${index === 0 ? 'open' : ''}><summary><strong>Criança ${kidNumber}</strong><span class="team-kid-summary-value">Não preenchida</span></summary><div class="kids-row"><span>${kidNumber}</span><label class="field"><span>Nome</span><input name="kidNome${kidNumber}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="kidNascimento${kidNumber}" type="date"></label><div class="team-kid-care"><div class="team-kid-care-row"><fieldset><legend>Possui algum problema de saúde?</legend>${binaryChoices(`kidProblemaSaude${kidNumber}`, ['Sim', 'Não'])}</fieldset><label class="field"><span>Descreva</span><input name="kidDescricaoSaude${kidNumber}" placeholder="Descreva o problema de saúde"></label></div><div class="team-kid-care-row"><fieldset><legend>Possui alguma intolerância alimentar?</legend>${binaryChoices(`kidIntolerancia${kidNumber}`, ['Sim', 'Não'])}</fieldset><label class="field"><span>Descreva</span><input name="kidDescricaoIntolerancia${kidNumber}" placeholder="Descreva a intolerância alimentar"></label></div></div></div></details>`;
+  }).join('');
   const sectorsForRegistration = forcedSector ? [forcedSector] : (embedded ? retreat.setores : (retreat.setoresPublicos ?? retreat.setores));
   const publicHeading = embedded ? String(retreat.nome || '') : `Cadastro da equipe de trabalho para: ${retreat.nome || ''}`;
   const publicLead = forcedSector ? `Este link é exclusivo para cadastro no setor ${forcedSector}.` : (embedded ? 'Preencha os dados para organizar a participacao da equipe neste retiro.' : 'Este e o formulario oficial da equipe de organizacao. Confira o nome do retiro antes de informar seus dados.');
@@ -5927,17 +5930,69 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     form.addEventListener(eventName, guardTypeSelection, true);
   });
   form.querySelectorAll('[name="foto"]').forEach((input) => input.addEventListener('change', syncContributionAmount));
+  const teamKidPanels = [...form.querySelectorAll('[data-team-kid-panel]')];
+  const syncTeamKidPanels = ({ resetOpen = false } = {}) => {
+    let firstPanelWithData = -1;
+    teamKidPanels.forEach((panel, index) => {
+      const kidNumber = panel.dataset.teamKidPanel;
+      const name = String(form.elements[`kidNome${kidNumber}`]?.value || '').trim();
+      const hasData = [...panel.querySelectorAll('input')].some((control) => control.type === 'radio' ? control.checked : Boolean(String(control.value || '').trim()));
+      if (hasData && firstPanelWithData < 0) firstPanelWithData = index;
+      const summary = panel.querySelector('.team-kid-summary-value');
+      if (summary) summary.textContent = name || (hasData ? 'Dados preenchidos' : 'Não preenchida');
+    });
+    if (!resetOpen || !teamKidPanels.length) return;
+    const openIndex = firstPanelWithData >= 0 ? firstPanelWithData : 0;
+    teamKidPanels.forEach((panel, index) => { panel.open = index === openIndex; });
+  };
+  const markExistingTeamKids = (kids = []) => {
+    teamKidPanels.forEach((panel, index) => {
+      const kid = kids[index];
+      const hasCareProperties = kid && ['problemaSaude', 'descricaoSaude', 'intoleranciaAlimentar', 'descricaoIntolerancia'].some((field) => Object.hasOwn(kid, field));
+      panel.dataset.legacyKidCare = kid && (kid.cuidadosLegados === true || !hasCareProperties) ? 'true' : 'false';
+    });
+  };
+  const clearExistingTeamKids = () => markExistingTeamKids([]);
+  const syncTeamKidCareRequirements = () => {
+    for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+      [
+        { answer: `kidProblemaSaude${kidNumber}`, description: `kidDescricaoSaude${kidNumber}` },
+        { answer: `kidIntolerancia${kidNumber}`, description: `kidDescricaoIntolerancia${kidNumber}` },
+      ].forEach(({ answer, description }) => {
+        const input = form.elements[description];
+        if (!input) return;
+        const required = checkedValue(form, answer) === 'Sim';
+        input.required = required;
+        const label = input.closest('.field')?.querySelector('span');
+        if (label) label.innerHTML = `Descreva${required ? ' <b>*</b>' : ''}`;
+      });
+    }
+  };
   const syncKidsNeed = () => {
     const notNeeded = form.elements.kidsNotNeeded?.checked;
     form.querySelectorAll('.kids-list input').forEach((field) => {
-      if (notNeeded) field.value = '';
+      if (notNeeded) {
+        if (field.type === 'radio') field.checked = false;
+        else field.value = '';
+      }
       field.disabled = Boolean(notNeeded);
     });
     form.querySelector('.kids-list')?.classList.toggle('is-disabled', Boolean(notNeeded));
     form.querySelector('.kids-list')?.toggleAttribute('hidden', Boolean(notNeeded));
     form.querySelector('.kids-hint')?.toggleAttribute('hidden', Boolean(notNeeded));
+    if (notNeeded) teamKidPanels.forEach((panel) => { panel.open = false; });
+    else syncTeamKidPanels({ resetOpen: true });
+    syncChoiceStates(form);
+    syncTeamKidCareRequirements();
   };
   form.elements.kidsNotNeeded?.addEventListener('change', syncKidsNeed);
+  form.addEventListener('input', (event) => { if (event.target.closest('[data-team-kid-panel]')) syncTeamKidPanels(); });
+  form.addEventListener('change', (event) => {
+    if (!event.target.closest('[data-team-kid-panel]')) return;
+    syncTeamKidPanels();
+    syncTeamKidCareRequirements();
+  });
+  clearExistingTeamKids();
   syncKidsNeed();
   syncTypeSelectionLock();
   const setNewRecordTypeLock = (locked) => {
@@ -5959,6 +6014,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     if (selectedType) setChoices('tipoFicha', selectedType);
     editingEntry = null;
     editingSpouseEntry = null;
+    clearExistingTeamKids();
     setCoupleMode(selectedType === 'Casal');
     syncKidsNeed();
     form.querySelector('#delete-registration')?.remove();
@@ -5973,6 +6029,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     syncVolunteerTermState();
     editingEntry = null;
     editingSpouseEntry = null;
+    clearExistingTeamKids();
     form.querySelector('#delete-registration')?.remove();
     setNewRecordTypeLock(false);
     setRegistrationFormLocked(false);
@@ -6132,7 +6189,17 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     setChoices('retiros', entry.retirosAnteriores || []); setDayConfirmations('dias', entry.dias || []); setChoices('setores', entry.setores || []); setChoices('quadrante', entry.quadrante); setChoices('foto', entry.foto); setChoices('tipoFicha', entry.casalId ? 'Casal' : 'Individual'); setChoices('genero', person.genero); setChoices('coordenacaoSetor', entry.coordenacaoSetor || editingSpouseEntry?.coordenacaoSetor ? 'sim' : '');
     if (form.elements.coordenacao) form.elements.coordenacao.value = entry.coordenacao || '';
     form.elements.kidsNotNeeded.checked = Boolean(entry.espacoKidsNaoNecessito);
-    (entry.espacoKids || []).forEach((kid, index) => { if (index < 5) { form.elements[`kidNome${index + 1}`].value = kid.nome || ''; form.elements[`kidNascimento${index + 1}`].value = kid.nascimento || ''; } });
+    markExistingTeamKids(entry.espacoKids || []);
+    (entry.espacoKids || []).forEach((kid, index) => {
+      if (index >= 5) return;
+      const kidNumber = index + 1;
+      form.elements[`kidNome${kidNumber}`].value = kid.nome || '';
+      form.elements[`kidNascimento${kidNumber}`].value = kid.nascimento || '';
+      setChoices(`kidProblemaSaude${kidNumber}`, kid.problemaSaude || '');
+      form.elements[`kidDescricaoSaude${kidNumber}`].value = kid.descricaoSaude || '';
+      setChoices(`kidIntolerancia${kidNumber}`, kid.intoleranciaAlimentar || '');
+      form.elements[`kidDescricaoIntolerancia${kidNumber}`].value = kid.descricaoIntolerancia || '';
+    });
     syncKidsNeed();
     if (editingSpouseEntry) {
       const spouse = people.find((item) => item.id === editingSpouseEntry.pessoaId);
@@ -6538,9 +6605,21 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       for (let index = 1; index <= 5; index += 1) {
         const nome = source.elements[`kidNome${index}`];
         const nascimento = source.elements[`kidNascimento${index}`];
-        if ((nome?.value.trim() || nascimento?.value.trim()) && !nome.value.trim()) return nome;
-        if ((nome?.value.trim() || nascimento?.value.trim()) && !nascimento.value.trim()) return nascimento;
+        const careValues = [checkedValue(source, `kidProblemaSaude${index}`), source.elements[`kidDescricaoSaude${index}`]?.value.trim(), checkedValue(source, `kidIntolerancia${index}`), source.elements[`kidDescricaoIntolerancia${index}`]?.value.trim()];
+        const hasAnyData = nome?.value.trim() || nascimento?.value.trim() || careValues.some(Boolean);
+        if (hasAnyData && !nome.value.trim()) return nome;
+        if (hasAnyData && !nascimento.value.trim()) return nascimento;
       }
+      return null;
+    };
+    const teamKidCareIssue = (kid, index) => {
+      const panel = source.querySelector(`[data-team-kid-panel="${index}"]`);
+      const historicalWithoutCare = panel?.dataset.legacyKidCare === 'true' && !kid.problemaSaude && !kid.descricaoSaude && !kid.intoleranciaAlimentar && !kid.descricaoIntolerancia;
+      if (historicalWithoutCare) return null;
+      if (!kid.problemaSaude) return { control: firstByName(`kidProblemaSaude${index}`), message: `Informe se a criança ${index} possui algum problema de saúde.` };
+      if (kid.problemaSaude === 'Sim' && !kid.descricaoSaude) return { control: source.elements[`kidDescricaoSaude${index}`], message: `Descreva o problema de saúde da criança ${index}.` };
+      if (!kid.intoleranciaAlimentar) return { control: firstByName(`kidIntolerancia${index}`), message: `Informe se a criança ${index} possui alguma intolerância alimentar.` };
+      if (kid.intoleranciaAlimentar === 'Sim' && !kid.descricaoIntolerancia) return { control: source.elements[`kidDescricaoIntolerancia${index}`], message: `Descreva a intolerância alimentar da criança ${index}.` };
       return null;
     };
     const firstSpouseMissing = () => {
@@ -6569,9 +6648,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const spouseDaysComplete = !isCouple() || allDaysAnswered('spouseDias', source);
     const required = ['cpf', 'genero', 'retiros', 'quadrante', 'foto', 'contribuicao', ...(requireType ? ['tipoFicha'] : [])].filter((name) => source.elements[name]);
     const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
-    const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
+    const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ index: index + 1, nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim(), problemaSaude: String(data.get(`kidProblemaSaude${index + 1}`) || ''), descricaoSaude: String(data.get(`kidDescricaoSaude${index + 1}`) || '').trim(), intoleranciaAlimentar: String(data.get(`kidIntolerancia${index + 1}`) || ''), descricaoIntolerancia: String(data.get(`kidDescricaoIntolerancia${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento || kid.problemaSaude || kid.descricaoSaude || kid.intoleranciaAlimentar || kid.descricaoIntolerancia);
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
     const hasIncompleteKid = !kidsNotNeeded && kids.some((kid) => !kid.nome || !kid.nascimento);
+    const kidCareIssue = !kidsNotNeeded && !hasIncompleteKid ? kids.map((kid) => teamKidCareIssue(kid, kid.index)).find(Boolean) : null;
     const ageLimitViolation = !kidsNotNeeded ? kidAgeLimitViolation(source) : null;
     const blocksKidAgeLimit = ageLimitViolation && (!canUseInternalKidAgeLimitException || !internalKidAgeLimitExceptionAllowed);
     const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && checkedValues(source, 'spouseRetiros').length && spouseDaysComplete && spouseDays.length);
@@ -6581,7 +6661,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       if (['genero', 'retiros', 'quadrante', 'foto', 'tipoFicha'].includes(name)) return !checkedValues(source, name).length;
       return !data.get(name);
     });
-    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !blocksKidAgeLimit && spouseValid && volunteerTermAccepted;
+    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !kidCareIssue && !blocksKidAgeLimit && spouseValid && volunteerTermAccepted;
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', quadrante: 'quadrante impresso', foto: 'foto oficial do retiro', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
       const missing = [
@@ -6598,6 +6678,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       else if (!hasKidsChoice) message = 'No Espaço Kids, marque que não necessita ou informe pelo menos uma criança com nome e data de nascimento.';
       else if (hasIncompleteKid) message = 'No Espaço Kids, preencha nome e data de nascimento de cada criança informada.';
       else if (blocksKidAgeLimit) message = embedded ? internalKidsAgeLimitMessage : kidsAgeLimitMessage;
+      else if (kidCareIssue) message = kidCareIssue.message;
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
       else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
       source.querySelector('#form-message')?.replaceChildren(message);
@@ -6609,6 +6690,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         requireSector && !sectors.length ? firstByName('setores') : null,
         !hasKidsChoice ? firstByName('kidsNotNeeded') || firstByName('kidNome1') : null,
         hasIncompleteKid ? firstIncompleteKid() : null,
+        kidCareIssue?.control,
         blocksKidAgeLimit ? ageLimitViolation.control : null,
         !volunteerTermAccepted ? source.querySelector('#read-volunteer-term') : null,
         isCouple() && !spouseValid ? firstByName(firstSpouseMissing()) : null,
@@ -6626,7 +6708,15 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const cpf = normalizeCpf(data.get(fieldName('cpf')));
     if (!existingEntry) existingEntry = enrolments.find((entry) => entry.retiroId === id && entry.pessoaId === cpf);
     const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
-    const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento);
+    const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => {
+      const kidNumber = index + 1;
+      const kid = { nome: String(data.get(`kidNome${kidNumber}`) || '').trim(), nascimento: String(data.get(`kidNascimento${kidNumber}`) || '').trim() };
+      if (!kid.nome && !kid.nascimento) return kid;
+      const care = { problemaSaude: String(data.get(`kidProblemaSaude${kidNumber}`) || ''), descricaoSaude: String(data.get(`kidDescricaoSaude${kidNumber}`) || '').trim(), intoleranciaAlimentar: String(data.get(`kidIntolerancia${kidNumber}`) || ''), descricaoIntolerancia: String(data.get(`kidDescricaoIntolerancia${kidNumber}`) || '').trim() };
+      const panel = source.querySelector(`[data-team-kid-panel="${kidNumber}"]`);
+      const preserveLegacyBlankCare = panel?.dataset.legacyKidCare === 'true' && !Object.values(care).some(Boolean);
+      return preserveLegacyBlankCare ? kid : { ...kid, ...care };
+    }).filter((kid) => kid.nome || kid.nascimento);
     const allowInternalKidsChange = embedded && canAccess('pessoas.editar') && canModifyRetreat(retreat) && existingEntry && Boolean(existingEntry.espacoKidsNaoNecessito) !== kidsNotNeeded;
     let person = people.find((item) => item.id === cpf || normalizeCpf(item.cpf) === cpf);
     if (!person && existingEntry) person = people.find((item) => item.id === existingEntry.pessoaId);

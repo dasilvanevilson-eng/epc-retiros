@@ -472,7 +472,15 @@ function mapEnrolment(row, lookups = {}) {
   const dias = array(lookups.diasByAdesao?.get(row.id)).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((item) => item.nome);
   const setores = array(lookups.setoresByAdesao?.get(row.id)).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map((item) => item.nome);
   const retirosAnteriores = array(lookups.retirosByAdesao?.get(row.id)).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((item) => item.nome);
-  const espacoKids = array(lookups.kidsByAdesao?.get(row.id)).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((item) => ({ nome: item.nome || '', nascimento: item.nascimento || '' }));
+  const espacoKids = array(lookups.kidsByAdesao?.get(row.id)).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((item) => ({
+    nome: item.nome || '',
+    nascimento: item.nascimento || '',
+    problemaSaude: choiceFromBool(item.problema_saude),
+    descricaoSaude: item.descricao_saude || '',
+    intoleranciaAlimentar: choiceFromBool(item.intolerancia_alimentar),
+    descricaoIntolerancia: item.descricao_intolerancia || '',
+    cuidadosLegados: item.problema_saude == null && item.descricao_saude == null && item.intolerancia_alimentar == null && item.descricao_intolerancia == null,
+  }));
   return {
     ...(row.extras || {}),
     id: row.id,
@@ -632,7 +640,7 @@ async function saveEnrolment(record) {
     dias.length ? upsert('adesao_dias', dias.map((dia) => ({ adesao_id: record.id, dia_id: dia.id })), 'adesao_id,dia_id') : null,
     setores.length ? upsert('adesao_setores', setores.map((setor) => ({ adesao_id: record.id, setor_id: setor.id })), 'adesao_id,setor_id') : null,
     array(record.retirosAnteriores).length ? upsert('adesao_retiros_anteriores', array(record.retirosAnteriores).map((nome, index) => ({ adesao_id: record.id, nome, ordem: index + 1 }))) : null,
-    array(record.espacoKids).length ? upsert('adesao_espaco_kids', array(record.espacoKids).map((kid, index) => ({ adesao_id: record.id, nome: kid.nome || '', nascimento: dateOrNull(kid.nascimento), ordem: index + 1 }))) : null,
+    array(record.espacoKids).length ? upsert('adesao_espaco_kids', array(record.espacoKids).map((kid, index) => ({ adesao_id: record.id, nome: kid.nome || '', nascimento: dateOrNull(kid.nascimento), problema_saude: boolOrNull(kid.problemaSaude), descricao_saude: textOrNull(kid.descricaoSaude), intolerancia_alimentar: boolOrNull(kid.intoleranciaAlimentar), descricao_intolerancia: textOrNull(kid.descricaoIntolerancia), ordem: index + 1 }))) : null,
     couple ? upsert('casal_membros', { casal_id: couple.id, adesao_id: record.id, papel: record.papelNoCasal || '' }, 'casal_id,adesao_id') : null,
   ]);
   return getEnrolment(record.id);

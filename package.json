@@ -6,6 +6,7 @@
     "dev": "node localServer.js",
     "test:backup": "node scripts/test-backup-service.js",
     "test:epc": "node scripts/test-cursista-epc-migration.js",
+    "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:reports": "node scripts/test-report-builder.js",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",

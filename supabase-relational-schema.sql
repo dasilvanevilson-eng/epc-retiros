@@ -158,6 +158,10 @@ create table if not exists public.adesao_espaco_kids (
   adesao_id uuid not null references public.adesoes(id) on delete cascade,
   nome text,
   nascimento date,
+  problema_saude boolean,
+  descricao_saude text,
+  intolerancia_alimentar boolean,
+  descricao_intolerancia text,
   ordem integer not null default 0
 );
 

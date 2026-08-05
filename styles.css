@@ -5860,6 +5860,89 @@ body:has(.login-shell) {
   flex-wrap:nowrap;
 }
 
+#public-form .team-kid-panel {
+  overflow:hidden;
+  border:1px solid #cde8f5;
+  border-radius:10px;
+  background:#fff;
+}
+
+#public-form .team-kid-panel > summary {
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:48px;
+  padding:11px 14px;
+  color:#15324a;
+  cursor:pointer;
+  list-style:none;
+}
+
+#public-form .team-kid-panel > summary::-webkit-details-marker {
+  display:none;
+}
+
+#public-form .team-kid-panel > summary::after {
+  content:'⌄';
+  color:#2f84bd;
+  font-size:20px;
+  font-weight:900;
+  line-height:1;
+  transition:transform .18s ease;
+}
+
+#public-form .team-kid-panel[open] > summary {
+  border-bottom:1px solid #cde8f5;
+  background:#eef8fd;
+}
+
+#public-form .team-kid-panel[open] > summary::after {
+  transform:rotate(180deg);
+}
+
+#public-form .team-kid-summary-value {
+  min-width:0;
+  overflow:hidden;
+  color:#526d7e;
+  font-size:13px;
+  font-weight:600;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#public-form .team-kid-summary-value::before {
+  content:'— ';
+}
+
+#public-form .team-kid-panel > .kids-row {
+  border-top:0;
+  padding:14px;
+}
+
+#public-form .team-kid-care {
+  display:grid;
+  grid-column:2 / -1;
+  gap:10px;
+  padding-top:4px;
+}
+
+#public-form .team-kid-care-row {
+  display:grid;
+  grid-template-columns:minmax(260px, .8fr) minmax(0, 1.2fr);
+  gap:10px;
+  align-items:end;
+}
+
+#public-form .team-kid-care-row fieldset,
+#public-form .team-kid-care-row .field {
+  min-width:0;
+}
+
+#public-form .team-kid-care-row .inline-choices {
+  flex-wrap:nowrap;
+}
+
 .smp-shirt-row {
   display:grid;
   gap:10px;
@@ -6057,6 +6140,27 @@ body:has(.login-shell) {
 
   .cursista-smp-form .epc-kid-care-row,
   .cursista-smp-form .smp-kid-care-row {
+    grid-template-columns:1fr;
+  }
+
+  #public-form .team-kid-panel > .kids-row {
+    grid-template-columns:28px minmax(0, 1fr);
+    align-items:start;
+  }
+
+  #public-form .team-kid-panel > .kids-row > span {
+    grid-column:1;
+    grid-row:1;
+  }
+
+  #public-form .team-kid-panel > .kids-row > .field,
+  #public-form .team-kid-care {
+    grid-column:2;
+    min-width:0;
+    width:100%;
+  }
+
+  #public-form .team-kid-care-row {
     grid-template-columns:1fr;
   }
 

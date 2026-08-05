@@ -169,7 +169,14 @@ async function main() {
     contribuicao: 'R$ 60,00',
     coordenacao: 'Equipe',
     coordenacaoSetor: true,
-    espacoKids: [{ nome: 'Crianca Smoke', nascimento: '2020-01-01' }],
+    espacoKids: [{
+      nome: 'Crianca Smoke',
+      nascimento: '2020-01-01',
+      problemaSaude: 'Sim',
+      descricaoSaude: 'Asma',
+      intoleranciaAlimentar: 'Não',
+      descricaoIntolerancia: '',
+    }],
     espacoKidsNaoNecessito: false,
     observacao: 'Observacao teste',
     termoVoluntariadoAceito: true,
@@ -183,6 +190,8 @@ async function main() {
   assert(enrolment.pessoaId === personCpf, 'Adesao nao retornou pessoaId externo.');
   assert(enrolment.dias.length === 2 && enrolment.setores[0] === 'Secretaria', 'Relacionamentos da adesao falharam.');
   assert(enrolment.espacoKids.length === 1 && enrolment.retirosAnteriores.length === 2, 'Listas auxiliares da adesao falharam.');
+  assert(enrolment.espacoKids[0].problemaSaude === 'Sim' && enrolment.espacoKids[0].descricaoSaude === 'Asma', 'Cuidados de saude da crianca nao foram preservados.');
+  assert(enrolment.espacoKids[0].intoleranciaAlimentar === 'Não' && enrolment.espacoKids[0].descricaoIntolerancia === '', 'Intolerancia alimentar da crianca nao foi preservada.');
 
   const enrolmentPaid = await db.saveRecord('adesoes', {
     ...enrolment,
