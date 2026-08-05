@@ -1821,6 +1821,12 @@ button:hover,
   line-height:1.45;
 }
 
+.kids-care-comments .kids-care-problem strong {
+  color:inherit;
+  font-size:inherit;
+  font-weight:700;
+}
+
 .kids-health-list>div {
   grid-template-columns:1fr;
   gap:5px;

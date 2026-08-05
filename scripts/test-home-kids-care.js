@@ -96,6 +96,7 @@ const path = require('node:path');
   assert.match(careRenderer, /Responsável:/);
   assert.match(careRenderer, /Origem:/);
   assert.match(careRenderer, /Problema descrito:/);
+  assert.match(careRenderer, /kids-care-problem[^>]*><strong>Problema descrito:/, 'O problema descrito deve aparecer em negrito.');
   assert(!careRenderer.includes('Contato:'), 'O telefone não deve aparecer nos dois indicadores infantis.');
   assert.match(adminSource, /kidsCareSummary\.health, 'Não detalhado'/, 'Problema sem descrição deve usar o fallback solicitado.');
 
