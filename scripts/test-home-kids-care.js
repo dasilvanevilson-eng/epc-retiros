@@ -102,6 +102,9 @@ const path = require('node:path');
   assert.match(careRenderer, /kids-care-problem[^>]*><strong>Problema descrito:/, 'O problema descrito deve aparecer em negrito.');
   assert(!careRenderer.includes('Contato:'), 'O telefone não deve aparecer nos dois indicadores infantis.');
   assert.match(adminSource, /kidsCareSummary\.health, 'Não detalhado'/, 'Problema sem descrição deve usar o fallback solicitado.');
+  assert.match(adminSource, /class="home-column-list home-misc-groups"/, 'A coluna Diversos deve possuir duas caixas internas.');
+  assert.match(adminSource, /aria-label="Participação"[\s\S]*?Presença por dia[\s\S]*?Cidades participantes/, 'A primeira caixa deve reunir presença e cidades.');
+  assert.match(adminSource, /id="home-kids-group-title">Espaço Kids<[\s\S]*?Crianças no Espaço Kids[\s\S]*?Crianças com intolerância alimentar[\s\S]*?Crianças com problema de saúde/, 'A segunda caixa deve reunir os três indicadores do Espaço Kids.');
 
   console.log('Inicio: indicadores combinados de saude das criancas validados.');
 })().catch((error) => {

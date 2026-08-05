@@ -4146,6 +4146,31 @@ select:focus {
   gap:10px;
 }
 
+.home-misc-groups {
+  gap:12px;
+}
+
+.home-misc-box {
+  display:grid;
+  gap:10px;
+  padding:11px;
+  border:1px solid rgba(142, 201, 232, .45);
+  border-radius:7px;
+  background:rgba(255,255,255,.58);
+}
+
+.home-misc-box > h3 {
+  margin:0;
+  padding:0 0 8px;
+  border-bottom:1px solid rgba(198,154,69,.58);
+  color:#15324a;
+  font:700 15px/1.2 "Fraunces", serif;
+}
+
+.home-misc-box .home-column-panel.dashboard-panel {
+  margin:0;
+}
+
 .home-column-card.student-health-card {
   min-height:62px;
   padding:11px 12px;

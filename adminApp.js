@@ -1300,12 +1300,19 @@ async function renderHome() {
         ${homeStatCard('Pessoas por grupo', null, 'groups')}
         ${homeHealthCard('Aniversariantes do mês', teamBirthdayRows.length, 'team-birthdays')}
       </div></section>
-      <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
-        ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
-        ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
-        ${homeHealthCard('Crianças com intolerância alimentar', kidsCareSummary.intolerance.length, 'kids-intolerance')}
-        ${homeHealthCard('Crianças com problema de saúde', kidsCareSummary.health.length, 'kids-health')}
-        ${homeHealthCard('Cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
+      <section class="home-column"><h2>Diversos</h2><div class="home-column-list home-misc-groups">
+        <section class="home-misc-box" aria-label="Participação">
+          ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
+          ${homeHealthCard('Cidades participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
+        </section>
+        <section class="home-misc-box" aria-labelledby="home-kids-group-title">
+          <h3 id="home-kids-group-title">Espaço Kids</h3>
+          <div class="home-column-list">
+            ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
+            ${homeHealthCard('Crianças com intolerância alimentar', kidsCareSummary.intolerance.length, 'kids-intolerance')}
+            ${homeHealthCard('Crianças com problema de saúde', kidsCareSummary.health.length, 'kids-health')}
+          </div>
+        </section>
       </div></section>
     </section>
     <section class="dashboard-grid retreat-stats-grid home-detail-source" aria-hidden="true">
