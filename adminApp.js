@@ -24,9 +24,10 @@ let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
 let closeAdminMenuOnOutsidePointer = null;
+let closeHomeRetreatSelectorOnOutsidePointer = null;
 let lastBackupGeneratedAt = '';
 let pendingRestoreOperationId = '';
-const selectedRetreatStorageKey = 'epc-selected-retreat-id';
+const selectedRetreatStorageKeyPrefix = 'epc-selected-retreat-id';
 
 const viewPermissions = {
   inicio: 'inicio.ver',
@@ -87,12 +88,29 @@ const canAccessRetreat = (retreatOrId = '') => {
   return (currentUser?.retiroIds || []).includes(id);
 };
 const accessibleRetreats = () => retreats.filter(canAccessRetreat);
-const setSelectedRetreatId = (id = '') => {
-  if (id && canAccessRetreat(id)) localStorage.setItem(selectedRetreatStorageKey, id);
+const selectedRetreatStorageKey = () => {
+  const userKey = String(currentUser?.id || currentUser?.username || 'sem-usuario').trim();
+  return `${selectedRetreatStorageKeyPrefix}:${encodeURIComponent(userKey)}`;
 };
-const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey) || '';
+const setSelectedRetreatId = (id = '') => {
+  if (!id) {
+    localStorage.removeItem(selectedRetreatStorageKey());
+    return false;
+  }
+  if (!canAccessRetreat(id)) return false;
+  localStorage.setItem(selectedRetreatStorageKey(), id);
+  return true;
+};
+const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey()) || '';
 const fallbackRetreat = () => accessibleRetreats().find((retreat) => retreat.status === 'publicado') || accessibleRetreats().find((retreat) => retreat.status === 'preparacao') || accessibleRetreats().find((retreat) => retreat.status === 'concluido') || accessibleRetreats()[0] || null;
-const selectedRetreat = () => retreats.find((retreat) => retreat.id === selectedRetreatId() && canAccessRetreat(retreat)) || fallbackRetreat();
+const selectedRetreat = () => {
+  const selected = retreats.find((retreat) => retreat.id === selectedRetreatId() && canAccessRetreat(retreat));
+  if (selected) return selected;
+  const fallback = fallbackRetreat();
+  if (fallback) setSelectedRetreatId(fallback.id);
+  else setSelectedRetreatId('');
+  return fallback;
+};
 const isRetreatConcluded = (retreat = {}) => retreat?.status === 'concluido';
 const isTeamRegistrationOpen = (retreat = {}) => retreat?.status === 'publicado';
 const canModifyRetreat = (retreat = {}) => Boolean(retreat) && canAccessRetreat(retreat) && !isRetreatConcluded(retreat);
@@ -736,6 +754,10 @@ function setupMetricSearch() {
 }
 
 function layout(content, active = 'inicio') {
+  if (closeHomeRetreatSelectorOnOutsidePointer) {
+    document.removeEventListener('pointerdown', closeHomeRetreatSelectorOnOutsidePointer, true);
+    closeHomeRetreatSelectorOnOutsidePointer = null;
+  }
   const isPublicReceiverView = Boolean(publicReceiverToken);
   const focusedRetreat = selectedRetreat();
   const activeStudentNavId = studentFormNavIds[focusedRetreat?.tipoFichaCursista || defaultStudentFormType] || studentFormNavIds[defaultStudentFormType];
@@ -1025,7 +1047,146 @@ function wireParticipationGroupStatWindows(rows = []) {
   });
 }
 
-async function renderHome() {
+function wireHomeRetreatSelector(activeRetreat, focusRetreats = []) {
+  const selector = app.querySelector('[data-home-retreat-selector]');
+  const input = selector?.querySelector('#home-retreat-search');
+  const list = selector?.querySelector('#home-retreat-options');
+  const empty = selector?.querySelector('[data-home-retreat-empty]');
+  const message = selector?.querySelector('[data-home-retreat-message]');
+  if (!selector || !input || !list || input.disabled) return;
+  const optionButtons = [...list.querySelectorAll('[data-home-retreat-id]')];
+  const retreatById = new Map(focusRetreats.map((retreat) => [retreat.id, retreat]));
+  const currentName = activeRetreat?.nome || '';
+  let keyboardIndex = -1;
+  let switching = false;
+
+  const visibleOptions = () => optionButtons.filter((option) => !option.hidden);
+  const setKeyboardIndex = (nextIndex) => {
+    const visible = visibleOptions();
+    optionButtons.forEach((option) => option.classList.remove('is-keyboard-active'));
+    if (!visible.length) {
+      keyboardIndex = -1;
+      input.removeAttribute('aria-activedescendant');
+      return;
+    }
+    keyboardIndex = (nextIndex + visible.length) % visible.length;
+    const activeOption = visible[keyboardIndex];
+    activeOption.classList.add('is-keyboard-active');
+    input.setAttribute('aria-activedescendant', activeOption.id);
+    activeOption.scrollIntoView({ block: 'nearest' });
+  };
+  const filterOptions = (term = '') => {
+    const normalizedTerm = normalizeText(term);
+    optionButtons.forEach((option) => {
+      const retreat = retreatById.get(option.dataset.homeRetreatId);
+      const searchText = normalizeText([
+        retreat?.nome,
+        retreat?.local,
+        statusLabel(retreat?.status),
+        retreat?.status === 'concluido' ? 'Somente leitura' : '',
+        dateRange(retreat?.dataInicio, retreat?.dataTermino),
+      ].filter(Boolean).join(' '));
+      option.hidden = Boolean(normalizedTerm && !searchText.includes(normalizedTerm));
+    });
+    const visible = visibleOptions();
+    if (empty) empty.hidden = Boolean(visible.length);
+    setKeyboardIndex(visible.length ? 0 : -1);
+  };
+  const openList = ({ showAll = false } = {}) => {
+    if (switching) return;
+    list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    filterOptions(showAll ? '' : input.value);
+  };
+  const closeList = ({ restore = true } = {}) => {
+    list.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    optionButtons.forEach((option) => option.classList.remove('is-keyboard-active'));
+    keyboardIndex = -1;
+    if (restore) input.value = currentName;
+  };
+  const selectRetreat = async (retreatId) => {
+    if (switching) return;
+    const retreat = retreatById.get(retreatId);
+    if (!retreat || !canAccessRetreat(retreat)) {
+      if (message) message.textContent = 'Este retiro não está mais disponível para o seu usuário.';
+      closeList();
+      return;
+    }
+    if (retreat.id === activeRetreat?.id) {
+      closeList();
+      return;
+    }
+    switching = true;
+    const previousRetreatId = activeRetreat?.id || '';
+    selector.setAttribute('aria-busy', 'true');
+    input.disabled = true;
+    optionButtons.forEach((option) => { option.disabled = true; });
+    if (message) message.textContent = 'Atualizando o retiro em foco...';
+    closeList({ restore: false });
+    try {
+      if (!setSelectedRetreatId(retreat.id)) throw new Error('Este retiro não está mais disponível para o seu usuário.');
+      await loadData();
+      const resolvedRetreat = selectedRetreat();
+      await renderHome({
+        focusChangedMessage: resolvedRetreat?.id === retreat.id
+          ? 'Retiro em foco alterado'
+          : 'O retiro selecionado não está mais disponível. O foco foi atualizado.',
+      });
+    } catch (error) {
+      setSelectedRetreatId(previousRetreatId);
+      switching = false;
+      selector.removeAttribute('aria-busy');
+      input.disabled = false;
+      optionButtons.forEach((option) => { option.disabled = false; });
+      input.value = currentName;
+      if (message) message.textContent = error.message || 'Não foi possível alterar o retiro em foco.';
+    }
+  };
+
+  input.addEventListener('focus', () => {
+    input.select();
+    openList({ showAll: true });
+  });
+  input.addEventListener('click', () => openList({ showAll: input.value === currentName }));
+  input.addEventListener('input', () => openList());
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeList();
+      return;
+    }
+    if (event.key === 'Tab') {
+      closeList();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (list.hidden) openList({ showAll: input.value === currentName });
+      setKeyboardIndex(keyboardIndex + (event.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (event.key === 'Enter' && !list.hidden) {
+      event.preventDefault();
+      const option = visibleOptions()[keyboardIndex];
+      if (option) void selectRetreat(option.dataset.homeRetreatId);
+    }
+  });
+  optionButtons.forEach((option) => {
+    option.addEventListener('pointermove', () => {
+      const index = visibleOptions().indexOf(option);
+      if (index >= 0) setKeyboardIndex(index);
+    });
+    option.addEventListener('click', () => void selectRetreat(option.dataset.homeRetreatId));
+  });
+  closeHomeRetreatSelectorOnOutsidePointer = (event) => {
+    if (!selector.contains(event.target)) closeList();
+  };
+  document.addEventListener('pointerdown', closeHomeRetreatSelectorOnOutsidePointer, true);
+}
+
+async function renderHome({ focusChangedMessage = '' } = {}) {
   const active = selectedRetreat();
   const activeStudentFormType = active?.tipoFichaCursista || defaultStudentFormType;
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
@@ -1289,7 +1450,18 @@ async function renderHome() {
         ${homeHealthCard('Aniversariantes do mês', birthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>`;
-  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>
+  const homeFocusRetreats = accessibleRetreats();
+  const homeFocusDisabled = homeFocusRetreats.length <= 1;
+  const homeFocusOptions = homeFocusRetreats.map((retreat, index) => {
+    const readOnlyLabel = retreat.status === 'concluido' ? ' · Somente leitura' : '';
+    const optionDetails = [dateRange(retreat.dataInicio, retreat.dataTermino), retreat.local].filter(Boolean).join(' · ');
+    return `<button type="button" role="option" tabindex="-1" id="home-retreat-option-${index}" class="home-retreat-option${retreat.id === active?.id ? ' is-selected' : ''}" data-home-retreat-id="${escapeHtml(retreat.id)}" aria-selected="${retreat.id === active?.id}"><span><strong>${escapeHtml(retreat.nome || 'Retiro sem nome')}</strong><small>${escapeHtml(optionDetails || 'Período e local não informados')}</small></span><em class="status ${escapeHtml(retreat.status || '')}">${escapeHtml(statusLabel(retreat.status))}${readOnlyLabel}</em></button>`;
+  }).join('');
+  const homeFocusHint = homeFocusRetreats.length > 1
+    ? 'Digite para buscar por nome, período, local ou situação.'
+    : (homeFocusRetreats.length === 1 ? 'Único retiro disponível para o seu usuário.' : 'Nenhum retiro disponível para o seu usuário.');
+  const homeRetreatSelectorHtml = `<section class="home-retreat-selector" data-home-retreat-selector aria-labelledby="home-retreat-selector-label"><label id="home-retreat-selector-label" for="home-retreat-search">Retiro em foco</label><div class="home-retreat-picker"><input type="search" id="home-retreat-search" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-retreat-options" aria-describedby="home-retreat-selector-hint" autocomplete="off" value="${escapeHtml(active?.nome || (homeFocusRetreats.length ? '' : 'Nenhum retiro disponível'))}" ${homeFocusDisabled ? 'disabled' : ''}><span aria-hidden="true">⌄</span><div class="home-retreat-options" id="home-retreat-options" role="listbox" hidden>${homeFocusOptions}<p data-home-retreat-empty hidden>Nenhum retiro encontrado.</p></div></div><small id="home-retreat-selector-hint">${escapeHtml(homeFocusHint)}</small><p class="home-retreat-focus-message" data-home-retreat-message role="status" aria-live="polite">${escapeHtml(focusChangedMessage)}</p></section>`;
+  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>${homeRetreatSelectorHtml}
     </section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
       ${studentColumnHtml}
@@ -1323,6 +1495,7 @@ async function renderHome() {
       <article class="panel dashboard-panel participation-group-stat-panel"><div class="panel-heading"><div><h2>Pessoas por grupo</h2><p>Equipe de trabalho classificada pelos retiros anteriores.</p></div></div><div class="sector-simple-list">${participationGroupRows}</div></article>
     </section>
     <footer class="dashboard-blessing">Deus seja louvado!</footer>`, 'inicio');
+  wireHomeRetreatSelector(active, homeFocusRetreats);
   setupHomeStatTabs({
     shirtStudents: usesCoupleStudentForm ? smpPeople.map((person) => ({ nome: person.name, camiseta: person.shirt })) : activeStudents,
     communityDetails: activeCommunityDetails,
