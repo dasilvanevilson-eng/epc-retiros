@@ -4382,8 +4382,11 @@ const badgeDisplayName = (entry) => {
   return firstName(person.nome || entry.nome);
 };
 const badgeSectorText = (entry, sector = '') => {
-  const label = sector || (entry.setores || []).join(', ') || 'Sem setor';
-  return entry.coordenacaoSetor ? `Coord ${label}` : label;
+  const sourceLabel = sector || (entry.setores || []).join(', ') || 'Sem setor';
+  const normalizedSourceLabel = sourceLabel.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ').trim();
+  const label = ['casal bem-estar', 'casal bem estar'].includes(normalizedSourceLabel) ? 'BEM-ESTAR' : sourceLabel;
+  const labelAlreadyIdentifiesCoordination = normalizedSourceLabel.includes('coordenacao');
+  return entry.coordenacaoSetor && !labelAlreadyIdentifiesCoordination ? `Coord ${label}` : label;
 };
 const badgeInlineStyle = (settings) => [
   `--badge-bg:${settings.background}`,
