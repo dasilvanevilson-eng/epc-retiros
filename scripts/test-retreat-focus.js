@@ -41,7 +41,19 @@ assert.match(homeSource, /enrolments\.filter\(\(item\) => item\.retiroId === act
 assert.match(homeSource, /coupleStudentSource\(activeStudentFormType\)\.list\(active\.id\)/, 'SMP/EPC devem carregar somente a fonte do foco.');
 assert.match(homeSource, /retreatId: active\?\.id \|\| ''/, 'Indicadores infantis devem receber explicitamente o retiro em foco.');
 assert.match(source, /const activeStudentNavId = studentFormNavIds\[focusedRetreat\?\.tipoFichaCursista/, 'O menu deve atualizar o tipo de ficha conforme o foco.');
-assert.match(source, /async function renderRetreat\(id[\s\S]*?setSelectedRetreatId\(retreat\.id\)/, 'Abrir um retiro pela opção Retiros deve continuar definindo o foco.');
+const retreatListSource = section('async function renderRetiros', 'const sectorOptionHtml');
+assert.match(retreatListSource, /const retreat = selectedRetreat\(\)/, 'A opção Retiros deve usar o retiro que já está em foco.');
+assert.match(retreatListSource, /if \(retreat\) return renderRetreat\(retreat\.id\)/, 'A opção Retiros deve abrir diretamente a tela de links do foco.');
+assert.match(retreatListSource, /href="#retiros\/novo"/, 'Novo retiro deve continuar acessível na nova organização.');
+assert.match(retreatListSource, /href="#inicio"/, 'Sem foco, o usuário deve ser orientado a voltar para o Início.');
+const retreatDetailSource = section('async function renderRetreat(id', 'async function renderEditRetreat');
+const retreatEditSource = section('async function renderEditRetreat', 'function suggestedAmount');
+assert.doesNotMatch(retreatDetailSource, /setSelectedRetreatId\(/, 'Abrir ou atualizar os links de um retiro não pode mudar o foco.');
+assert.doesNotMatch(retreatEditSource, /setSelectedRetreatId\(/, 'Editar um retiro não pode mudar o foco.');
+assert.match(retreatDetailSource, /href="#retiros\/novo"/, 'A tela dos links deve manter o botão Novo retiro no cabeçalho.');
+assert.match(retreatDetailSource, /focusedRetreat\?\.id !== retreat\.id/, 'Ao consultar outro retiro, o retorno deve apontar para o retiro em foco sem alterá-lo.');
+const manualFocusWrites = [...source.matchAll(/setSelectedRetreatId\(retreat\.id\)/g)];
+assert.equal(manualFocusWrites.length, 1, 'Somente o seletor da tela Início deve alterar manualmente o retiro em foco.');
 
 const validationSource = section('async function renderValidacaoInscricoes', 'async function renderPessoa');
 assert.match(validationSource, /entry\.retiroId === retreat\.id/, 'Validação deve permanecer isolada pelo foco.');

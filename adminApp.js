@@ -1532,15 +1532,10 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
 }
 
 async function renderRetiros() {
-  const retreatCard = (retreat) => {
-    const allowed = canAccessRetreat(retreat);
-    const content = `<div><span class="status ${retreat.status}">${statusLabel(retreat.status)}</span><h2>${escapeHtml(retreat.nome)}</h2><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p></div><div class="retreat-card-meta"><strong>${mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === retreat.id)).length}</strong><span>voluntários</span></div><span class="arrow">${allowed ? '→' : 'Sem acesso'}</span>`;
-    return allowed
-      ? `<a class="retreat-card" href="#retiros/${retreat.id}">${content}</a>`
-      : `<article class="retreat-card is-disabled" aria-disabled="true">${content}</article>`;
-  };
-  layout(`<section class="page-heading"><div><p class="eyebrow">Configuração de eventos</p><h1>Retiros</h1><p>Cada retiro possui sua própria estrutura, voluntários e histórico.</p></div><a class="primary-button" href="#retiros/novo">+ Novo retiro</a></section>
-  <section class="retreat-list">${retreats.length ? retreats.map(retreatCard).join('') : '<div class="empty-state">Nenhum retiro criado. Comece configurando o próximo evento.</div>'}</section>`, 'retiros');
+  const retreat = selectedRetreat();
+  if (retreat) return renderRetreat(retreat.id);
+  const newRetreatAction = canAccess('retiros.criar') ? '<a class="primary-button" href="#retiros/novo">+ Novo retiro</a>' : '';
+  layout(`<section class="page-heading"><div><p class="eyebrow">Links por setor</p><h1>Nenhum retiro em foco</h1><p>Selecione um retiro na tela Início para visualizar seus links por setor.</p></div><div class="detail-actions">${newRetreatAction}<a class="secondary-button" href="#inicio">Ir para Início</a></div></section>`, 'retiros');
 }
 
 const sectorOptionHtml = (sector, selected = false) => `<div class="sector-option" data-sector-option="${escapeHtml(sector)}"><label><input type="checkbox" name="setores" value="${escapeHtml(sector)}" ${selected ? 'checked' : ''}> <span data-sector-name>${escapeHtml(sector)}</span></label></div>`;
@@ -1787,7 +1782,6 @@ async function renderRetreat(id, selectedSector = '') {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
-  setSelectedRetreatId(retreat.id);
   const canDeleteRetreat = canAccess('retiros.excluir');
   const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
   const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
@@ -1966,10 +1960,14 @@ async function renderRetreat(id, selectedSector = '') {
   const canEditRetreat = canAccess('retiros.editar') && canModifyRetreat(retreat);
   const canPublishRetreat = canAccess('retiros.publicar') && canModifyRetreat(retreat) && retreat.status !== 'publicado';
   const canConcludeRetreat = canAccess('retiros.encerrar') && canModifyRetreat(retreat);
+  const canCreateRetreat = canAccess('retiros.criar');
+  const focusedRetreat = selectedRetreat();
+  const focusReturnLink = focusedRetreat?.id !== retreat.id ? '<a class="back-link" href="#retiros">← Retiro em foco</a>' : '';
   const retreatActions = concluded
     ? '<span class="status concluido">Somente consulta</span>'
     : `${canEditRetreat ? `<a class="secondary-button" href="#retiros/${retreat.id}/editar">Editar</a>` : ''}${canPublishRetreat ? '<button class="primary-button" id="publish-retreat">Publicar retiro</button>' : ''}${canConcludeRetreat ? '<button class="secondary-button" id="conclude-retreat" type="button">Encerrar</button>' : ''}`;
-  layout(`<section class="page-heading compact"><div><a class="back-link" href="#retiros">← Retiros</a><p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions retreat-actions-menu">${retreatActions}</div></section>
+  const newRetreatAction = canCreateRetreat ? '<a class="primary-button" href="#retiros/novo">+ Novo retiro</a>' : '';
+  layout(`<section class="page-heading compact"><div>${focusReturnLink}<p class="eyebrow">${statusLabel(retreat.status)}</p><h1>${escapeHtml(retreat.nome)}</h1><p>${dateRange(retreat.dataInicio, retreat.dataTermino)}${retreat.local ? ` · ${escapeHtml(retreat.local)}` : ''}</p>${concluded ? '<p class="hint">Retiro concluído: alterações bloqueadas. Consultas, relatórios e impressões continuam disponíveis.</p>' : ''}</div><div class="detail-actions retreat-actions-menu">${newRetreatAction}${retreatActions}</div></section>
     <section class="detail-grid"></section>
     `, 'retiros');
   setupHomeStatTabs({ shirtStudents: registeredStudents, communityDetails: retreatCommunityDetails });
@@ -2163,7 +2161,6 @@ async function renderEditRetreat(id) {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
-  setSelectedRetreatId(retreat.id);
   if (isRetreatConcluded(retreat)) {
     alert('Este retiro esta concluido. A configuracao esta disponivel apenas para consulta.');
     return renderRetreat(retreat.id);
