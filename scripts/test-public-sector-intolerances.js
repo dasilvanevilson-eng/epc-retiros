@@ -6,6 +6,8 @@ assert.strictEqual(supportsIntoleranceView('ANIMACAO/JOVEM DE SALA'), true);
 assert.strictEqual(supportsIntoleranceView('Cozinha'), true);
 assert.strictEqual(supportsIntoleranceView('Secretaria'), false);
 assert.strictEqual(supportsKidsIntoleranceView('COZINHA'), true);
+assert.strictEqual(supportsKidsIntoleranceView('Espaço Kids'), true);
+assert.strictEqual(supportsKidsIntoleranceView('ESPACO KIDS'), true);
 assert.strictEqual(supportsKidsIntoleranceView('Animação/Jovem de sala'), false);
 assert.strictEqual(supportsKidsIntoleranceView('Secretaria'), false);
 
@@ -108,7 +110,7 @@ assert.match(eligibleHtml, /sector-tab-intolerances/);
 assert.match(eligibleHtml, /sector-tab-kids-intolerances/);
 assert.match(eligibleHtml, /Ades&otilde;es deste setor/);
 assert.match(eligibleHtml, /Cursistas com intoler&acirc;ncia alimentar/);
-assert.match(eligibleHtml, /Crian&ccedil;as espa&ccedil;o kids com intoler&acirc;ncia alimentar/);
+assert.match(eligibleHtml, /Crianças espaço kids com intolerância alimentar/);
 assert.match(eligibleHtml, /Responsável A e Responsável B/);
 assert.match(eligibleHtml, /Setor de trabalho: Cozinha, Secretaria, Recepção/);
 assert.match(eligibleHtml, /Problema descrito: Leite/);
@@ -138,5 +140,16 @@ const animationHtml = sectorPageHtml({
 });
 assert.match(animationHtml, /id="sector-view-intolerances"/);
 assert.doesNotMatch(animationHtml, /id="sector-view-kids-intolerances"/);
+
+const kidsSectorHtml = sectorPageHtml({
+  retreat: { id: 'r-smp', nome: 'Retiro teste', dias: ['Sábado'], tipoFichaCursista: 'cursista-smp' },
+  sector: 'Espaço Kids',
+  entries: [],
+  kidsIntolerances: kidsRows,
+});
+assert.match(kidsSectorHtml, /id="sector-tab-kids-intolerances"/);
+assert.match(kidsSectorHtml, />Crianças com intolerância alimentar<\/button>/);
+assert((kidsSectorHtml.match(/Crianças com intolerância alimentar/g) || []).length >= 2, 'A impressão deve usar o título específico do Espaço Kids.');
+assert.doesNotMatch(kidsSectorHtml, /id="sector-view-intolerances"/);
 
 console.log('Acompanhamento por setor: fontes, exposição mínima, abas e impressão validadas.');
