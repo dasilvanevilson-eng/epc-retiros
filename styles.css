@@ -152,6 +152,18 @@
 .badge-heading-tools .badge-print-actions button { min-height:36px; padding:8px 10px; font-size:12px; }
 .badge-model-toolbar { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
 .badge-model-toolbar .secondary-button,.badge-model-toolbar .primary-button { min-height:38px; padding:9px 13px; font-size:13px; }
+.badge-profile-picker-field { position:relative; }
+.badge-profile-picker { position:relative; }
+.badge-profile-trigger { position:relative; width:100%; min-height:44px; padding:9px 34px 9px 11px; border:1px solid #cec7b8; border-radius:8px; background:#fff; color:var(--ink); font:inherit; font-size:13px; text-align:left; box-shadow:none; }
+.badge-profile-trigger::after { content:'⌄'; position:absolute; top:50%; right:12px; color:var(--muted); font-size:18px; line-height:1; transform:translateY(-50%); }
+.badge-profile-trigger:focus { border-color:#4f8e5a; outline:3px solid rgba(79,142,90,.16); }
+.badge-profile-menu { position:absolute; z-index:40; top:calc(100% + 5px); left:0; width:min(430px,calc(100vw - 44px)); max-height:min(62vh,520px); overflow:auto; padding:6px; border:1px solid #cec7b8; border-radius:10px; background:#fff; box-shadow:0 18px 42px rgba(35,52,39,.2); }
+.badge-profile-option { display:grid; grid-template-columns:84px minmax(0,1fr); gap:11px; align-items:center; width:100%; min-height:66px; padding:6px; border:0; border-radius:7px; background:#fff; color:var(--ink); text-align:left; box-shadow:none; cursor:pointer; }
+.badge-profile-option:hover,.badge-profile-option:focus,.badge-profile-option[aria-selected="true"] { background:#edf5ed; outline:none; }
+.badge-profile-option strong { min-width:0; font-size:13px; line-height:1.3; overflow-wrap:anywhere; }
+.badge-profile-option-empty { display:block; min-height:38px; padding:9px 10px; color:var(--muted); }
+.badge-profile-thumbnail { position:relative; display:block; width:84px; height:56px; overflow:hidden; border:1px solid #ddd4c5; border-radius:5px; background:#f8f4eb; pointer-events:none; }
+.badge-profile-thumbnail .badge-card { position:absolute; top:0; left:0; transform:scale(.22); transform-origin:top left; box-shadow:none; pointer-events:none; }
 .badge-workbench { display:grid; grid-template-columns:minmax(380px,auto) minmax(430px,1fr); gap:22px; align-items:start; max-width:1180px; margin:0 auto; }
 .badge-editor { display:grid; grid-template-columns:142px minmax(0,1fr); gap:10px 12px; align-items:start; margin-top:0; padding:14px 16px 16px; }
 .badge-editor .panel-heading { grid-column:1/-1; margin-bottom:2px; }

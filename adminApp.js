@@ -4463,6 +4463,10 @@ async function renderCrachas() {
   const canPrintBadges = canAccess('crachas.imprimir');
   const canDeleteBadges = canAccess('crachas.excluir') && canModifyRetreat(retreat);
   const profileOptions = () => `<option value="">Selecione um modelo</option>${badgeProfiles.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`).join('')}`;
+  const profilePickerOptions = () => `<button type="button" class="badge-profile-option badge-profile-option-empty" data-badge-profile-choice="" role="option"><span>Selecione um modelo</span></button>${badgeProfiles.map((profile) => {
+    const thumbnailSettings = { ...defaultBadgeSettings, ...profile.settings, version: badgeSettingsVersion };
+    return `<button type="button" class="badge-profile-option" data-badge-profile-choice="${escapeHtml(profile.id)}" role="option"><span class="badge-profile-thumbnail" aria-hidden="true">${sampleBadgeCard(thumbnailSettings)}</span><strong>${escapeHtml(profile.name)}</strong></button>`;
+  }).join('')}`;
   const logoOptions = badgeLogoOptions.map((logo) => `<label class="badge-logo-option"><input type="radio" name="logo" value="${escapeHtml(logo.id)}" ${settings.logo === logo.id ? 'checked' : ''}><span>${logo.src ? `<img src="${escapeHtml(logo.src)}" alt="">` : '<i aria-hidden="true">--</i>'}<b>${escapeHtml(logo.name)}</b></span></label>`).join('');
   const watermarkOptions = [
     ['none', 'Sem marca'],
@@ -4486,7 +4490,7 @@ async function renderCrachas() {
     <section class="panel badge-view-toolbar" id="badge-config-toolbar" hidden>
       <div class="panel-heading"><div><h2>Configurar crach&aacute;s</h2><p>Cadastre, altere e consulte modelos de crach&aacute;.</p></div>${canPrintBadges ? '<button type="button" class="secondary-button badge-view-switch" data-badge-view="print">Imprimir crach&aacute;s</button>' : ''}</div>
       <div class="badge-heading-tools">
-      <label class="field"><span>Modelo do crach&aacute;</span><select id="badge-config-select">${profileOptions()}</select></label>
+      <div class="field badge-profile-picker-field"><span>Modelo do crach&aacute;</span><select id="badge-config-select" hidden tabindex="-1" aria-hidden="true">${profileOptions()}</select><div class="badge-profile-picker"><button type="button" class="badge-profile-trigger" id="badge-profile-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="badge-profile-menu">Selecione um modelo</button><div class="badge-profile-menu" id="badge-profile-menu" role="listbox" hidden>${profilePickerOptions()}</div></div></div>
       <div class="badge-config-controls" hidden>
         <label class="field badge-print-mode-field"><span>O que imprimir</span><select id="badge-mode-unused"><option value="">Selecione...</option><option value="sector">Por setor</option><option value="community">Por comunidade</option></select></label>
         <p class="badge-print-comment" id="badge-print-comment-unused"></p>
@@ -4544,6 +4548,9 @@ async function renderCrachas() {
   const personSelect = printPanel.querySelector('#badge-person');
   const printComment = printPanel.querySelector('#badge-print-comment');
   const configSelect = app.querySelector('#badge-config-select');
+  const profilePicker = app.querySelector('.badge-profile-picker');
+  const profileTrigger = app.querySelector('#badge-profile-trigger');
+  const profileMenu = app.querySelector('#badge-profile-menu');
   const printModelSelect = printPanel.querySelector('#badge-print-model-select');
   const configName = app.querySelector('#badge-config-name');
   const configMessage = app.querySelector('#badge-config-message');
@@ -4609,6 +4616,9 @@ async function renderCrachas() {
     if (!configSelect) return;
     configSelect.innerHTML = profileOptions();
     configSelect.value = selectedId;
+    if (profileMenu) profileMenu.innerHTML = profilePickerOptions();
+    if (profileTrigger) profileTrigger.textContent = badgeProfiles.find((profile) => profile.id === selectedId)?.name || 'Selecione um modelo';
+    profileMenu?.querySelectorAll('[data-badge-profile-choice]').forEach((option) => option.setAttribute('aria-selected', option.dataset.badgeProfileChoice === selectedId ? 'true' : 'false'));
     if (printModelSelect) {
       printModelSelect.innerHTML = profileOptions();
       printModelSelect.value = selectedId;
@@ -4896,7 +4906,7 @@ async function renderCrachas() {
     const profile = badgeProfiles.find((item) => item.id === selectedProfileId || item.id === configSelect?.value);
     if (!profile) {
       if (configMessage) configMessage.textContent = 'Selecione um modelo salvo para excluir.';
-      configSelect?.focus();
+      profileTrigger?.focus();
       return;
     }
     if (!confirm(`Excluir o crach\u00e1 "${profile.name}"?`)) return;
@@ -5022,6 +5032,53 @@ async function renderCrachas() {
   });
   [sectorSelect, personSelect].forEach((control) => control.addEventListener('change', renderBadges));
   app.querySelectorAll('[data-badge-view]').forEach((button) => button.addEventListener('click', () => showBadgeView(button.dataset.badgeView)));
+  const setProfileMenuOpen = (open) => {
+    if (!profileMenu || !profileTrigger) return;
+    profileMenu.hidden = !open;
+    profileTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  profileTrigger?.addEventListener('focus', (event) => {
+    if (!profilePicker?.contains(event.relatedTarget)) setProfileMenuOpen(true);
+  });
+  profileTrigger?.addEventListener('click', () => setProfileMenuOpen(true));
+  profileTrigger?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setProfileMenuOpen(false);
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    setProfileMenuOpen(true);
+    const options = [...profileMenu.querySelectorAll('[data-badge-profile-choice]')];
+    (event.key === 'ArrowDown' ? options[0] : options.at(-1))?.focus();
+  });
+  profileMenu?.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-badge-profile-choice]');
+    if (!option) return;
+    configSelect.value = option.dataset.badgeProfileChoice || '';
+    setProfileMenuOpen(false);
+    loadSelectedProfile();
+    profileTrigger.focus();
+  });
+  profileMenu?.addEventListener('keydown', (event) => {
+    const option = event.target.closest('[data-badge-profile-choice]');
+    if (!option) return;
+    const options = [...profileMenu.querySelectorAll('[data-badge-profile-choice]')];
+    const currentIndex = options.indexOf(option);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setProfileMenuOpen(false);
+      profileTrigger.focus();
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const direction = event.key === 'ArrowDown' ? 1 : -1;
+    options[(currentIndex + direction + options.length) % options.length]?.focus();
+  });
+  profilePicker?.addEventListener('focusout', (event) => {
+    if (!profilePicker.contains(event.relatedTarget)) setProfileMenuOpen(false);
+  });
   configSelect?.addEventListener('change', loadSelectedProfile);
   printModelSelect?.addEventListener('change', loadPrintProfile);
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
