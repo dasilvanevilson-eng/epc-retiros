@@ -1,4 +1,5 @@
 import { dataService, retreatDefaults } from './dataService.js';
+import { buildKidsCareSummary } from './kidsCareSummary.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -1183,6 +1184,12 @@ async function renderHome() {
       return first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' });
     });
   const spaceKidsRows = spaceKidsRowsForEnrolments(activeEnrolments, peopleById);
+  const kidsCareSummary = buildKidsCareSummary({
+    teamKids: spaceKidsRows,
+    coupleStudents,
+    studentFormType: activeStudentFormType,
+    retreatId: active?.id || '',
+  });
   const cityStats = new Map();
   const addCityCount = (city, type) => {
     const label = String(city || '').trim();
@@ -1239,6 +1246,7 @@ async function renderHome() {
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const kidsCareRows = (rows, fallback, emptyMessage) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><div class="student-health-person"><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Origem: ${escapeHtml(kid.origin)} · Responsável: ${escapeHtml(kid.responsible || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ''}</small></div><span>${escapeHtml(kid.detail || fallback)}</span></div>`).join('')}</div>` : `<p class="empty-state">${emptyMessage}</p>`;
   const birthdayRowsHtml = (students) => students.length ? `<div class="student-health-list">${students.map((student) => {
     const community = studentCommunityDetail(student, activeCommunityDetails);
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(date(student.nascimento))}</span></div>`;
@@ -1283,6 +1291,8 @@ async function renderHome() {
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list">
         ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
         ${homeHealthCard('Crianças no Espaço Kids', spaceKidsRows.length, 'kids')}
+        ${homeHealthCard('Crianças com intolerância alimentar', kidsCareSummary.intolerance.length, 'kids-intolerance')}
+        ${homeHealthCard('Crianças com problema de saúde', kidsCareSummary.health.length, 'kids-health')}
         ${homeHealthCard('Cidades com participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
       </div></section>
     </section>
@@ -1312,6 +1322,8 @@ async function renderHome() {
     quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
     kids: `<div class="panel-heading"><div><h2>Crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    'kids-intolerance': `<div class="panel-heading"><div><h2>Crianças com intolerância alimentar</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.intolerance, 'Intolerância não detalhada', 'Nenhuma criança com intolerância alimentar informada.')}`,
+    'kids-health': `<div class="panel-heading"><div><h2>Crianças com problema de saúde</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.health, 'Problema de saúde não detalhado', 'Nenhuma criança com problema de saúde informada.')}`,
     cities: `<div class="panel-heading"><div><h2>Cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
     birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
     'team-birthdays': `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
