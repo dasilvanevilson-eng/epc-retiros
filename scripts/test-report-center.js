@@ -11,11 +11,12 @@ const adapter = read('databaseAdapter.js');
 const stores = read('storeConfig.js');
 const styles = read('styles.css');
 const migration = read('supabase-remover-construtor-relatorios.sql');
+const reportRenderSource = app.match(/async function renderRelatorios\(\) \{([\s\S]*?)\n\}\n\nasync function renderBackup/)?.[1] || '';
 
 const catalogSource = app.match(/const operationalReports = \[([\s\S]*?)\n\]\.map/)?.[1] || '';
 assert(catalogSource, 'A Central deve possuir um catalogo compartilhado.');
 const topics = [...catalogSource.matchAll(/topic: '([^']+)'/g)].map((match) => match[1]);
-assert.deepStrictEqual([...new Set(topics)].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })), ['Comunidades', 'Crachás', 'Cursistas', 'Equipe de trabalho', 'Espaço Kids', 'Financeiro', 'Geral', 'Quadrante']);
+assert.deepStrictEqual([...new Set(topics)].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })), ['Comunidades', 'Crachás', 'Cursistas', 'Equipe de trabalho', 'Espaço Kids', 'Geral', 'Quadrante']);
 
 for (const title of [
   'Camisetas dos cursistas por comunidade', 'Número das camisetas por comunidade — formato ampliado',
@@ -24,11 +25,18 @@ for (const title of [
   'Medicação sugerida pelos pais', 'Necessidade de acolhimento', 'Problemas de saúde',
   'Aniversariantes da equipe', 'Fotos solicitadas', 'Pessoas por grupo', 'Pessoas por setor',
   'Solicitações de quadrante impresso', 'Crianças cadastradas', 'Crianças com intolerância alimentar',
-  'Crianças com problema de saúde', 'Resumo financeiro dos Cursistas EPC',
-  'Resumo financeiro dos Cursistas Individuais', 'Resumo financeiro dos Cursistas SMP',
+  'Crianças com problema de saúde',
   'Cidades participantes', 'Presença por dia', 'Relatório completo', 'Relatório para amigo secreto',
 ]) assert(catalogSource.includes(`title: '${title}'`), `Relatorio ausente: ${title}`);
 assert(!catalogSource.includes("title: 'Planilha do Recebedor'"), 'A Planilha do Recebedor nao deve aparecer na Central.');
+assert(!catalogSource.includes("topic: 'Financeiro'"), 'O topico Financeiro nao deve aparecer na Central.');
+for (const title of ['Resumo financeiro dos Cursistas EPC', 'Resumo financeiro dos Cursistas Individuais', 'Resumo financeiro dos Cursistas SMP']) {
+  assert(!catalogSource.includes(`title: '${title}'`), `O relatorio financeiro nao deve aparecer na Central: ${title}`);
+}
+assert.match(app, /id="student-financial-summary"/, 'O botao financeiro do Cursista Individual deve permanecer na origem.');
+assert.match(app, /id="smp-financial-summary"/, 'O botao financeiro compartilhado por SMP e EPC deve permanecer na origem.');
+assert.match(app, /wireFinancialSummaryButton\(\{\s*buttonSelector: '#student-financial-summary'/, 'O gerador financeiro Individual deve permanecer conectado.');
+assert.match(app, /wireFinancialSummaryButton\(\{\s*buttonSelector: '#smp-financial-summary'/, 'O gerador financeiro SMP e EPC deve permanecer conectado.');
 
 assert.match(app, /new Intl\.Collator\('pt-BR'/);
 assert.match(app, /compare\(first\.topic, second\.topic\).*compare\(first\.title, second\.title\)/);
@@ -36,7 +44,14 @@ assert.match(app, /aria-expanded', 'false'/);
 assert.match(app, /aria-controls/);
 assert.match(app, /Ver descrição/);
 assert.match(app, /Ocultar descrição/);
-assert.match(app, /accessibleRetreats\(\)/);
+assert(reportRenderSource, 'A rotina de renderizacao da Central deve existir.');
+assert.match(reportRenderSource, /const retreat = selectedRetreat\(\)/, 'A Central deve usar o retiro em foco.');
+assert.doesNotMatch(reportRenderSource, /accessibleRetreats\(\)|setSelectedRetreatId\(|report-center-retreat-select/, 'A Central nao deve listar nem trocar retiros.');
+assert.doesNotMatch(styles, /report-center-retreat/, 'Os estilos do seletor interno devem ser removidos.');
+assert.match(reportRenderSource, /Retiro em foco:/, 'A Central deve identificar o retiro em foco no cabecalho.');
+assert.match(reportRenderSource, /Nenhum retiro está em foco[\s\S]*href: '#inicio'/, 'Sem foco, a Central deve orientar o usuario a voltar ao Inicio.');
+assert.match(catalogSource, /formTypes: \['cursista-individual'\]/, 'O catalogo deve filtrar relatorios de Cursista Individual.');
+assert.match(catalogSource, /formTypes: \['cursista-smp', 'cursista-epc'\]/, 'O catalogo deve filtrar relatorios compartilhados de SMP e EPC.');
 assert.match(app, /canAccess\(report\.permission\)/);
 assert.match(app, /report\.formTypes\.includes/);
 assert.match(app, /generate: \(\) => runOperationalReportGenerator\(report\)/, 'Cada item deve registrar sua funcao geradora.');

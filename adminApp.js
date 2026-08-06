@@ -5643,9 +5643,6 @@ const operationalReports = [
   { id: 'kids-registered', topic: 'Espaço Kids', title: 'Crianças cadastradas', description: 'Relaciona as crianças cadastradas, suas idades e os responsáveis.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids"]'] },
   { id: 'kids-intolerances', topic: 'Espaço Kids', title: 'Crianças com intolerância alimentar', description: 'Reúne crianças da equipe e dos cursistas com intolerância alimentar.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-intolerance"]'] },
   { id: 'kids-health', topic: 'Espaço Kids', title: 'Crianças com problema de saúde', description: 'Reúne crianças da equipe e dos cursistas com problema de saúde.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-health"]'] },
-  { id: 'financial-epc', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas EPC', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas EPC.', permission: 'cursista-epc.ver', formTypes: ['cursista-epc'], source: 'cursista-epc', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
-  { id: 'financial-individual', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas Individuais', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas individuais.', permission: 'cursista.ver', formTypes: ['cursista-individual'], source: 'cursista', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#student-financial-summary'] },
-  { id: 'financial-smp', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas SMP', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas SMP.', permission: 'cursista-smp.ver', formTypes: ['cursista-smp'], source: 'cursista-smp', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
   { id: 'general-cities', topic: 'Geral', title: 'Cidades participantes', description: 'Apresenta a quantidade de cursistas e integrantes da equipe por cidade.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="cities"]'] },
   { id: 'general-presence', topic: 'Geral', title: 'Presença por dia', description: 'Resume a presença prevista de cursistas e equipe em cada dia do retiro.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="presence"]'] },
   { id: 'quadrante-complete', topic: 'Quadrante', title: 'Relatório completo', description: 'Gera o quadrante completo com setores, comunidades, responsáveis, endereços e contatos.', permission: 'quadrante.imprimir', source: 'quadrante', formats: ['Impressão'], steps: ['#print-quadrante'] },
@@ -5758,27 +5755,28 @@ const launchPendingOperationalReport = async () => {
 
 async function renderRelatorios() {
   await loadData();
-  const focusRetreats = accessibleRetreats().sort((first, second) => operationalReportCollator.compare(first.nome || '', second.nome || ''));
   const retreat = selectedRetreat();
-  const visibleReports = operationalReports
-    .filter((report) => operationalReportAvailable(report, retreat))
-    .sort((first, second) => operationalReportCollator.compare(first.topic, second.topic) || operationalReportCollator.compare(first.title, second.title));
+  const visibleReports = retreat
+    ? operationalReports
+      .filter((report) => operationalReportAvailable(report, retreat))
+      .sort((first, second) => operationalReportCollator.compare(first.topic, second.topic) || operationalReportCollator.compare(first.title, second.title))
+    : [];
   const topics = [...new Set(visibleReports.map((report) => report.topic))];
-  layout('<section class="page-heading report-center-heading"><div><p class="eyebrow">Consultas e impressões</p><h1>Central de Relatórios</h1><p>Todos os relatórios disponíveis para o seu acesso, usando os mesmos geradores das telas de origem.</p></div><label class="field report-center-retreat"><span>Retiro</span><select id="report-center-retreat-select"></select></label></section><section class="report-center-summary panel"><strong></strong><span></span></section><div class="report-center-topics"></div>', 'relatorios');
-  const retreatSelect = app.querySelector('#report-center-retreat-select');
-  if (!focusRetreats.length) {
-    retreatSelect.disabled = true;
-    retreatSelect.append(new Option('Nenhum retiro disponível', ''));
-  } else {
-    focusRetreats.forEach((item) => retreatSelect.append(new Option(item.nome || 'Retiro sem nome', item.id, false, item.id === retreat?.id)));
-  }
+  const retreatContext = retreat ? `Retiro em foco: <strong>${escapeHtml(retreat.nome || 'Retiro sem nome')}</strong>` : 'Nenhum retiro em foco';
+  layout(`<section class="page-heading report-center-heading"><div><p class="eyebrow">Consultas e impressões</p><h1>Central de Relatórios</h1><p>Todos os relatórios disponíveis para o seu acesso, usando os mesmos geradores das telas de origem.</p><p class="report-center-focus">${retreatContext}</p></div></section><section class="report-center-summary panel"><strong></strong><span></span></section><div class="report-center-topics"></div>`, 'relatorios');
   app.querySelector('.report-center-summary strong').textContent = visibleReports.length;
-  app.querySelector('.report-center-summary span').textContent = 'relatório(s) disponível(is) para ' + (retreat?.nome || 'o retiro selecionado');
+  app.querySelector('.report-center-summary span').textContent = retreat
+    ? `relatório(s) disponível(is) para ${retreat.nome || 'o retiro em foco'}`
+    : 'relatório(s) disponível(is) sem um retiro em foco';
   const topicsRoot = app.querySelector('.report-center-topics');
   if (!topics.length) {
     const empty = document.createElement('section');
     empty.className = 'panel empty-state';
-    empty.textContent = 'Nenhum relatório está disponível com as suas permissões para este retiro.';
+    if (!retreat) {
+      empty.append('Nenhum retiro está em foco. Selecione um retiro na opção ', Object.assign(document.createElement('a'), { href: '#inicio', textContent: 'Início' }), '.');
+    } else {
+      empty.textContent = 'Nenhum relatório está disponível com as suas permissões para este retiro.';
+    }
     topicsRoot.append(empty);
   }
   topics.forEach((topic) => {
@@ -5820,10 +5818,6 @@ async function renderRelatorios() {
       grid.append(card);
     });
     topicsRoot.append(section);
-  });
-  retreatSelect.addEventListener('change', async (event) => {
-    if (!setSelectedRetreatId(event.target.value)) return;
-    await renderRelatorios();
   });
   app.querySelectorAll('[data-report-description]').forEach((button) => {
     button.addEventListener('click', () => {
