@@ -11,7 +11,7 @@ let retreat = {
   tipoFichaCursista: 'cursista-individual',
   numeroPrevistoFichasCursista: 1,
   valorInscricaoCursista: 250,
-  linksCadastroCursistas: [{ numeroFicha: 1, token: 'token-publico', createdAt: '2026-08-06T00:00:00.000Z' }],
+  linksCadastroCursistas: [{ numeroFicha: 1, token: 'token-publico', createdAt: '2026-08-06T00:00:00.000Z', versao: 2, enviadoPara: 'Família convidada' }],
 };
 const database = { cursistas: [], pessoas: [], adesoes: [] };
 let savedIndividual = null;
@@ -37,7 +37,7 @@ require.cache[adapterPath] = {
   },
 };
 delete require.cache[linksPath];
-const { prepareStudentRegistrationLinkSync, resolvePublicStudentLink, savePublicStudentRegistration } = require('../publicStudentLinks');
+const { prepareStudentRegistrationLinkSync, resolvePublicStudentLink, savePublicStudentRegistration, studentRegistrationLinkStatus } = require('../publicStudentLinks');
 
 const individualPayload = {
   id: 'id-forjado',
@@ -77,6 +77,11 @@ const individualPayload = {
   assert.equal(savedIndividual.valorPago, 0);
   assert.equal(savedIndividual.saldoPagar, 250);
   assert.equal(savedIndividual.recebedorTaxaPaga, false);
+  const individualStatus = (await studentRegistrationLinkStatus(retreat))[0];
+  assert.equal(individualStatus.status, 'cadastrada');
+  assert.equal(individualStatus.enviadoPara, 'Família convidada');
+  assert.equal(individualStatus.tipoCadastro, 'individual');
+  assert.equal(individualStatus.nomeCadastrado, 'Cursista Público');
 
   await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /Ficha ja cadastrada/);
   database.cursistas.length = 0;
@@ -98,12 +103,18 @@ const individualPayload = {
   assert.equal(savedSmp.id, '1');
   assert.equal(savedSmp.retiroId, retreat.id);
   assert.equal(savedSmp.valorPagoSmp, 0);
+  const smpStatus = (await studentRegistrationLinkStatus(retreat))[0];
+  assert.equal(smpStatus.tipoCadastro, 'casal');
+  assert.equal(smpStatus.nomeCadastrado, 'João e Maria');
 
   savedSmp = null;
   retreat = { ...retreat, status: 'preparacao', tipoFichaCursista: 'cursista-epc' };
   await savePublicStudentRegistration('token-publico', { nomeDele: 'José', nomeDela: 'Ana', retiroId: 'outro' });
   assert.equal(savedEpc.id, '1');
   assert.equal(savedEpc.retiroId, retreat.id);
+  const epcStatus = (await studentRegistrationLinkStatus(retreat))[0];
+  assert.equal(epcStatus.tipoCadastro, 'casal');
+  assert.equal(epcStatus.nomeCadastrado, 'José e Ana');
 
   const adminSource = fs.readFileSync(path.join(__dirname, '..', 'adminApp.js'), 'utf8');
   const apiSource = fs.readFileSync(path.join(__dirname, '..', 'apiCore.js'), 'utf8');

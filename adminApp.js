@@ -2011,6 +2011,7 @@ async function renderRetreat(id, selectedSector = '') {
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
   studentRegistrationLinksPanel.id = 'retreat-student-links';
   const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
+  const canEditStudentLinkRecipient = canAccess('retiros.editar') && canModifyRetreat(retreat);
   const studentLinksContent = studentLinkData?.error
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
     : studentLinks.length
@@ -2020,6 +2021,8 @@ async function renderRetreat(id, selectedSector = '') {
         return `<article class="student-registration-link-row">
           <div class="student-registration-link-heading"><strong>Ficha ${link.numeroFicha}</strong><span class="status ${registered ? 'concluido' : 'publicado'}">${registered ? 'Cadastrada' : 'Disponível'}</span></div>
           <label class="field"><span>Link público — ficha${link.numeroFicha}</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label>
+          <div class="student-registration-link-recipient"><label class="field"><span>Enviado para</span><input maxlength="160" autocomplete="off" value="${escapeHtml(link.enviadoPara || '')}" data-student-link-recipient="${link.numeroFicha}" ${canEditStudentLinkRecipient ? '' : 'readonly'} aria-label="Enviado para, ficha ${link.numeroFicha}"></label>${canEditStudentLinkRecipient ? `<button type="button" class="secondary-button" data-save-student-link-recipient="${link.numeroFicha}">Salvar destinatário</button>` : ''}<span class="student-registration-link-feedback" data-student-link-recipient-feedback="${link.numeroFicha}" role="status"></span></div>
+          ${registered && link.nomeCadastrado ? `<p class="student-registration-link-registration"><strong>${link.tipoCadastro === 'casal' ? 'Casal cadastrado' : 'Cursista cadastrado'}:</strong> ${escapeHtml(link.nomeCadastrado)}</p>` : ''}
           <div class="student-registration-link-actions"><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button><a class="secondary-button" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">Abrir</a></div>
         </article>`;
       }).join('')}</div>`
@@ -2030,6 +2033,23 @@ async function renderRetreat(id, selectedSector = '') {
     await navigator.clipboard.writeText(button.dataset.copyStudentLink);
     button.textContent = 'Copiado!';
     setTimeout(() => { button.textContent = 'Copiar link'; }, 1600);
+  }));
+  studentRegistrationLinksPanel.querySelectorAll('[data-save-student-link-recipient]').forEach((button) => button.addEventListener('click', async () => {
+    const numeroFicha = Number(button.dataset.saveStudentLinkRecipient);
+    const input = studentRegistrationLinksPanel.querySelector(`[data-student-link-recipient="${numeroFicha}"]`);
+    const feedback = studentRegistrationLinksPanel.querySelector(`[data-student-link-recipient-feedback="${numeroFicha}"]`);
+    if (!input || !feedback) return;
+    button.disabled = true;
+    feedback.textContent = 'Salvando...';
+    try {
+      const saved = await dataService.saveStudentRegistrationLinkRecipient(id, numeroFicha, input.value);
+      input.value = saved.enviadoPara || '';
+      feedback.textContent = 'Destinatário salvo.';
+    } catch (error) {
+      feedback.textContent = error.message || 'Não foi possível salvar o destinatário.';
+    } finally {
+      button.disabled = false;
+    }
   }));
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);

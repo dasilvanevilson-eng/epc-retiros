@@ -90,6 +90,7 @@ function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {
       numeroFicha,
       token: rotateLegacy && legacy ? newToken() : token,
       createdAt: rotateLegacy && legacy ? new Date().toISOString() : (link.createdAt || new Date().toISOString()),
+      enviadoPara: String(link.enviadoPara || '').trim(),
       ...(legacy && !rotateLegacy ? {} : { versao: studentRegistrationLinkVersion }),
     });
   });
@@ -99,6 +100,7 @@ function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {
         numeroFicha,
         token: newToken(),
         createdAt: new Date().toISOString(),
+        enviadoPara: '',
         versao: studentRegistrationLinkVersion,
       });
     }
@@ -183,19 +185,50 @@ function occupiedFileNumbers(records) {
   ].filter(Boolean));
 }
 
+function registeredStudentsByFileNumber(records) {
+  const registrations = new Map();
+  records.individual.forEach((record) => {
+    const numeroFicha = recordFileNumber(record, 'cursista-individual');
+    if (!numeroFicha || registrations.has(numeroFicha)) return;
+    registrations.set(numeroFicha, {
+      tipoCadastro: 'individual',
+      nomeCadastrado: String(record.nome || '').trim() || 'Nome não informado',
+    });
+  });
+  [records.smp, records.epc].forEach((coupleRecords) => coupleRecords.forEach((record) => {
+    const numeroFicha = recordFileNumber(record, 'cursista-smp');
+    if (!numeroFicha || registrations.has(numeroFicha)) return;
+    const names = [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean);
+    registrations.set(numeroFicha, {
+      tipoCadastro: 'casal',
+      nomeCadastrado: names.join(' e ') || 'Nomes não informados',
+    });
+  }));
+  return registrations;
+}
+
 async function studentRegistrationLinkStatus(retreat) {
   const expectedCount = normalizeCount(retreat?.numeroPrevistoFichasCursista);
   if (!expectedCount) return [];
-  const occupied = occupiedFileNumbers(await studentRecordsForRetreat(retreat.id));
+  const records = await studentRecordsForRetreat(retreat.id);
+  const occupied = occupiedFileNumbers(records);
+  const registrations = registeredStudentsByFileNumber(records);
   return (retreat.linksCadastroCursistas || [])
     .filter((link) => normalizeFileNumber(link.numeroFicha) <= expectedCount)
-    .map((link) => ({
-      numeroFicha: normalizeFileNumber(link.numeroFicha),
-      token: link.token,
-      createdAt: link.createdAt,
-      versao: link.versao,
-      status: occupied.has(normalizeFileNumber(link.numeroFicha)) ? 'cadastrada' : 'disponivel',
-    }))
+    .map((link) => {
+      const numeroFicha = normalizeFileNumber(link.numeroFicha);
+      const registration = registrations.get(numeroFicha) || {};
+      return {
+        numeroFicha,
+        token: link.token,
+        createdAt: link.createdAt,
+        versao: link.versao,
+        enviadoPara: String(link.enviadoPara || '').trim(),
+        status: occupied.has(numeroFicha) ? 'cadastrada' : 'disponivel',
+        tipoCadastro: registration.tipoCadastro || '',
+        nomeCadastrado: registration.nomeCadastrado || '',
+      };
+    })
     .sort((first, second) => first.numeroFicha - second.numeroFicha);
 }
 

@@ -431,6 +431,27 @@ async function handleApi(req, res, pathname) {
     });
   }
 
+  if (resource === 'cursista-links' && id && action === 'destinatario' && req.method === 'POST') {
+    if (denyIfMissingPermission(res, session, 'retiros.editar')) return;
+    const retreatId = decodeURIComponent(id);
+    if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+    const current = await getRecord('retiros', retreatId).catch(() => null);
+    if (!current) return sendError(res, 404, 'Retiro nao encontrado.');
+    if (current.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+    const body = await readBody(req);
+    const numeroFicha = Number(body.numeroFicha);
+    const enviadoPara = String(body.enviadoPara || '').trim();
+    if (!Number.isInteger(numeroFicha) || numeroFicha <= 0) return sendError(res, 400, 'Numero da ficha invalido.');
+    if (enviadoPara.length > 160) return sendError(res, 400, 'O campo Enviado para deve ter no maximo 160 caracteres.');
+    const links = Array.isArray(current.linksCadastroCursistas) ? current.linksCadastroCursistas : [];
+    if (!links.some((link) => Number(link.numeroFicha) === numeroFicha)) return sendError(res, 404, 'Link da ficha nao encontrado.');
+    const updatedLinks = links.map((link) => Number(link.numeroFicha) === numeroFicha
+      ? { ...link, enviadoPara }
+      : link);
+    await saveRetreatStudentRegistrationLinks(retreatId, updatedLinks);
+    return sendJson(res, 200, { numeroFicha, enviadoPara });
+  }
+
   if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {
     const { currentPassword, newPassword } = await readBody(req);
     await changeOwnPassword(session, String(currentPassword || ''), String(newPassword || ''));
