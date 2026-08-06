@@ -2007,12 +2007,36 @@ async function renderRetreat(id, selectedSector = '') {
     const sectorLinksPanel = document.createElement('article');
     sectorLinksPanel.className = 'panel sector-links-panel';
     sectorLinksPanel.id = 'retreat-links';
-    sectorLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div><h2>Links de cadastro da equipe de trabalho por setor</h2><p class="hint">Compartilhe somente os links dos setores ativos neste retiro. O link de cadastro abre a ficha limitada ao setor; o link de acompanhamento mostra ao líder a relação de voluntários, os dias de trabalho e o somatório por dia. O link de acompanhamento de Animação/Jovem de sala visualiza também cursistas com intolerância alimentar. Cozinha visualiza também cursistas e crianças no Espaço Kids com intolerância alimentar. Espaço Kids visualiza também crianças com intolerância alimentar e problema de saúde.</p></div><button type="button" class="secondary-button sector-link-view-status" id="view-sector-link-status">Visualizar</button></div><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
+    sectorLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div class="sector-links-heading"><div class="sector-links-title"><h2>Links de cadastro da equipe de trabalho por setor</h2><div class="sector-links-help"><button type="button" class="sector-links-info" id="sector-links-info" aria-label="Informações sobre os links de cadastro da equipe por setor" aria-expanded="false" aria-controls="sector-links-explanation"><span aria-hidden="true">I</span></button><div class="sector-links-explanation" id="sector-links-explanation" role="note" hidden><ul><li>O link “Cadastro” abre somente a ficha limitada ao setor. Esse link deve ser encaminhado ao coordenador do setor para cadastro da sua equipe.</li><li>O link “Acompanhamento do líder” mostra ao coordenador do setor a relação de voluntários, os dias de trabalho e o somatório por dia.</li><li>O link “Acompanhamento do líder” do setor Animação/Jovem de sala visualiza também cursistas com intolerância alimentar. O link “Acompanhamento do líder” do setor Cozinha visualiza também cursistas e crianças do Espaço Kids com intolerância alimentar.</li><li>O link “Acompanhamento do líder” do setor Espaço Kids visualiza também crianças com intolerância alimentar e problema de saúde.</li></ul></div></div></div></div><button type="button" class="secondary-button sector-link-view-status" id="view-sector-link-status">Visualizar</button></div><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
       return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}" data-registration-closed="${sectorRegistrationClosed(retreat, link.setor) ? 'true' : 'false'}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
     }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
+    const sectorLinksInfoButton = sectorLinksPanel.querySelector('#sector-links-info');
+    const sectorLinksExplanation = sectorLinksPanel.querySelector('#sector-links-explanation');
+    const sectorLinksHelp = sectorLinksPanel.querySelector('.sector-links-help');
+    const setSectorLinksExplanationOpen = (open, { restoreFocus = false } = {}) => {
+      sectorLinksInfoButton.setAttribute('aria-expanded', String(open));
+      sectorLinksExplanation.hidden = !open;
+      if (open) {
+        document.addEventListener('pointerdown', closeSectorLinksExplanationFromOutside);
+        document.addEventListener('keydown', closeSectorLinksExplanationFromKeyboard);
+      } else {
+        document.removeEventListener('pointerdown', closeSectorLinksExplanationFromOutside);
+        document.removeEventListener('keydown', closeSectorLinksExplanationFromKeyboard);
+        if (restoreFocus) sectorLinksInfoButton.focus();
+      }
+    };
+    function closeSectorLinksExplanationFromOutside(event) {
+      if (!sectorLinksHelp.contains(event.target)) setSectorLinksExplanationOpen(false);
+    }
+    function closeSectorLinksExplanationFromKeyboard(event) {
+      if (event.key === 'Escape') setSectorLinksExplanationOpen(false, { restoreFocus: true });
+    }
+    sectorLinksInfoButton.addEventListener('click', () => {
+      setSectorLinksExplanationOpen(sectorLinksInfoButton.getAttribute('aria-expanded') !== 'true');
+    });
   }
   const studentRegistrationLinksPanel = document.createElement('article');
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
