@@ -42,6 +42,8 @@ assert.match(homeSource, /coupleStudentSource\(activeStudentFormType\)\.list\(ac
 assert.match(homeSource, /retreatId: active\?\.id \|\| ''/, 'Indicadores infantis devem receber explicitamente o retiro em foco.');
 assert.match(source, /const activeStudentNavId = studentFormNavIds\[focusedRetreat\?\.tipoFichaCursista/, 'O menu deve atualizar o tipo de ficha conforme o foco.');
 assert.match(source, /\['retiros', 'Links de cadastro'\]/, 'O menu principal deve identificar a opção como Links de cadastro.');
+assert.match(source, /Links de cadastro da equipe de trabalho por setor/, 'A descrição deve identificar os links da equipe por setor.');
+assert.doesNotMatch(source, />Links por setor</, 'A descrição antiga não deve permanecer na interface.');
 assert.match(source, /\['configuracoes', 'Configurações'\]/, 'O menu principal deve oferecer a opção Configurações.');
 assert.match(source, /const canConfigureRetreats = \(\) => retreatConfigurationPermissions\.some\(canAccess\)/, 'Configurações deve aparecer somente para quem possui alguma ação administrativa de retiro.');
 const retreatListSource = section('async function renderRetiros', 'const sectorOptionHtml');
