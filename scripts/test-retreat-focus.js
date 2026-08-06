@@ -86,7 +86,8 @@ assert(teamLinksPanelIndex >= 0, 'O painel de links da equipe deve permanecer na
 assert(studentLinksPanelIndex > teamLinksPanelIndex, 'O painel de links de cursistas deve aparecer abaixo do painel da equipe.');
 const studentLinksPanelSource = retreatDetailSource.slice(studentLinksPanelIndex, retreatDetailSource.indexOf("app.querySelectorAll('[data-copy-sector-link]'", studentLinksPanelIndex));
 assert.match(studentLinksPanelSource, /Links de cadastro de cursistas/, 'O novo painel deve possuir o titulo solicitado.');
-assert.match(studentLinksPanelSource, /cadastro-cursista\/\$\{encodeURIComponent\(link\.token\)\}/, 'Cada ficha deve gerar seu link público exclusivo.');
+assert.match(studentLinksPanelSource, /cadastro-cursista\/ficha\$\{link\.numeroFicha\}\/\$\{encodeURIComponent\(link\.token\)\}/, 'Cada ficha deve gerar seu link público identificado e exclusivo.');
+assert.match(studentLinksPanelSource, /Link público — ficha\$\{link\.numeroFicha\}/, 'A descrição do link deve identificar a ficha.');
 assert.match(studentLinksPanelSource, /data-copy-student-link/, 'O painel deve permitir copiar o link público.');
 assert.match(studentLinksPanelSource, /Cadastrada[\s\S]*Disponível/, 'O painel deve informar a situação de cada ficha.');
 assert.match(styles, /\.student-registration-links-panel\{grid-column:1 \/ -1\}/, 'A nova caixa deve ocupar uma linha abaixo do painel da equipe.');

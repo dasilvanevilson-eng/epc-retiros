@@ -2015,11 +2015,11 @@ async function renderRetreat(id, selectedSector = '') {
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
     : studentLinks.length
       ? `<div class="student-registration-link-list">${studentLinks.map((link) => {
-        const publicUrl = `${location.origin}/cadastro-cursista/${encodeURIComponent(link.token)}`;
+        const publicUrl = `${location.origin}/cadastro-cursista/ficha${link.numeroFicha}/${encodeURIComponent(link.token)}`;
         const registered = link.status === 'cadastrada';
         return `<article class="student-registration-link-row">
           <div class="student-registration-link-heading"><strong>Ficha ${link.numeroFicha}</strong><span class="status ${registered ? 'concluido' : 'publicado'}">${registered ? 'Cadastrada' : 'Disponível'}</span></div>
-          <label class="field"><span>Link público</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label>
+          <label class="field"><span>Link público — ficha${link.numeroFicha}</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label>
           <div class="student-registration-link-actions"><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button><a class="secondary-button" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">Abrir</a></div>
         </article>`;
       }).join('')}</div>`

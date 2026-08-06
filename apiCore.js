@@ -4,6 +4,7 @@ const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 const {
+  prepareStudentRegistrationLinkSync,
   resolvePublicStudentLink,
   sanitizePublicRetreat,
   savePublicStudentRegistration,
@@ -341,9 +342,12 @@ async function handleApi(req, res, pathname) {
 
   if (resource === 'cadastro-cursista' && id) {
     try {
+      const publicStudentUrl = new URL(req.url || '/', 'https://familiaepcindaial.local');
+      const requestedFileNumber = Number(publicStudentUrl.searchParams.get('ficha')) || 0;
       if (req.method === 'GET') {
         const context = await resolvePublicStudentLink(id);
         if (!context) return sendError(res, 404, 'Link de cadastro nao encontrado.');
+        if (requestedFileNumber && requestedFileNumber !== context.numeroFicha) return sendError(res, 404, 'O numero da ficha nao corresponde a este link.');
         return sendJson(res, 200, {
           numeroFicha: context.numeroFicha,
           tipoFichaCursista: context.type,
@@ -362,7 +366,7 @@ async function handleApi(req, res, pathname) {
       }
       if (req.method === 'POST') {
         if (await isMaintenanceActive()) return sendError(res, 503, 'O sistema esta temporariamente em manutencao. Tente novamente em alguns minutos.');
-        await savePublicStudentRegistration(id, await readBody(req));
+        await savePublicStudentRegistration(id, await readBody(req), requestedFileNumber);
         return sendJson(res, 201, { saved: true });
       }
       return sendError(res, 405, 'Metodo nao permitido.');
@@ -410,14 +414,19 @@ async function handleApi(req, res, pathname) {
     if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
     const current = await getRecord('retiros', retreatId).catch(() => null);
     if (!current) return sendError(res, 404, 'Retiro nao encontrado.');
-    const synced = withSyncedStudentRegistrationLinks(current, current);
-    const sameLinks = JSON.stringify(synced.linksCadastroCursistas) === JSON.stringify(current.linksCadastroCursistas || []);
+    const syncResult = await prepareStudentRegistrationLinkSync(current);
+    if (syncResult.blocked) {
+      const { individual, smp, epc } = syncResult.counts;
+      return sendError(res, 409, `Rotacao dos links bloqueada: existem fichas cadastradas neste retiro (Individual: ${individual}, SMP: ${smp}, EPC: ${epc}).`);
+    }
+    const sameLinks = JSON.stringify(syncResult.links) === JSON.stringify(current.linksCadastroCursistas || []);
     const saved = sameLinks
       ? current
-      : await saveRetreatStudentRegistrationLinks(retreatId, synced.linksCadastroCursistas);
+      : await saveRetreatStudentRegistrationLinks(retreatId, syncResult.links);
     return sendJson(res, 200, {
       retiroId: saved.id,
       numeroPrevistoFichasCursista: Number(saved.numeroPrevistoFichasCursista) || 0,
+      linksRegenerados: syncResult.rotated,
       links: await studentRegistrationLinkStatus(saved),
     });
   }

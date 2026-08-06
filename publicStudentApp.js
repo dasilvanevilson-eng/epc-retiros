@@ -1,5 +1,8 @@
 const app = document.querySelector('#app');
-const token = document.body.dataset.publicStudentToken || location.pathname.match(/^\/cadastro-cursista\/([^/?#]+)/)?.[1] || '';
+const identifiedPath = location.pathname.match(/^\/cadastro-cursista\/ficha(\d+)\/([^/?#]+)/i);
+const token = document.body.dataset.publicStudentToken || identifiedPath?.[2] || location.pathname.match(/^\/cadastro-cursista\/([^/?#]+)/)?.[1] || '';
+const expectedFileNumber = Number(document.body.dataset.publicStudentFileNumber || identifiedPath?.[1]) || 0;
+const publicApiUrl = () => `/api/cadastro-cursista/${encodeURIComponent(token)}${expectedFileNumber ? `?ficha=${expectedFileNumber}` : ''}`;
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
 }[character]));
@@ -78,7 +81,7 @@ function wireForm(context) {
     button.disabled = true;
     message.textContent = 'Salvando cadastro...';
     try {
-      const response = await fetch(`/api/cadastro-cursista/${encodeURIComponent(token)}`, {
+      const response = await fetch(publicApiUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadFromForm(form)),
@@ -95,9 +98,10 @@ function wireForm(context) {
 async function launch() {
   if (!token) return unavailable('Link indisponível', 'Confira o endereço recebido da equipe do retiro.');
   try {
-    const response = await fetch(`/api/cadastro-cursista/${encodeURIComponent(token)}`, { cache: 'no-store' });
+    const response = await fetch(publicApiUrl(), { cache: 'no-store' });
     if (!response.ok) throw new Error(await errorMessage(response));
     const context = await response.json();
+    if (expectedFileNumber && expectedFileNumber !== Number(context.numeroFicha)) return unavailable('Link indisponível', 'O número da ficha não corresponde a este link.');
     if (context.cadastrado) return unavailable('Ficha já cadastrada', 'Este link já foi utilizado e não permite consultar ou editar os dados enviados.');
     if (!context.ativo) return unavailable('Cadastro indisponível', 'Este retiro não está recebendo cadastros por este link.');
     const typeLabel = context.tipoFichaCursista === 'cursista-individual' ? 'Cursista Individual' : context.tipoFichaCursista === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';

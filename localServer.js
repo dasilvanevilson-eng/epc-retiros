@@ -88,8 +88,11 @@ loadLocalEnv().then(async () => {
       }
       else if (pathname.startsWith('/cadastro-cursista/')) {
         const { sendPublicStudentRegistrationPage } = require('./publicStudentRegistrationPage');
-        const [, token] = pathname.match(/^\/cadastro-cursista\/([^/]+)/) || [];
-        await sendPublicStudentRegistrationPage(req, res, token);
+        const identified = pathname.match(/^\/cadastro-cursista\/ficha(\d+)\/([^/]+)/i);
+        const legacy = pathname.match(/^\/cadastro-cursista\/([^/]+)/);
+        const fileNumber = identified?.[1] || '';
+        const token = identified?.[2] || legacy?.[1] || '';
+        await sendPublicStudentRegistrationPage(req, res, token, fileNumber);
       }
       else await handleStatic(req, res, pathname);
     } catch (error) {

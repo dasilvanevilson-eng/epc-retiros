@@ -4,7 +4,7 @@ const { sendPublicStudentRegistrationPage } = require('../publicStudentRegistrat
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url || '/', 'https://familiaepcindaial.local');
-    await sendPublicStudentRegistrationPage(req, res, url.searchParams.get('token') || '');
+    await sendPublicStudentRegistrationPage(req, res, url.searchParams.get('token') || '', url.searchParams.get('ficha') || '');
   } catch (error) {
     sendError(res, 500, error.message || 'Erro interno.');
   }

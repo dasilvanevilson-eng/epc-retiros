@@ -9,6 +9,7 @@ const {
 } = require('./databaseAdapter');
 
 const supportedStudentTypes = new Set(['cursista-individual', 'cursista-smp', 'cursista-epc']);
+const studentRegistrationLinkVersion = 2;
 const financialFields = new Set([
   'valorInscricao', 'valorPago', 'saldoPagar', 'formaPagamento', 'observacaoPagamento',
   'recebedorValorPago', 'recebedorTaxaPaga', 'recebedorFormaPagamento', 'recebedorObservacao',
@@ -76,7 +77,7 @@ const isValidCpf = (value) => {
 };
 const newToken = () => crypto.randomBytes(24).toString('hex');
 
-function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {}) {
+function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {}, { rotateLegacy = false } = {}) {
   const expectedCount = normalizeCount(incomingRetreat.numeroPrevistoFichasCursista);
   const sourceLinks = currentRetreat ? currentRetreat.linksCadastroCursistas : [];
   const linksByNumber = new Map();
@@ -84,15 +85,22 @@ function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {
     const numeroFicha = normalizeFileNumber(link?.numeroFicha);
     const token = String(link?.token || '').trim();
     if (!numeroFicha || !token || linksByNumber.has(numeroFicha)) return;
+    const legacy = Number(link.versao) !== studentRegistrationLinkVersion;
     linksByNumber.set(numeroFicha, {
       numeroFicha,
-      token,
-      createdAt: link.createdAt || new Date().toISOString(),
+      token: rotateLegacy && legacy ? newToken() : token,
+      createdAt: rotateLegacy && legacy ? new Date().toISOString() : (link.createdAt || new Date().toISOString()),
+      ...(legacy && !rotateLegacy ? {} : { versao: studentRegistrationLinkVersion }),
     });
   });
   for (let numeroFicha = 1; numeroFicha <= expectedCount; numeroFicha += 1) {
     if (!linksByNumber.has(numeroFicha)) {
-      linksByNumber.set(numeroFicha, { numeroFicha, token: newToken(), createdAt: new Date().toISOString() });
+      linksByNumber.set(numeroFicha, {
+        numeroFicha,
+        token: newToken(),
+        createdAt: new Date().toISOString(),
+        versao: studentRegistrationLinkVersion,
+      });
     }
   }
   return [...linksByNumber.values()].sort((first, second) => first.numeroFicha - second.numeroFicha);
@@ -133,6 +141,36 @@ async function studentRecordsForRetreat(retreatId) {
   };
 }
 
+const studentRecordCounts = (records) => ({
+  individual: records.individual.length,
+  smp: records.smp.length,
+  epc: records.epc.length,
+});
+
+async function prepareStudentRegistrationLinkSync(retreat) {
+  const sourceLinks = Array.isArray(retreat?.linksCadastroCursistas) ? retreat.linksCadastroCursistas : [];
+  const hasLegacyLinks = sourceLinks.some((link) => Number(link?.versao) !== studentRegistrationLinkVersion);
+  if (!hasLegacyLinks) {
+    return {
+      blocked: false,
+      rotated: false,
+      counts: { individual: 0, smp: 0, epc: 0 },
+      links: syncStudentRegistrationLinks(retreat, retreat),
+    };
+  }
+  const records = await studentRecordsForRetreat(retreat.id);
+  const counts = studentRecordCounts(records);
+  if (counts.individual + counts.smp + counts.epc > 0) {
+    return { blocked: true, rotated: false, counts, links: sourceLinks };
+  }
+  return {
+    blocked: false,
+    rotated: true,
+    counts,
+    links: syncStudentRegistrationLinks(retreat, retreat, { rotateLegacy: true }),
+  };
+}
+
 const recordFileNumber = (record, type) => normalizeFileNumber(
   type === 'cursista-individual' ? record.numeroFichaIndividual : (record.numeroFichaSmp || record.id),
 );
@@ -155,6 +193,7 @@ async function studentRegistrationLinkStatus(retreat) {
       numeroFicha: normalizeFileNumber(link.numeroFicha),
       token: link.token,
       createdAt: link.createdAt,
+      versao: link.versao,
       status: occupied.has(normalizeFileNumber(link.numeroFicha)) ? 'cadastrada' : 'disponivel',
     }))
     .sort((first, second) => first.numeroFicha - second.numeroFicha);
@@ -176,7 +215,7 @@ async function resolvePublicStudentLink(token = '') {
       link,
       numeroFicha,
       type,
-      active: retreat.status === 'publicado' && numeroFicha > 0 && numeroFicha <= expectedCount,
+      active: ['preparacao', 'publicado'].includes(retreat.status) && numeroFicha > 0 && numeroFicha <= expectedCount,
       occupied: occupied.has(numeroFicha),
     };
   }
@@ -246,9 +285,13 @@ async function validateCpfAvailability(retreatId, record, type) {
   }
 }
 
-async function savePublicStudentRegistration(token, incoming) {
+async function savePublicStudentRegistration(token, incoming, expectedFileNumber = 0) {
   const context = await resolvePublicStudentLink(token);
   if (!context) throw publicStudentError('Link de cadastro nao encontrado.', 404);
+  const expectedNumber = normalizeFileNumber(expectedFileNumber);
+  if (expectedNumber && expectedNumber !== context.numeroFicha) {
+    throw publicStudentError('O numero da ficha nao corresponde a este link.', 404, 'STUDENT_LINK_FILE_MISMATCH');
+  }
   if (!context.active) throw publicStudentError('Este cadastro nao esta disponivel.', 409);
   if (context.occupied) throw publicStudentError('Ficha ja cadastrada.', 409, 'STUDENT_FILE_OCCUPIED');
   const record = allowedPayload(incoming, context.type);
@@ -303,10 +346,12 @@ async function savePublicStudentRegistration(token, incoming) {
 
 module.exports = {
   normalizeCount,
+  prepareStudentRegistrationLinkSync,
   resolvePublicStudentLink,
   sanitizePublicRetreat,
   savePublicStudentRegistration,
   studentRegistrationLinkStatus,
+  studentRegistrationLinkVersion,
   syncStudentRegistrationLinks,
   withSyncedStudentRegistrationLinks,
 };
