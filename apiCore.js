@@ -390,11 +390,21 @@ async function handleApi(req, res, pathname) {
     const incoming = await readBody(req);
     const permission = incoming.id ? 'usuarios.editar' : 'usuarios.criar';
     if (denyIfMissingPermission(res, session, permission)) return;
-    return sendJson(res, 200, await saveAccessUser(incoming));
+    try {
+      return sendJson(res, 200, await saveAccessUser(incoming, session));
+    } catch (error) {
+      if (error.statusCode === 403) return sendError(res, 403, error.message);
+      throw error;
+    }
   }
   if (resource === 'access' && id === 'users' && action && req.method === 'DELETE') {
     if (denyIfMissingPermission(res, session, 'usuarios.excluir')) return;
-    await deleteAccessUser(decodeURIComponent(action));
+    try {
+      await deleteAccessUser(decodeURIComponent(action), session);
+    } catch (error) {
+      if (error.statusCode === 403) return sendError(res, 403, error.message);
+      throw error;
+    }
     return sendNoContent(res);
   }
 

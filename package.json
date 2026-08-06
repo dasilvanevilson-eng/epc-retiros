@@ -9,6 +9,7 @@
     "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:home-kids-care": "node scripts/test-home-kids-care.js",
     "test:retreat-focus": "node scripts/test-retreat-focus.js",
+    "test:user-security": "node scripts/test-user-security-screen.js",
     "test:badge-coordinator": "node scripts/test-badge-coordinator-label.js",
     "test:badge-community": "node scripts/test-badge-student-community.js",
     "test:badge-picker": "node scripts/test-badge-profile-picker.js",

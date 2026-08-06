@@ -181,8 +181,27 @@ async function listAccessData() {
   };
 }
 
-async function saveAccessUser(incoming = {}) {
+const forbiddenAccessChange = (message) => Object.assign(new Error(message), { statusCode: 403 });
+
+async function protectOwnAdministrativeAccess(incoming = {}, session = {}) {
+  if (!incoming.id || !session.id || incoming.id !== session.id) return;
+  const current = (await listRecords('usuarios')).find((user) => user.id === incoming.id);
+  if (!current) return;
+  if (incoming.ativo === false) throw forbiddenAccessChange('Voce nao pode desativar o proprio usuario.');
+  if ((incoming.perfilId || current.perfilId) !== current.perfilId) throw forbiddenAccessChange('Voce nao pode alterar o proprio perfil administrativo.');
+  const currentAccess = await hydrateUser(current);
+  const protectedPermissions = currentAccess.permissions.filter((permission) => permission.startsWith('usuarios.'));
+  if (protectedPermissions.length) {
+    const incomingPermissions = new Map((incoming.permissions || []).map((item) => [item.permissaoId, item.permitido !== false]));
+    if (protectedPermissions.some((permission) => incomingPermissions.get(permission) !== true)) {
+      throw forbiddenAccessChange('Voce nao pode retirar as proprias permissoes administrativas.');
+    }
+  }
+}
+
+async function saveAccessUser(incoming = {}, session = {}) {
   await ensureDefaultAccessData();
+  await protectOwnAdministrativeAccess(incoming, session);
   const id = incoming.id || randomId();
   const current = incoming.id ? await listRecords('usuarios').then((users) => users.find((user) => user.id === incoming.id)) : null;
   const record = {
@@ -233,7 +252,8 @@ async function changeOwnPassword(session = {}, currentPassword = '', newPassword
   return safeUser(record);
 }
 
-async function deleteAccessUser(id) {
+async function deleteAccessUser(id, session = {}) {
+  if (id && session.id && id === session.id) throw forbiddenAccessChange('Voce nao pode excluir o proprio usuario.');
   await deleteRecord('usuarios', id);
   const [overrides, retreats] = await Promise.all([listRecords('usuario_permissoes'), listRecords('usuario_retiros')]);
   await Promise.all([

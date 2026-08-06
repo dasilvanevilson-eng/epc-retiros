@@ -784,7 +784,7 @@ function layout(content, active = 'inicio') {
     ['relatorios', 'Relat&oacute;rios'],
     ['alterar-senha', 'Alterar senha'],
     ['backup', 'Backup e restaura&ccedil;&atilde;o'],
-    ['usuarios', 'Usuarios'],
+    ['usuarios', 'Usuários'],
   ].sort((first, second) => first[1].localeCompare(second[1], 'pt-BR', { sensitivity: 'base' })).filter(([id]) => canView(id) && isVisibleStudentNav(id));
   app.innerHTML = `
     <div class="admin-shell has-sidebar">
@@ -7491,6 +7491,243 @@ async function renderUsuarios() {
   });
 }
 
+async function renderUsuariosSeguranca({ selectedUserId = '', messageText = '' } = {}) {
+  if (!ensureViewPermission('usuarios')) return;
+  const [accessData, allRetreats] = await Promise.all([dataService.getAccessData(), dataService.listRetiros().catch(() => [])]);
+  const { usuarios = [], perfis = [], permissoes = [], perfilPermissoes = [], usuarioPermissoes = [], usuarioRetiros = [] } = accessData;
+  const profileById = new Map(perfis.map((profile) => [profile.id, profile]));
+  const sortedUsers = [...usuarios].sort((first, second) => String(first.nome || first.login).localeCompare(String(second.nome || second.login), 'pt-BR', { sensitivity: 'base' }));
+  const activeCount = usuarios.filter((user) => user.ativo !== false).length;
+  const inactiveCount = usuarios.length - activeCount;
+  const adminCount = usuarios.filter((user) => profileById.get(user.perfilId)?.codigo === 'admin').length;
+  const currentDatabaseUserId = usuarios.some((user) => user.id === currentUser?.id) ? currentUser.id : '';
+  const effectivePermissions = (user = {}) => {
+    const profile = profileById.get(user.perfilId);
+    const allowed = new Set(perfilPermissoes.filter((item) => item.perfilId === user.perfilId && item.permitido !== false).map((item) => item.permissaoId));
+    usuarioPermissoes.filter((item) => item.usuarioId === user.id).forEach((item) => {
+      if (item.permitido === false) allowed.delete(item.permissaoId); else allowed.add(item.permissaoId);
+    });
+    if (profile?.codigo === 'admin') permissoes.forEach((permission) => allowed.add(permission.id));
+    return allowed;
+  };
+  const permissionActionLabels = { ver: 'Visualizar', criar: 'Criar', editar: 'Editar', publicar: 'Publicar', encerrar: 'Encerrar', excluir: 'Excluir', validar: 'Validar', imprimir: 'Imprimir' };
+  const permissionPresentation = (permission) => {
+    const action = permission.id.split('.').pop();
+    const moduleName = permission.id === 'retiros.ver' ? 'Links de cadastro' : (permission.id.startsWith('retiros.') ? 'Configurações' : (permission.modulo || 'Sistema'));
+    return { ...permission, moduleName, action, actionLabel: permissionActionLabels[action] || permission.descricao || action };
+  };
+  const permissionGroups = permissoes.map(permissionPresentation).reduce((groups, permission) => {
+    groups[permission.moduleName] = groups[permission.moduleName] || [];
+    groups[permission.moduleName].push(permission);
+    return groups;
+  }, {});
+  Object.values(permissionGroups).forEach((items) => items.sort((first, second) => first.id.localeCompare(second.id, 'pt-BR')));
+  const initials = (user = {}) => String(user.nome || user.login || '?').trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
+  const profileOptions = perfis.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.nome)}</option>`).join('');
+  const retreatChecks = allRetreats.map((retreat) => `<label class="access-v2-check"><input type="checkbox" name="retiroIds" value="${escapeHtml(retreat.id)}"><span><strong>${escapeHtml(retreat.nome)}</strong><small>${dateRange(retreat.dataInicio, retreat.dataTermino)}</small></span></label>`).join('');
+  const summaryIcon = (symbol) => `<span class="access-v2-summary-icon" aria-hidden="true">${symbol}</span>`;
+  layout(`<section class="page-heading access-v2-heading"><div><p class="eyebrow">Segurança e acessos</p><h1>Usuários e permissões</h1><p>Controle quem acessa o sistema e o que cada pessoa pode fazer.</p></div><div class="detail-actions"><a class="secondary-button" href="#alterar-senha">Alterar minha senha</a>${canAccess('usuarios.criar') ? '<button class="primary-button" type="button" id="new-access-user-v2">+ Novo usuário</button>' : ''}</div></section>
+    <section class="access-v2-summary" aria-label="Resumo dos usuários">
+      <article>${summaryIcon('A')}<div><span>Usuários ativos</span><strong>${activeCount}</strong></div></article>
+      <article>${summaryIcon('I')}<div><span>Inativos</span><strong>${inactiveCount}</strong></div></article>
+      <article>${summaryIcon('ADM')}<div><span>Administradores</span><strong>${adminCount}</strong></div></article>
+    </section>
+    <section class="access-v2-layout">
+      <article class="panel access-v2-directory"><div class="panel-heading"><div><h2>Usuários</h2><p><span data-access-visible-count>${usuarios.length}</span> de ${usuarios.length} usuário(s)</p></div></div>
+        <label class="access-v2-search"><span class="sr-only">Buscar usuário</span><input type="search" id="access-user-search" placeholder="Buscar por nome ou login" autocomplete="off"></label>
+        <div class="access-v2-filters" role="group" aria-label="Filtrar usuários"><button type="button" class="is-active" data-access-filter="all">Todos</button><button type="button" data-access-filter="active">Ativos</button><button type="button" data-access-filter="inactive">Inativos</button></div>
+        <div class="access-v2-user-list" id="access-v2-user-list"></div>
+        <nav class="access-v2-pagination" aria-label="Paginação dos usuários"></nav>
+      </article>
+      <form id="access-user-form-v2" class="panel access-v2-editor">
+        <input type="hidden" name="id">
+        <header class="access-v2-user-heading"><span class="access-v2-avatar" data-access-avatar>?</span><div><h2 id="access-v2-user-title">Novo usuário</h2><p><span data-access-login>Novo acesso</span> <span class="status publicado" data-access-status>Ativo</span></p></div></header>
+        <div class="access-v2-tabs" role="tablist" aria-label="Dados do usuário"><button type="button" role="tab" aria-selected="false" data-access-tab="data">Dados do usuário</button><button type="button" role="tab" aria-selected="false" data-access-tab="retreats">Retiros vinculados</button><button type="button" role="tab" aria-selected="true" data-access-tab="permissions">Permissões</button></div>
+        <section class="access-v2-tab-panel" data-access-panel="data" role="tabpanel" hidden><div class="fields two-columns"><label class="field"><span>Nome <b>*</b></span><input name="nome" required></label><label class="field"><span>Login <b>*</b></span><input name="login" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="new-password" placeholder="Obrigatória para novo usuário"></label><label class="field"><span>Perfil base <b>*</b></span><select name="perfilId" required>${profileOptions}</select></label><label class="access-v2-active"><input type="checkbox" name="ativo" checked><span>Usuário ativo</span><small data-access-self-active-note></small></label></div></section>
+        <section class="access-v2-tab-panel" data-access-panel="retreats" role="tabpanel" hidden><div class="access-v2-section-heading"><h3>Retiros vinculados</h3><p>Limite o usuário aos retiros que ele realmente administra. Administradores podem permanecer sem vínculos.</p></div><div class="access-v2-retreat-grid">${retreatChecks || '<p class="empty-state">Nenhum retiro cadastrado.</p>'}</div></section>
+        <section class="access-v2-tab-panel" data-access-panel="permissions" role="tabpanel"><div class="access-v2-security-note"><strong>Princípio do menor privilégio</strong><span>Conceda somente os acessos necessários para a função deste usuário.</span></div>
+          <div class="access-v2-permission-tools"><label class="field"><span>Perfil base</span><select id="access-v2-base-profile">${profileOptions}</select></label><button type="button" id="apply-profile-permissions-v2">Aplicar perfil</button><button type="button" class="secondary-button" id="copy-user-access-v2">Copiar acessos de outro usuário</button></div>
+          <div class="access-v2-permission-groups">${Object.entries(permissionGroups).map(([moduleName, items], index) => `<details class="access-v2-permission-group" data-permission-group="${escapeHtml(moduleName)}" ${moduleName === 'Configurações' || index < 2 ? 'open' : ''}><summary><div><strong>${escapeHtml(moduleName)}</strong><small>${items.length} permissão(ões)</small></div><label class="access-v2-master-switch" title="Ativar ou retirar todas as permissões deste módulo"><input type="checkbox" data-permission-master="${escapeHtml(moduleName)}"><span></span></label></summary><div class="access-v2-permission-items">${items.map((permission) => `<label class="access-v2-permission-item ${permission.action === 'excluir' ? 'is-danger' : ''}"><span><strong>${escapeHtml(permission.actionLabel)}</strong><small>${escapeHtml(permission.descricao || '')}</small></span><input type="checkbox" name="permission" value="${escapeHtml(permission.id)}" data-permission-module="${escapeHtml(moduleName)}"><i aria-hidden="true"></i></label>`).join('')}</div></details>`).join('')}</div>
+        </section>
+        <p id="access-message-v2" class="form-message">${escapeHtml(messageText)}</p>
+        <footer class="access-v2-editor-actions"><p>Alterações de acesso entram em vigor no próximo carregamento.</p><div><button type="button" class="secondary-button" id="cancel-access-user-v2">Cancelar</button><button type="submit" ${canAccess('usuarios.criar') || canAccess('usuarios.editar') ? '' : 'disabled'}>Salvar alterações</button></div></footer>
+      </form>
+    </section>`, 'usuarios');
+
+  const form = app.querySelector('#access-user-form-v2');
+  const message = app.querySelector('#access-message-v2');
+  const list = app.querySelector('#access-v2-user-list');
+  const pagination = app.querySelector('.access-v2-pagination');
+  const search = app.querySelector('#access-user-search');
+  const pageSize = 6;
+  let currentFilter = 'all';
+  let currentPage = 1;
+  let editingUser = sortedUsers.find((user) => user.id === selectedUserId) || sortedUsers[0] || null;
+  let activeTab = editingUser ? 'permissions' : 'data';
+  let openUserMenuId = '';
+  const selectedPermissionIds = () => new Set([...form.querySelectorAll('input[name="permission"]:checked')].map((input) => input.value));
+  const applyPermissions = (permissionIds = []) => {
+    const selected = new Set(permissionIds);
+    form.querySelectorAll('input[name="permission"]').forEach((input) => { input.checked = selected.has(input.value); });
+    syncPermissionGroups();
+  };
+  const applyRetreats = (retreatIds = []) => {
+    const selected = new Set(retreatIds);
+    form.querySelectorAll('input[name="retiroIds"]').forEach((input) => { input.checked = selected.has(input.value); });
+  };
+  const profilePermissionIds = (profileId) => perfilPermissoes.filter((item) => item.perfilId === profileId && item.permitido !== false).map((item) => item.permissaoId);
+  const syncPermissionGroups = () => {
+    form.querySelectorAll('[data-permission-master]').forEach((master) => {
+      const inputs = [...form.querySelectorAll(`input[data-permission-module="${CSS.escape(master.dataset.permissionMaster)}"]`)];
+      const checked = inputs.filter((input) => input.checked).length;
+      master.checked = Boolean(inputs.length) && checked === inputs.length;
+      master.indeterminate = checked > 0 && checked < inputs.length;
+      master.disabled = inputs.length > 0 && inputs.every((input) => input.disabled);
+    });
+  };
+  const switchTab = (tab) => {
+    activeTab = tab;
+    form.querySelectorAll('[data-access-tab]').forEach((button) => { const selected = button.dataset.accessTab === tab; button.classList.toggle('is-active', selected); button.setAttribute('aria-selected', String(selected)); });
+    form.querySelectorAll('[data-access-panel]').forEach((panel) => { panel.hidden = panel.dataset.accessPanel !== tab; });
+  };
+  const protectCurrentUserControls = () => {
+    const isSelf = Boolean(editingUser && editingUser.id === currentDatabaseUserId);
+    const isAdmin = profileById.get(editingUser?.perfilId)?.codigo === 'admin';
+    form.elements.ativo.disabled = isSelf;
+    form.elements.perfilId.disabled = isSelf;
+    form.querySelector('[data-access-self-active-note]').textContent = isSelf ? 'Seu próprio acesso não pode ser desativado aqui.' : '';
+    form.querySelectorAll('input[name="permission"]').forEach((input) => {
+      const protectedSelfPermission = isSelf && input.value.startsWith('usuarios.');
+      input.disabled = Boolean(isAdmin || protectedSelfPermission);
+      input.closest('.access-v2-permission-item')?.classList.toggle('is-locked', input.disabled);
+      if (isAdmin || protectedSelfPermission) input.checked = true;
+    });
+    syncPermissionGroups();
+  };
+  const fillForm = (user = null) => {
+    editingUser = user;
+    form.reset();
+    form.elements.id.value = user?.id || '';
+    form.elements.nome.value = user?.nome || '';
+    form.elements.login.value = user?.login || '';
+    form.elements.password.value = '';
+    form.elements.password.required = !user;
+    form.elements.perfilId.value = user?.perfilId || perfis[0]?.id || '';
+    form.elements.ativo.checked = user?.ativo !== false;
+    app.querySelector('#access-v2-base-profile').value = form.elements.perfilId.value;
+    applyRetreats(user ? usuarioRetiros.filter((item) => item.usuarioId === user.id).map((item) => item.retiroId) : []);
+    applyPermissions(user ? [...effectivePermissions(user)] : profilePermissionIds(form.elements.perfilId.value));
+    app.querySelector('[data-access-avatar]').textContent = initials(user || { nome: 'Novo usuário' });
+    app.querySelector('#access-v2-user-title').textContent = user?.nome || 'Novo usuário';
+    app.querySelector('[data-access-login]').textContent = user?.login || 'Novo acesso';
+    const status = app.querySelector('[data-access-status]');
+    status.textContent = user?.ativo === false ? 'Inativo' : 'Ativo';
+    status.className = `status ${user?.ativo === false ? 'encerrado' : 'publicado'}`;
+    message.textContent = '';
+    protectCurrentUserControls();
+    switchTab(user ? 'permissions' : 'data');
+    renderList();
+  };
+  const filteredUsers = () => {
+    const term = normalizeText(search.value);
+    return sortedUsers.filter((user) => {
+      const statusMatches = currentFilter === 'all' || (currentFilter === 'active' ? user.ativo !== false : user.ativo === false);
+      return statusMatches && (!term || normalizeText(`${user.nome || ''} ${user.login || ''} ${profileById.get(user.perfilId)?.nome || ''}`).includes(term));
+    });
+  };
+  const renderList = () => {
+    const filtered = filteredUsers();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    currentPage = Math.min(currentPage, totalPages);
+    const pageUsers = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    app.querySelector('[data-access-visible-count]').textContent = filtered.length;
+    list.innerHTML = pageUsers.length ? pageUsers.map((user) => {
+      const profile = profileById.get(user.perfilId);
+      const isSelf = user.id === currentDatabaseUserId;
+      return `<article class="access-v2-user-row ${editingUser?.id === user.id ? 'is-selected' : ''}" data-access-user-row="${escapeHtml(user.id)}"><button type="button" class="access-v2-user-select" data-select-access-user="${escapeHtml(user.id)}"><span class="access-v2-list-avatar">${escapeHtml(initials(user))}</span><span><strong>${escapeHtml(user.nome || user.login)}</strong><small>${escapeHtml(user.login)} · ${escapeHtml(profile?.nome || 'Sem perfil')}</small></span><em class="${user.ativo === false ? 'is-inactive' : ''}">${user.ativo === false ? 'Inativo' : 'Ativo'}</em></button><div class="access-v2-overflow"><button type="button" data-access-menu="${escapeHtml(user.id)}" aria-label="Ações de ${escapeHtml(user.nome || user.login)}" aria-expanded="${openUserMenuId === user.id}">⋮</button><div class="access-v2-overflow-menu" ${openUserMenuId === user.id ? '' : 'hidden'}><button type="button" data-edit-access-user="${escapeHtml(user.id)}">Editar</button>${canAccess('usuarios.excluir') ? `<button type="button" class="is-danger" data-delete-access-user="${escapeHtml(user.id)}" ${isSelf ? 'disabled title="Você não pode excluir o próprio usuário"' : ''}>Excluir</button>` : ''}</div></div></article>`;
+    }).join('') : '<p class="empty-state">Nenhum usuário encontrado.</p>';
+    pagination.innerHTML = `<button type="button" data-access-page="prev" ${currentPage <= 1 ? 'disabled' : ''} aria-label="Página anterior">‹</button>${Array.from({ length: totalPages }, (_, index) => `<button type="button" data-access-page="${index + 1}" class="${currentPage === index + 1 ? 'is-active' : ''}">${index + 1}</button>`).join('')}<button type="button" data-access-page="next" ${currentPage >= totalPages ? 'disabled' : ''} aria-label="Próxima página">›</button><span>${filtered.length ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filtered.length)}` : '0'} de ${filtered.length}</span>`;
+    wireListActions();
+  };
+  const wireListActions = () => {
+    list.querySelectorAll('[data-select-access-user],[data-edit-access-user]').forEach((button) => button.addEventListener('click', () => {
+      const id = button.dataset.selectAccessUser || button.dataset.editAccessUser;
+      const user = sortedUsers.find((item) => item.id === id);
+      openUserMenuId = '';
+      if (user) fillForm(user);
+    }));
+    list.querySelectorAll('[data-access-menu]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openUserMenuId = openUserMenuId === button.dataset.accessMenu ? '' : button.dataset.accessMenu;
+      renderList();
+      if (openUserMenuId) {
+        setTimeout(() => document.addEventListener('click', () => { openUserMenuId = ''; renderList(); }, { once: true }), 0);
+      }
+    }));
+    list.querySelectorAll('[data-delete-access-user]').forEach((button) => button.addEventListener('click', async () => {
+      const user = sortedUsers.find((item) => item.id === button.dataset.deleteAccessUser);
+      if (!user || user.id === currentDatabaseUserId || !confirm(`Excluir o usuário ${user.nome || user.login}?\n\nOs vínculos de permissões e retiros deste usuário também serão removidos.`)) return;
+      try { await dataService.deleteAccessUser(user.id); await renderUsuariosSeguranca({ messageText: 'Usuário excluído.' }); } catch (error) { message.textContent = error.message || 'Não foi possível excluir o usuário.'; }
+    }));
+  };
+  form.querySelectorAll('[data-access-tab]').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.accessTab)));
+  form.querySelectorAll('[data-permission-master]').forEach((master) => master.addEventListener('change', () => {
+    form.querySelectorAll(`input[data-permission-module="${CSS.escape(master.dataset.permissionMaster)}"]:not(:disabled)`).forEach((input) => { input.checked = master.checked; });
+    syncPermissionGroups();
+  }));
+  form.querySelectorAll('.access-v2-master-switch').forEach((label) => label.addEventListener('click', (event) => event.stopPropagation()));
+  form.querySelectorAll('input[name="permission"]').forEach((input) => input.addEventListener('change', syncPermissionGroups));
+  app.querySelector('#apply-profile-permissions-v2').addEventListener('click', () => {
+    const profileId = app.querySelector('#access-v2-base-profile').value;
+    if (!form.elements.perfilId.disabled) form.elements.perfilId.value = profileId;
+    applyPermissions(profilePermissionIds(profileId));
+    protectCurrentUserControls();
+    message.textContent = 'Permissões do perfil aplicadas. Salve para confirmar.';
+  });
+  app.querySelector('#copy-user-access-v2').addEventListener('click', () => {
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay access-v2-copy-overlay';
+    const choices = sortedUsers.filter((user) => user.id !== editingUser?.id);
+    overlay.innerHTML = `<div class="receiver-sector-dialog access-v2-copy-dialog"><div class="panel-heading"><div><p class="eyebrow">Copiar acessos</p><h2>Escolha o usuário de origem</h2><p>Perfil, retiros e permissões serão copiados para o formulário atual.</p></div></div><label class="field"><span>Buscar usuário</span><input type="search" data-copy-user-search placeholder="Nome ou login" autofocus></label><div class="access-v2-copy-list">${choices.map((user) => `<button type="button" data-copy-access-user="${escapeHtml(user.id)}"><strong>${escapeHtml(user.nome || user.login)}</strong><span>${escapeHtml(user.login)} · ${escapeHtml(profileById.get(user.perfilId)?.nome || 'Sem perfil')}</span></button>`).join('') || '<p class="empty-state">Nenhum outro usuário disponível.</p>'}</div><div class="form-actions"><button type="button" class="close-sector-view">Cancelar</button></div></div>`;
+    const close = () => overlay.remove();
+    overlay.querySelector('.close-sector-view').addEventListener('click', close);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    overlay.querySelector('[data-copy-user-search]')?.addEventListener('input', (event) => { const term = normalizeText(event.target.value); overlay.querySelectorAll('[data-copy-access-user]').forEach((button) => { button.hidden = term && !normalizeText(button.textContent).includes(term); }); });
+    overlay.querySelectorAll('[data-copy-access-user]').forEach((button) => button.addEventListener('click', () => {
+      const source = sortedUsers.find((user) => user.id === button.dataset.copyAccessUser);
+      if (!source) return;
+      if (!form.elements.perfilId.disabled) form.elements.perfilId.value = source.perfilId || perfis[0]?.id || '';
+      app.querySelector('#access-v2-base-profile').value = form.elements.perfilId.value;
+      applyPermissions([...effectivePermissions(source)]);
+      applyRetreats(usuarioRetiros.filter((item) => item.usuarioId === source.id).map((item) => item.retiroId));
+      protectCurrentUserControls();
+      message.textContent = `Acessos de ${source.nome || source.login} copiados. Salve para confirmar.`;
+      close();
+    }));
+    app.append(overlay);
+  });
+  app.querySelector('#new-access-user-v2')?.addEventListener('click', () => { editingUser = null; fillForm(null); form.elements.nome.focus(); });
+  app.querySelector('#cancel-access-user-v2').addEventListener('click', () => fillForm(editingUser || sortedUsers[0] || null));
+  app.querySelectorAll('[data-access-filter]').forEach((button) => button.addEventListener('click', () => { currentFilter = button.dataset.accessFilter; currentPage = 1; app.querySelectorAll('[data-access-filter]').forEach((item) => item.classList.toggle('is-active', item === button)); renderList(); }));
+  search.addEventListener('input', () => { currentPage = 1; renderList(); });
+  pagination.addEventListener('click', (event) => { const button = event.target.closest('[data-access-page]'); if (!button) return; const pages = Math.max(1, Math.ceil(filteredUsers().length / pageSize)); currentPage = button.dataset.accessPage === 'prev' ? Math.max(1, currentPage - 1) : button.dataset.accessPage === 'next' ? Math.min(pages, currentPage + 1) : Number(button.dataset.accessPage); renderList(); });
+  form.addEventListener('keydown', (event) => { if (event.key === 'Escape' && openUserMenuId) { openUserMenuId = ''; renderList(); } });
+  list.addEventListener('keydown', (event) => { if (event.key === 'Escape' && openUserMenuId) { openUserMenuId = ''; renderList(); } });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) { switchTab('data'); return; }
+    const data = new FormData(form);
+    const isSelf = editingUser?.id === currentDatabaseUserId;
+    const permissions = permissoes.map((permission) => ({ permissaoId: permission.id, permitido: selectedPermissionIds().has(permission.id) }));
+    try {
+      const saved = await dataService.saveAccessUser({ id: data.get('id') || undefined, nome: data.get('nome'), login: data.get('login'), password: data.get('password'), perfilId: isSelf ? editingUser.perfilId : data.get('perfilId'), ativo: isSelf ? true : data.get('ativo') === 'on', retiroIds: data.getAll('retiroIds'), permissions });
+      await renderUsuariosSeguranca({ selectedUserId: saved.id, messageText: 'Alterações salvas com segurança.' });
+    } catch (error) { message.textContent = error.message || 'Não foi possível salvar o usuário.'; }
+  });
+  fillForm(editingUser);
+  if (messageText) message.textContent = messageText;
+}
+
 async function ensureAuthenticated() {
   if (publicRetreatId) return true;
   if (authChecked) return Boolean(currentUser);
@@ -7555,7 +7792,7 @@ async function route() {
     }
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
     const target = location.hash.slice(1) || firstAllowedSection();
-    if (target === 'usuarios') { await ensureRetreatFocusLoaded(); return renderUsuarios(); }
+    if (target === 'usuarios') { await ensureRetreatFocusLoaded(); return renderUsuariosSeguranca(); }
     if (target === 'backup') { await ensureRetreatFocusLoaded(); return renderBackup(); }
     if (target === 'relatorios') { await ensureRetreatFocusLoaded(); if (!ensureViewPermission('relatorios')) return; return renderRelatorios(); }
     const section = target.startsWith('configuracoes/') ? 'configuracoes' : target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
