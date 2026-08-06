@@ -5,6 +5,9 @@ import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
 const publicPathReceiverToken = location.pathname.match(/^\/recebedor\/([^/?#]+)/)?.[1];
+const publicStudentIdentifiedPath = location.pathname.match(/^\/cadastro-cursista\/ficha(\d+)\/([^/?#]+)/i);
+const publicStudentRegistrationToken = document.body.dataset.publicStudentToken || publicStudentIdentifiedPath?.[2] || location.pathname.match(/^\/cadastro-cursista\/([^/?#]+)/)?.[1] || '';
+const publicStudentRegistrationFileNumber = Number(document.body.dataset.publicStudentFileNumber || publicStudentIdentifiedPath?.[1]) || 0;
 const publicParams = new URLSearchParams(location.search);
 const publicRetreatId = publicParams.get('adesao') || (publicPathRetreatId ? decodeURIComponent(publicPathRetreatId) : '');
 const publicSectorToken = publicParams.get('setor') || publicParams.get('setorToken') || '';
@@ -778,6 +781,10 @@ function layout(content, active = 'inicio') {
   if (closeHomeRetreatSelectorOnOutsidePointer) {
     document.removeEventListener('pointerdown', closeHomeRetreatSelectorOnOutsidePointer, true);
     closeHomeRetreatSelectorOnOutsidePointer = null;
+  }
+  if (publicStudentRegistrationToken) {
+    app.innerHTML = `<main class="public-student-shell shared-public-student-shell">${content}</main>`;
+    return;
   }
   const isPublicReceiverView = Boolean(publicReceiverToken);
   const focusedRetreat = selectedRetreat();
@@ -3142,6 +3149,94 @@ const wireFinancialSummaryButton = ({ buttonSelector, loadRows, ...options }) =>
   });
 };
 
+const publicStudentRegistrationApiUrl = () => `/api/cadastro-cursista/${encodeURIComponent(publicStudentRegistrationToken)}${publicStudentRegistrationFileNumber ? `?ficha=${publicStudentRegistrationFileNumber}` : ''}`;
+const publicStudentUnavailable = (title, message) => {
+  app.innerHTML = `<main class="public-student-shell"><section class="panel public-student-state"><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></section></main>`;
+};
+const publicStudentPayload = (form) => {
+  const payload = Object.fromEntries(new FormData(form));
+  form.querySelectorAll('input[type="checkbox"]').forEach((input) => { if (input.name) payload[input.name] = input.checked; });
+  ['cpf', 'cpfDele', 'cpfDela'].forEach((name) => { if (payload[name]) payload[name] = normalizeCpf(payload[name]); });
+  return payload;
+};
+const wireSharedPublicStudentSubmission = (form, context, messageSelector) => {
+  const message = app.querySelector(messageSelector);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    if (message) message.textContent = 'Salvando cadastro...';
+    try {
+      const response = await fetch(publicStudentRegistrationApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(publicStudentPayload(form)),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Não foi possível concluir o cadastro.');
+      publicStudentUnavailable('Cadastro realizado', `A ficha ${context.numeroFicha} foi cadastrada com sucesso.`);
+    } catch (error) {
+      if (message) message.textContent = error.message || 'Não foi possível concluir o cadastro.';
+      button.disabled = false;
+    }
+  });
+};
+
+function prepareSharedPublicCoupleStudentForm(context) {
+  const form = app.querySelector('#cursista-smp-form');
+  if (!form) return;
+  app.querySelector('#smp-financial-summary')?.remove();
+  app.querySelector('.cursista-smp-tools')?.remove();
+  const fileNumberInput = app.querySelector('[name="numeroFichaSmp"]');
+  if (fileNumberInput) {
+    fileNumberInput.value = String(context.numeroFicha);
+    fileNumberInput.readOnly = true;
+  }
+  ['valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp'].forEach((name) => form.elements[name]?.closest('.field')?.remove());
+  ['recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'].forEach((name) => form.elements[name]?.remove());
+  form.querySelector('.cursista-smp-actions')?.replaceChildren();
+  const actions = form.querySelector('.cursista-smp-actions');
+  if (actions) actions.innerHTML = '<div><button type="submit">Salvar cadastro <span>→</span></button></div>';
+  form.elements.nomeDele.required = true;
+  form.elements.nomeDela.required = true;
+  form.querySelectorAll('[name="cpfDele"], [name="cpfDela"]').forEach((input) => input.addEventListener('input', () => { input.value = formatCpf(input.value); }));
+  ['foneDele', 'foneDela', 'foneApresentante', 'foneFamiliar', 'foneEmergenciaEpc'].forEach((name) => {
+    form.elements[name]?.addEventListener('blur', () => { form.elements[name].value = formatBrazilianPhone(form.elements[name].value); });
+  });
+  const kidsNotNeeded = form.elements.smpKidsNotNeeded;
+  const kidsList = kidsNotNeeded?.closest('.choice-block')?.querySelector('.kids-list');
+  kidsNotNeeded?.addEventListener('change', () => { if (kidsList) kidsList.hidden = kidsNotNeeded.checked; });
+  form.querySelectorAll('[name^="smpKidNascimento"]').forEach((input) => input.addEventListener('change', () => {
+    if (cursistaKidExceedsRetreatAgeLimit(context.retiro, input.value)) alert('Criança acima da idade permitida pra esse retiro');
+  }));
+  form.classList.add('shared-public-student-form');
+  wireSharedPublicStudentSubmission(form, context, '#cursista-smp-message');
+}
+
+async function renderSharedPublicStudentRegistration() {
+  try {
+    const response = await fetch(publicStudentRegistrationApiUrl(), { cache: 'no-store' });
+    const context = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(context.error || 'Link de cadastro não encontrado.');
+    if (publicStudentRegistrationFileNumber && publicStudentRegistrationFileNumber !== Number(context.numeroFicha)) return publicStudentUnavailable('Link indisponível', 'O número da ficha não corresponde a este link.');
+    if (context.cadastrado) return publicStudentUnavailable('Ficha já cadastrada', 'Este link já foi utilizado e não permite consultar ou editar os dados enviados.');
+    if (context.inscricaoEncerrada) return publicStudentUnavailable('Inscrição encerrada', 'Este link não está mais disponível para cadastro.');
+    if (!context.ativo) return publicStudentUnavailable('Cadastro indisponível', 'Este retiro não está recebendo cadastros por este link.');
+    context.retiro = { ...(context.retiro || {}), tipoFichaCursista: context.tipoFichaCursista };
+    retreats = [context.retiro];
+    currentUser = { id: 'public-student', username: 'cadastro-publico', role: 'admin', perfilCodigo: 'admin', permissions: [], retiroIds: [context.retiro.id] };
+    setSelectedRetreatId(context.retiro.id);
+    document.body.classList.add('shared-public-student-mode');
+    if (context.tipoFichaCursista === 'cursista-individual') return renderCursista({ publicContext: context });
+    const active = context.tipoFichaCursista === 'cursista-epc' ? 'cursista-epc' : 'cursista-smp';
+    renderCursistaSmpScreen({ title: active === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP', active });
+    prepareSharedPublicCoupleStudentForm(context);
+  } catch (error) {
+    publicStudentUnavailable('Link indisponível', error.message || 'Confira o endereço recebido da equipe do retiro.');
+  }
+}
+
 function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-smp' } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
@@ -4030,7 +4125,7 @@ async function renderCursistaEpc(initialFileNumber = 0) {
   await setupCursistaSmpTestCrud({ expectedType: 'cursista-epc', permissionPrefix: 'cursista-epc', label: 'Cursista EPC', initialFileNumber });
 }
 
-async function renderCursista() {
+async function renderCursista({ publicContext = null } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const focusStudentRetreat = selectedRetreat();
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
@@ -4136,6 +4231,19 @@ async function renderCursista() {
     });
   });
   syncStudentConditionalRequired();
+  if (publicContext) {
+    app.querySelector('#student-financial-summary')?.remove();
+    app.querySelector('.student-registration-tools')?.remove();
+    app.querySelector('.student-heading-actions')?.remove();
+    if (studentFileNumberInput) {
+      studentFileNumberInput.value = String(publicContext.numeroFicha);
+      studentFileNumberInput.readOnly = true;
+      studentFileNumberInput.required = false;
+    }
+    form.classList.add('shared-public-student-form');
+    wireSharedPublicStudentSubmission(form, publicContext, '#student-message');
+    return;
+  }
   const duplicateStudentCpfMessage = 'CPF já cadastrado';
   const duplicateStudentFileNumberMessage = 'Número da ficha já cadastrado neste retiro.';
   const studentTeamConflictMessage = 'Este CPF já está cadastrado na equipe de trabalho deste retiro.';
@@ -7983,6 +8091,7 @@ function renderLogin(message = '') {
 
 async function route() {
   try {
+    if (publicStudentRegistrationToken) return renderSharedPublicStudentRegistration();
     if (publicRetreatId) return renderPublicForm(publicRetreatId, false, publicSectorToken);
     if (publicReceiverToken) {
       if (!publicReceiverRetreatId) {
