@@ -10,11 +10,11 @@ function publicStudentRegistrationPageHtml(token = '', fileNumber = '') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Cadastro de cursista</title>
-    <link rel="stylesheet" href="/styles.css?v=20260806-ajuda-links-cadastro" />
+    <link rel="stylesheet" href="/styles.css?v=20260806-texto-links-cursistas" />
   </head>
   <body data-public-student-token="${escapeHtml(token)}" data-public-student-file-number="${escapeHtml(fileNumber)}">
     <div id="app"><main class="public-student-shell"><section class="panel"><p>Carregando cadastro...</p></section></main></div>
-    <script type="module" src="/adminApp.js?v=20260806-ajuda-links-cadastro"></script>
+    <script type="module" src="/adminApp.js?v=20260806-texto-links-cursistas"></script>
   </body>
 </html>`;
 }

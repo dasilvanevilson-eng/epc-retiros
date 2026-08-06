@@ -87,6 +87,7 @@ assert(studentLinksPanelIndex > teamLinksPanelIndex, 'O painel de links de cursi
 const teamLinksPanelSource = retreatDetailSource.slice(teamLinksPanelIndex, studentLinksPanelIndex);
 assert.doesNotMatch(teamLinksPanelSource, /<p class="hint">Compartilhe somente os links dos setores ativos/, 'O comentário fixo dos links por setor deve ser removido.');
 assert.match(teamLinksPanelSource, /sector-links-info[\s\S]*aria-label="Informações sobre os links de cadastro da equipe por setor"[\s\S]*aria-expanded="false"[\s\S]*aria-controls="sector-links-explanation"/, 'O painel da equipe deve oferecer um botão de informação acessível.');
+assert.match(teamLinksPanelSource, /sector-links-info[\s\S]*\/assets\/info-icon\.png/, 'O painel da equipe deve usar a nova imagem de informação.');
 assert.match(teamLinksPanelSource, /O link “Cadastro” abre somente a ficha limitada ao setor[\s\S]*Acompanhamento do líder[\s\S]*Animação\/Jovem de sala[\s\S]*setor Cozinha[\s\S]*setor Espaço Kids/, 'A janela deve explicar o cadastro, o acompanhamento e as visualizações especiais por setor.');
 assert.match(teamLinksPanelSource, /setSectorLinksExplanationOpen[\s\S]*pointerdown[\s\S]*Escape/, 'A explicação dos links por setor deve fechar pelo botão, por clique externo e pela tecla Esc.');
 assert.match(styles, /\.sector-links-info\{[\s\S]*border-radius:50%/, 'O símbolo de informação dos setores deve ser circular.');
@@ -94,10 +95,11 @@ const studentLinksPanelSource = retreatDetailSource.slice(studentLinksPanelIndex
 assert.match(studentLinksPanelSource, /Links de cadastro de cursistas/, 'O novo painel deve possuir o titulo solicitado.');
 assert.doesNotMatch(studentLinksPanelSource, /Cada link corresponde a uma ficha exclusiva do retiro em foco\./, 'O comentário fixo deve ser removido do cabeçalho.');
 assert.match(studentLinksPanelSource, /student-registration-links-info[\s\S]*aria-label="Informações sobre os links de cadastro de cursistas"[\s\S]*aria-expanded="false"[\s\S]*aria-controls="student-registration-links-explanation"/, 'O cabeçalho deve oferecer um botão de informação acessível.');
-assert.match(studentLinksPanelSource, /Esses links servem para compartilhar o acesso a uma ficha específica[\s\S]*posteriormente excluída[\s\S]*voltará a permitir o acesso/, 'A caixa de ajuda deve explicar o uso, o preenchimento interno e a reativação do link.');
+assert.match(studentLinksPanelSource, /student-registration-links-info[\s\S]*\/assets\/info-icon\.png/, 'O painel de cursistas deve usar a nova imagem de informação.');
+assert.match(studentLinksPanelSource, /Esses links têm o objetivo de compartilhar[\s\S]*preenchida internamente[\s\S]*posteriormente excluída[\s\S]*Inscrições encerradas[\s\S]*login e senha[\s\S]*Resumo financeiro[\s\S]*cadastrar pagamentos/, 'A caixa de ajuda deve apresentar os seis tópicos de orientação dos links de cursistas.');
 assert.match(studentLinksPanelSource, /setStudentLinksExplanationOpen[\s\S]*pointerdown[\s\S]*Escape/, 'A explicação deve fechar pelo botão, por clique externo e pela tecla Esc.');
 assert.match(styles, /\.student-registration-links-info\{[\s\S]*border-radius:50%/, 'O símbolo de informação deve ser apresentado como botão circular.');
-assert.match(styles, /\.student-registration-links-explanation\{[\s\S]*width:min\(430px,calc\(100vw - 48px\)\)/, 'A explicação deve respeitar a largura da tela.');
+assert.match(styles, /\.student-registration-links-explanation\{[\s\S]*width:min\(620px,calc\(100vw - 48px\)\)/, 'A explicação deve acomodar os tópicos e respeitar a largura da tela.');
 assert.match(studentLinksPanelSource, /cadastro-cursista\/ficha\$\{link\.numeroFicha\}\/\$\{encodeURIComponent\(link\.token\)\}/, 'Cada ficha deve gerar seu link público identificado e exclusivo.');
 assert.match(studentLinksPanelSource, /<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*class="sr-only">Endereço público da ficha \$\{link\.numeroFicha\}/, 'O cabeçalho deve identificar a ficha sem repetir o número visualmente acima do link.');
 assert.match(studentLinksPanelSource, /data-copy-student-link/, 'O painel deve permitir copiar o link público.');

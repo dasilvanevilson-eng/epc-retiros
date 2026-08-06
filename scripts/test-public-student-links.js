@@ -103,7 +103,7 @@ assert.match(adminSource, /setSectorRegistrationLinkClosed\(id, sector, nextClos
 assert.match(vercelRoutes, /cadastro-cursista\/ficha\(\[0-9\]\+\)\/\(\[\^\/\]\+\)/, 'A rota identificada deve preceder a compatibilidade antiga.');
 assert.match(vercelRoutes, /cadastro-cursista\/\(\[\^\/\]\+\)/, 'A rota antiga deve permanecer disponível.');
 assert.match(localServer, /identified\?\.\[1\][\s\S]*identified\?\.\[2\][\s\S]*legacy\?\.\[1\]/, 'O servidor local deve aceitar os dois formatos.');
-assert.match(publicPage, /src="\/adminApp\.js\?v=20260806-ajuda-links-cadastro"/, 'O acesso público deve carregar a mesma aplicação de formulário usada no acesso logado.');
+assert.match(publicPage, /src="\/adminApp\.js\?v=20260806-texto-links-cursistas"/, 'O acesso público deve carregar a mesma aplicação de formulário usada no acesso logado.');
 assert.doesNotMatch(publicPage, /publicStudentApp\.js/, 'A página pública não deve manter uma implementação visual separada.');
 assert.match(adminSource, /renderSharedPublicStudentRegistration[\s\S]*renderCursista\(\{ publicContext: context \}\)[\s\S]*renderCursistaSmpScreen/, 'Individual, SMP e EPC públicos devem reutilizar os renderizadores internos.');
 assert.match(adminSource, /if \(publicContext\)[\s\S]*student-financial-summary[\s\S]*wireSharedPublicStudentSubmission/, 'O modo público Individual deve retirar o resumo financeiro e manter envio público.');
