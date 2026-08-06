@@ -2011,6 +2011,7 @@ async function renderRetreat(id, selectedSector = '') {
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
   studentRegistrationLinksPanel.id = 'retreat-student-links';
   const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
+  const internalStudentSection = studentFormNavIds[retreat.tipoFichaCursista] || 'cursista';
   const canEditStudentLinkRecipient = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
   const studentLinksContent = studentLinkData?.error
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
@@ -2020,7 +2021,7 @@ async function renderRetreat(id, selectedSector = '') {
         const registered = link.status === 'cadastrada';
         const closed = link.inscricaoEncerrada === true;
         return `<article class="student-registration-link-row" data-student-link-row="${link.numeroFicha}" data-student-link-registered="${registered ? 'true' : 'false'}">
-          <div class="student-registration-link-heading"><div class="student-registration-link-title"><div class="student-registration-link-number"><strong>Ficha ${link.numeroFicha}</strong><span class="student-registration-link-status-note ${registered ? 'is-registered' : (closed ? 'is-closed' : 'is-available')}" data-student-link-status="${link.numeroFicha}">${registered ? 'Cadastrada' : (closed ? 'Encerrada' : 'Disponível')}</span></div><a class="secondary-button student-registration-link-open" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">Abrir</a><label class="student-registration-link-closed"><input type="checkbox" data-student-link-closed="${link.numeroFicha}" ${closed ? 'checked' : ''} ${canEditStudentLinkRecipient ? '' : 'disabled'}><span>Inscrição encerrada</span></label></div></div>
+          <div class="student-registration-link-heading"><div class="student-registration-link-title"><div class="student-registration-link-number"><strong>Ficha ${link.numeroFicha}</strong><span class="student-registration-link-status-note ${registered ? 'is-registered' : (closed ? 'is-closed' : 'is-available')}" data-student-link-status="${link.numeroFicha}">${registered ? 'Cadastrada' : (closed ? 'Encerrada' : 'Disponível')}</span></div><a class="secondary-button student-registration-link-open" href="#${internalStudentSection}?ficha=${link.numeroFicha}" aria-label="Abrir ficha ${link.numeroFicha} na opção de cursistas">Abrir</a><label class="student-registration-link-closed"><input type="checkbox" data-student-link-closed="${link.numeroFicha}" ${closed ? 'checked' : ''} ${canEditStudentLinkRecipient ? '' : 'disabled'}><span>Inscrição encerrada</span></label></div></div>
           <span class="student-registration-link-closed-feedback" data-student-link-closed-feedback="${link.numeroFicha}" role="status"></span>
           <div class="student-registration-link-url"><label class="field"><span class="sr-only">Endereço público da ficha ${link.numeroFicha}</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button></div>
           <div class="student-registration-link-recipient"><label class="field"><span>Enviado para</span><input maxlength="160" autocomplete="off" value="${escapeHtml(link.enviadoPara || '')}" data-student-link-recipient="${link.numeroFicha}" ${canEditStudentLinkRecipient ? '' : 'readonly'} aria-label="Enviado para, ficha ${link.numeroFicha}"></label>${canEditStudentLinkRecipient ? `<button type="button" class="secondary-button" data-save-student-link-recipient="${link.numeroFicha}">Salvar destinatário</button>` : ''}<span class="student-registration-link-feedback" data-student-link-recipient-feedback="${link.numeroFicha}" role="status"></span></div>
@@ -3442,7 +3443,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   }
 }
 
-async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permissionPrefix = 'cursista-smp', label = 'Cursista SMP' } = {}) {
+async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permissionPrefix = 'cursista-smp', label = 'Cursista SMP', initialFileNumber = 0 } = {}) {
   const form = app.querySelector('#cursista-smp-form');
   if (!form) return;
   const retreat = selectedRetreat();
@@ -3955,7 +3956,20 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const blockedReason = canUseSmp();
     newButton.disabled = Boolean(blockedReason) || !canCreateSmp();
     editButton.disabled = Boolean(blockedReason) || !canEditSmp();
-    setMessage(blockedReason || idleNotice());
+    const requestedFileNumber = String(initialFileNumber || '').trim();
+    if (requestedFileNumber) {
+      const record = findRecordByFileNumber(requestedFileNumber);
+      if (record) {
+        loadRecord(record);
+        setMessage(`${label} carregado pela ficha ${record.numeroFichaSmp || record.id}.`);
+      } else if (!blockedReason && canCreateSmp()) {
+        clearForm({ unlock: true, focus: false, notice: `Nova ficha ${requestedFileNumber} - ${label}.` });
+        if (fileNumberInput) fileNumberInput.value = requestedFileNumber;
+      } else {
+        if (fileNumberInput) fileNumberInput.value = requestedFileNumber;
+        setMessage(blockedReason || smpPermissionMessage('cadastrar'));
+      }
+    } else setMessage(blockedReason || idleNotice());
   } catch (error) {
     setMessage(error.message || `Nao foi possivel carregar as fichas ${label}.`);
     newButton.disabled = true;
@@ -4004,16 +4018,16 @@ function setupCoupleStudentFinancialSummary(studentFormType = 'cursista-smp') {
   });
 }
 
-async function renderCursistaSmp() {
+async function renderCursistaSmp(initialFileNumber = 0) {
   renderCursistaSmpScreen({ title: 'Cursista SMP', active: 'cursista-smp' });
   setupCoupleStudentFinancialSummary('cursista-smp');
-  await setupCursistaSmpTestCrud({ expectedType: 'cursista-smp', permissionPrefix: 'cursista-smp', label: 'Cursista SMP' });
+  await setupCursistaSmpTestCrud({ expectedType: 'cursista-smp', permissionPrefix: 'cursista-smp', label: 'Cursista SMP', initialFileNumber });
 }
 
-async function renderCursistaEpc() {
+async function renderCursistaEpc(initialFileNumber = 0) {
   renderCursistaSmpScreen({ title: 'Cursista EPC', active: 'cursista-epc' });
   setupCoupleStudentFinancialSummary('cursista-epc');
-  await setupCursistaSmpTestCrud({ expectedType: 'cursista-epc', permissionPrefix: 'cursista-epc', label: 'Cursista EPC' });
+  await setupCursistaSmpTestCrud({ expectedType: 'cursista-epc', permissionPrefix: 'cursista-epc', label: 'Cursista EPC', initialFileNumber });
 }
 
 async function renderCursista() {
@@ -7979,7 +7993,10 @@ async function route() {
       return renderRecebedor();
     }
     if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
-    const target = location.hash.slice(1) || firstAllowedSection();
+    const rawTarget = location.hash.slice(1) || firstAllowedSection();
+    const [target, targetQuery = ''] = rawTarget.split('?');
+    const targetParams = new URLSearchParams(targetQuery);
+    const requestedStudentFileNumber = Math.max(0, Math.trunc(Number(targetParams.get('ficha')) || 0));
     if (target === 'usuarios') { await ensureRetreatFocusLoaded(); return renderUsuariosSeguranca(); }
     if (target === 'backup') { await ensureRetreatFocusLoaded(); return renderBackup(); }
     if (target === 'relatorios') { await ensureRetreatFocusLoaded(); if (!ensureViewPermission('relatorios')) return; return renderRelatorios(); }
@@ -7987,11 +8004,11 @@ async function route() {
     if (!ensureViewPermission(section)) return;
     if (target === 'cursista-epc') {
       await loadData();
-      return renderCursistaEpc();
+      return renderCursistaEpc(requestedStudentFileNumber);
     }
     if (target === 'cursista-smp') {
       await loadData();
-      return renderCursistaSmp();
+      return renderCursistaSmp(requestedStudentFileNumber);
     }
     await loadData();
     if (target === 'inicio') return renderHome();
@@ -8247,6 +8264,22 @@ async function route() {
     document.addEventListener('pointerdown', closeStudentSearch, true);
     document.addEventListener('focusin', closeStudentSearch, true);
     form.querySelector('.delete-student')?.addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
+    if (requestedStudentFileNumber && studentFileNumberInput) {
+      const students = await dataService.listCursistas();
+      const requestedStudent = students.find((student) => student.retiroId === activeRetreat?.id && Number(student.numeroFichaIndividual) === requestedStudentFileNumber);
+      if (requestedStudent) {
+        loadStudent(requestedStudent);
+        ensureLoadedStudentMedicationDefault(requestedStudent);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (canEditStudentRetreat && canAccess('cursista.criar')) {
+        clearStudentForm({ focus: false, message: `Nova ficha ${requestedStudentFileNumber} - Cursista Individual.` });
+        studentFileNumberInput.value = String(requestedStudentFileNumber);
+        setStudentFormLocked(false);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        resetStudentFileLookupState(String(requestedStudentFileNumber), canEditStudentRetreat ? 'Você não tem permissão para cadastrar cursistas.' : 'Retiro concluído: ficha não cadastrada.');
+      }
+    }
       return;
     }
     if (target === 'pessoas') { const focusRetreat = selectedRetreat(); return focusRetreat ? renderPublicForm(focusRetreat.id, true) : renderPessoas(); } if (target.startsWith('pessoas/')) { const [, personId, personRetreatId, source] = target.split('/'); return renderPessoa(personId, personRetreatId, source); } renderHome();

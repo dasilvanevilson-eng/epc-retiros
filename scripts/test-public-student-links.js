@@ -81,6 +81,9 @@ assert.match(adminSource, /saveStudentRegistrationLinkRecipient\(id, numeroFicha
 assert.match(adminSource, />Inscrição encerrada</);
 assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-closed/, 'O checkbox deve ficar imediatamente ao lado do número da ficha.');
 assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-open[\s\S]*student-registration-link-closed/, 'Abrir deve ficar entre o número da ficha e o checkbox.');
+assert.match(adminSource, /const internalStudentSection = studentFormNavIds\[retreat\.tipoFichaCursista\] \|\| 'cursista'/, 'O destino interno deve respeitar o tipo de cursista do retiro.');
+assert.match(adminSource, /student-registration-link-open" href="#\$\{internalStudentSection\}\?ficha=\$\{link\.numeroFicha\}"/, 'Abrir deve acessar a opção interna com o número da ficha.');
+assert.doesNotMatch(adminSource, /student-registration-link-open" href="\$\{escapeHtml\(publicUrl\)\}/, 'Abrir não deve mais acessar o formulário público.');
 assert.match(adminSource, /student-registration-link-number[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-status-note/, 'O status deve aparecer como comentário do número da ficha.');
 assert.doesNotMatch(adminSource, /<\/div><span class="status[^>]*data-student-link-status/, 'O status não deve ocupar um selo separado no cabeçalho.');
 assert.match(adminSource, /student-registration-link-url[\s\S]*class="sr-only">Endereço público da ficha \$\{link\.numeroFicha\}[\s\S]*data-copy-student-link/, 'Copiar link deve ficar à direita do campo da URL com rótulo apenas acessível.');
@@ -88,6 +91,9 @@ assert.doesNotMatch(adminSource, /<span>Link público — ficha/, 'O número da 
 assert.match(adminSource, /id="view-student-link-status">Visualizar<\/button>/, 'A caixa de links dos cursistas deve possuir a ação Visualizar.');
 assert.match(adminSource, /\['numeroFicha', 'Nr Ficha'\][\s\S]*\['nomeCadastrado', 'Nome cursista\/casal'\][\s\S]*\['enviadoPara', 'Enviada para'\][\s\S]*\['status', 'Status'\]/, 'A visualização deve apresentar as quatro colunas solicitadas.');
 assert.match(adminSource, /\[\.\.\.studentLinks\]\.sort[\s\S]*aria-sort[\s\S]*data-student-link-sort/, 'Todas as fichas devem ser listadas com ordenação por qualquer coluna.');
+assert.match(adminSource, /const \[target, targetQuery = ''\] = rawTarget\.split\('\?'\)[\s\S]*targetParams\.get\('ficha'\)/, 'A rota interna deve interpretar o número da ficha.');
+assert.match(adminSource, /renderCursistaEpc\(requestedStudentFileNumber\)[\s\S]*renderCursistaSmp\(requestedStudentFileNumber\)/, 'SMP e EPC devem receber a ficha solicitada.');
+assert.match(adminSource, /requestedStudent[\s\S]*loadStudent\(requestedStudent\)[\s\S]*Nova ficha \$\{requestedStudentFileNumber\}/, 'A tela Individual deve consultar ou preparar a ficha solicitada.');
 assert.match(stylesSource, /@media \(max-width:640px\)[\s\S]*\.student-registration-link-recipient,\.student-registration-link-url\{grid-template-columns:minmax\(0,1fr\) auto\}/, 'Os campos e botões devem manter no mobile a mesma disposição em linha do desktop.');
 assert.match(stylesSource, /@media \(max-width:640px\)[\s\S]*\.student-registration-link-title\{flex-wrap:nowrap[\s\S]*\.student-registration-link-open\{width:auto/, 'Abrir deve permanecer compacto entre a ficha e o checkbox no mobile.');
 assert.match(adminSource, /setStudentRegistrationLinkClosed\(id, numeroFicha, checkbox\.checked\)/);
