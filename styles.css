@@ -285,15 +285,15 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
 .student-registration-link-row{display:grid;gap:12px;padding:16px;border:1px solid var(--line,#dfe6dc);border-radius:12px;background:var(--surface-soft,#f8faf6)}
 .student-registration-link-heading,.student-registration-link-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .student-registration-link-heading strong{font-size:17px;color:var(--green-900,#203c26)}
+.student-registration-link-title{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .student-registration-link-actions{justify-content:flex-start}
 .student-registration-link-actions .secondary-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none}
 .student-registration-link-recipient{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}
 .student-registration-link-recipient .secondary-button{min-height:44px}
 .student-registration-link-feedback{grid-column:1 / -1;min-height:20px;color:var(--text-muted,#637064);font-size:13px}
-.student-registration-link-closed{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:32px}
-.student-registration-link-closed label{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--green-900,#203c26);cursor:pointer}
+.student-registration-link-closed{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--green-900,#203c26);cursor:pointer}
 .student-registration-link-closed input{width:18px;height:18px;margin:0;accent-color:var(--green-700,#356d41)}
-.student-registration-link-closed [role="status"]{color:var(--text-muted,#637064);font-size:13px}
+.student-registration-link-closed-feedback{min-height:18px;margin-top:-8px;color:var(--text-muted,#637064);font-size:13px}
 .student-registration-link-registration{margin:0;padding:10px 12px;border-left:4px solid var(--green-500,#478a55);border-radius:6px;background:var(--surface,#fff)}
 .public-student-shell{width:min(1120px,calc(100% - 28px));margin:0 auto;padding:24px 0 56px}
 .public-student-shell>.hero{margin-bottom:18px;border-radius:18px}

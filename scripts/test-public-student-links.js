@@ -78,6 +78,7 @@ assert.match(adminSource, /Cursista cadastrado/);
 assert.match(adminSource, /Casal cadastrado/);
 assert.match(adminSource, /saveStudentRegistrationLinkRecipient\(id, numeroFicha, input\.value\)/);
 assert.match(adminSource, />Inscrição encerrada</);
+assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-closed/, 'O checkbox deve ficar imediatamente ao lado do número da ficha.');
 assert.match(adminSource, /setStudentRegistrationLinkClosed\(id, numeroFicha, checkbox\.checked\)/);
 assert.match(adminSource, /canAccess\('links-cadastro\.editar'\) && canModifyRetreat\(retreat\)/);
 assert.match(adminSource, /setSectorRegistrationLinkClosed\(id, sector, nextClosed\)/);
