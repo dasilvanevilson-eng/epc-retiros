@@ -91,6 +91,7 @@ assert.match(teamLinksPanelSource, /sector-links-info[\s\S]*\/assets\/info-icon\
 assert.match(teamLinksPanelSource, /O link “Cadastro” abre somente a ficha limitada ao setor[\s\S]*Acompanhamento do líder[\s\S]*Animação\/Jovem de sala[\s\S]*setor Cozinha[\s\S]*setor Espaço Kids/, 'A janela deve explicar o cadastro, o acompanhamento e as visualizações especiais por setor.');
 assert.match(teamLinksPanelSource, /setSectorLinksExplanationOpen[\s\S]*pointerdown[\s\S]*Escape/, 'A explicação dos links por setor deve fechar pelo botão, por clique externo e pela tecla Esc.');
 assert.match(styles, /\.sector-links-info\{[\s\S]*border-radius:50%/, 'O símbolo de informação dos setores deve ser circular.');
+assert.match(styles, /\.student-registration-links-info,\.sector-links-info\{width:38px;height:38px/, 'A imagem de informação deve permanecer legível no tamanho exibido.');
 const studentLinksPanelSource = retreatDetailSource.slice(studentLinksPanelIndex, retreatDetailSource.indexOf("app.querySelectorAll('[data-copy-sector-link]'", studentLinksPanelIndex));
 assert.match(studentLinksPanelSource, /Links de cadastro de cursistas/, 'O novo painel deve possuir o titulo solicitado.');
 assert.doesNotMatch(studentLinksPanelSource, /Cada link corresponde a uma ficha exclusiva do retiro em foco\./, 'O comentário fixo deve ser removido do cabeçalho.');
