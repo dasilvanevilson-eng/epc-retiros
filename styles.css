@@ -304,7 +304,7 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
 .public-student-file span{display:grid;place-items:center;min-width:48px;min-height:42px;padding:8px 14px;border-radius:10px;background:#edf5e9;color:#285130;font-size:20px;font-weight:900}
 .public-student-state{max-width:620px;margin:12vh auto 0;text-align:center}
 .public-student-state h1{margin:8px 0;color:#203c26}
-@media (max-width:640px){.public-student-shell{width:min(100% - 18px,1120px);padding-top:10px}.student-registration-link-actions>*,.student-registration-link-recipient>*,.student-registration-link-url>*{width:100%}.student-registration-link-recipient,.student-registration-link-url{grid-template-columns:1fr}}
+@media (max-width:640px){.public-student-shell{width:min(100% - 18px,1120px);padding-top:10px}.student-registration-link-actions>*{width:100%}.student-registration-link-recipient,.student-registration-link-url{grid-template-columns:minmax(0,1fr) auto}.student-registration-link-recipient .secondary-button,.student-registration-link-url .secondary-button{width:auto;white-space:nowrap}}
 
 .login-shell {
   min-height:100vh;
