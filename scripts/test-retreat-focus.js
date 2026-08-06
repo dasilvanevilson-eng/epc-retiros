@@ -86,6 +86,12 @@ assert(teamLinksPanelIndex >= 0, 'O painel de links da equipe deve permanecer na
 assert(studentLinksPanelIndex > teamLinksPanelIndex, 'O painel de links de cursistas deve aparecer abaixo do painel da equipe.');
 const studentLinksPanelSource = retreatDetailSource.slice(studentLinksPanelIndex, retreatDetailSource.indexOf("app.querySelectorAll('[data-copy-sector-link]'", studentLinksPanelIndex));
 assert.match(studentLinksPanelSource, /Links de cadastro de cursistas/, 'O novo painel deve possuir o titulo solicitado.');
+assert.doesNotMatch(studentLinksPanelSource, /Cada link corresponde a uma ficha exclusiva do retiro em foco\./, 'O comentário fixo deve ser removido do cabeçalho.');
+assert.match(studentLinksPanelSource, /student-registration-links-info[\s\S]*aria-label="Informações sobre os links de cadastro de cursistas"[\s\S]*aria-expanded="false"[\s\S]*aria-controls="student-registration-links-explanation"/, 'O cabeçalho deve oferecer um botão de informação acessível.');
+assert.match(studentLinksPanelSource, /Esses links servem para compartilhar o acesso a uma ficha específica[\s\S]*posteriormente excluída[\s\S]*voltará a permitir o acesso/, 'A caixa de ajuda deve explicar o uso, o preenchimento interno e a reativação do link.');
+assert.match(studentLinksPanelSource, /setStudentLinksExplanationOpen[\s\S]*pointerdown[\s\S]*Escape/, 'A explicação deve fechar pelo botão, por clique externo e pela tecla Esc.');
+assert.match(styles, /\.student-registration-links-info\{[\s\S]*border-radius:50%/, 'O símbolo de informação deve ser apresentado como botão circular.');
+assert.match(styles, /\.student-registration-links-explanation\{[\s\S]*width:min\(430px,calc\(100vw - 48px\)\)/, 'A explicação deve respeitar a largura da tela.');
 assert.match(studentLinksPanelSource, /cadastro-cursista\/ficha\$\{link\.numeroFicha\}\/\$\{encodeURIComponent\(link\.token\)\}/, 'Cada ficha deve gerar seu link público identificado e exclusivo.');
 assert.match(studentLinksPanelSource, /<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*class="sr-only">Endereço público da ficha \$\{link\.numeroFicha\}/, 'O cabeçalho deve identificar a ficha sem repetir o número visualmente acima do link.');
 assert.match(studentLinksPanelSource, /data-copy-student-link/, 'O painel deve permitir copiar o link público.');

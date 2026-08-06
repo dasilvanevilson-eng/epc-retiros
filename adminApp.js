@@ -2036,8 +2036,33 @@ async function renderRetreat(id, selectedSector = '') {
         </article>`;
       }).join('')}</div>`
       : '<p class="empty-state">Configure o Número previsto de fichas de cursista para gerar os links públicos.</p>';
-  studentRegistrationLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Cada link corresponde a uma ficha exclusiva do retiro em foco.</p></div><button type="button" class="secondary-button" id="view-student-link-status">Visualizar</button></div>${studentLinksContent}`;
+  studentRegistrationLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div class="student-registration-links-heading"><div class="student-registration-links-title"><h2>Links de cadastro de cursistas</h2><div class="student-registration-links-help"><button type="button" class="student-registration-links-info" id="student-registration-links-info" aria-label="Informações sobre os links de cadastro de cursistas" aria-expanded="false" aria-controls="student-registration-links-explanation"><span aria-hidden="true">I</span></button><div class="student-registration-links-explanation" id="student-registration-links-explanation" role="note" hidden>Esses links servem para compartilhar o acesso a uma ficha específica do cadastro de cursista. Essa mesma ficha também poderá ser preenchida internamente pelo sistema e, nesse caso, o link perderá o acesso. Se uma ficha for cadastrada e posteriormente excluída, o link voltará a permitir o acesso a essa ficha.</div></div></div></div><button type="button" class="secondary-button" id="view-student-link-status">Visualizar</button></div>${studentLinksContent}`;
   app.querySelector('.detail-grid')?.append(studentRegistrationLinksPanel);
+  const studentLinksInfoButton = studentRegistrationLinksPanel.querySelector('#student-registration-links-info');
+  const studentLinksExplanation = studentRegistrationLinksPanel.querySelector('#student-registration-links-explanation');
+  const studentLinksHelp = studentRegistrationLinksPanel.querySelector('.student-registration-links-help');
+  const setStudentLinksExplanationOpen = (open, { restoreFocus = false } = {}) => {
+    if (!studentLinksInfoButton || !studentLinksExplanation) return;
+    studentLinksInfoButton.setAttribute('aria-expanded', String(open));
+    studentLinksExplanation.hidden = !open;
+    if (open) {
+      document.addEventListener('pointerdown', closeStudentLinksExplanationFromOutside);
+      document.addEventListener('keydown', closeStudentLinksExplanationFromKeyboard);
+    } else {
+      document.removeEventListener('pointerdown', closeStudentLinksExplanationFromOutside);
+      document.removeEventListener('keydown', closeStudentLinksExplanationFromKeyboard);
+      if (restoreFocus) studentLinksInfoButton.focus();
+    }
+  };
+  function closeStudentLinksExplanationFromOutside(event) {
+    if (!studentLinksHelp?.contains(event.target)) setStudentLinksExplanationOpen(false);
+  }
+  function closeStudentLinksExplanationFromKeyboard(event) {
+    if (event.key === 'Escape') setStudentLinksExplanationOpen(false, { restoreFocus: true });
+  }
+  studentLinksInfoButton?.addEventListener('click', () => {
+    setStudentLinksExplanationOpen(studentLinksInfoButton.getAttribute('aria-expanded') !== 'true');
+  });
   const openStudentLinkStatusWindow = () => {
     app.querySelector('.student-link-status-overlay')?.remove();
     const overlay = document.createElement('section');

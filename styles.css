@@ -6631,6 +6631,7 @@ body:has(.login-shell) {
 @media print{.operational-report-origin{display:none!important}}
 
 .student-registration-links-panel{grid-column:1 / -1}.student-registration-links-panel .empty-state{padding-top:14px}
+.student-registration-links-heading{position:relative}.student-registration-links-title{display:flex;align-items:center;gap:9px}.student-registration-links-help{position:static;flex:0 0 auto}.student-registration-links-info{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-height:0;padding:0;border:2px solid var(--green-700,#356d41);border-radius:50%;background:#fff;color:var(--green-700,#356d41);box-shadow:none;font:800 14px/1 Arial,sans-serif}.student-registration-links-info:hover,.student-registration-links-info[aria-expanded="true"]{background:var(--green-700,#356d41);color:#fff}.student-registration-links-info:focus-visible{outline:3px solid #c89a45;outline-offset:3px}.student-registration-links-explanation{position:absolute;z-index:30;top:calc(100% + 9px);left:0;width:min(430px,calc(100vw - 48px));padding:14px 16px;border:1px solid var(--line,#dfe6dc);border-radius:10px;background:#fff;color:var(--ink,#263e30);box-shadow:0 12px 28px rgba(32,60,38,.18);font-size:14px;line-height:1.5}.student-registration-links-explanation[hidden]{display:none}
 
 .backup-alert {
   margin-top:24px;
@@ -7161,5 +7162,9 @@ body:has(.login-shell) {
 
   .sector-link-view-status {
     width:100%;
+  }
+
+  .student-registration-links-explanation {
+    width:min(430px, calc(100vw - 36px));
   }
 }
