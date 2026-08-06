@@ -6591,6 +6591,8 @@ body:has(.login-shell) {
 
 @media print{.operational-report-origin{display:none!important}}
 
+.student-registration-links-panel{grid-column:1 / -1}.student-registration-links-panel .empty-state{padding-top:14px}
+
 .backup-alert {
   margin-top:24px;
   padding:18px 20px;

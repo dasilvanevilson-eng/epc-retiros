@@ -2003,6 +2003,11 @@ async function renderRetreat(id, selectedSector = '') {
     }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
   }
+  const studentRegistrationLinksPanel = document.createElement('article');
+  studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
+  studentRegistrationLinksPanel.id = 'retreat-student-links';
+  studentRegistrationLinksPanel.innerHTML = '<div class="panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Os links de cadastro de cursistas serão exibidos aqui futuramente.</p></div></div><p class="empty-state">Nenhum link de cadastro de cursista disponível nesta etapa.</p>';
+  app.querySelector('.detail-grid')?.append(studentRegistrationLinksPanel);
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);
     button.textContent = 'Copiado!';
