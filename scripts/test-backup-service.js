@@ -1,18 +1,19 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { BACKUP_FORMAT, BACKUP_VERSION, checksumForBackup, relationalTableNames, validateBackupEnvelope } = require('../backupService');
+const { BACKUP_FORMAT, BACKUP_VERSION, checksumForBackup, normalizeRestorableBackup, relationalTableNames, validateBackupEnvelope } = require('../backupService');
 const { stores } = require('../storeConfig');
 
-const makeBackup = () => {
+const makeBackup = ({ legacy = false } = {}) => {
   const tables = Object.fromEntries(stores.map((name) => [name, []]));
+  if (legacy) tables.relatorio_modelos = [];
   tables.retiros.push({ id: 'retiro-1', nome: 'Retiro preservado' });
   tables.adesoes.push({ id: 'adesao-1', retiroId: 'retiro-1', pessoaId: 'pessoa-1', setores: ['Cozinha'] });
   tables.pessoas.push({ id: 'pessoa-1', nome: 'Pessoa preservada' });
   const backup = {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
-    schemaVersion: 'local-logical-2026-08-v1',
+    schemaVersion: legacy ? 'local-logical-2026-08-v1' : 'local-logical-2026-08-v2',
     storage: 'local-logical',
     createdAt: '2026-08-04T12:00:00.000Z',
     counts: Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length])),
@@ -24,6 +25,16 @@ const makeBackup = () => {
 
 const valid = makeBackup();
 assert.doesNotThrow(() => validateBackupEnvelope(valid));
+assert(!Object.hasOwn(valid.tables, 'relatorio_modelos'), 'Backups novos nao devem conter a tabela aposentada.');
+
+const legacy = makeBackup({ legacy: true });
+legacy.tables.relatorio_modelos.push({ id: 'modelo-antigo' });
+legacy.counts.relatorio_modelos = 1;
+legacy.checksum = checksumForBackup(legacy);
+assert.doesNotThrow(() => validateBackupEnvelope(legacy));
+const normalizedLegacy = normalizeRestorableBackup(legacy);
+assert(!Object.hasOwn(normalizedLegacy.tables, 'relatorio_modelos'));
+assert.match(normalizedLegacy.warnings.join(' '), /relatorio_modelos.*ignorada|aposentada relatorio_modelos.*ignorada/i);
 
 const tampered = structuredClone(valid);
 tampered.tables.retiros[0].nome = 'Conteudo adulterado';

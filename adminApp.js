@@ -5619,167 +5619,175 @@ async function stageBackupRestore(backup) {
   }
 }
 
-async function renderRelatorios() {
-  layout(`<section class="page-heading"><div><p class="eyebrow">Consulta personaliz&aacute;vel</p><h1>Relat&oacute;rios</h1><p>Monte uma an&aacute;lise em quatro etapas, sem alterar nenhum cadastro.</p></div></section><section class="panel"><div class="report-loading" role="status">Carregando o construtor de relat&oacute;rios...</div></section>`, 'relatorios');
-  let catalog;
-  let models;
-  try {
-    [catalog, models] = await Promise.all([dataService.getReportCatalog(), dataService.listReportModels()]);
-  } catch (error) {
-    app.querySelector('.admin-main').innerHTML = `<section class="page-heading"><div><p class="eyebrow">Relat&oacute;rios</p><h1>N&atilde;o foi poss&iacute;vel abrir o construtor</h1><p>${escapeHtml(error.message)}</p></div></section>`;
+const operationalReportCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+const operationalReports = [
+  { id: 'community-shirts-summary', topic: 'Comunidades', title: 'Camisetas dos cursistas por comunidade', description: 'Lista os cursistas e os tamanhos de camiseta agrupados por comunidade.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Impressão'], steps: ['[data-home-stat="shirts"]', '.home-stat-dialog [data-home-stat-print="1"]'] },
+  { id: 'community-shirts-large', topic: 'Comunidades', title: 'Número das camisetas por comunidade — formato ampliado', description: 'Gera a relação de camisetas por comunidade em A4, duas colunas e fonte ampliada.', permission: 'comunidades.ver', source: 'comunidades', formats: ['Impressão'], steps: ['#print-community-shirts'] },
+  { id: 'badges-community', topic: 'Crachás', title: 'Crachás por comunidade', description: 'Permite escolher comunidades, revisar pessoas e imprimir os crachás com o modelo associado.', permission: 'crachas.imprimir', source: 'crachas', formats: ['Impressão'], actionLabel: 'Configurar impressão', steps: ['[data-badge-view="print"]', '#badge-print-by-community'] },
+  { id: 'badges-sector', topic: 'Crachás', title: 'Crachás por setor', description: 'Permite escolher setores, revisar pessoas e imprimir os crachás com o modelo associado.', permission: 'crachas.imprimir', source: 'crachas', formats: ['Impressão'], actionLabel: 'Configurar impressão', steps: ['[data-badge-view="print"]', '#badge-print-by-sector'] },
+  { id: 'student-allergies', topic: 'Cursistas', title: 'Alergias a medicamentos', description: 'Relaciona cursistas individuais com alergias a medicamentos e os detalhes informados.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="allergy"]'] },
+  { id: 'student-birthdays', topic: 'Cursistas', title: 'Aniversariantes dos cursistas', description: 'Apresenta os aniversariantes do mês com comunidade e data de nascimento.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="birthdays"]'] },
+  { id: 'student-shirts-couple', topic: 'Cursistas', title: 'Camisetas por casal', description: 'Organiza os tamanhos de camiseta por casal cursista SMP ou EPC.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Impressão'], steps: ['[data-home-stat="shirts"]', '.home-stat-dialog [data-home-stat-print="1"]'] },
+  { id: 'student-shirts-size', topic: 'Cursistas', title: 'Camisetas por tamanho', description: 'Resume a quantidade de camisetas de cursistas por tamanho informado.', permission: 'inicio.ver', source: 'inicio', formats: ['Impressão'], steps: ['[data-home-stat="shirts"]', '.home-stat-dialog [data-home-stat-print="0"]'] },
+  { id: 'student-intolerances-individual', topic: 'Cursistas', title: 'Intolerâncias alimentares', description: 'Relaciona cursistas individuais com intolerâncias alimentares e os detalhes informados.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="intolerance"]'] },
+  { id: 'student-intolerances-couple', topic: 'Cursistas', title: 'Intolerâncias alimentares', description: 'Relaciona as pessoas das fichas SMP ou EPC com intolerâncias alimentares.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-intolerance"]'] },
+  { id: 'student-continuous-medication', topic: 'Cursistas', title: 'Medicação contínua', description: 'Relaciona cursistas individuais que utilizam medicamento contínuo.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="continuous-medication"]'] },
+  { id: 'student-parent-medication', topic: 'Cursistas', title: 'Medicação sugerida pelos pais', description: 'Mostra os medicamentos para dor de cabeça ou estômago sugeridos pelos responsáveis.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="parent-suggested-medication"]'] },
+  { id: 'student-welcome', topic: 'Cursistas', title: 'Necessidade de acolhimento', description: 'Lista os casais SMP ou EPC que informaram necessidade de acolhimento.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-acolhimento"]'] },
+  { id: 'student-health-couple', topic: 'Cursistas', title: 'Problemas de saúde', description: 'Relaciona as pessoas das fichas SMP ou EPC com problemas de saúde informados.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-health"]'] },
+  { id: 'team-birthdays', topic: 'Equipe de trabalho', title: 'Aniversariantes da equipe', description: 'Apresenta aniversariantes da equipe com setor e data de nascimento.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="team-birthdays"]'] },
+  { id: 'team-photos', topic: 'Equipe de trabalho', title: 'Fotos solicitadas', description: 'Lista as fichas da equipe que solicitaram a foto oficial do retiro.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="photo"]'] },
+  { id: 'team-groups', topic: 'Equipe de trabalho', title: 'Pessoas por grupo', description: 'Resume a equipe por grupo de participação e permite detalhar um grupo.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="groups"]'] },
+  { id: 'team-sectors', topic: 'Equipe de trabalho', title: 'Pessoas por setor', description: 'Resume a equipe por setor e permite abrir a relação detalhada de um setor.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="sectors"]'] },
+  { id: 'team-quadrante-requests', topic: 'Equipe de trabalho', title: 'Solicitações de quadrante impresso', description: 'Lista as fichas da equipe que solicitaram quadrante impresso.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="quadrante"]'] },
+  { id: 'kids-registered', topic: 'Espaço Kids', title: 'Crianças cadastradas', description: 'Relaciona as crianças cadastradas, suas idades e os responsáveis.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids"]'] },
+  { id: 'kids-intolerances', topic: 'Espaço Kids', title: 'Crianças com intolerância alimentar', description: 'Reúne crianças da equipe e dos cursistas com intolerância alimentar.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-intolerance"]'] },
+  { id: 'kids-health', topic: 'Espaço Kids', title: 'Crianças com problema de saúde', description: 'Reúne crianças da equipe e dos cursistas com problema de saúde.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-health"]'] },
+  { id: 'receiver-sheet', topic: 'Financeiro', title: 'Planilha do Recebedor', description: 'Exporta os valores sugeridos, recebimentos, diferenças, formas de pagamento e observações.', permission: 'recebedor.ver', source: 'recebedor', formats: ['CSV'], actionLabel: 'Gerar planilha', steps: ['#receiver-download-sheet'] },
+  { id: 'financial-epc', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas EPC', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas EPC.', permission: 'cursista-epc.ver', formTypes: ['cursista-epc'], source: 'cursista-epc', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
+  { id: 'financial-individual', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas Individuais', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas individuais.', permission: 'cursista.ver', formTypes: ['cursista-individual'], source: 'cursista', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#student-financial-summary'] },
+  { id: 'financial-smp', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas SMP', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas SMP.', permission: 'cursista-smp.ver', formTypes: ['cursista-smp'], source: 'cursista-smp', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
+  { id: 'general-cities', topic: 'Geral', title: 'Cidades participantes', description: 'Apresenta a quantidade de cursistas e integrantes da equipe por cidade.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="cities"]'] },
+  { id: 'general-presence', topic: 'Geral', title: 'Presença por dia', description: 'Resume a presença prevista de cursistas e equipe em cada dia do retiro.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="presence"]'] },
+  { id: 'quadrante-complete', topic: 'Quadrante', title: 'Relatório completo', description: 'Gera o quadrante completo com setores, comunidades, responsáveis, endereços e contatos.', permission: 'quadrante.imprimir', source: 'quadrante', formats: ['Impressão'], steps: ['#print-quadrante'] },
+  { id: 'quadrante-secret-friend', topic: 'Quadrante', title: 'Relatório para amigo secreto', description: 'Gera nome e setor das pessoas vinculadas à Equipe Escondida.', permission: 'quadrante.imprimir', source: 'quadrante', formats: ['Impressão'], steps: ['#print-secret-friend'] },
+].map((report) => ({ ...report, generate: () => runOperationalReportGenerator(report) }));
+
+async function runOperationalReportGenerator(report) {
+  for (const selector of report.steps) {
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const control = app.querySelector(selector);
+    if (!control) throw new Error(`Não foi possível abrir "${report.title}" nesta tela.`);
+    control.click();
+  }
+}
+
+let pendingOperationalReportId = '';
+
+const operationalReportAvailable = (report, retreat) => canAccess(report.permission)
+  && (!report.formTypes?.length || report.formTypes.includes(retreat?.tipoFichaCursista || defaultStudentFormType));
+
+const launchOperationalReport = async (reportId) => {
+  const report = operationalReports.find((item) => item.id === reportId);
+  if (!report) return;
+  pendingOperationalReportId = report.id;
+  if (location.hash === '#' + report.source) {
+    await routeAndLaunchOperationalReport();
     return;
   }
+  location.hash = '#' + report.source;
+};
 
-  const datasets = new Map(catalog.datasets.map((item) => [item.id, item]));
-  const defaultSpec = (datasetId = 'equipe') => {
-    const dataset = datasets.get(datasetId) || catalog.datasets[0];
-    return {
-      dataset: dataset.id, statuses: ['concluido'], retreatIds: [], periodStart: '', periodEnd: '',
-      columns: [...dataset.defaults], groupBy: [], metrics: [dataset.metrics[0]?.id].filter(Boolean), filters: [], sort: [], chart: 'bar', page: 1, pageSize: 25,
-    };
-  };
-  let spec = defaultSpec();
-  let report = null;
-  let history = [];
-  let activeStep = 1;
-  let fieldSearch = '';
-  let loadingPreview = false;
-  let editingModelId = '';
+const launchPendingOperationalReport = async () => {
+  if (!pendingOperationalReportId) return;
+  const report = operationalReports.find((item) => item.id === pendingOperationalReportId);
+  pendingOperationalReportId = '';
+  if (!report || location.hash !== '#' + report.source) return;
   const main = app.querySelector('.admin-main');
-
-  const snapshot = () => JSON.parse(JSON.stringify(spec));
-  const remember = () => { history.push(snapshot()); if (history.length > 30) history.shift(); };
-  const dataset = () => datasets.get(spec.dataset) || catalog.datasets[0];
-  const fieldMap = () => new Map(dataset().fields.map((field) => [field.id, field]));
-  const metricMap = () => new Map(dataset().metrics.map((metric) => [metric.id, metric]));
-  const reportValue = (value, column) => column?.type === 'money' || column?.format === 'money' ? currency(value) : String(value ?? '');
-  const naturalDescription = () => {
-    const statuses = catalog.statuses.filter((item) => spec.statuses.includes(item.id)).map((item) => item.label).join(', ');
-    const retreatText = spec.retreatIds.length ? `${spec.retreatIds.length} retiro(s) espec&iacute;fico(s)` : 'todos os retiros permitidos';
-    const period = spec.periodStart || spec.periodEnd ? `, no per&iacute;odo ${escapeHtml(spec.periodStart || 'inicial')} a ${escapeHtml(spec.periodEnd || 'atual')}` : '';
-    const grouping = spec.groupBy.length ? `, agrupado por ${spec.groupBy.map((id) => fieldMap().get(id)?.label).filter(Boolean).join(' e ')}` : '';
-    return `${escapeHtml(dataset().label)}, em ${escapeHtml(statuses || 'Encerrado')}, considerando ${retreatText}${period}${grouping}.`;
-  };
-  const options = (items, selected = '', empty = 'Selecione') => `<option value="">${escapeHtml(empty)}</option>${items.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selected ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}`;
-
-  const renderChart = () => {
-    if (!report?.chart?.length || spec.chart === 'none') return '<div class="empty-state">Escolha um agrupamento e um gr&aacute;fico para visualizar a compara&ccedil;&atilde;o.</div>';
-    const values = report.chart.map((item) => Math.max(0, Number(item.value) || 0));
-    const max = Math.max(...values, 1);
-    if (spec.chart === 'donut') {
-      const total = values.reduce((sum, value) => sum + value, 0) || 1;
-      let cursor = 0;
-      const colors = ['#244d38', '#c89a45', '#65836f', '#9b6a42', '#7d8fa3', '#b56b75'];
-      const segments = values.map((value, index) => { const start = cursor; cursor += (value / total) * 100; return `${colors[index % colors.length]} ${start}% ${cursor}%`; }).join(',');
-      return `<div class="report-donut-wrap"><div class="report-donut" style="background:conic-gradient(${segments})" role="img" aria-label="Gr&aacute;fico de rosca"></div><ul>${report.chart.map((item, index) => `<li><i style="background:${colors[index % colors.length]}"></i><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></li>`).join('')}</ul></div>`;
-    }
-    if (spec.chart === 'line') {
-      const width = 760; const height = 220; const step = report.chart.length > 1 ? width / (report.chart.length - 1) : width;
-      const points = report.chart.map((item, index) => `${index * step},${height - ((Number(item.value) || 0) / max) * (height - 24)}`).join(' ');
-      return `<div class="report-line-scroll"><svg class="report-line" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gr&aacute;fico de linha"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${report.chart.map((item, index) => `<circle cx="${index * step}" cy="${height - ((Number(item.value) || 0) / max) * (height - 24)}" r="7"><title>${escapeHtml(item.label)}: ${escapeHtml(item.value)}</title></circle>`).join('')}</svg></div>`;
-    }
-    return `<div class="report-bars" role="img" aria-label="Gr&aacute;fico de barras">${report.chart.map((item) => `<div><span title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</span><i><b style="width:${Math.max(2, (Number(item.value) || 0) / max * 100)}%"></b></i><strong>${escapeHtml(item.value)}</strong></div>`).join('')}</div>`;
-  };
-
-  const renderResult = () => {
-    const target = main.querySelector('#report-result');
-    if (!target) return;
-    if (loadingPreview) { target.innerHTML = '<div class="report-loading" role="status">Gerando pr&eacute;via segura...</div>'; return; }
-    if (!report) { target.innerHTML = '<div class="empty-state">Revise as escolhas e clique em <strong>Gerar pr&eacute;via</strong>.</div>'; return; }
-    const pages = Math.max(1, Math.ceil(report.totalRows / report.pageSize));
-    target.innerHTML = `
-      <div class="report-result-toolbar"><div><strong>${escapeHtml(report.dataset.label)}</strong><small>Gerado em ${escapeHtml(new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(report.generatedAt)))}</small></div><div class="report-actions"><button type="button" data-report-action="csv">CSV</button><button type="button" data-report-action="print">Imprimir</button><button type="button" data-report-action="pdf">Salvar em PDF</button></div></div>
-      ${report.liveData ? '<p class="report-live-warning" role="note">Este relat&oacute;rio inclui retiros ativos; os valores podem mudar com novos cadastros.</p>' : ''}
-      <div class="report-indicators">${report.summary.map((item) => `<div><span>${escapeHtml(item.label)}</span><strong>${item.format === 'money' ? currency(item.value) : escapeHtml(item.value)}</strong></div>`).join('')}</div>
-      <section class="report-chart-card"><div class="report-chart-heading"><h3>Visualiza&ccedil;&atilde;o</h3><label>Tipo <select data-report-input="chart"><option value="bar" ${spec.chart === 'bar' ? 'selected' : ''}>Barras</option><option value="line" ${spec.chart === 'line' ? 'selected' : ''}>Linha</option><option value="donut" ${spec.chart === 'donut' ? 'selected' : ''}>Rosca</option><option value="none" ${spec.chart === 'none' ? 'selected' : ''}>Sem gr&aacute;fico</option></select></label></div>${renderChart()}</section>
-      <div class="report-table-scroll"><table class="report-table"><thead><tr>${report.columns.map((column) => `<th scope="col">${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${report.rows.length ? report.rows.map((row) => `<tr>${report.columns.map((column) => `<td>${escapeHtml(reportValue(row[column.id], column))}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${Math.max(report.columns.length, 1)}">Nenhum registro corresponde aos filtros.</td></tr>`}</tbody></table></div>
-      <div class="report-pagination"><span>${report.totalRows} resultado(s) &middot; P&aacute;gina ${report.page} de ${pages}</span><div><button type="button" data-report-page="${report.page - 1}" ${report.page <= 1 ? 'disabled' : ''}>Anterior</button><button type="button" data-report-page="${report.page + 1}" ${report.page >= pages ? 'disabled' : ''}>Pr&oacute;xima</button></div></div>`;
-  };
-
-  const renderBuilder = () => {
-    const fields = dataset().fields.filter((field) => !fieldSearch || `${field.label} ${field.id}`.toLocaleLowerCase('pt-BR').includes(fieldSearch.toLocaleLowerCase('pt-BR')));
-    const selectedFields = spec.columns.map((id) => fieldMap().get(id)).filter(Boolean);
-    const statusSet = new Set(spec.statuses);
-    const availableRetreats = catalog.retreats.filter((retreat) => statusSet.has(retreat.status));
-    main.innerHTML = `
-      <section class="page-heading report-page-heading"><div><p class="eyebrow">Consulta personaliz&aacute;vel</p><h1>Relat&oacute;rios</h1><p>Todo o construtor fica nesta op&ccedil;&atilde;o e apenas consulta os cadastros existentes.</p></div><div class="report-top-actions"><button type="button" data-report-action="undo" ${history.length ? '' : 'disabled'}>Desfazer</button><button type="button" data-report-action="clear">Limpar</button><button type="button" class="primary-button" data-report-action="save-model">Salvar modelo</button></div></section>
-      <div class="report-layout">
-        <aside class="panel report-models"><div class="panel-heading"><h2>Meus modelos</h2><p>Modelos guardam apenas as escolhas, nunca os resultados.</p></div>${models.length ? `<div class="report-model-list">${models.map((model) => `<div><button type="button" data-report-model="${escapeHtml(model.id)}"><strong>${escapeHtml(model.nome)}</strong><small>${model.compartilhado ? 'Compartilhado' : 'Privado'}${model.proprietario ? ' &middot; seu' : ''}</small></button>${model.proprietario ? `<button type="button" data-report-model-edit="${escapeHtml(model.id)}" aria-label="Editar modelo ${escapeHtml(model.nome)}">&#9998;</button><button type="button" class="report-model-delete" data-report-model-delete="${escapeHtml(model.id)}" aria-label="Excluir modelo ${escapeHtml(model.nome)}">&times;</button>` : ''}</div>`).join('')}</div>` : '<div class="empty-state">Nenhum modelo salvo.</div>'}</aside>
-        <section class="report-builder">
-          <nav class="report-steps" aria-label="Etapas do relat&oacute;rio">${[1, 2, 3, 4].map((step) => `<button type="button" data-report-step="${step}" class="${activeStep === step ? 'is-active' : ''}" aria-current="${activeStep === step ? 'step' : 'false'}"><span>${step}</span>${['O que analisar', 'Quais retiros', 'Como organizar', 'Resultado'][step - 1]}</button>`).join('')}</nav>
-          <section class="panel report-step" ${activeStep === 1 ? '' : 'hidden'} aria-labelledby="report-step-1"><div class="panel-heading"><span>Etapa 1</span><h2 id="report-step-1">O que deseja analisar?</h2><p>Escolha a fonte principal. Voc&ecirc; poder&aacute; trocar sem afetar dados.</p></div><div class="report-dataset-grid">${catalog.datasets.map((item) => `<button type="button" data-report-dataset="${item.id}" class="${item.id === spec.dataset ? 'is-selected' : ''}" aria-pressed="${item.id === spec.dataset}"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.description)}</span></button>`).join('')}</div></section>
-          <section class="panel report-step" ${activeStep === 2 ? '' : 'hidden'} aria-labelledby="report-step-2"><div class="panel-heading"><span>Etapa 2</span><h2 id="report-step-2">Quais retiros?</h2><p>Encerrados v&ecirc;m selecionados inicialmente. Marque uma ou v&aacute;rias situa&ccedil;&otilde;es.</p></div><fieldset class="report-statuses"><legend>Situa&ccedil;&atilde;o</legend>${catalog.statuses.map((item) => `<label><input type="checkbox" data-report-status="${item.id}" ${spec.statuses.includes(item.id) ? 'checked' : ''}><span>${escapeHtml(item.label)}</span></label>`).join('')}<label><input type="checkbox" data-report-all-status ${spec.statuses.length === catalog.statuses.length ? 'checked' : ''}><span>Todos</span></label></fieldset><div class="fields two-columns"><label class="field"><span>Per&iacute;odo inicial</span><input type="date" data-report-input="periodStart" value="${escapeHtml(spec.periodStart)}"></label><label class="field"><span>Per&iacute;odo final</span><input type="date" data-report-input="periodEnd" value="${escapeHtml(spec.periodEnd)}"></label></div><fieldset class="report-retreats"><legend>Retiros espec&iacute;ficos <small>(opcional; vazio considera todos permitidos)</small></legend>${availableRetreats.length ? availableRetreats.map((retreat) => `<label><input type="checkbox" data-report-retreat="${escapeHtml(retreat.id)}" ${spec.retreatIds.includes(retreat.id) ? 'checked' : ''}><span><strong>${escapeHtml(retreat.nome)}</strong><small>${escapeHtml(retreat.statusLabel)}${retreat.local ? ` &middot; ${escapeHtml(retreat.local)}` : ''}</small></span></label>`).join('') : '<p>Nenhum retiro permitido corresponde &agrave;s situa&ccedil;&otilde;es escolhidas.</p>'}</fieldset></section>
-          <section class="panel report-step" ${activeStep === 3 ? '' : 'hidden'} aria-labelledby="report-step-3"><div class="panel-heading"><span>Etapa 3</span><h2 id="report-step-3">Como organizar?</h2><p>Escolha colunas, filtros, agrupamentos, totais e ordena&ccedil;&otilde;es.</p></div><div class="report-config-grid"><div><h3>Colunas</h3><label class="field"><span>Buscar campo</span><input type="search" data-report-field-search value="${escapeHtml(fieldSearch)}" placeholder="Ex.: cidade, setor, sa&uacute;de"></label><div class="report-field-list">${fields.map((field) => `<label><input type="checkbox" data-report-column="${field.id}" ${spec.columns.includes(field.id) ? 'checked' : ''}><span>${escapeHtml(field.label)}</span></label>`).join('')}</div></div><div><h3>Ordem das colunas</h3><ol class="report-column-order">${selectedFields.map((field, index) => `<li><span>${escapeHtml(field.label)}</span><button type="button" data-report-column-up="${field.id}" ${index === 0 ? 'disabled' : ''} aria-label="Mover ${escapeHtml(field.label)} para cima">&uarr;</button><button type="button" data-report-column-down="${field.id}" ${index === selectedFields.length - 1 ? 'disabled' : ''} aria-label="Mover ${escapeHtml(field.label)} para baixo">&darr;</button></li>`).join('')}</ol></div></div>
-            <div class="report-config-section"><h3>Agrupamentos <small>(at&eacute; tr&ecirc;s)</small></h3><div class="fields three-columns">${[0, 1, 2].map((index) => `<label class="field"><span>Agrupamento ${index + 1}</span><select data-report-group="${index}">${options(dataset().fields, spec.groupBy[index], 'Sem agrupamento')}</select></label>`).join('')}</div></div>
-            <div class="report-config-section"><h3>Indicadores e totais</h3><div class="report-metrics">${dataset().metrics.map((metric) => `<label><input type="checkbox" data-report-metric="${metric.id}" ${spec.metrics.includes(metric.id) ? 'checked' : ''}><span>${escapeHtml(metric.label)}</span></label>`).join('')}</div></div>
-            <div class="report-config-section"><div class="report-inline-heading"><h3>Filtros <small>(at&eacute; doze)</small></h3><button type="button" data-report-action="add-filter" ${spec.filters.length >= 12 ? 'disabled' : ''}>Adicionar filtro</button></div><div class="report-filter-list">${spec.filters.length ? spec.filters.map((filter, index) => `<div><label><span>Campo</span><select data-report-filter-field="${index}">${options(dataset().fields, filter.field, 'Campo')}</select></label><label><span>Condi&ccedil;&atilde;o</span><select data-report-filter-operator="${index}">${catalog.operators.map((operator) => `<option value="${operator.id}" ${operator.id === filter.operator ? 'selected' : ''}>${escapeHtml(operator.label)}</option>`).join('')}</select></label><label><span>Valor</span><input data-report-filter-value="${index}" value="${escapeHtml(filter.value)}" ${['empty', 'notEmpty'].includes(filter.operator) ? 'disabled' : ''}></label><button type="button" data-report-filter-remove="${index}" aria-label="Remover filtro">&times;</button></div>`).join('') : '<p>Nenhum filtro adicional.</p>'}</div></div>
-            <div class="report-config-section"><h3>Ordena&ccedil;&atilde;o <small>(at&eacute; tr&ecirc;s crit&eacute;rios)</small></h3><div class="report-sort-grid">${[0, 1, 2].map((index) => `<div><label><span>Crit&eacute;rio ${index + 1}</span><select data-report-sort-field="${index}">${options([...dataset().fields, ...dataset().metrics], spec.sort[index]?.field, 'Sem ordena&ccedil;&atilde;o')}</select></label><label><span>Dire&ccedil;&atilde;o</span><select data-report-sort-direction="${index}"><option value="asc" ${spec.sort[index]?.direction !== 'desc' ? 'selected' : ''}>Crescente</option><option value="desc" ${spec.sort[index]?.direction === 'desc' ? 'selected' : ''}>Decrescente</option></select></label></div>`).join('')}</div></div>
-          </section>
-          <section class="panel report-step" ${activeStep === 4 ? '' : 'hidden'} aria-labelledby="report-step-4"><div class="panel-heading"><span>Etapa 4</span><h2 id="report-step-4">Resultado</h2><p class="report-natural-description">${naturalDescription()}</p></div><div class="report-preview-command"><label class="field"><span>Linhas por p&aacute;gina</span><select data-report-input="pageSize"><option ${spec.pageSize === 10 ? 'selected' : ''}>10</option><option ${spec.pageSize === 25 ? 'selected' : ''}>25</option><option ${spec.pageSize === 50 ? 'selected' : ''}>50</option><option ${spec.pageSize === 100 ? 'selected' : ''}>100</option></select></label><button type="button" class="primary-button" data-report-action="preview">Gerar pr&eacute;via</button></div><div id="report-result" aria-live="polite"></div></section>
-          <div class="report-step-navigation"><button type="button" data-report-step="${Math.max(1, activeStep - 1)}" ${activeStep === 1 ? 'disabled' : ''}>Voltar</button><button type="button" class="primary-button" data-report-step="${Math.min(4, activeStep + 1)}" ${activeStep === 4 ? 'disabled' : ''}>Continuar</button></div>
-        </section>
-      </div>
-      <dialog id="report-model-dialog" class="report-model-dialog"><form method="dialog"><div class="panel-heading"><h2>Salvar modelo</h2><p>O modelo salva somente esta configura&ccedil;&atilde;o.</p></div><label class="field"><span>Nome do modelo</span><input name="nome" required maxlength="120"></label><label class="field"><span>Descri&ccedil;&atilde;o</span><textarea name="descricao" rows="3" maxlength="500"></textarea></label><label class="report-share-check"><input name="compartilhado" type="checkbox"><span>Compartilhar com outros usu&aacute;rios autorizados</span></label><div class="form-actions"><button value="cancel">Cancelar</button><button value="save" class="primary-button">Salvar</button></div></form></dialog>`;
-    renderResult();
-    wireEvents();
-  };
-
-  const generatePreview = async () => {
-    loadingPreview = true; renderResult();
-    try { report = await dataService.previewReport(spec); spec = { ...spec, ...report.spec }; }
-    catch (error) { alert(error.message); report = null; }
-    loadingPreview = false; renderResult(); wireResultEvents();
-  };
-  const downloadBlob = (blob, filename) => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-  const printReport = (pdf = false) => {
-    if (!report) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) { alert('Permita a abertura da janela de impress&atilde;o.'); return; }
-    const table = `<table><thead><tr>${report.columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${report.rows.map((row) => `<tr>${report.columns.map((column) => `<td>${escapeHtml(reportValue(row[column.id], column))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-    printWindow.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(dataset().label)}</title><style>@page{margin:12mm}body{font-family:Arial;color:#24352b}h1{font-size:22px}p{color:#59675e}table{width:100%;border-collapse:collapse;font-size:10px}th,td{padding:6px;border:1px solid #ccd4cf;text-align:left}th{background:#edf2ee}small{display:block;margin:10px 0}</style></head><body><h1>${escapeHtml(dataset().label)}</h1><p>${naturalDescription()}</p><small>Gerado em ${escapeHtml(new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(report.generatedAt)))}</small>${pdf ? '<p><strong>Na janela de impress&atilde;o, selecione &ldquo;Salvar como PDF&rdquo;.</strong></p>' : ''}${table}</body></html>`);
-    printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 250);
-  };
-
-  function wireResultEvents() {
-    main.querySelectorAll('[data-report-page]').forEach((button) => button.addEventListener('click', async () => { spec.page = Number(button.dataset.reportPage); await generatePreview(); }));
-    main.querySelector('[data-report-input="chart"]')?.addEventListener('change', async (event) => { spec.chart = event.target.value; await generatePreview(); });
-    main.querySelector('[data-report-action="csv"]')?.addEventListener('click', async (event) => { event.currentTarget.disabled = true; try { downloadBlob(await dataService.exportReportCsv(spec), `relatorio-${spec.dataset}.csv`); } catch (error) { alert(error.message); } finally { event.currentTarget.disabled = false; } });
-    main.querySelector('[data-report-action="print"]')?.addEventListener('click', () => printReport(false));
-    main.querySelector('[data-report-action="pdf"]')?.addEventListener('click', () => printReport(true));
+  if (main) {
+    const banner = document.createElement('section');
+    banner.className = 'operational-report-origin';
+    const summary = document.createElement('div');
+    const title = document.createElement('strong');
+    const note = document.createElement('span');
+    const back = document.createElement('a');
+    title.textContent = report.title;
+    note.textContent = 'Relatório aberto pela Central de Relatórios.';
+    back.href = '#relatorios';
+    back.textContent = 'Voltar aos relatórios';
+    summary.append(title, note);
+    banner.append(summary, back);
+    main.prepend(banner);
   }
-
-  function wireEvents() {
-    main.querySelectorAll('[data-report-step]').forEach((button) => button.addEventListener('click', () => { activeStep = Number(button.dataset.reportStep); renderBuilder(); }));
-    main.querySelectorAll('[data-report-dataset]').forEach((button) => button.addEventListener('click', () => { if (button.dataset.reportDataset === spec.dataset) return; remember(); spec = defaultSpec(button.dataset.reportDataset); report = null; renderBuilder(); }));
-    main.querySelectorAll('[data-report-status]').forEach((input) => input.addEventListener('change', () => { remember(); spec.statuses = [...main.querySelectorAll('[data-report-status]:checked')].map((item) => item.dataset.reportStatus); if (!spec.statuses.length) spec.statuses = ['concluido']; spec.retreatIds = spec.retreatIds.filter((id) => catalog.retreats.some((retreat) => retreat.id === id && spec.statuses.includes(retreat.status))); report = null; renderBuilder(); }));
-    main.querySelector('[data-report-all-status]')?.addEventListener('change', (event) => { remember(); spec.statuses = event.target.checked ? catalog.statuses.map((item) => item.id) : ['concluido']; spec.retreatIds = []; report = null; renderBuilder(); });
-    main.querySelectorAll('[data-report-retreat]').forEach((input) => input.addEventListener('change', () => { remember(); spec.retreatIds = [...main.querySelectorAll('[data-report-retreat]:checked')].map((item) => item.dataset.reportRetreat); report = null; }));
-    main.querySelectorAll('[data-report-input="periodStart"],[data-report-input="periodEnd"] ').forEach((input) => input.addEventListener('change', () => { remember(); spec[input.dataset.reportInput] = input.value; report = null; }));
-    main.querySelector('[data-report-input="pageSize"]')?.addEventListener('change', (event) => { spec.pageSize = Number(event.target.value); spec.page = 1; });
-    main.querySelector('[data-report-field-search]')?.addEventListener('input', (event) => { fieldSearch = event.target.value; renderBuilder(); main.querySelector('[data-report-field-search]')?.focus(); });
-    main.querySelectorAll('[data-report-column]').forEach((input) => input.addEventListener('change', () => { remember(); spec.columns = [...main.querySelectorAll('[data-report-column]:checked')].map((item) => item.dataset.reportColumn); report = null; renderBuilder(); }));
-    const moveColumn = (id, direction) => { const index = spec.columns.indexOf(id); const target = index + direction; if (index < 0 || target < 0 || target >= spec.columns.length) return; remember(); [spec.columns[index], spec.columns[target]] = [spec.columns[target], spec.columns[index]]; renderBuilder(); };
-    main.querySelectorAll('[data-report-column-up]').forEach((button) => button.addEventListener('click', () => moveColumn(button.dataset.reportColumnUp, -1)));
-    main.querySelectorAll('[data-report-column-down]').forEach((button) => button.addEventListener('click', () => moveColumn(button.dataset.reportColumnDown, 1)));
-    main.querySelectorAll('[data-report-group]').forEach((select) => select.addEventListener('change', () => { remember(); const values = [...main.querySelectorAll('[data-report-group]')].map((item) => item.value).filter(Boolean); spec.groupBy = [...new Set(values)]; report = null; renderBuilder(); }));
-    main.querySelectorAll('[data-report-metric]').forEach((input) => input.addEventListener('change', () => { remember(); spec.metrics = [...main.querySelectorAll('[data-report-metric]:checked')].map((item) => item.dataset.reportMetric); if (!spec.metrics.length) spec.metrics = [dataset().metrics[0].id]; report = null; renderBuilder(); }));
-    main.querySelector('[data-report-action="add-filter"]')?.addEventListener('click', () => { remember(); spec.filters.push({ field: dataset().fields[0].id, operator: 'contains', value: '' }); renderBuilder(); });
-    main.querySelectorAll('[data-report-filter-remove]').forEach((button) => button.addEventListener('click', () => { remember(); spec.filters.splice(Number(button.dataset.reportFilterRemove), 1); report = null; renderBuilder(); }));
-    spec.filters.forEach((filter, index) => { main.querySelector(`[data-report-filter-field="${index}"]`)?.addEventListener('change', (event) => { filter.field = event.target.value; report = null; }); main.querySelector(`[data-report-filter-operator="${index}"]`)?.addEventListener('change', (event) => { filter.operator = event.target.value; filter.value = ['empty', 'notEmpty'].includes(filter.operator) ? '' : filter.value; report = null; renderBuilder(); }); main.querySelector(`[data-report-filter-value="${index}"]`)?.addEventListener('change', (event) => { filter.value = event.target.value; report = null; }); });
-    [0, 1, 2].forEach((index) => { main.querySelector(`[data-report-sort-field="${index}"]`)?.addEventListener('change', () => { remember(); spec.sort = [0, 1, 2].map((position) => { const field = main.querySelector(`[data-report-sort-field="${position}"]`)?.value; return field ? { field, direction: main.querySelector(`[data-report-sort-direction="${position}"]`)?.value || 'asc' } : null; }).filter(Boolean); report = null; renderBuilder(); }); main.querySelector(`[data-report-sort-direction="${index}"]`)?.addEventListener('change', (event) => { if (spec.sort[index]) spec.sort[index].direction = event.target.value; report = null; }); });
-    main.querySelector('[data-report-action="undo"]')?.addEventListener('click', () => { if (!history.length) return; spec = history.pop(); report = null; renderBuilder(); });
-    main.querySelector('[data-report-action="clear"]')?.addEventListener('click', () => { remember(); spec = defaultSpec(spec.dataset); fieldSearch = ''; report = null; renderBuilder(); });
-    main.querySelector('[data-report-action="preview"]')?.addEventListener('click', generatePreview);
-    main.querySelectorAll('[data-report-model]').forEach((button) => button.addEventListener('click', () => { const model = models.find((item) => item.id === button.dataset.reportModel); if (!model) return; remember(); spec = { ...defaultSpec(model.configuracao.dataset), ...JSON.parse(JSON.stringify(model.configuracao)), page: 1 }; report = null; activeStep = 4; renderBuilder(); }));
-    main.querySelectorAll('[data-report-model-delete]').forEach((button) => button.addEventListener('click', async () => { const model = models.find((item) => item.id === button.dataset.reportModelDelete); if (!model || !confirm(`Excluir o modelo "${model.nome}"? Nenhum cadastro ser&aacute; afetado.`)) return; try { await dataService.deleteReportModel(model.id); models = models.filter((item) => item.id !== model.id); renderBuilder(); } catch (error) { alert(error.message); } }));
-    main.querySelector('[data-report-action="save-model"]')?.addEventListener('click', () => { editingModelId = ''; const dialog = main.querySelector('#report-model-dialog'); dialog.querySelector('form').reset(); dialog.querySelector('h2').textContent = 'Salvar modelo'; dialog.showModal(); });
-    main.querySelectorAll('[data-report-model-edit]').forEach((button) => button.addEventListener('click', () => { const model = models.find((item) => item.id === button.dataset.reportModelEdit && item.proprietario); if (!model) return; editingModelId = model.id; const dialog = main.querySelector('#report-model-dialog'); const form = dialog.querySelector('form'); form.elements.nome.value = model.nome || ''; form.elements.descricao.value = model.descricao || ''; form.elements.compartilhado.checked = Boolean(model.compartilhado); dialog.querySelector('h2').textContent = 'Editar modelo'; dialog.showModal(); }));
-    const modelDialog = main.querySelector('#report-model-dialog');
-    modelDialog?.addEventListener('close', async () => { if (modelDialog.returnValue !== 'save') { editingModelId = ''; return; } const form = modelDialog.querySelector('form'); if (!form.elements.nome.value.trim()) { alert('Informe um nome para o modelo.'); return; } try { await dataService.saveReportModel({ id: editingModelId, nome: form.elements.nome.value.trim(), descricao: form.elements.descricao.value.trim(), compartilhado: form.elements.compartilhado.checked, configuracao: spec }); editingModelId = ''; models = await dataService.listReportModels(); renderBuilder(); } catch (error) { alert(error.message); } });
-    wireResultEvents();
+  try {
+    await report.generate();
+  } catch (error) {
+    alert(error.message);
   }
+};
 
-  renderBuilder();
+async function renderRelatorios() {
+  await loadData();
+  const focusRetreats = accessibleRetreats().sort((first, second) => operationalReportCollator.compare(first.nome || '', second.nome || ''));
+  const retreat = selectedRetreat();
+  const visibleReports = operationalReports
+    .filter((report) => operationalReportAvailable(report, retreat))
+    .sort((first, second) => operationalReportCollator.compare(first.topic, second.topic) || operationalReportCollator.compare(first.title, second.title));
+  const topics = [...new Set(visibleReports.map((report) => report.topic))];
+  layout('<section class="page-heading report-center-heading"><div><p class="eyebrow">Consultas e impressões</p><h1>Central de Relatórios</h1><p>Todos os relatórios disponíveis para o seu acesso, usando os mesmos geradores das telas de origem.</p></div><label class="field report-center-retreat"><span>Retiro</span><select id="report-center-retreat-select"></select></label></section><section class="report-center-summary panel"><strong></strong><span></span></section><div class="report-center-topics"></div>', 'relatorios');
+  const retreatSelect = app.querySelector('#report-center-retreat-select');
+  if (!focusRetreats.length) {
+    retreatSelect.disabled = true;
+    retreatSelect.append(new Option('Nenhum retiro disponível', ''));
+  } else {
+    focusRetreats.forEach((item) => retreatSelect.append(new Option(item.nome || 'Retiro sem nome', item.id, false, item.id === retreat?.id)));
+  }
+  app.querySelector('.report-center-summary strong').textContent = visibleReports.length;
+  app.querySelector('.report-center-summary span').textContent = 'relatório(s) disponível(is) para ' + (retreat?.nome || 'o retiro selecionado');
+  const topicsRoot = app.querySelector('.report-center-topics');
+  if (!topics.length) {
+    const empty = document.createElement('section');
+    empty.className = 'panel empty-state';
+    empty.textContent = 'Nenhum relatório está disponível com as suas permissões para este retiro.';
+    topicsRoot.append(empty);
+  }
+  topics.forEach((topic) => {
+    const section = document.createElement('section');
+    const heading = document.createElement('h2');
+    const grid = document.createElement('div');
+    section.className = 'report-center-topic';
+    grid.className = 'report-center-grid';
+    heading.textContent = topic;
+    section.append(heading, grid);
+    visibleReports.filter((report) => report.topic === topic).forEach((report) => {
+      const card = document.createElement('article');
+      const cardHeading = document.createElement('div');
+      const reportTitle = document.createElement('h3');
+      const formats = document.createElement('span');
+      const toggle = document.createElement('button');
+      const description = document.createElement('p');
+      const launch = document.createElement('button');
+      card.className = 'report-center-card';
+      cardHeading.className = 'report-center-card-heading';
+      reportTitle.textContent = report.title;
+      formats.textContent = report.formats.join(' · ');
+      toggle.type = 'button';
+      toggle.className = 'report-description-toggle';
+      toggle.dataset.reportDescription = report.id;
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = 'Ver descrição';
+      description.id = 'report-description-' + report.id;
+      description.className = 'report-center-description';
+      description.hidden = true;
+      description.textContent = report.description;
+      toggle.setAttribute('aria-controls', description.id);
+      launch.type = 'button';
+      launch.className = 'primary-button report-launch-button';
+      launch.dataset.reportLaunch = report.id;
+      launch.textContent = report.actionLabel || 'Visualizar relatório';
+      cardHeading.append(reportTitle, formats);
+      card.append(cardHeading, toggle, description, launch);
+      grid.append(card);
+    });
+    topicsRoot.append(section);
+  });
+  retreatSelect.addEventListener('change', async (event) => {
+    if (!setSelectedRetreatId(event.target.value)) return;
+    await renderRelatorios();
+  });
+  app.querySelectorAll('[data-report-description]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const description = app.querySelector('#report-description-' + CSS.escape(button.dataset.reportDescription));
+      if (!description) return;
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      button.textContent = expanded ? 'Ver descrição' : 'Ocultar descrição';
+      description.hidden = expanded;
+    });
+  });
+  app.querySelectorAll('[data-report-launch]').forEach((button) => {
+    button.addEventListener('click', () => launchOperationalReport(button.dataset.reportLaunch));
+  });
 }
 
 async function renderBackup() {
@@ -5843,7 +5851,8 @@ async function renderBackup() {
       pendingRestoreOperationId = await stageBackupRestore(backup);
       const preview = await dataService.previewBackupRestore(pendingRestoreOperationId);
       const changedRows = Object.entries(preview.differences).filter(([, difference]) => difference.added || difference.changed || difference.deleted);
-      previewBox.innerHTML = `<h3>Pr&eacute;via da restaura&ccedil;&atilde;o</h3><p>Backup de <strong>${escapeHtml(new Date(preview.backupCreatedAt).toLocaleString('pt-BR'))}</strong>. Confira o impacto antes de continuar.</p><div class="table-wrapper"><table><thead><tr><th>Tabela</th><th>Atual</th><th>Backup</th><th>Novos</th><th>Alterados</th><th>Exclu&iacute;dos</th></tr></thead><tbody>${changedRows.length ? changedRows.map(([name, difference]) => `<tr><td>${escapeHtml(name)}</td><td>${difference.current}</td><td>${difference.backup}</td><td>${difference.added}</td><td>${difference.changed}</td><td class="backup-delete-count">${difference.deleted}</td></tr>`).join('') : '<tr><td colspan="6">O banco j&aacute; corresponde ao conte&uacute;do do backup.</td></tr>'}</tbody></table></div>`;
+      const warnings = (preview.warnings || []).map((warning) => `<p class="backup-legacy-warning" role="alert"><strong>Aviso:</strong> ${escapeHtml(warning)}</p>`).join('');
+      previewBox.innerHTML = `<h3>Pr&eacute;via da restaura&ccedil;&atilde;o</h3>${warnings}<p>Backup de <strong>${escapeHtml(new Date(preview.backupCreatedAt).toLocaleString('pt-BR'))}</strong>. Confira o impacto antes de continuar.</p><div class="table-wrapper"><table><thead><tr><th>Tabela</th><th>Atual</th><th>Backup</th><th>Novos</th><th>Alterados</th><th>Exclu&iacute;dos</th></tr></thead><tbody>${changedRows.length ? changedRows.map(([name, difference]) => `<tr><td>${escapeHtml(name)}</td><td>${difference.current}</td><td>${difference.backup}</td><td>${difference.added}</td><td>${difference.changed}</td><td class="backup-delete-count">${difference.deleted}</td></tr>`).join('') : '<tr><td colspan="6">O banco j&aacute; corresponde ao conte&uacute;do do backup.</td></tr>'}</tbody></table></div>`;
       previewBox.hidden = false;
       confirmationField.hidden = false;
       restoreMessage.textContent = 'Arquivo validado. A restauracao ainda nao alterou nenhum cadastro.';
@@ -5871,9 +5880,10 @@ async function renderBackup() {
         return;
       }
       restoreMessage.textContent = 'Restaurando o banco. Nao feche esta pagina...';
-      await dataService.commitBackupRestore(pendingRestoreOperationId);
+      const result = await dataService.commitBackupRestore(pendingRestoreOperationId);
       pendingRestoreOperationId = '';
-      alert('Restauracao concluida com sucesso. Entre novamente no sistema para carregar os dados restaurados.');
+      const warningText = result.warnings?.length ? `\n\nAviso: ${result.warnings.join(' ')}` : '';
+      alert(`Restauracao concluida com sucesso. Entre novamente no sistema para carregar os dados restaurados.${warningText}`);
       currentUser = null;
       authChecked = false;
       location.href = 'index.html';
@@ -8089,5 +8099,9 @@ async function route() {
 }
 document.addEventListener('focusin', (event) => { if (['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) { event.target.type = 'tel'; event.target.inputMode = 'numeric'; event.target.placeholder = '(00) 00000-0000'; } });
 document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefone', 'telefonePai', 'telefoneMae'].includes(event.target.name)) return; const digits = event.target.value.replace(/\D/g, '').slice(0, 11); event.target.value = digits.length <= 10 ? digits.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, (_, area, first, last) => `${area ? `(${area}` : ''}${area.length === 2 ? ') ' : ''}${first}${last ? `-${last}` : ''}`) : digits.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, (_, area, first, last) => `(${area}) ${first}${last ? `-${last}` : ''}`); });
-window.addEventListener('hashchange', route);
-route();
+async function routeAndLaunchOperationalReport() {
+  await route();
+  await launchPendingOperationalReport();
+}
+window.addEventListener('hashchange', routeAndLaunchOperationalReport);
+routeAndLaunchOperationalReport();

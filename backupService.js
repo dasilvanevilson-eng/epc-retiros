@@ -4,8 +4,11 @@ const { stores } = require('./storeConfig');
 
 const BACKUP_FORMAT = 'familia-epc-backup';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 'supabase-relational-2026-08-v3';
-const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v1';
+const SCHEMA_VERSION = 'supabase-relational-2026-08-v4';
+const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v2';
+const LEGACY_SCHEMA_VERSIONS = new Set(['supabase-relational-2026-08-v3', 'local-logical-2026-08-v1']);
+const RETIRED_REPORT_MODELS_TABLE = 'relatorio_modelos';
+const RETIRED_REPORT_MODELS_WARNING = 'Este backup pertence à versão anterior. A tabela aposentada relatorio_modelos será ignorada; todas as demais tabelas serão restauradas normalmente.';
 const CHUNK_SIZE = 200;
 
 const relationalTables = [
@@ -34,7 +37,6 @@ const relationalTables = [
   ['crachas', ['id']],
   ['configuracoes', ['id']],
   ['usuarios', ['id']],
-  ['relatorio_modelos', ['id']],
   ['perfil_permissoes', ['perfil_id', 'permissao_id']],
   ['usuario_permissoes', ['usuario_id', 'permissao_id']],
   ['usuario_retiros', ['usuario_id', 'retiro_id']],
@@ -106,20 +108,25 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
   if (!plainObject(backup) || backup.format !== BACKUP_FORMAT || backup.version !== BACKUP_VERSION) throw new Error('Arquivo de backup invalido ou de versao nao suportada.');
   if (!['supabase-relational', 'local-logical'].includes(backup.storage)) throw new Error('Origem do backup nao suportada.');
   const expectedSchema = backup.storage === 'supabase-relational' ? SCHEMA_VERSION : LOCAL_SCHEMA_VERSION;
-  if (backup.schemaVersion !== expectedSchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
+  const legacySchema = LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion);
+  if (backup.schemaVersion !== expectedSchema && !legacySchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
   if (!backup.createdAt || Number.isNaN(Date.parse(backup.createdAt))) throw new Error('Data de criacao do backup invalida.');
   if (!requireTables) return;
   if (!arraysOnly(backup.tables)) throw new Error('O backup nao contem tabelas validas.');
   const names = Object.keys(backup.tables);
-  const allowed = backup.storage === 'supabase-relational' ? allowedRelationalTables : new Set(stores);
-  const required = backup.storage === 'supabase-relational' ? requiredRelationalTables : new Set(stores);
+  const allowed = new Set(backup.storage === 'supabase-relational' ? allowedRelationalTables : stores);
+  const required = new Set(backup.storage === 'supabase-relational' ? requiredRelationalTables : stores);
+  if (legacySchema) {
+    allowed.add(RETIRED_REPORT_MODELS_TABLE);
+    required.add(RETIRED_REPORT_MODELS_TABLE);
+  }
   const unknown = names.filter((name) => !allowed.has(name));
   const missing = [...required].filter((name) => !names.includes(name));
   if (unknown.length) throw new Error(`O backup contem tabelas desconhecidas: ${unknown.join(', ')}.`);
   if (missing.length) throw new Error(`O backup esta incompleto. Tabelas ausentes: ${missing.join(', ')}.`);
   for (const [name, rows] of Object.entries(backup.tables)) {
     if (rows.some((row) => !plainObject(row))) throw new Error(`A tabela ${name} contem registros invalidos.`);
-    const primaryKeys = backup.storage === 'supabase-relational' ? tablePrimaryKeys[name] : ['id'];
+    const primaryKeys = name === RETIRED_REPORT_MODELS_TABLE ? ['id'] : (backup.storage === 'supabase-relational' ? tablePrimaryKeys[name] : ['id']);
     const identities = new Set();
     rows.forEach((row) => {
       if (primaryKeys.some((key) => row[key] === undefined || row[key] === null || row[key] === '')) throw new Error(`A tabela ${name} contem registro sem chave primaria valida.`);
@@ -133,6 +140,15 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
   if (!/^[a-f0-9]{64}$/.test(String(backup.checksum || '')) || checksumForBackup(backup) !== backup.checksum) throw new Error('O checksum do backup e invalido. O arquivo pode estar incompleto ou alterado.');
 }
 
+function normalizeRestorableBackup(backup) {
+  if (!LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion)) return { ...backup, warnings: [] };
+  const tables = { ...backup.tables };
+  const counts = { ...backup.counts };
+  delete tables[RETIRED_REPORT_MODELS_TABLE];
+  delete counts[RETIRED_REPORT_MODELS_TABLE];
+  return { ...backup, tables, counts, warnings: [RETIRED_REPORT_MODELS_WARNING] };
+}
+
 async function createSnapshot(session) {
   assertAdmin(session);
   if (hasSupabase()) {
@@ -142,7 +158,8 @@ async function createSnapshot(session) {
     });
     return result;
   }
-  const tables = await readDatabase();
+  const database = await readDatabase();
+  const tables = Object.fromEntries(stores.map((name) => [name, Array.isArray(database[name]) ? database[name] : []]));
   const operationId = uuid();
   const chunks = Object.entries(tables).flatMap(([name, rows]) => splitRows(name, rows));
   const manifest = {
@@ -200,7 +217,8 @@ async function createRestore(session, envelope) {
 async function uploadRestoreChunk(session, operationId, chunk) {
   assertAdmin(session);
   if (!plainObject(chunk) || !Array.isArray(chunk.rows) || !Number.isInteger(chunk.chunkIndex) || chunk.chunkIndex < 0) throw new Error('Bloco de restauracao invalido.');
-  const allowed = hasSupabase() ? allowedRelationalTables : new Set(stores);
+  const allowed = new Set(hasSupabase() ? allowedRelationalTables : stores);
+  allowed.add(RETIRED_REPORT_MODELS_TABLE);
   if (!allowed.has(chunk.tableName)) throw new Error(`Tabela nao permitida no backup: ${chunk.tableName}.`);
   if (chunk.rows.length > CHUNK_SIZE || chunk.rows.some((row) => !plainObject(row))) throw new Error('Bloco de restauracao excede o limite ou contem registros invalidos.');
   if (hasSupabase()) {
@@ -248,7 +266,7 @@ async function loadRestoreBackup(operationId) {
   delete backup.tableNames;
   delete backup.operationId;
   validateBackupEnvelope(backup);
-  return backup;
+  return normalizeRestorableBackup(backup);
 }
 
 const rowKey = (tableName, row, storage) => {
@@ -289,7 +307,7 @@ async function previewRestore(session, operationId) {
     }
     await cancelOperation(session, snapshotOperationId);
   } else currentTables = await readDatabase();
-  return { operationId, backupCreatedAt: backup.createdAt, counts: backup.counts, differences: compareTables(currentTables, backup.tables, backup.storage) };
+  return { operationId, backupCreatedAt: backup.createdAt, counts: backup.counts, differences: compareTables(currentTables, backup.tables, backup.storage), warnings: backup.warnings };
 }
 
 async function commitRestore(session, operationId) {
@@ -307,10 +325,11 @@ async function commitRestore(session, operationId) {
       await supabaseRequest(`epc_backup_operations?id=eq.${encodeURIComponent(operationId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'failed' }) }).catch(() => null);
       throw error;
     }
-    return;
+    return { warnings: backup.warnings };
   }
   await replaceDatabase(backup.tables);
   localOperations.delete(operationId);
+  return { warnings: backup.warnings };
 }
 
 async function cancelOperation(session, operationId) {
@@ -343,6 +362,7 @@ module.exports = {
   createSnapshot,
   isMaintenanceActive,
   listChunks,
+  normalizeRestorableBackup,
   previewRestore,
   uploadRestoreChunk,
   validateBackupEnvelope,

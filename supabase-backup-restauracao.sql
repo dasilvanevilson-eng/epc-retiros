@@ -66,7 +66,6 @@ as $$
     ('crachas', 210, true),
     ('configuracoes', 220, true),
     ('usuarios', 230, true),
-    ('relatorio_modelos', 235, true),
     ('perfil_permissoes', 240, true),
     ('usuario_permissoes', 250, true),
     ('usuario_retiros', 260, true),
@@ -159,7 +158,7 @@ begin
     'operationId', v_operation_id,
     'format', 'familia-epc-backup',
     'version', 1,
-    'schemaVersion', 'supabase-relational-2026-08-v3',
+    'schemaVersion', 'supabase-relational-2026-08-v4',
     'storage', 'supabase-relational',
     'createdAt', to_char(v_created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'counts', v_counts,
@@ -185,7 +184,7 @@ begin
   if jsonb_typeof(p_manifest) is distinct from 'object'
     or p_manifest->>'format' is distinct from 'familia-epc-backup'
     or p_manifest->>'version' is distinct from '1'
-    or p_manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v3'
+    or p_manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
     or p_manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(p_manifest->'counts') is distinct from 'object'
     or jsonb_typeof(p_manifest->'tableNames') is distinct from 'array'
@@ -232,7 +231,7 @@ begin
   if jsonb_typeof(v_operation.manifest) is distinct from 'object'
     or v_operation.manifest->>'format' is distinct from 'familia-epc-backup'
     or v_operation.manifest->>'version' is distinct from '1'
-    or v_operation.manifest->>'schemaVersion' is distinct from 'supabase-relational-2026-08-v3'
+    or v_operation.manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
     or v_operation.manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(v_operation.manifest->'counts') is distinct from 'object'
     or jsonb_typeof(v_operation.manifest->'tableNames') is distinct from 'array'
@@ -251,6 +250,10 @@ begin
   from jsonb_array_elements_text(v_operation.manifest->'tableNames') table_names(table_name)
   left join public.epc_backup_table_registry() registry on registry.table_name = table_names.table_name
   where registry.table_name is null
+    and not (
+      v_operation.manifest->>'schemaVersion' = 'supabase-relational-2026-08-v3'
+      and table_names.table_name = 'relatorio_modelos'
+    )
   limit 1;
   if v_unknown_table is not null then
     raise exception 'Tabela desconhecida no manifesto: %', v_unknown_table;
@@ -260,7 +263,13 @@ begin
   from public.epc_backup_chunks chunks
   left join public.epc_backup_table_registry() registry on registry.table_name = chunks.table_name
   where chunks.operation_id = p_operation_id
-    and (registry.table_name is null or not (v_operation.manifest->'tableNames' ? chunks.table_name))
+    and (
+      (registry.table_name is null and not (
+        v_operation.manifest->>'schemaVersion' = 'supabase-relational-2026-08-v3'
+        and chunks.table_name = 'relatorio_modelos'
+      ))
+      or not (v_operation.manifest->'tableNames' ? chunks.table_name)
+    )
   limit 1;
   if v_unknown_table is not null then
     raise exception 'Tabela nao permitida no backup: %', v_unknown_table;
@@ -307,6 +316,7 @@ begin
   from public.epc_backup_chunks chunks
   cross join lateral jsonb_array_elements(chunks.rows) as restored_rows(restored_row)
   where chunks.operation_id = p_operation_id
+    and chunks.table_name <> 'relatorio_modelos'
     and jsonb_typeof(restored_rows.restored_row) is distinct from 'object'
   limit 1;
   if v_unknown_table is not null then
@@ -318,6 +328,7 @@ begin
   cross join lateral jsonb_array_elements(chunks.rows) as restored_rows(restored_row)
   cross join lateral jsonb_object_keys(restored_rows.restored_row) keys(key)
   where chunks.operation_id = p_operation_id
+    and chunks.table_name <> 'relatorio_modelos'
     and not exists (
       select 1
       from pg_attribute attribute
@@ -411,5 +422,4 @@ notify pgrst, 'reload schema';
 -- union all select 'cursista_smp', count(*) from public.cursista_smp
 -- union all select 'cursista_epc', count(*) from public.cursista_epc
 -- union all select 'comunidade_cursistas_epc', count(*) from public.comunidade_cursistas_epc
--- union all select 'relatorio_modelos', count(*) from public.relatorio_modelos
 -- union all select 'comunidades', count(*) from public.comunidades;

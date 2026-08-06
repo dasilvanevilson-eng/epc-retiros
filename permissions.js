@@ -39,7 +39,7 @@ const allPermissions = [
   ['quadrante.imprimir', 'Quadrante', 'Imprimir quadrante'],
   ['recebedor.ver', 'Recebedor', 'Ver recebedor'],
   ['recebedor.editar', 'Recebedor', 'Editar pagamentos'],
-  ['relatorios.ver', 'Relatorios', 'Acessar todas as opcoes de relatorios'],
+  ['relatorios.ver', 'Relatorios', 'Acessar a Central de Relatorios'],
   ['usuarios.ver', 'Usuarios e permissoes', 'Ver usuarios e permissoes'],
   ['usuarios.criar', 'Usuarios e permissoes', 'Criar usuarios'],
   ['usuarios.editar', 'Usuarios e permissoes', 'Editar usuarios e permissoes'],

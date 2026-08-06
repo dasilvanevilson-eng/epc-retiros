@@ -21,7 +21,7 @@
     "test:quadrante-secret-friend": "node scripts/test-quadrante-secret-friend.js",
     "test:community-shirt-print": "node scripts/test-community-shirt-print.js",
     "test:student-financial-summary": "node scripts/test-student-financial-summary.js",
-    "test:reports": "node scripts/test-report-builder.js",
+    "test:reports": "node scripts/test-report-center.js",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",
     "seed:demo": "node scripts/seed-demo-data.js",

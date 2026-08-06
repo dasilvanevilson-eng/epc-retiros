@@ -1,6 +1,6 @@
 const DATABASE = 'familiaepcindaial';
 const VERSION = 6;
-const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros', 'relatorio_modelos'];
+const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
 const randomBytes = (length) => {
   const bytes = new Uint8Array(length);
@@ -254,16 +254,6 @@ export const dataService = {
   previewBackupRestore: (operationId) => api(`/backup/preview/${encodeURIComponent(operationId)}`, { timeoutMs: 120000 }),
   commitBackupRestore: (operationId) => api(`/backup/commit/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 120000 }),
   cancelBackupOperation: (operationId) => api(`/backup/cancel/${encodeURIComponent(operationId)}`, { method: 'POST', body: '{}', timeoutMs: 30000 }),
-  getReportCatalog: () => api('/reports/catalog', { timeoutMs: 120000 }),
-  previewReport: (configuration) => api('/reports/preview', { method: 'POST', body: JSON.stringify(configuration), timeoutMs: 120000 }),
-  exportReportCsv: (configuration) => apiBlob('/reports/export', { method: 'POST', body: JSON.stringify(configuration), timeoutMs: 120000 }),
-  listReportModels: () => api('/reports/models', { timeoutMs: 120000 }),
-  saveReportModel: (model) => api(`/reports/models${model.id ? `/${encodeURIComponent(model.id)}` : ''}`, {
-    method: model.id ? 'PUT' : 'POST',
-    body: JSON.stringify(model),
-    timeoutMs: 120000,
-  }),
-  deleteReportModel: (id) => api(`/reports/models/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),

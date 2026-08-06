@@ -3,10 +3,8 @@ const { authStatus, changeOwnPassword, clearSessionCookie, createSession, delete
 const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
-const { buildReport, reportCatalog, validateSpec } = require('./reportService');
-const crypto = require('crypto');
 
-const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros', 'relatorio_modelos'];
+const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -29,15 +27,6 @@ function sendNoContent(res, headers = {}) {
 
 function sendError(res, status, message) {
   sendJson(res, status, { error: message });
-}
-
-function sendCsv(res, filename, content) {
-  res.writeHead(200, {
-    'Content-Type': 'text/csv; charset=utf-8',
-    'Content-Disposition': `attachment; filename="${String(filename || 'relatorio.csv').replace(/[^a-z0-9._-]/gi, '-')}"`,
-    'Cache-Control': 'no-store',
-  });
-  res.end(`\uFEFF${content}`);
 }
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
@@ -423,52 +412,15 @@ async function handleApi(req, res, pathname) {
     if (id === 'preview' && action && req.method === 'GET') return sendJson(res, 200, await previewRestore(session, decodeURIComponent(action)));
     if (id === 'commit' && action && req.method === 'POST') {
       const operationId = decodeURIComponent(action);
-      await commitRestore(session, operationId);
+      const result = await commitRestore(session, operationId);
       await cancelOperation(session, operationId).catch(() => null);
-      return sendJson(res, 200, { restored: true }, { 'Set-Cookie': clearSessionCookie() });
+      return sendJson(res, 200, { restored: true, warnings: result?.warnings || [] }, { 'Set-Cookie': clearSessionCookie() });
     }
     if ((id === 'cancel' && action && req.method === 'POST') || (id === 'operations' && action && req.method === 'DELETE')) {
       await cancelOperation(session, decodeURIComponent(action));
       return sendNoContent(res);
     }
     return sendError(res, 405, 'Operacao de backup nao permitida.');
-  }
-
-  if (resource === 'reports') {
-    if (denyIfMissingPermission(res, session, 'relatorios.ver')) return;
-    const reportRetreatIds = hasGlobalRetreatAccess(session) ? null : [...allowedRetreatIds(session)];
-    if (id === 'catalog' && req.method === 'GET') return sendJson(res, 200, await reportCatalog(reportRetreatIds));
-    if (id === 'preview' && req.method === 'POST') return sendJson(res, 200, await buildReport(await readBody(req), reportRetreatIds));
-    if (id === 'export' && req.method === 'POST') {
-      const report = await buildReport(await readBody(req), reportRetreatIds, { exportAll: true });
-      const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-      const header = report.columns.map((column) => csvCell(column.label)).join(';');
-      const lines = report.rows.map((row) => report.columns.map((column) => csvCell(row[column.id])).join(';'));
-      return sendCsv(res, `relatorio-${report.dataset.id}.csv`, [header, ...lines].join('\r\n'));
-    }
-    if (id === 'models' && !action && req.method === 'GET') {
-      const models = (await listRecords('relatorio_modelos')).filter((model) => model.usuarioId === session.id || model.compartilhado);
-      return sendJson(res, 200, models.map((model) => ({ ...model, proprietario: model.usuarioId === session.id })));
-    }
-    if (id === 'models' && !action && req.method === 'POST') {
-      if (String(session.id || '').startsWith('env:')) return sendError(res, 409, 'Use um usuario cadastrado no banco para salvar modelos.');
-      const incoming = await readBody(req);
-      const record = { id: crypto.randomUUID(), usuarioId: session.id, nome: String(incoming.nome || '').trim(), descricao: String(incoming.descricao || '').trim(), compartilhado: Boolean(incoming.compartilhado), configuracao: validateSpec(incoming.configuracao || {}) };
-      if (!record.nome) return sendError(res, 400, 'Informe um nome para o modelo.');
-      return sendJson(res, 201, await saveRecord('relatorio_modelos', record));
-    }
-    if (id === 'models' && action && ['PUT', 'DELETE'].includes(req.method)) {
-      const modelId = decodeURIComponent(action);
-      const current = await getRecord('relatorio_modelos', modelId);
-      if (!current) return sendError(res, 404, 'Modelo nao encontrado.');
-      if (current.usuarioId !== session.id) return sendError(res, 403, 'Somente o proprietario pode alterar ou excluir este modelo.');
-      if (req.method === 'DELETE') { await deleteRecord('relatorio_modelos', modelId); return sendNoContent(res); }
-      const incoming = await readBody(req);
-      const record = { ...current, nome: String(incoming.nome || current.nome).trim(), descricao: String(incoming.descricao ?? current.descricao).trim(), compartilhado: Boolean(incoming.compartilhado), configuracao: validateSpec(incoming.configuracao || current.configuracao) };
-      if (!record.nome) return sendError(res, 400, 'Informe um nome para o modelo.');
-      return sendJson(res, 200, await saveRecord('relatorio_modelos', record));
-    }
-    return sendError(res, 405, 'Operacao de relatorio nao permitida.');
   }
 
   if (resource === 'database' && req.method === 'GET') {
