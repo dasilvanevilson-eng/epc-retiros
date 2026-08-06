@@ -11,7 +11,7 @@ let retreat = {
   tipoFichaCursista: 'cursista-individual',
   numeroPrevistoFichasCursista: 1,
   valorInscricaoCursista: 250,
-  linksCadastroCursistas: [{ numeroFicha: 1, token: 'token-publico', createdAt: '2026-08-06T00:00:00.000Z', versao: 2, enviadoPara: 'Família convidada' }],
+  linksCadastroCursistas: [{ numeroFicha: 1, token: 'token-publico', createdAt: '2026-08-06T00:00:00.000Z', versao: 2, enviadoPara: 'Família convidada', inscricaoEncerrada: false }],
 };
 const database = { cursistas: [], pessoas: [], adesoes: [] };
 let savedIndividual = null;
@@ -85,6 +85,12 @@ const individualPayload = {
 
   await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /Ficha ja cadastrada/);
   database.cursistas.length = 0;
+  retreat = { ...retreat, linksCadastroCursistas: retreat.linksCadastroCursistas.map((link) => ({ ...link, inscricaoEncerrada: true })) };
+  const closedContext = await resolvePublicStudentLink('token-publico');
+  assert(closedContext.closed && !closedContext.active, 'O link encerrado deve permanecer identificável, mas inativo.');
+  assert.equal((await studentRegistrationLinkStatus(retreat))[0].status, 'encerrada');
+  await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /Inscricao encerrada/);
+  retreat = { ...retreat, linksCadastroCursistas: retreat.linksCadastroCursistas.map((link) => ({ ...link, inscricaoEncerrada: false })) };
   retreat = { ...retreat, numeroPrevistoFichasCursista: 0 };
   await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /nao esta disponivel/);
   retreat = { ...retreat, numeroPrevistoFichasCursista: 1, status: 'preparacao' };

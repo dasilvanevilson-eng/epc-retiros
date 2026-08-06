@@ -352,6 +352,7 @@ async function handleApi(req, res, pathname) {
           numeroFicha: context.numeroFicha,
           tipoFichaCursista: context.type,
           ativo: context.active,
+          inscricaoEncerrada: context.closed,
           cadastrado: context.occupied,
           retiro: sanitizePublicRetreat({
             id: context.retreat.id,
@@ -450,6 +451,26 @@ async function handleApi(req, res, pathname) {
       : link);
     await saveRetreatStudentRegistrationLinks(retreatId, updatedLinks);
     return sendJson(res, 200, { numeroFicha, enviadoPara });
+  }
+
+  if (resource === 'cursista-links' && id && action === 'inscricao' && req.method === 'POST') {
+    if (denyIfMissingPermission(res, session, 'retiros.editar')) return;
+    const retreatId = decodeURIComponent(id);
+    if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+    const current = await getRecord('retiros', retreatId).catch(() => null);
+    if (!current) return sendError(res, 404, 'Retiro nao encontrado.');
+    if (current.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+    const body = await readBody(req);
+    const numeroFicha = Number(body.numeroFicha);
+    if (!Number.isInteger(numeroFicha) || numeroFicha <= 0) return sendError(res, 400, 'Numero da ficha invalido.');
+    const inscricaoEncerrada = body.inscricaoEncerrada === true;
+    const links = Array.isArray(current.linksCadastroCursistas) ? current.linksCadastroCursistas : [];
+    if (!links.some((link) => Number(link.numeroFicha) === numeroFicha)) return sendError(res, 404, 'Link da ficha nao encontrado.');
+    const updatedLinks = links.map((link) => Number(link.numeroFicha) === numeroFicha
+      ? { ...link, inscricaoEncerrada }
+      : link);
+    await saveRetreatStudentRegistrationLinks(retreatId, updatedLinks);
+    return sendJson(res, 200, { numeroFicha, inscricaoEncerrada });
   }
 
   if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {

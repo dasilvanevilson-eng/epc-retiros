@@ -91,6 +91,7 @@ function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {
       token: rotateLegacy && legacy ? newToken() : token,
       createdAt: rotateLegacy && legacy ? new Date().toISOString() : (link.createdAt || new Date().toISOString()),
       enviadoPara: String(link.enviadoPara || '').trim(),
+      inscricaoEncerrada: link.inscricaoEncerrada === true,
       ...(legacy && !rotateLegacy ? {} : { versao: studentRegistrationLinkVersion }),
     });
   });
@@ -101,6 +102,7 @@ function syncStudentRegistrationLinks(currentRetreat = null, incomingRetreat = {
         token: newToken(),
         createdAt: new Date().toISOString(),
         enviadoPara: '',
+        inscricaoEncerrada: false,
         versao: studentRegistrationLinkVersion,
       });
     }
@@ -224,7 +226,8 @@ async function studentRegistrationLinkStatus(retreat) {
         createdAt: link.createdAt,
         versao: link.versao,
         enviadoPara: String(link.enviadoPara || '').trim(),
-        status: occupied.has(numeroFicha) ? 'cadastrada' : 'disponivel',
+        inscricaoEncerrada: link.inscricaoEncerrada === true,
+        status: occupied.has(numeroFicha) ? 'cadastrada' : (link.inscricaoEncerrada === true ? 'encerrada' : 'disponivel'),
         tipoCadastro: registration.tipoCadastro || '',
         nomeCadastrado: registration.nomeCadastrado || '',
       };
@@ -248,7 +251,8 @@ async function resolvePublicStudentLink(token = '') {
       link,
       numeroFicha,
       type,
-      active: ['preparacao', 'publicado'].includes(retreat.status) && numeroFicha > 0 && numeroFicha <= expectedCount,
+      active: ['preparacao', 'publicado'].includes(retreat.status) && link.inscricaoEncerrada !== true && numeroFicha > 0 && numeroFicha <= expectedCount,
+      closed: link.inscricaoEncerrada === true,
       occupied: occupied.has(numeroFicha),
     };
   }
@@ -325,6 +329,7 @@ async function savePublicStudentRegistration(token, incoming, expectedFileNumber
   if (expectedNumber && expectedNumber !== context.numeroFicha) {
     throw publicStudentError('O numero da ficha nao corresponde a este link.', 404, 'STUDENT_LINK_FILE_MISMATCH');
   }
+  if (context.closed) throw publicStudentError('Inscricao encerrada para esta ficha.', 409, 'STUDENT_LINK_CLOSED');
   if (!context.active) throw publicStudentError('Este cadastro nao esta disponivel.', 409);
   if (context.occupied) throw publicStudentError('Ficha ja cadastrada.', 409, 'STUDENT_FILE_OCCUPIED');
   const record = allowedPayload(incoming, context.type);

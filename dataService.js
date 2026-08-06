@@ -259,6 +259,7 @@ export const dataService = {
   saveRetiro: (retreat) => save('retiros', retreat),
   syncStudentRegistrationLinks: (retreatId) => api(`/cursista-links/${encodeURIComponent(retreatId)}/sync`, { method: 'POST', body: '{}' }),
   saveStudentRegistrationLinkRecipient: (retreatId, numeroFicha, enviadoPara) => api(`/cursista-links/${encodeURIComponent(retreatId)}/destinatario`, { method: 'POST', body: JSON.stringify({ numeroFicha, enviadoPara }) }),
+  setStudentRegistrationLinkClosed: (retreatId, numeroFicha, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/inscricao`, { method: 'POST', body: JSON.stringify({ numeroFicha, inscricaoEncerrada }) }),
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: () => list('adesoes'),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),

@@ -2018,10 +2018,12 @@ async function renderRetreat(id, selectedSector = '') {
       ? `<div class="student-registration-link-list">${studentLinks.map((link) => {
         const publicUrl = `${location.origin}/cadastro-cursista/ficha${link.numeroFicha}/${encodeURIComponent(link.token)}`;
         const registered = link.status === 'cadastrada';
-        return `<article class="student-registration-link-row">
-          <div class="student-registration-link-heading"><strong>Ficha ${link.numeroFicha}</strong><span class="status ${registered ? 'concluido' : 'publicado'}">${registered ? 'Cadastrada' : 'Disponível'}</span></div>
+        const closed = link.inscricaoEncerrada === true;
+        return `<article class="student-registration-link-row" data-student-link-row="${link.numeroFicha}" data-student-link-registered="${registered ? 'true' : 'false'}">
+          <div class="student-registration-link-heading"><strong>Ficha ${link.numeroFicha}</strong><span class="status ${registered || closed ? 'concluido' : 'publicado'}" data-student-link-status="${link.numeroFicha}">${registered ? 'Cadastrada' : (closed ? 'Encerrada' : 'Disponível')}</span></div>
           <label class="field"><span>Link público — ficha${link.numeroFicha}</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label>
           <div class="student-registration-link-recipient"><label class="field"><span>Enviado para</span><input maxlength="160" autocomplete="off" value="${escapeHtml(link.enviadoPara || '')}" data-student-link-recipient="${link.numeroFicha}" ${canEditStudentLinkRecipient ? '' : 'readonly'} aria-label="Enviado para, ficha ${link.numeroFicha}"></label>${canEditStudentLinkRecipient ? `<button type="button" class="secondary-button" data-save-student-link-recipient="${link.numeroFicha}">Salvar destinatário</button>` : ''}<span class="student-registration-link-feedback" data-student-link-recipient-feedback="${link.numeroFicha}" role="status"></span></div>
+          <div class="student-registration-link-closed"><label><input type="checkbox" data-student-link-closed="${link.numeroFicha}" ${closed ? 'checked' : ''} ${canEditStudentLinkRecipient ? '' : 'disabled'}><span>Inscrição encerrada</span></label><span data-student-link-closed-feedback="${link.numeroFicha}" role="status"></span></div>
           ${registered && link.nomeCadastrado ? `<p class="student-registration-link-registration"><strong>${link.tipoCadastro === 'casal' ? 'Casal cadastrado' : 'Cursista cadastrado'}:</strong> ${escapeHtml(link.nomeCadastrado)}</p>` : ''}
           <div class="student-registration-link-actions"><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button><a class="secondary-button" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">Abrir</a></div>
         </article>`;
@@ -2049,6 +2051,29 @@ async function renderRetreat(id, selectedSector = '') {
       feedback.textContent = error.message || 'Não foi possível salvar o destinatário.';
     } finally {
       button.disabled = false;
+    }
+  }));
+  studentRegistrationLinksPanel.querySelectorAll('[data-student-link-closed]').forEach((checkbox) => checkbox.addEventListener('change', async () => {
+    const numeroFicha = Number(checkbox.dataset.studentLinkClosed);
+    const row = checkbox.closest('[data-student-link-row]');
+    const status = row?.querySelector(`[data-student-link-status="${numeroFicha}"]`);
+    const feedback = row?.querySelector(`[data-student-link-closed-feedback="${numeroFicha}"]`);
+    const previous = !checkbox.checked;
+    checkbox.disabled = true;
+    if (feedback) feedback.textContent = 'Salvando...';
+    try {
+      const saved = await dataService.setStudentRegistrationLinkClosed(id, numeroFicha, checkbox.checked);
+      checkbox.checked = saved.inscricaoEncerrada === true;
+      if (row?.dataset.studentLinkRegistered !== 'true' && status) {
+        status.textContent = checkbox.checked ? 'Encerrada' : 'Disponível';
+        status.className = `status ${checkbox.checked ? 'concluido' : 'publicado'}`;
+      }
+      if (feedback) feedback.textContent = checkbox.checked ? 'Inscrição encerrada.' : 'Inscrição reaberta.';
+    } catch (error) {
+      checkbox.checked = previous;
+      if (feedback) feedback.textContent = error.message || 'Não foi possível alterar a inscrição.';
+    } finally {
+      checkbox.disabled = false;
     }
   }));
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
