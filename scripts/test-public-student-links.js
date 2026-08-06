@@ -81,6 +81,8 @@ assert.match(adminSource, /saveStudentRegistrationLinkRecipient\(id, numeroFicha
 assert.match(adminSource, />Inscrição encerrada</);
 assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-closed/, 'O checkbox deve ficar imediatamente ao lado do número da ficha.');
 assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-open[\s\S]*student-registration-link-closed/, 'Abrir deve ficar entre o número da ficha e o checkbox.');
+assert.match(adminSource, /student-registration-link-number[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-status-note/, 'O status deve aparecer como comentário do número da ficha.');
+assert.doesNotMatch(adminSource, /<\/div><span class="status[^>]*data-student-link-status/, 'O status não deve ocupar um selo separado no cabeçalho.');
 assert.match(adminSource, /student-registration-link-url[\s\S]*class="sr-only">Endereço público da ficha \$\{link\.numeroFicha\}[\s\S]*data-copy-student-link/, 'Copiar link deve ficar à direita do campo da URL com rótulo apenas acessível.');
 assert.doesNotMatch(adminSource, /<span>Link público — ficha/, 'O número da ficha não deve ser repetido visualmente acima do campo do link.');
 assert.match(adminSource, /id="view-student-link-status">Visualizar<\/button>/, 'A caixa de links dos cursistas deve possuir a ação Visualizar.');
