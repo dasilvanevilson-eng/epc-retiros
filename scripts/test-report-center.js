@@ -24,10 +24,11 @@ for (const title of [
   'Medicação sugerida pelos pais', 'Necessidade de acolhimento', 'Problemas de saúde',
   'Aniversariantes da equipe', 'Fotos solicitadas', 'Pessoas por grupo', 'Pessoas por setor',
   'Solicitações de quadrante impresso', 'Crianças cadastradas', 'Crianças com intolerância alimentar',
-  'Crianças com problema de saúde', 'Planilha do Recebedor', 'Resumo financeiro dos Cursistas EPC',
+  'Crianças com problema de saúde', 'Resumo financeiro dos Cursistas EPC',
   'Resumo financeiro dos Cursistas Individuais', 'Resumo financeiro dos Cursistas SMP',
   'Cidades participantes', 'Presença por dia', 'Relatório completo', 'Relatório para amigo secreto',
 ]) assert(catalogSource.includes(`title: '${title}'`), `Relatorio ausente: ${title}`);
+assert(!catalogSource.includes("title: 'Planilha do Recebedor'"), 'A Planilha do Recebedor nao deve aparecer na Central.');
 
 assert.match(app, /new Intl\.Collator\('pt-BR'/);
 assert.match(app, /compare\(first\.topic, second\.topic\).*compare\(first\.title, second\.title\)/);
@@ -40,6 +41,11 @@ assert.match(app, /canAccess\(report\.permission\)/);
 assert.match(app, /report\.formTypes\.includes/);
 assert.match(app, /generate: \(\) => runOperationalReportGenerator\(report\)/, 'Cada item deve registrar sua funcao geradora.');
 assert.match(app, /control\.click\(\)/, 'A funcao geradora deve executar o controle original do relatorio.');
+assert.match(app, /scrollY: window\.scrollY/, 'A Central deve guardar a posicao de rolagem antes de abrir o relatorio.');
+assert.match(app, /watchOperationalReportClose\(\)/, 'O fechamento do relatorio deve ser monitorado.');
+assert.match(app, /location\.hash = '#relatorios'/, 'Ao fechar, o fluxo deve retornar para a Central.');
+assert.match(app, /window\.scrollTo\(\{ top: state\.scrollY/, 'A posicao anterior da Central deve ser restaurada.');
+assert.match(app, /launch\?\.focus\(\{ preventScroll: true \}\)/, 'O foco deve voltar ao relatorio executado.');
 assert.match(styles, /\.report-center-grid/);
 assert.match(styles, /@media\(max-width:650px\).*\.report-center-grid/s);
 

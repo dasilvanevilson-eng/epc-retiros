@@ -5643,7 +5643,6 @@ const operationalReports = [
   { id: 'kids-registered', topic: 'Espaço Kids', title: 'Crianças cadastradas', description: 'Relaciona as crianças cadastradas, suas idades e os responsáveis.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids"]'] },
   { id: 'kids-intolerances', topic: 'Espaço Kids', title: 'Crianças com intolerância alimentar', description: 'Reúne crianças da equipe e dos cursistas com intolerância alimentar.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-intolerance"]'] },
   { id: 'kids-health', topic: 'Espaço Kids', title: 'Crianças com problema de saúde', description: 'Reúne crianças da equipe e dos cursistas com problema de saúde.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="kids-health"]'] },
-  { id: 'receiver-sheet', topic: 'Financeiro', title: 'Planilha do Recebedor', description: 'Exporta os valores sugeridos, recebimentos, diferenças, formas de pagamento e observações.', permission: 'recebedor.ver', source: 'recebedor', formats: ['CSV'], actionLabel: 'Gerar planilha', steps: ['#receiver-download-sheet'] },
   { id: 'financial-epc', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas EPC', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas EPC.', permission: 'cursista-epc.ver', formTypes: ['cursista-epc'], source: 'cursista-epc', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
   { id: 'financial-individual', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas Individuais', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas individuais.', permission: 'cursista.ver', formTypes: ['cursista-individual'], source: 'cursista', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#student-financial-summary'] },
   { id: 'financial-smp', topic: 'Financeiro', title: 'Resumo financeiro dos Cursistas SMP', description: 'Mostra inscrição, pagamento, saldo, forma de pagamento e observação das fichas SMP.', permission: 'cursista-smp.ver', formTypes: ['cursista-smp'], source: 'cursista-smp', formats: ['Visualização', 'Impressão', 'PDF', 'CSV'], steps: ['#smp-financial-summary'] },
@@ -5663,6 +5662,47 @@ async function runOperationalReportGenerator(report) {
 }
 
 let pendingOperationalReportId = '';
+let operationalReportReturnState = null;
+
+const returnToOperationalReports = () => {
+  if (!operationalReportReturnState || operationalReportReturnState.returning) return;
+  operationalReportReturnState.returning = true;
+  if (location.hash === '#relatorios') {
+    restoreOperationalReportPosition();
+    return;
+  }
+  location.hash = '#relatorios';
+};
+
+const watchOperationalReportClose = () => {
+  const overlay = app.querySelector('.home-stat-overlay, .student-financial-summary-overlay, .receiver-sector-overlay');
+  if (!overlay) {
+    returnToOperationalReports();
+    return;
+  }
+  const observer = new MutationObserver(() => {
+    if (app.contains(overlay)) return;
+    observer.disconnect();
+    if (location.hash !== '#relatorios' && location.hash !== `#${operationalReportReturnState?.source || ''}`) {
+      operationalReportReturnState = null;
+      return;
+    }
+    returnToOperationalReports();
+  });
+  observer.observe(app, { childList: true, subtree: true });
+};
+
+const restoreOperationalReportPosition = async () => {
+  if (!operationalReportReturnState || location.hash !== '#relatorios' || !app.querySelector('.report-center-topics')) return;
+  const state = operationalReportReturnState;
+  operationalReportReturnState = null;
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const launch = app.querySelector(`[data-report-launch="${CSS.escape(state.reportId)}"]`);
+  const toggle = app.querySelector(`[data-report-description="${CSS.escape(state.reportId)}"]`);
+  if (state.descriptionExpanded && toggle?.getAttribute('aria-expanded') !== 'true') toggle.click();
+  window.scrollTo({ top: state.scrollY, behavior: 'auto' });
+  launch?.focus({ preventScroll: true });
+};
 
 const operationalReportAvailable = (report, retreat) => canAccess(report.permission)
   && (!report.formTypes?.length || report.formTypes.includes(retreat?.tipoFichaCursista || defaultStudentFormType));
@@ -5670,6 +5710,14 @@ const operationalReportAvailable = (report, retreat) => canAccess(report.permiss
 const launchOperationalReport = async (reportId) => {
   const report = operationalReports.find((item) => item.id === reportId);
   if (!report) return;
+  const toggle = app.querySelector(`[data-report-description="${CSS.escape(report.id)}"]`);
+  operationalReportReturnState = {
+    reportId: report.id,
+    source: report.source,
+    scrollY: window.scrollY,
+    descriptionExpanded: toggle?.getAttribute('aria-expanded') === 'true',
+    returning: false,
+  };
   pendingOperationalReportId = report.id;
   if (location.hash === '#' + report.source) {
     await routeAndLaunchOperationalReport();
@@ -5701,8 +5749,10 @@ const launchPendingOperationalReport = async () => {
   }
   try {
     await report.generate();
+    watchOperationalReportClose();
   } catch (error) {
     alert(error.message);
+    returnToOperationalReports();
   }
 };
 
@@ -8102,6 +8152,7 @@ document.addEventListener('input', (event) => { if (!['telefone', 'spouseTelefon
 async function routeAndLaunchOperationalReport() {
   await route();
   await launchPendingOperationalReport();
+  await restoreOperationalReportPosition();
 }
 window.addEventListener('hashchange', routeAndLaunchOperationalReport);
 routeAndLaunchOperationalReport();
