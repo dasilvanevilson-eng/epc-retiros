@@ -1524,6 +1524,31 @@ async function saveRecord(storeName, record) {
   });
 }
 
+async function saveRetreatStudentRegistrationLinks(retreatId, linksCadastroCursistas = []) {
+  return withLocalFallback(async (useSupabase) => {
+    if (useSupabase) {
+      const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+      if (!row) return null;
+      await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          extras: {
+            ...(row.extras || {}),
+            linksCadastroCursistas,
+          },
+        }),
+      });
+      return getRetreat(retreatId);
+    }
+    const database = await readFileDatabase();
+    const index = database.retiros.findIndex((retreat) => retreat.id === retreatId);
+    if (index < 0) return null;
+    database.retiros[index] = { ...database.retiros[index], linksCadastroCursistas };
+    await writeFileDatabase(database);
+    return database.retiros[index];
+  });
+}
+
 async function deleteRecord(storeName, id) {
   return withLocalFallback(async (useSupabase) => {
     if (useSupabase) return deleteRelational(storeName, id);
@@ -1555,6 +1580,7 @@ module.exports = {
   listRecords,
   getRecord,
   saveRecord,
+  saveRetreatStudentRegistrationLinks,
   deleteRecord,
   ensureFileDatabase,
 };

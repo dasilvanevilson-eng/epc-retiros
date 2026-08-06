@@ -1805,7 +1805,11 @@ async function renderRetreat(id, selectedSector = '') {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
-  const [allStudents, allCommunities] = await Promise.all([dataService.listCursistas(), dataService.listComunidades()]);
+  const [allStudents, allCommunities, studentLinkData] = await Promise.all([
+    dataService.listCursistas(),
+    dataService.listComunidades(),
+    dataService.syncStudentRegistrationLinks(id).catch((error) => ({ error: error.message || 'Não foi possível carregar os links.' })),
+  ]);
   const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
   const retreatCommunityDetails = studentCommunityDetails(allCommunities.filter((community) => community.retiroId === id));
   const retreatEntries = enrolments.filter((item) => item.retiroId === id);
@@ -2006,8 +2010,27 @@ async function renderRetreat(id, selectedSector = '') {
   const studentRegistrationLinksPanel = document.createElement('article');
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
   studentRegistrationLinksPanel.id = 'retreat-student-links';
-  studentRegistrationLinksPanel.innerHTML = '<div class="panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Os links de cadastro de cursistas serão exibidos aqui futuramente.</p></div></div><p class="empty-state">Nenhum link de cadastro de cursista disponível nesta etapa.</p>';
+  const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
+  const studentLinksContent = studentLinkData?.error
+    ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
+    : studentLinks.length
+      ? `<div class="student-registration-link-list">${studentLinks.map((link) => {
+        const publicUrl = `${location.origin}/cadastro-cursista/${encodeURIComponent(link.token)}`;
+        const registered = link.status === 'cadastrada';
+        return `<article class="student-registration-link-row">
+          <div class="student-registration-link-heading"><strong>Ficha ${link.numeroFicha}</strong><span class="status ${registered ? 'concluido' : 'publicado'}">${registered ? 'Cadastrada' : 'Disponível'}</span></div>
+          <label class="field"><span>Link público</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label>
+          <div class="student-registration-link-actions"><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button><a class="secondary-button" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">Abrir</a></div>
+        </article>`;
+      }).join('')}</div>`
+      : '<p class="empty-state">Configure o Número previsto de fichas de cursista para gerar os links públicos.</p>';
+  studentRegistrationLinksPanel.innerHTML = `<div class="panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Cada link corresponde a uma ficha exclusiva do retiro em foco.</p></div></div>${studentLinksContent}`;
   app.querySelector('.detail-grid')?.append(studentRegistrationLinksPanel);
+  studentRegistrationLinksPanel.querySelectorAll('[data-copy-student-link]').forEach((button) => button.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(button.dataset.copyStudentLink);
+    button.textContent = 'Copiado!';
+    setTimeout(() => { button.textContent = 'Copiar link'; }, 1600);
+  }));
   app.querySelectorAll('[data-copy-sector-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copySectorLink);
     button.textContent = 'Copiado!';

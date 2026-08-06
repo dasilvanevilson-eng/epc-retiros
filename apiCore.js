@@ -1,8 +1,15 @@
 const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, deleteRecord } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatStudentRegistrationLinks, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
+const {
+  resolvePublicStudentLink,
+  sanitizePublicRetreat,
+  savePublicStudentRegistration,
+  studentRegistrationLinkStatus,
+  withSyncedStudentRegistrationLinks,
+} = require('./publicStudentLinks');
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
@@ -332,6 +339,38 @@ async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action] = parts;
 
+  if (resource === 'cadastro-cursista' && id) {
+    try {
+      if (req.method === 'GET') {
+        const context = await resolvePublicStudentLink(id);
+        if (!context) return sendError(res, 404, 'Link de cadastro nao encontrado.');
+        return sendJson(res, 200, {
+          numeroFicha: context.numeroFicha,
+          tipoFichaCursista: context.type,
+          ativo: context.active,
+          cadastrado: context.occupied,
+          retiro: sanitizePublicRetreat({
+            id: context.retreat.id,
+            nome: context.retreat.nome,
+            dataInicio: context.retreat.dataInicio,
+            dataTermino: context.retreat.dataTermino,
+            idadeMaximaEspacoKids: context.retreat.idadeMaximaEspacoKids,
+            tipoFichaCursista: context.type,
+            status: context.retreat.status,
+          }),
+        });
+      }
+      if (req.method === 'POST') {
+        if (await isMaintenanceActive()) return sendError(res, 503, 'O sistema esta temporariamente em manutencao. Tente novamente em alguns minutos.');
+        await savePublicStudentRegistration(id, await readBody(req));
+        return sendJson(res, 201, { saved: true });
+      }
+      return sendError(res, 405, 'Metodo nao permitido.');
+    } catch (error) {
+      return sendError(res, error.statusCode || 400, error.message || 'Nao foi possivel salvar o cadastro.');
+    }
+  }
+
   if (resource === 'health') {
     try {
       const connection = await checkDatabaseConnection();
@@ -364,6 +403,24 @@ async function handleApi(req, res, pathname) {
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
+
+  if (resource === 'cursista-links' && id && action === 'sync' && req.method === 'POST') {
+    if (denyIfMissingPermission(res, session, 'retiros.ver')) return;
+    const retreatId = decodeURIComponent(id);
+    if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+    const current = await getRecord('retiros', retreatId).catch(() => null);
+    if (!current) return sendError(res, 404, 'Retiro nao encontrado.');
+    const synced = withSyncedStudentRegistrationLinks(current, current);
+    const sameLinks = JSON.stringify(synced.linksCadastroCursistas) === JSON.stringify(current.linksCadastroCursistas || []);
+    const saved = sameLinks
+      ? current
+      : await saveRetreatStudentRegistrationLinks(retreatId, synced.linksCadastroCursistas);
+    return sendJson(res, 200, {
+      retiroId: saved.id,
+      numeroPrevistoFichasCursista: Number(saved.numeroPrevistoFichasCursista) || 0,
+      links: await studentRegistrationLinkStatus(saved),
+    });
+  }
 
   if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {
     const { currentPassword, newPassword } = await readBody(req);
@@ -488,13 +545,17 @@ async function handleApi(req, res, pathname) {
   if (req.method === 'GET' && id) {
     const record = publicRegistrationRequest ? await getRecord(resource, decodeURIComponent(id)) : await getAuthorizedRecord(resource, decodeURIComponent(id), session);
     if (!record && !publicRegistrationRequest && ['retiros', 'adesoes', 'cursistas', 'casais', 'comunidades', 'crachas', 'pessoas'].includes(resource)) return sendError(res, 403, noRetreatAccessMessage);
-    return sendJson(res, 200, record);
+    return sendJson(res, 200, publicRegistrationRequest && resource === 'retiros' ? sanitizePublicRetreat(record) : record);
   }
 
   if (req.method === 'PUT' && id) {
-    const record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
+    let record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
     if (!publicRegistrationRequest && resource !== 'pessoas' && await denyIfMissingRetreatAccess(res, session, resource, record)) return;
     if (await denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest)) return;
+    if (!publicRegistrationRequest && resource === 'retiros') {
+      const current = await getRecord('retiros', record.id).catch(() => null);
+      record = withSyncedStudentRegistrationLinks(current, record);
+    }
     const protectedRecord = await protectRegistrationWrite(resource, record, req);
     return sendJson(res, 200, await saveRecord(resource, protectedRecord));
   }

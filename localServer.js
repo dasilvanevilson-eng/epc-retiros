@@ -86,6 +86,11 @@ loadLocalEnv().then(async () => {
         const [, token] = pathname.match(/^\/recebedor\/([^/]+)/) || [];
         await sendPublicReceiverPage(req, res, token);
       }
+      else if (pathname.startsWith('/cadastro-cursista/')) {
+        const { sendPublicStudentRegistrationPage } = require('./publicStudentRegistrationPage');
+        const [, token] = pathname.match(/^\/cadastro-cursista\/([^/]+)/) || [];
+        await sendPublicStudentRegistrationPage(req, res, token);
+      }
       else await handleStatic(req, res, pathname);
     } catch (error) {
       sendError(res, 500, error.message || 'Erro interno.');

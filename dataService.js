@@ -257,6 +257,7 @@ export const dataService = {
   listRetiros: () => list('retiros'),
   getRetiro: (id) => get('retiros', id),
   saveRetiro: (retreat) => save('retiros', retreat),
+  syncStudentRegistrationLinks: (retreatId) => api(`/cursista-links/${encodeURIComponent(retreatId)}/sync`, { method: 'POST', body: '{}' }),
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: () => list('adesoes'),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),

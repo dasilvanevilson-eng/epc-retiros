@@ -281,6 +281,20 @@
 body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:avoid; page-break-inside:avoid; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
 }
 
+.student-registration-link-list{display:grid;gap:14px;margin-top:18px}
+.student-registration-link-row{display:grid;gap:12px;padding:16px;border:1px solid var(--line,#dfe6dc);border-radius:12px;background:var(--surface-soft,#f8faf6)}
+.student-registration-link-heading,.student-registration-link-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.student-registration-link-heading strong{font-size:17px;color:var(--green-900,#203c26)}
+.student-registration-link-actions{justify-content:flex-start}
+.student-registration-link-actions .secondary-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none}
+.public-student-shell{width:min(1120px,calc(100% - 28px));margin:0 auto;padding:24px 0 56px}
+.public-student-shell>.hero{margin-bottom:18px;border-radius:18px}
+.public-student-file{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.public-student-file span{display:grid;place-items:center;min-width:48px;min-height:42px;padding:8px 14px;border-radius:10px;background:#edf5e9;color:#285130;font-size:20px;font-weight:900}
+.public-student-state{max-width:620px;margin:12vh auto 0;text-align:center}
+.public-student-state h1{margin:8px 0;color:#203c26}
+@media (max-width:640px){.public-student-shell{width:min(100% - 18px,1120px);padding-top:10px}.student-registration-link-actions>*{width:100%}}
+
 .login-shell {
   min-height:100vh;
   display:grid;
