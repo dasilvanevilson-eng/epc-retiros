@@ -286,7 +286,7 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
 .student-registration-link-heading,.student-registration-link-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .student-registration-link-heading strong{font-size:17px;color:var(--green-900,#203c26)}
 .student-registration-link-title{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.student-registration-link-open{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 14px;text-decoration:none}
+.student-registration-link-open{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:36px;padding:7px 14px;text-decoration:none;white-space:nowrap}
 .student-registration-link-actions{justify-content:flex-start}
 .student-registration-link-actions .secondary-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none}
 .student-registration-link-url{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}
@@ -313,7 +313,7 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
 .public-student-file span{display:grid;place-items:center;min-width:48px;min-height:42px;padding:8px 14px;border-radius:10px;background:#edf5e9;color:#285130;font-size:20px;font-weight:900}
 .public-student-state{max-width:620px;margin:12vh auto 0;text-align:center}
 .public-student-state h1{margin:8px 0;color:#203c26}
-@media (max-width:640px){.public-student-shell{width:min(100% - 18px,1120px);padding-top:10px}.student-registration-link-actions>*{width:100%}.student-registration-link-recipient,.student-registration-link-url{grid-template-columns:minmax(0,1fr) auto}.student-registration-link-recipient .secondary-button,.student-registration-link-url .secondary-button{width:auto;white-space:nowrap}}
+@media (max-width:640px){.public-student-shell{width:min(100% - 18px,1120px);padding-top:10px}.student-registration-link-actions>*{width:100%}.student-registration-link-title{flex-wrap:nowrap;gap:8px;min-width:0}.student-registration-link-title>strong,.student-registration-link-open{flex:0 0 auto}.student-registration-link-open{width:auto;padding-inline:10px}.student-registration-link-closed{min-width:0}.student-registration-link-recipient,.student-registration-link-url{grid-template-columns:minmax(0,1fr) auto}.student-registration-link-recipient .secondary-button,.student-registration-link-url .secondary-button{width:auto;white-space:nowrap}}
 
 .login-shell {
   min-height:100vh;

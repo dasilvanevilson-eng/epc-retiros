@@ -86,6 +86,7 @@ assert.match(adminSource, /id="view-student-link-status">Visualizar<\/button>/, 
 assert.match(adminSource, /\['numeroFicha', 'Nr Ficha'\][\s\S]*\['nomeCadastrado', 'Nome cursista\/casal'\][\s\S]*\['enviadoPara', 'Enviada para'\][\s\S]*\['status', 'Status'\]/, 'A visualização deve apresentar as quatro colunas solicitadas.');
 assert.match(adminSource, /\[\.\.\.studentLinks\]\.sort[\s\S]*aria-sort[\s\S]*data-student-link-sort/, 'Todas as fichas devem ser listadas com ordenação por qualquer coluna.');
 assert.match(stylesSource, /@media \(max-width:640px\)[\s\S]*\.student-registration-link-recipient,\.student-registration-link-url\{grid-template-columns:minmax\(0,1fr\) auto\}/, 'Os campos e botões devem manter no mobile a mesma disposição em linha do desktop.');
+assert.match(stylesSource, /@media \(max-width:640px\)[\s\S]*\.student-registration-link-title\{flex-wrap:nowrap[\s\S]*\.student-registration-link-open\{width:auto/, 'Abrir deve permanecer compacto entre a ficha e o checkbox no mobile.');
 assert.match(adminSource, /setStudentRegistrationLinkClosed\(id, numeroFicha, checkbox\.checked\)/);
 assert.match(adminSource, /canAccess\('links-cadastro\.editar'\) && canModifyRetreat\(retreat\)/);
 assert.match(adminSource, /setSectorRegistrationLinkClosed\(id, sector, nextClosed\)/);
