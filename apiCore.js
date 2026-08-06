@@ -1,6 +1,6 @@
 const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatStudentRegistrationLinks, deleteRecord } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 const {
@@ -433,7 +433,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (resource === 'cursista-links' && id && action === 'destinatario' && req.method === 'POST') {
-    if (denyIfMissingPermission(res, session, 'retiros.editar')) return;
+    if (denyIfMissingPermission(res, session, 'links-cadastro.editar')) return;
     const retreatId = decodeURIComponent(id);
     if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
     const current = await getRecord('retiros', retreatId).catch(() => null);
@@ -454,7 +454,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (resource === 'cursista-links' && id && action === 'inscricao' && req.method === 'POST') {
-    if (denyIfMissingPermission(res, session, 'retiros.editar')) return;
+    if (denyIfMissingPermission(res, session, 'links-cadastro.editar')) return;
     const retreatId = decodeURIComponent(id);
     if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
     const current = await getRecord('retiros', retreatId).catch(() => null);
@@ -471,6 +471,24 @@ async function handleApi(req, res, pathname) {
       : link);
     await saveRetreatStudentRegistrationLinks(retreatId, updatedLinks);
     return sendJson(res, 200, { numeroFicha, inscricaoEncerrada });
+  }
+
+  if (resource === 'cursista-links' && id && action === 'setor' && req.method === 'POST') {
+    if (denyIfMissingPermission(res, session, 'links-cadastro.editar')) return;
+    const retreatId = decodeURIComponent(id);
+    if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+    const current = await getRecord('retiros', retreatId).catch(() => null);
+    if (!current) return sendError(res, 404, 'Retiro nao encontrado.');
+    if (current.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+    const body = await readBody(req);
+    const sectorKey = String(body.setor || '').trim().toLocaleLowerCase('pt-BR');
+    const sector = (current.setores || []).find((item) => String(item || '').trim().toLocaleLowerCase('pt-BR') === sectorKey);
+    if (!sector) return sendError(res, 404, 'Setor nao encontrado neste retiro.');
+    const closedKeys = new Set((current.setoresInscricoesEncerradas || []).map((item) => String(item || '').trim().toLocaleLowerCase('pt-BR')));
+    if (body.inscricaoEncerrada === true) closedKeys.add(sectorKey); else closedKeys.delete(sectorKey);
+    const setoresInscricoesEncerradas = (current.setores || []).filter((item) => closedKeys.has(String(item || '').trim().toLocaleLowerCase('pt-BR')));
+    await saveRetreatClosedRegistrationSectors(retreatId, setoresInscricoesEncerradas);
+    return sendJson(res, 200, { setor: sector, inscricaoEncerrada: body.inscricaoEncerrada === true });
   }
 
   if (resource === 'auth' && id === 'change-password' && req.method === 'POST') {

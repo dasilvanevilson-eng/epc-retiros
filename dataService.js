@@ -260,6 +260,7 @@ export const dataService = {
   syncStudentRegistrationLinks: (retreatId) => api(`/cursista-links/${encodeURIComponent(retreatId)}/sync`, { method: 'POST', body: '{}' }),
   saveStudentRegistrationLinkRecipient: (retreatId, numeroFicha, enviadoPara) => api(`/cursista-links/${encodeURIComponent(retreatId)}/destinatario`, { method: 'POST', body: JSON.stringify({ numeroFicha, enviadoPara }) }),
   setStudentRegistrationLinkClosed: (retreatId, numeroFicha, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/inscricao`, { method: 'POST', body: JSON.stringify({ numeroFicha, inscricaoEncerrada }) }),
+  setSectorRegistrationLinkClosed: (retreatId, setor, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/setor`, { method: 'POST', body: JSON.stringify({ setor, inscricaoEncerrada }) }),
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: () => list('adesoes'),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),

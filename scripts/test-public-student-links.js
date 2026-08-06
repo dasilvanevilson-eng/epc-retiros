@@ -7,6 +7,10 @@ const {
   syncStudentRegistrationLinks,
   withSyncedStudentRegistrationLinks,
 } = require('../publicStudentLinks');
+const { allPermissions, defaultProfiles } = require('../permissions');
+
+assert(allPermissions.some(([id, moduleName]) => id === 'links-cadastro.editar' && moduleName === 'Links de cadastro'));
+assert(defaultProfiles.find((profile) => profile.id === 'coordenador_retiro').permissions.includes('links-cadastro.editar'));
 
 const base = { id: 'r1', numeroPrevistoFichasCursista: 2 };
 const created = withSyncedStudentRegistrationLinks(null, base);
@@ -75,16 +79,22 @@ assert.match(adminSource, /Casal cadastrado/);
 assert.match(adminSource, /saveStudentRegistrationLinkRecipient\(id, numeroFicha, input\.value\)/);
 assert.match(adminSource, />Inscrição encerrada</);
 assert.match(adminSource, /setStudentRegistrationLinkClosed\(id, numeroFicha, checkbox\.checked\)/);
+assert.match(adminSource, /canAccess\('links-cadastro\.editar'\) && canModifyRetreat\(retreat\)/);
+assert.match(adminSource, /setSectorRegistrationLinkClosed\(id, sector, nextClosed\)/);
 assert.match(vercelRoutes, /cadastro-cursista\/ficha\(\[0-9\]\+\)\/\(\[\^\/\]\+\)/, 'A rota identificada deve preceder a compatibilidade antiga.');
 assert.match(vercelRoutes, /cadastro-cursista\/\(\[\^\/\]\+\)/, 'A rota antiga deve permanecer disponível.');
 assert.match(localServer, /identified\?\.\[1\][\s\S]*identified\?\.\[2\][\s\S]*legacy\?\.\[1\]/, 'O servidor local deve aceitar os dois formatos.');
 assert.match(publicApp, /expectedFileNumber[\s\S]*O número da ficha não corresponde a este link/, 'A página deve rejeitar identificação divergente.');
 assert.match(apiSource, /prepareStudentRegistrationLinkSync\(current\)[\s\S]*saveRetreatStudentRegistrationLinks\(retreatId, syncResult\.links\)/, 'A API deve auditar antes de usar a atualização dedicada.');
-assert.match(apiSource, /action === 'destinatario'[\s\S]*denyIfMissingPermission\(res, session, 'retiros\.editar'\)[\s\S]*saveRetreatStudentRegistrationLinks\(retreatId, updatedLinks\)/, 'O destinatário deve usar permissão de edição e atualização dedicada.');
-assert.match(apiSource, /action === 'inscricao'[\s\S]*denyIfMissingPermission\(res, session, 'retiros\.editar'\)[\s\S]*inscricaoEncerrada[\s\S]*saveRetreatStudentRegistrationLinks\(retreatId, updatedLinks\)/, 'O encerramento individual deve ser protegido no servidor e usar atualização dedicada.');
+assert.match(apiSource, /action === 'destinatario'[\s\S]*denyIfMissingPermission\(res, session, 'links-cadastro\.editar'\)[\s\S]*saveRetreatStudentRegistrationLinks\(retreatId, updatedLinks\)/, 'O destinatário deve usar a permissão própria de links e atualização dedicada.');
+assert.match(apiSource, /action === 'inscricao'[\s\S]*denyIfMissingPermission\(res, session, 'links-cadastro\.editar'\)[\s\S]*inscricaoEncerrada[\s\S]*saveRetreatStudentRegistrationLinks\(retreatId, updatedLinks\)/, 'O encerramento individual deve usar a permissão própria e ser protegido no servidor.');
+assert.match(apiSource, /action === 'setor'[\s\S]*denyIfMissingPermission\(res, session, 'links-cadastro\.editar'\)[\s\S]*saveRetreatClosedRegistrationSectors/, 'O fechamento dos links da equipe deve usar a mesma permissão própria.');
 assert.match(publicApp, /context\.inscricaoEncerrada[\s\S]*Inscrição encerrada/, 'A página pública deve informar o encerramento individual do link.');
 const dedicatedUpdate = adapterSource.slice(adapterSource.indexOf('async function saveRetreatStudentRegistrationLinks'), adapterSource.indexOf('async function deleteRecord'));
 assert.match(dedicatedUpdate, /extras:[\s\S]*linksCadastroCursistas/, 'A atualização relacional deve alterar somente o extras dos links de cursistas.');
 assert.doesNotMatch(dedicatedUpdate, /linksSetores|retiro_setores|adesoes|cursistas/, 'A atualização dedicada não deve tocar em links da equipe ou fichas.');
+const sectorUpdate = adapterSource.slice(adapterSource.indexOf('async function saveRetreatClosedRegistrationSectors'), adapterSource.indexOf('async function deleteRecord'));
+assert.match(sectorUpdate, /extras:[\s\S]*setoresInscricoesEncerradas/, 'O fechamento de setor deve alterar somente os metadados correspondentes.');
+assert.doesNotMatch(sectorUpdate, /linksCadastroCursistas|retiro_setores|adesoes|cursistas/, 'O fechamento de setor não deve alterar tokens ou fichas.');
 
 console.log('Links publicos de cursistas: sincronizacao e privacidade validadas.');

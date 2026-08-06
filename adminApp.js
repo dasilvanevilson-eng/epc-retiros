@@ -2011,7 +2011,7 @@ async function renderRetreat(id, selectedSector = '') {
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
   studentRegistrationLinksPanel.id = 'retreat-student-links';
   const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
-  const canEditStudentLinkRecipient = canAccess('retiros.editar') && canModifyRetreat(retreat);
+  const canEditStudentLinkRecipient = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
   const studentLinksContent = studentLinkData?.error
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
     : studentLinks.length
@@ -2087,7 +2087,7 @@ async function renderRetreat(id, selectedSector = '') {
     const feedback = app.querySelector('#sector-link-feedback');
     const empty = app.querySelector('.sector-link-empty');
     const selectedLinks = app.querySelector('#sector-link-selected');
-    const canToggleSectorRegistration = canAccess('retiros.editar') && canModifyRetreat(retreat);
+    const canToggleSectorRegistration = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
     const openSectorLinkStatusWindow = () => {
       app.querySelector('.sector-link-status-overlay')?.remove();
       const overlay = document.createElement('section');
@@ -2151,19 +2151,7 @@ async function renderRetreat(id, selectedSector = '') {
         checkbox.disabled = true;
         if (message) message.textContent = 'Salvando...';
         try {
-          const sectorKey = normalizeText(sector);
-          const closedKeys = new Set((retreat.setoresInscricoesEncerradas || []).map(normalizeText));
-          if (nextClosed) closedKeys.add(sectorKey); else closedKeys.delete(sectorKey);
-          const setoresInscricoesEncerradas = sortSectors((retreat.setores || []).filter((item) => closedKeys.has(normalizeText(item))));
-          const existingLinks = (retreat.linksSetores || retreat.setorLinks || []).map((link) => (
-            normalizeText(link.setor || link.sector) === sectorKey ? { ...link, setor: link.setor || link.sector || sector, inscricoesEncerradas: nextClosed } : link
-          ));
-          Object.assign(retreat, {
-            setoresInscricoesEncerradas,
-            linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, retreat.setores || []),
-            updatedAt: new Date().toISOString(),
-          });
-          await dataService.saveRetiro(retreat);
+          await dataService.setSectorRegistrationLinkClosed(id, sector, nextClosed);
           if (message) message.textContent = 'Status salvo.';
           await loadData();
           await renderRetreat(id, sector);
@@ -7666,7 +7654,7 @@ async function renderUsuariosSeguranca({ selectedUserId = '', messageText = '' }
   const permissionActionLabels = { ver: 'Visualizar', criar: 'Criar', editar: 'Editar', publicar: 'Publicar', encerrar: 'Encerrar', excluir: 'Excluir', validar: 'Validar', imprimir: 'Imprimir' };
   const permissionPresentation = (permission) => {
     const action = permission.id.split('.').pop();
-    const moduleName = permission.id === 'retiros.ver' ? 'Links de cadastro' : (permission.id.startsWith('retiros.') ? 'Configurações' : (permission.modulo || 'Sistema'));
+    const moduleName = permission.id === 'retiros.ver' || permission.id.startsWith('links-cadastro.') ? 'Links de cadastro' : (permission.id.startsWith('retiros.') ? 'Configurações' : (permission.modulo || 'Sistema'));
     return { ...permission, moduleName, action, actionLabel: permissionActionLabels[action] || permission.descricao || action };
   };
   const permissionGroups = permissoes.map(permissionPresentation).reduce((groups, permission) => {

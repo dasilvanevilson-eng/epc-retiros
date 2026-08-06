@@ -1549,6 +1549,31 @@ async function saveRetreatStudentRegistrationLinks(retreatId, linksCadastroCursi
   });
 }
 
+async function saveRetreatClosedRegistrationSectors(retreatId, setoresInscricoesEncerradas = []) {
+  return withLocalFallback(async (useSupabase) => {
+    if (useSupabase) {
+      const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+      if (!row) return null;
+      await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          extras: {
+            ...(row.extras || {}),
+            setoresInscricoesEncerradas,
+          },
+        }),
+      });
+      return getRetreat(retreatId);
+    }
+    const database = await readFileDatabase();
+    const index = database.retiros.findIndex((retreat) => retreat.id === retreatId);
+    if (index < 0) return null;
+    database.retiros[index] = { ...database.retiros[index], setoresInscricoesEncerradas };
+    await writeFileDatabase(database);
+    return database.retiros[index];
+  });
+}
+
 async function deleteRecord(storeName, id) {
   return withLocalFallback(async (useSupabase) => {
     if (useSupabase) return deleteRelational(storeName, id);
@@ -1581,6 +1606,7 @@ module.exports = {
   getRecord,
   saveRecord,
   saveRetreatStudentRegistrationLinks,
+  saveRetreatClosedRegistrationSectors,
   deleteRecord,
   ensureFileDatabase,
 };

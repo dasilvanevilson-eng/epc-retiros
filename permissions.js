@@ -1,6 +1,7 @@
 const allPermissions = [
   ['inicio.ver', 'Inicio', 'Ver painel inicial'],
   ['retiros.ver', 'Retiros', 'Ver retiros'],
+  ['links-cadastro.editar', 'Links de cadastro', 'Editar links de cadastro'],
   ['retiros.criar', 'Retiros', 'Criar retiros'],
   ['retiros.editar', 'Retiros', 'Editar retiros'],
   ['retiros.publicar', 'Retiros', 'Publicar link'],
@@ -72,6 +73,7 @@ const defaultProfiles = [
     permissions: [
       'inicio.ver',
       'retiros.ver',
+      'links-cadastro.editar',
       'retiros.editar',
       'pessoas.ver',
       'pessoas.criar',
