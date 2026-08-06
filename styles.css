@@ -298,6 +298,15 @@ body:has(.badge-print-area) .badge-card { width:95mm; height:65mm; break-inside:
 .student-registration-link-closed input{width:18px;height:18px;margin:0;accent-color:var(--green-700,#356d41)}
 .student-registration-link-closed-feedback{min-height:18px;margin-top:-8px;color:var(--text-muted,#637064);font-size:13px}
 .student-registration-link-registration{margin:0;padding:10px 12px;border-left:4px solid var(--green-500,#478a55);border-radius:6px;background:var(--surface,#fff)}
+.student-link-status-dialog{width:min(980px,100%)}
+.student-link-status-table-wrap{flex:1;overflow:auto;margin:18px 0;border:1px solid var(--line,#dfe6dc);border-radius:10px}
+.student-link-status-table{width:100%;min-width:720px;border-collapse:collapse;background:#fff}
+.student-link-status-table th,.student-link-status-table td{padding:12px 14px;border-bottom:1px solid var(--line,#dfe6dc);text-align:left;vertical-align:top}
+.student-link-status-table th{position:sticky;z-index:1;top:0;padding:0;background:#edf5e9}
+.student-link-status-table th button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border:0;border-radius:0;background:transparent;color:var(--green-900,#203c26);box-shadow:none;text-align:left;white-space:nowrap}
+.student-link-status-table th button:hover,.student-link-status-table th button:focus-visible{background:#dfeeda;color:var(--green-900,#203c26)}
+.student-link-status-table th:first-child,.student-link-status-table td:first-child{width:110px}
+.student-link-status-table tbody tr:last-child td{border-bottom:0}
 .public-student-shell{width:min(1120px,calc(100% - 28px));margin:0 auto;padding:24px 0 56px}
 .public-student-shell>.hero{margin-bottom:18px;border-radius:18px}
 .public-student-file{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}

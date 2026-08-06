@@ -2028,8 +2028,49 @@ async function renderRetreat(id, selectedSector = '') {
         </article>`;
       }).join('')}</div>`
       : '<p class="empty-state">Configure o Número previsto de fichas de cursista para gerar os links públicos.</p>';
-  studentRegistrationLinksPanel.innerHTML = `<div class="panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Cada link corresponde a uma ficha exclusiva do retiro em foco.</p></div></div>${studentLinksContent}`;
+  studentRegistrationLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div><h2>Links de cadastro de cursistas</h2><p>Cada link corresponde a uma ficha exclusiva do retiro em foco.</p></div><button type="button" class="secondary-button" id="view-student-link-status">Visualizar</button></div>${studentLinksContent}`;
   app.querySelector('.detail-grid')?.append(studentRegistrationLinksPanel);
+  const openStudentLinkStatusWindow = () => {
+    app.querySelector('.student-link-status-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.className = 'receiver-sector-overlay student-link-status-overlay';
+    overlay.innerHTML = `<div class="receiver-sector-dialog student-link-status-dialog"><div class="panel-heading"><div><p class="eyebrow">Links de cadastro de cursistas</p><h2>Fichas previstas</h2><p>Todas as fichas do retiro em foco.</p></div></div><div class="student-link-status-table-wrap"><table class="student-link-status-table"></table></div><div class="form-actions"><button type="button" class="close-student-link-status">Fechar</button></div></div>`;
+    let sort = { key: 'numeroFicha', direction: 'asc' };
+    const table = overlay.querySelector('.student-link-status-table');
+    const columns = [
+      ['numeroFicha', 'Nr Ficha'],
+      ['nomeCadastrado', 'Nome cursista/casal'],
+      ['enviadoPara', 'Enviada para'],
+      ['status', 'Status'],
+    ];
+    const statusText = (link) => link.status === 'cadastrada' ? 'Cadastrada' : (link.inscricaoEncerrada === true || link.status === 'encerrada' ? 'Encerrada' : 'Disponível');
+    const valueFor = (link, key) => key === 'status' ? statusText(link) : (link[key] || '');
+    const renderTable = () => {
+      const directionFactor = sort.direction === 'asc' ? 1 : -1;
+      const rows = [...studentLinks].sort((first, second) => {
+        if (sort.key === 'numeroFicha') return (Number(first.numeroFicha) - Number(second.numeroFicha)) * directionFactor;
+        return String(valueFor(first, sort.key)).localeCompare(String(valueFor(second, sort.key)), 'pt-BR', { numeric: true, sensitivity: 'base' }) * directionFactor;
+      });
+      table.innerHTML = `<thead><tr>${columns.map(([key, label]) => `<th scope="col" aria-sort="${sort.key === key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}"><button type="button" data-student-link-sort="${key}">${label}<span aria-hidden="true">${sort.key === key ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}</span></button></th>`).join('')}</tr></thead><tbody>${rows.length ? rows.map((link) => `<tr><td>${link.numeroFicha}</td><td>${escapeHtml(link.nomeCadastrado || '—')}</td><td>${escapeHtml(link.enviadoPara || '—')}</td><td>${escapeHtml(statusText(link))}</td></tr>`).join('') : '<tr><td colspan="4" class="empty-state">Nenhuma ficha prevista para este retiro.</td></tr>'}</tbody>`;
+      table.querySelectorAll('[data-student-link-sort]').forEach((button) => button.addEventListener('click', () => {
+        const key = button.dataset.studentLinkSort;
+        sort = { key, direction: sort.key === key && sort.direction === 'asc' ? 'desc' : 'asc' };
+        renderTable();
+      }));
+    };
+    const close = () => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+    };
+    const onKeydown = (event) => { if (event.key === 'Escape') close(); };
+    overlay.querySelector('.close-student-link-status')?.addEventListener('click', close);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+    document.addEventListener('keydown', onKeydown);
+    renderTable();
+    app.append(overlay);
+    overlay.querySelector('[data-student-link-sort]')?.focus();
+  };
+  studentRegistrationLinksPanel.querySelector('#view-student-link-status')?.addEventListener('click', openStudentLinkStatusWindow);
   studentRegistrationLinksPanel.querySelectorAll('[data-copy-student-link]').forEach((button) => button.addEventListener('click', async () => {
     await navigator.clipboard.writeText(button.dataset.copyStudentLink);
     button.textContent = 'Copiado!';
@@ -2045,6 +2086,8 @@ async function renderRetreat(id, selectedSector = '') {
     try {
       const saved = await dataService.saveStudentRegistrationLinkRecipient(id, numeroFicha, input.value);
       input.value = saved.enviadoPara || '';
+      const link = studentLinks.find((item) => Number(item.numeroFicha) === numeroFicha);
+      if (link) link.enviadoPara = input.value;
       feedback.textContent = 'Destinatário salvo.';
     } catch (error) {
       feedback.textContent = error.message || 'Não foi possível salvar o destinatário.';
@@ -2063,6 +2106,11 @@ async function renderRetreat(id, selectedSector = '') {
     try {
       const saved = await dataService.setStudentRegistrationLinkClosed(id, numeroFicha, checkbox.checked);
       checkbox.checked = saved.inscricaoEncerrada === true;
+      const link = studentLinks.find((item) => Number(item.numeroFicha) === numeroFicha);
+      if (link) {
+        link.inscricaoEncerrada = checkbox.checked;
+        if (link.status !== 'cadastrada') link.status = checkbox.checked ? 'encerrada' : 'disponivel';
+      }
       if (row?.dataset.studentLinkRegistered !== 'true' && status) {
         status.textContent = checkbox.checked ? 'Encerrada' : 'Disponível';
         status.className = `status ${checkbox.checked ? 'concluido' : 'publicado'}`;
