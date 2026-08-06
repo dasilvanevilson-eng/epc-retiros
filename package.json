@@ -10,6 +10,7 @@
     "test:cursista-kids-age": "node scripts/test-cursista-kids-age-limit.js",
     "test:home-kids-care": "node scripts/test-home-kids-care.js",
     "test:retreat-focus": "node scripts/test-retreat-focus.js",
+    "test:retreat-expected-files": "node scripts/test-retreat-expected-student-files.js",
     "test:user-security": "node scripts/test-user-security-screen.js",
     "test:badge-coordinator": "node scripts/test-badge-coordinator-label.js",
     "test:badge-community": "node scripts/test-badge-student-community.js",

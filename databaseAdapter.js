@@ -297,6 +297,7 @@ async function saveRetreat(record) {
   const closedSectorKeysForExtras = new Set(array(record.setoresInscricoesEncerradas).map(normalizeText));
   const retreatExtras = {
     ...extras(record, mappedKeys),
+    numeroPrevistoFichasCursista: Math.max(0, Math.trunc(Number(record.numeroPrevistoFichasCursista) || 0)),
     setoresInscricoesEncerradas: array(record.setores).filter((sector) => closedSectorKeysForExtras.has(normalizeText(sector))),
   };
   const [existingSectors, existingDays] = await Promise.all([
