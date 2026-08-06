@@ -725,6 +725,18 @@ function kidExceedsRetreatAgeLimit(retreat, dateOfBirth) {
   return age !== null && age > limit;
 }
 
+function cursistaKidExceedsRetreatAgeLimit(retreat, dateOfBirth) {
+  const normalizedStart = normalizeDateInput(retreat?.dataInicio);
+  if (!normalizedStart) return false;
+  return kidExceedsRetreatAgeLimit({ ...retreat, dataInicio: normalizedStart }, dateOfBirth);
+}
+
+function retreatKidsAgeLimitLabel(retreat) {
+  const limit = Number(retreat?.idadeMaximaEspacoKids);
+  if (!Number.isFinite(limit) || limit <= 0) return 'Idade máxima: não definida';
+  return `Idade máxima: ${limit} ${limit === 1 ? 'ano' : 'anos'}`;
+}
+
 function ageInYearsAndMonths(dateOfBirth) {
   if (!dateOfBirth) return 'Data não informada';
   const birth = new Date(`${dateOfBirth}T12:00:00`); const today = new Date();
@@ -3019,6 +3031,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const shirtChoices = (name) => choices(name, ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3'], false);
   const dateInputAttributes = active === 'cursista-smp' ? 'type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"' : 'type="date"';
+  const kidsAgeLimitLabel = retreatKidsAgeLimitLabel(selectedRetreat());
   const smpKidsFields = Array.from({ length: 5 }, (_, index) => {
     const kidNumber = index + 1;
     const row = `<div class="kids-row" data-smp-kid-row="${kidNumber}"><span>${kidNumber}</span><label class="field"><span>Nome</span><input name="smpKidNome${kidNumber}" placeholder="Nome da criança"></label><label class="field"><span>Data de nascimento</span><input name="smpKidNascimento${kidNumber}" ${dateInputAttributes}></label></div>`;
@@ -3093,7 +3106,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>5.</span><div><h2>Espaço Kids</h2></div></div>
-      <div class="choice-block smp-wide"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessita do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
+      <div class="choice-block smp-wide"><div class="kids-heading"><div class="kids-title-with-limit"><h3>Espaço Kids</h3><span class="kids-age-limit-label">${escapeHtml(kidsAgeLimitLabel)}</span></div><label><input type="checkbox" name="smpKidsNotNeeded"> Não necessita do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.</p><div class="kids-list">${smpKidsFields}</div></div>
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>6.</span><div><h2>Saúde e acolhimento</h2></div></div>
@@ -3706,6 +3719,13 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   form.addEventListener('input', syncChangedSmpKidPanel);
   form.addEventListener('change', syncChangedSmpKidPanel);
+  form.querySelectorAll('[name^="smpKidNascimento"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (cursistaKidExceedsRetreatAgeLimit(retreat, input.value)) {
+        alert('Criança acima da idade permitida pra esse retiro');
+      }
+    });
+  });
   syncSmpKidPanels({ resetOpen: true });
   syncSmpKidsNeedVisibility();
   form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
