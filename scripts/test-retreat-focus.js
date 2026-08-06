@@ -77,6 +77,9 @@ const communitiesSource = section('async function renderComunidades', 'const bad
 assert.match(communitiesSource, /community\.retiroId === retreat\.id/, 'Comunidades devem permanecer isoladas pelo foco.');
 assert.match(communitiesSource, /entry\.retiroId === retreat\.id/, 'Equipe usada nas comunidades deve permanecer isolada pelo foco.');
 assert.match(communitiesSource, /activeCoupleStudentSource\.list\(retreat\.id\)/, 'Comunidades SMP/EPC devem carregar a fonte do foco.');
+assert.match(retreatDetailSource, /Animação\/Jovem de sala visualiza também cursistas com intolerância alimentar/, 'A descrição deve explicar a visualização especial da Animação.');
+assert.match(retreatDetailSource, /Cozinha visualiza também cursistas e crianças no Espaço Kids com intolerância alimentar/, 'A descrição deve explicar a visualização especial da Cozinha.');
+assert.match(retreatDetailSource, /Espaço Kids visualiza também crianças com intolerância alimentar e problema de saúde/, 'A descrição deve explicar a visualização especial do Espaço Kids.');
 const teamLinksPanelIndex = retreatDetailSource.indexOf("sectorLinksPanel.id = 'retreat-links'");
 const studentLinksPanelIndex = retreatDetailSource.indexOf("studentRegistrationLinksPanel.id = 'retreat-student-links'");
 assert(teamLinksPanelIndex >= 0, 'O painel de links da equipe deve permanecer na tela.');
