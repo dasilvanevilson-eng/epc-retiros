@@ -132,7 +132,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const section = document.createElement('section');
   section.className = 'student-photo-field is-file-number-photo';
   section.dataset.studentPhotoField = type;
-  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><button type="button" class="delete-student-photo" data-photo-delete hidden>Excluir foto</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
+  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><button type="button" class="secondary-button" data-photo-paste>Colar imagem</button><button type="button" class="delete-student-photo" data-photo-delete hidden>Excluir foto</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB. Você também pode copiar uma imagem e colá-la aqui.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
   const target = mountTarget || form;
   if (mountTarget) target.append(section);
   else {
@@ -145,6 +145,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const message = section.querySelector('[data-photo-message]');
   const fileInput = section.querySelector('[data-photo-file]');
   const cameraInput = section.querySelector('[data-photo-camera]');
+  const pasteButton = section.querySelector('[data-photo-paste]');
   const deleteButton = section.querySelector('[data-photo-delete]');
   const controls = section.querySelector('.student-photo-controls');
   if (publicMode) deleteButton.remove();
@@ -169,6 +170,31 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   section.querySelector('[data-photo-capture]').addEventListener('click', () => cameraInput.click());
   fileInput.addEventListener('change', () => choose(fileInput.files?.[0]));
   cameraInput.addEventListener('change', () => choose(cameraInput.files?.[0]));
+  const clipboardImage = (items = []) => Array.from(items).find((item) => item.kind === 'file' && String(item.type || '').toLowerCase().startsWith('image/'))?.getAsFile() || null;
+  pasteButton.addEventListener('click', async () => {
+    if (!navigator.clipboard?.read) {
+      setMessage('O navegador não permite leitura direta. Use Ctrl+V ou o comando Colar do dispositivo.');
+      pasteButton.focus();
+      return;
+    }
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((mime) => String(mime).toLowerCase().startsWith('image/'));
+        if (imageType) { await choose(await item.getType(imageType)); return; }
+      }
+      setMessage('A área de transferência não contém uma imagem.');
+    } catch {
+      setMessage('Não foi possível acessar a área de transferência. Use Ctrl+V ou o comando Colar do dispositivo.');
+      pasteButton.focus();
+    }
+  });
+  section.addEventListener('paste', (event) => {
+    const file = clipboardImage(event.clipboardData?.items);
+    if (!file) { setMessage('O conteúdo colado não é uma imagem compatível.'); return; }
+    event.preventDefault();
+    choose(file);
+  });
   const controller = {
     hasPending: () => Boolean(pendingBlob),
     setEditable(editable) {
