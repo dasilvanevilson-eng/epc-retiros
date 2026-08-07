@@ -2183,14 +2183,18 @@ async function renderRetreat(id, selectedSector = '') {
   const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
   const internalStudentSection = studentFormNavIds[retreat.tipoFichaCursista] || 'cursista';
   const canEditStudentLinkRecipient = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
+  const studentLinkSearchOptionLabel = (link) => {
+    const status = link.status === 'cadastrada' ? 'Cadastrada' : (link.inscricaoEncerrada === true ? 'Encerrada' : 'Disponível');
+    return [link.nomeCadastrado, link.enviadoPara, status].filter(Boolean).join(' · ');
+  };
   const studentLinksContent = studentLinkData?.error
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
     : studentLinks.length
-      ? `<div class="student-registration-link-list">${studentLinks.map((link) => {
+      ? `<div class="student-registration-link-search-shell"><label class="field student-registration-link-search"><span>Buscar ficha</span><input id="student-registration-link-search" type="search" inputmode="numeric" autocomplete="off" list="student-registration-link-options" aria-controls="student-registration-link-list" aria-describedby="student-registration-link-search-feedback" placeholder="Digite o número da ficha"></label><datalist id="student-registration-link-options">${studentLinks.map((link) => `<option value="${escapeHtml(link.numeroFicha)}" label="${escapeHtml(studentLinkSearchOptionLabel(link))}" data-student-link-option="${escapeHtml(link.numeroFicha)}"></option>`).join('')}</datalist><p id="student-registration-link-search-feedback" class="student-registration-link-search-feedback" role="status">Digite o número para visualizar os dados de uma ficha.</p></div><div class="student-registration-link-list" id="student-registration-link-list">${studentLinks.map((link) => {
         const publicUrl = `${location.origin}/cadastro-cursista/ficha${link.numeroFicha}/${encodeURIComponent(link.token)}`;
         const registered = link.status === 'cadastrada';
         const closed = link.inscricaoEncerrada === true;
-        return `<article class="student-registration-link-row" data-student-link-row="${link.numeroFicha}" data-student-link-registered="${registered ? 'true' : 'false'}">
+        return `<article class="student-registration-link-row" data-student-link-row="${link.numeroFicha}" data-student-link-registered="${registered ? 'true' : 'false'}" hidden>
           <div class="student-registration-link-heading"><div class="student-registration-link-title"><div class="student-registration-link-number"><strong>Ficha ${link.numeroFicha}</strong><span class="student-registration-link-status-note ${registered ? 'is-registered' : (closed ? 'is-closed' : 'is-available')}" data-student-link-status="${link.numeroFicha}">${registered ? 'Cadastrada' : (closed ? 'Encerrada' : 'Disponível')}</span></div><a class="secondary-button student-registration-link-open" href="#${internalStudentSection}?ficha=${link.numeroFicha}" aria-label="Abrir ficha ${link.numeroFicha} na opção de cursistas">Abrir</a><label class="student-registration-link-closed"><input type="checkbox" data-student-link-closed="${link.numeroFicha}" ${closed ? 'checked' : ''} ${canEditStudentLinkRecipient ? '' : 'disabled'}><span>Inscrição encerrada</span></label></div></div>
           <span class="student-registration-link-closed-feedback" data-student-link-closed-feedback="${link.numeroFicha}" role="status"></span>
           <div class="student-registration-link-url"><label class="field"><span class="sr-only">Endereço público da ficha ${link.numeroFicha}</span><input value="${escapeHtml(publicUrl)}" readonly aria-label="Link público da ficha ${link.numeroFicha}"></label><button type="button" class="secondary-button" data-copy-student-link="${escapeHtml(publicUrl)}">Copiar link</button></div>
@@ -2226,6 +2230,29 @@ async function renderRetreat(id, selectedSector = '') {
   studentLinksInfoButton?.addEventListener('click', () => {
     setStudentLinksExplanationOpen(studentLinksInfoButton.getAttribute('aria-expanded') !== 'true');
   });
+  const studentLinkSearch = studentRegistrationLinksPanel.querySelector('#student-registration-link-search');
+  const refreshStudentLinkSearchOption = (numeroFicha) => {
+    const link = studentLinks.find((item) => Number(item.numeroFicha) === Number(numeroFicha));
+    const option = studentRegistrationLinksPanel.querySelector(`[data-student-link-option="${Number(numeroFicha)}"]`);
+    if (link && option) option.label = studentLinkSearchOptionLabel(link);
+  };
+  if (studentLinkSearch) {
+    const rows = [...studentRegistrationLinksPanel.querySelectorAll('[data-student-link-row]')];
+    const feedback = studentRegistrationLinksPanel.querySelector('#student-registration-link-search-feedback');
+    const selectStudentLink = () => {
+      const typed = String(studentLinkSearch.value || '').trim();
+      const number = Number(typed);
+      const validNumber = Number.isInteger(number) && number > 0;
+      const selectedRow = validNumber ? rows.find((row) => Number(row.dataset.studentLinkRow) === number) : null;
+      rows.forEach((row) => { row.hidden = row !== selectedRow; });
+      if (!typed) feedback.textContent = 'Digite o número para visualizar os dados de uma ficha.';
+      else if (selectedRow) feedback.textContent = `Ficha ${number} selecionada.`;
+      else feedback.textContent = 'Nenhuma ficha encontrada com esse número.';
+    };
+    studentLinkSearch.addEventListener('input', selectStudentLink);
+    studentLinkSearch.addEventListener('change', selectStudentLink);
+    selectStudentLink();
+  }
   const openStudentLinkStatusWindow = () => {
     app.querySelector('.student-link-status-overlay')?.remove();
     const overlay = document.createElement('section');
@@ -2284,6 +2311,7 @@ async function renderRetreat(id, selectedSector = '') {
       input.value = saved.enviadoPara || '';
       const link = studentLinks.find((item) => Number(item.numeroFicha) === numeroFicha);
       if (link) link.enviadoPara = input.value;
+      refreshStudentLinkSearchOption(numeroFicha);
       feedback.textContent = 'Destinatário salvo.';
     } catch (error) {
       feedback.textContent = error.message || 'Não foi possível salvar o destinatário.';
@@ -2307,6 +2335,7 @@ async function renderRetreat(id, selectedSector = '') {
         link.inscricaoEncerrada = checkbox.checked;
         if (link.status !== 'cadastrada') link.status = checkbox.checked ? 'encerrada' : 'disponivel';
       }
+      refreshStudentLinkSearchOption(numeroFicha);
       if (row?.dataset.studentLinkRegistered !== 'true' && status) {
         status.textContent = checkbox.checked ? 'Encerrada' : 'Disponível';
         status.className = `student-registration-link-status-note ${checkbox.checked ? 'is-closed' : 'is-available'}`;
