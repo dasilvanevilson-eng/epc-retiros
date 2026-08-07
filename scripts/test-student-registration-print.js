@@ -13,6 +13,8 @@ const printSource = app.slice(printStart, printEnd);
 assert.match(printSource, /Não informado/, 'Campos vazios devem ser identificados na impressão.');
 assert.match(printSource, /@page\{size:A4 portrait;margin:8mm\}/, 'Todas as fichas devem usar A4 vertical.');
 assert.match(printSource, /\.print-page\{[^}]*width:194mm;height:281mm;overflow:hidden/, 'A área impressa deve ficar limitada a uma página A4.');
+assert.match(printSource, /individual \? 'width:31\.2mm;height:41\.6mm' : 'width:49\.4mm;height:37\.05mm'/, 'As fotos Individual, SMP e EPC devem ser impressas com aumento de 30%.');
+assert.match(printSource, /margin:0 auto;object-fit:cover/, 'A foto deve ficar centralizada horizontalmente na impressão.');
 assert.match(printSource, /Math\.min\(1,[\s\S]*page\.clientHeight \/ Math\.max\(sheet\.scrollHeight, 1\)/, 'Conteúdo extenso deve ser reduzido proporcionalmente para caber na página.');
 assert.match(printSource, /studentRegistrationPrintBatchDocument[\s\S]*studentRegistrationPrintDocument\(\{ retreat, record, studentFormType \}\)/, 'A impressão em lote deve reutilizar o mesmo gerador das fichas individuais.');
 assert.match(printSource, /break-after:page;page-break-after:always/, 'Cada ficha do lote deve ocupar uma página própria.');

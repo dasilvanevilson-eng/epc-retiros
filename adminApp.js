@@ -970,7 +970,7 @@ function studentRegistrationPrintDocument({ retreat, record, studentFormType }) 
   const photoType = individual ? 'individual' : (studentFormType === 'cursista-epc' ? 'epc' : 'smp');
   const photoRecordId = record?.id || record?.numeroFichaSmp;
   const photoSrc = retreat?.id && photoRecordId ? studentPhotoUrl(photoType, retreat.id, photoRecordId) : '';
-  const photoPrint = photoSrc ? `<section class="print-section print-photo-section"><h2>Foto</h2><img src="${escapeHtml(photoSrc)}" alt="${individual ? 'Foto do cursista' : 'Foto do casal'}" style="display:block;${individual ? 'width:24mm;height:32mm' : 'width:38mm;height:28.5mm'};object-fit:cover;border:1px solid #cbd5ca;border-radius:2mm" onerror="this.closest('section').remove()"></section>` : '';
+  const photoPrint = photoSrc ? `<section class="print-section print-photo-section"><h2>Foto</h2><img src="${escapeHtml(photoSrc)}" alt="${individual ? 'Foto do cursista' : 'Foto do casal'}" style="display:block;${individual ? 'width:31.2mm;height:41.6mm' : 'width:49.4mm;height:37.05mm'};margin:0 auto;object-fit:cover;border:1px solid #cbd5ca;border-radius:2mm" onerror="this.closest('section').remove()"></section>` : '';
   const content = `${photoPrint}${baseContent}`;
   const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${escapeHtml(String(fileNumber || ''))} - ${escapeHtml(label)}</title><style>
