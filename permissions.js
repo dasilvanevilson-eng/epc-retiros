@@ -1,6 +1,6 @@
 const allPermissions = [
   ['inicio.ver', 'Inicio', 'Ver painel inicial'],
-  ['retiros.ver', 'Retiros', 'Ver retiros'],
+  ['retiros.ver', 'Retiros', 'Ver links de cadastro'],
   ['links-cadastro.editar', 'Links de cadastro', 'Editar links de cadastro'],
   ['retiros.criar', 'Retiros', 'Criar retiros'],
   ['retiros.editar', 'Retiros', 'Editar retiros'],

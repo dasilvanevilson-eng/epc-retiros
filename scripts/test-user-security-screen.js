@@ -64,6 +64,7 @@ const deleteRecord = async (store, id) => {
 require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: { listRecords, saveRecord, deleteRecord } };
 delete require.cache[authPath];
 const { allPermissions } = require('../permissions');
+assert(allPermissions.some(([id, , description]) => id === 'retiros.ver' && description === 'Ver links de cadastro'), 'A permissao de visualizacao deve descrever os links de cadastro.');
 const securedAuth = require('../auth');
 const session = { id: 'self-admin', sub: 'admin' };
 const allPermissionValues = allPermissions.map(([id]) => ({ permissaoId: id, permitido: true }));

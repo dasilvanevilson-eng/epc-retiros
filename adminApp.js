@@ -8027,7 +8027,8 @@ async function renderUsuariosSeguranca({ selectedUserId = '', messageText = '' }
   const permissionPresentation = (permission) => {
     const action = permission.id.split('.').pop();
     const moduleName = permission.id === 'retiros.ver' || permission.id.startsWith('links-cadastro.') ? 'Links de cadastro' : (permission.id.startsWith('retiros.') ? 'Configurações' : (permission.modulo || 'Sistema'));
-    return { ...permission, moduleName, action, actionLabel: permissionActionLabels[action] || permission.descricao || action };
+    const description = permission.id === 'retiros.ver' ? 'Ver links de cadastro' : permission.descricao;
+    return { ...permission, descricao: description, moduleName, action, actionLabel: permissionActionLabels[action] || description || action };
   };
   const permissionGroups = permissoes.map(permissionPresentation).reduce((groups, permission) => {
     groups[permission.moduleName] = groups[permission.moduleName] || [];
