@@ -77,6 +77,9 @@ const communitiesSource = section('async function renderComunidades', 'const bad
 assert.match(communitiesSource, /community\.retiroId === retreat\.id/, 'Comunidades devem permanecer isoladas pelo foco.');
 assert.match(communitiesSource, /entry\.retiroId === retreat\.id/, 'Equipe usada nas comunidades deve permanecer isolada pelo foco.');
 assert.match(communitiesSource, /activeCoupleStudentSource\.list\(retreat\.id\)/, 'Comunidades SMP/EPC devem carregar a fonte do foco.');
+assert.match(communitiesSource, /const assignedLeaderIds = new Set\(communities\.map\(\(community\) => community\.liderCasalId\)\.filter\(Boolean\)\.map\(String\)\)/, 'A busca de tios deve identificar os casais ja atribuidos a comunidades.');
+assert.match(communitiesSource, /remainingLeadersFor = \(selected = ''\) => leaders\.filter\(\(leader\) => !assignedLeaderIds\.has\(String\(leader\.casalId\)\) \|\| String\(leader\.casalId\) === String\(selected\)\)/, 'A busca deve exibir somente tios restantes, preservando a atribuicao da propria comunidade.');
+assert.match(communitiesSource, /data-community-leader[\s\S]*saveComunidade\(community\); await renderComunidades\(\)/, 'A lista de tios restantes deve ser atualizada depois de uma atribuicao.');
 assert.match(retreatDetailSource, /Animação\/Jovem de sala visualiza também cursistas com intolerância alimentar/, 'A descrição deve explicar a visualização especial da Animação.');
 assert.match(retreatDetailSource, /Cozinha visualiza também cursistas e crianças do Espaço Kids com intolerância alimentar/, 'A descrição deve explicar a visualização especial da Cozinha.');
 assert.match(retreatDetailSource, /Espaço Kids visualiza também crianças com intolerância alimentar e problema de saúde/, 'A descrição deve explicar a visualização especial do Espaço Kids.');
