@@ -2150,7 +2150,7 @@ async function renderRetreat(id, selectedSector = '') {
       const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
       const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
       return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}" data-registration-closed="${sectorRegistrationClosed(retreat, link.setor) ? 'true' : 'false'}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
-    }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback">Clique ou digite para localizar um setor ativo.</div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
+    }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><div class="sector-link-feedback" id="sector-link-feedback"></div><div class="sector-link-selected" id="sector-link-selected"><p class="empty-state">Selecione um setor para visualizar os links.</p></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
     const sectorLinksInfoButton = sectorLinksPanel.querySelector('#sector-links-info');
     const sectorLinksExplanation = sectorLinksPanel.querySelector('#sector-links-explanation');
@@ -2428,7 +2428,7 @@ async function renderRetreat(id, selectedSector = '') {
         if (matches) visible += 1;
       });
       if (empty) empty.hidden = visible > 0;
-      feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : 'Clique ou digite para localizar um setor ativo.';
+      feedback.textContent = query ? (visible ? `${visible} setor(es) ativo(s) encontrado(s).` : 'Nenhum setor ativo encontrado.') : '';
     };
     app.querySelectorAll('[data-sector-link-select]').forEach((button) => button.addEventListener('click', () => {
       const sector = button.dataset.sectorLinkSelect || '';
