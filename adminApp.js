@@ -942,16 +942,21 @@ function coupleStudentRegistrationPrintContent(record, studentFormType) {
     ? [...sharedRows.slice(0, 6), ...smpOnlyRows, ...sharedRows.slice(6)]
     : sharedRows;
   const comparison = `<table class="couple-comparison"><thead><tr><th>Informação</th><th>Ele</th><th>Ela</th></tr></thead><tbody>${rows.map(([label, hisKey, herKey, type]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${studentRegistrationPrintValue(record?.[hisKey], type)}</td><td>${studentRegistrationPrintValue(record?.[herKey], type)}</td></tr>`).join('')}</tbody></table>`;
+  const addressFields = [
+    ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'],
+  ];
   const commonFields = studentFormType === 'cursista-epc' ? [
-    ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'], ['E-mail', 'emailEpc'],
+    ...addressFields, ['E-mail', 'emailEpc'],
     ['Casamento religioso', 'uniaoCasal', 'date'], ['Local do casamento', 'localCasamentoEpc'], ['Tem filhos?', 'temFilhosEpc'], ['Idade dos filhos', 'idadeFilhosEpc'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
     ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Contato de emergência', 'contatoEmergenciaEpc'], ['Fone de emergência', 'foneEmergenciaEpc', 'phone'],
   ] : [
-    ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'],
     ['Data da união', 'uniaoCasal', 'date'], ['Filhos da união', 'filhosUniao'], ['Outras uniões?', 'outrasUnioes'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
     ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Curso do apresentante', 'cursoApresentante'], ['Cidade do apresentante', 'cidadeApresentante'], ['Paróquia do apresentante', 'paroquiaApresentante'], ['Familiar ou amigo', 'familiarAmigo'], ['Fone do familiar', 'foneFamiliar', 'phone'],
   ];
-  return `${studentRegistrationPrintSection('Informações do casal', comparison)}${studentRegistrationPrintSection('Informações em comum', studentRegistrationPrintFieldGrid(record, commonFields))}`;
+  const commonSections = studentFormType === 'cursista-smp'
+    ? `${studentRegistrationPrintSection('Informações em comum', studentRegistrationPrintFieldGrid(record, commonFields))}${studentRegistrationPrintSection('Endereço', studentRegistrationPrintFieldGrid(record, addressFields))}`
+    : studentRegistrationPrintSection('Informações em comum', studentRegistrationPrintFieldGrid(record, commonFields));
+  return `${studentRegistrationPrintSection('Informações do casal', comparison)}${commonSections}`;
 }
 
 function studentRegistrationPrintDocument({ retreat, record, studentFormType }) {

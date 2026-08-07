@@ -32,6 +32,8 @@ assert.match(printSource, /<th>Informação<\/th><th>Ele<\/th><th>Ela<\/th>/, 'S
 assert.match(printSource, /Contato de emergência/, 'As informações comuns específicas do EPC devem ser contempladas.');
 assert.match(printSource, /Familiar ou amigo/, 'As informações comuns específicas do SMP devem ser contempladas.');
 assert.match(printSource, /Informações em comum/, 'A ficha de casal deve identificar os dados compartilhados.');
+assert.match(printSource, /const addressFields = \[[\s\S]*CEP[\s\S]*Endereço[\s\S]*Número[\s\S]*Apartamento[\s\S]*Bairro[\s\S]*Cidade[\s\S]*Estado[\s\S]*studentFormType === 'cursista-smp'[\s\S]*Informações em comum[\s\S]*Endereço/, 'A impressão SMP deve separar o endereço das demais informações em comum.');
+assert.match(printSource, /studentFormType === 'cursista-epc' \? \[[\s\S]*\.\.\.addressFields/, 'A impressão EPC deve permanecer com o endereço dentro das informações em comum.');
 assert.doesNotMatch(printSource, /smpKid|Espaço Kids|valorInscricao|valorPago|saldoPagar|recebedor|formaPagamento|observacaoPagamento/, 'A ficha impressa não pode conter Espaço Kids nem informações financeiras.');
 assert.match(printSource, /window\.open\('', '_blank'\)[\s\S]*O navegador bloqueou a janela de impressão/, 'O fluxo deve abrir uma prévia isolada e tratar bloqueio de pop-up.');
 for (const marker of [/retreat\?\.nome/, /fileNumber/, /participantName/, /generatedAt/]) {
