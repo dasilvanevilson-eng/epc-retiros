@@ -19,6 +19,7 @@ assert.match(source, /Se o campo ficar vazio, ser&aacute; usado o nome original/
 assert.match(source, /canEditBadgeSectorNames \? '' : 'readonly'/, 'Retiro concluído ou usuário sem edição deve permanecer em consulta.');
 assert.match(api, /resource === 'crachas'[\s\S]*retreat\.status === 'concluido'[\s\S]*configuracoes de cracha disponiveis apenas para consulta/, 'O servidor deve impedir alterações de crachá em retiro concluído.');
 assert.match(source, /saveBadgeSectorNames\(retreat\.id, names, badgeSectorNamesRecordId\)/);
+assert.match(source, /saveBadgeSectorNames\(retreat\.id, names, badgeSectorNamesRecordId\)[\s\S]*message\.textContent = 'Nomes dos setores salvos\.';[\s\S]*showBadgeView\(''\);[\s\S]*catch \(error\)/, 'Após salvar com sucesso, a função deve fechar e voltar à tela inicial de Crachás.');
 assert.match(source, /badgeCard\(first\.entry, firstSettings, first\.sector, badgeSectorNames, firstUsesConfiguredSectorName\)/, 'A prévia deve usar os nomes configurados.');
 assert.match(source, /badgeCard\(entry, badgeSettings \|\| next, sector, badgeSectorNames, groupType !== 'community'\)/, 'A impressão deve usar nomes por setor e preservar rótulos de comunidade.');
 assert.doesNotMatch(source, /'casal bem-estar':|'recebedor\(es\)':|'sineteira\(s\)':/, 'Aliases fixos não podem permanecer no gerador.');

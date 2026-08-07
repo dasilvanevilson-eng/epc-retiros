@@ -5864,6 +5864,7 @@ async function renderCrachas() {
         badgeSectorNamesRecordId = savedRecord.id;
         badgeSectorNames = normalizeBadgeSectorNames(savedRecord.names || names);
         message.textContent = 'Nomes dos setores salvos.';
+        showBadgeView('');
       } catch (error) {
         message.textContent = `Não foi possível salvar. ${error.message || 'Atualize a página e tente novamente.'}`;
       } finally {
