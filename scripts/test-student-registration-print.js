@@ -38,6 +38,9 @@ assert.match(printSource, /\.print-smp-common-grid\{grid-template-columns:repeat
 assert.match(printSource, /nth-child\(4\)\{grid-column:span 6\}/, 'O campo anterior a Apresentante deve completar sua linha.');
 assert.match(printSource, /nth-child\(8\)[\s\S]*nth-child\(9\)[\s\S]*nth-child\(10\)[\s\S]*nth-child\(11\)\{grid-column:span 3\}/, 'As duas linhas finais devem ter dois campos e contornos completos.');
 assert.match(printSource, /studentFormType === 'cursista-epc' \? \[[\s\S]*\.\.\.addressFields/, 'A impressão EPC deve permanecer com o endereço dentro das informações em comum.');
+assert.match(printSource, /studentRegistrationPrintFieldGrid\(record, commonFields, 'print-epc-common-grid'\)/, 'As informações em comum do EPC devem possuir layout próprio.');
+assert.match(printSource, /\.print-epc-common-grid\{grid-template-columns:repeat\(6,minmax\(0,1fr\)\)\}/, 'A grade EPC deve permitir a quebra antes do E-mail sem interromper os contornos.');
+assert.match(printSource, /\.print-epc-common-grid \.print-field:nth-child\(7\)\{grid-column:span 6\}/, 'O Estado deve completar a linha anterior para que E-mail inicie a seguinte.');
 assert.doesNotMatch(printSource, /smpKid|Espaço Kids|valorInscricao|valorPago|saldoPagar|recebedor|formaPagamento|observacaoPagamento/, 'A ficha impressa não pode conter Espaço Kids nem informações financeiras.');
 assert.match(printSource, /window\.open\('', '_blank'\)[\s\S]*O navegador bloqueou a janela de impressão/, 'O fluxo deve abrir uma prévia isolada e tratar bloqueio de pop-up.');
 for (const marker of [/retreat\?\.nome/, /fileNumber/, /participantName/, /generatedAt/]) {
