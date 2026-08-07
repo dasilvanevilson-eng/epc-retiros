@@ -876,6 +876,116 @@ function printHomeInfoWindow(label, content) {
   }, 250);
 }
 
+const studentRegistrationPrintValue = (value, type = 'text') => {
+  let formatted = value;
+  if (Array.isArray(formatted)) formatted = formatted.filter(Boolean).join(', ');
+  if (type === 'date') formatted = formatDateInput(formatted);
+  if (type === 'cpf') formatted = formatCpf(formatted);
+  if (type === 'phone') formatted = formatBrazilianPhone(formatted);
+  const text = String(formatted ?? '').trim();
+  return escapeHtml(text || 'Não informado');
+};
+
+const studentRegistrationPrintFieldGrid = (record, fields) => `<div class="print-field-grid">${fields.map(([label, key, type]) => `<div class="print-field"><strong>${escapeHtml(label)}</strong><span>${studentRegistrationPrintValue(record?.[key], type)}</span></div>`).join('')}</div>`;
+
+const studentRegistrationPrintSection = (title, content) => `<section class="print-section"><h2>${escapeHtml(title)}</h2>${content}</section>`;
+
+function individualStudentRegistrationPrintContent(record) {
+  return [
+    studentRegistrationPrintSection('Dados pessoais', studentRegistrationPrintFieldGrid(record, [
+      ['Nome completo', 'nome'], ['CPF', 'cpf', 'cpf'], ['Data de nascimento', 'nascimento', 'date'], ['Telefone', 'telefone', 'phone'],
+    ])),
+    studentRegistrationPrintSection('Endereço', studentRegistrationPrintFieldGrid(record, [
+      ['CEP', 'cep'], ['Rua', 'rua'], ['Número', 'numero'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estado'],
+    ])),
+    studentRegistrationPrintSection('Formação e vivência', studentRegistrationPrintFieldGrid(record, [
+      ['É batizado(a)?', 'batizado'], ['Fez primeira comunhão?', 'primeiraComunhao'], ['Estuda?', 'estuda'], ['Série', 'serie'], ['Escola', 'escola'], ['Fez algum retiro?', 'fezRetiro'], ['Qual retiro?', 'qualRetiro'],
+    ])),
+    studentRegistrationPrintSection('Família e convite', studentRegistrationPrintFieldGrid(record, [
+      ['Nome do pai', 'nomePai'], ['Telefone do pai', 'telefonePai', 'phone'], ['Nome da mãe', 'nomeMae'], ['Telefone da mãe', 'telefoneMae', 'phone'], ['Pais participam de movimento?', 'paisMovimento'], ['Qual movimento?', 'qualMovimento'], ['Quem convidou?', 'convidou'], ['Camiseta', 'camiseta'],
+    ])),
+    studentRegistrationPrintSection('Saúde e cuidados', studentRegistrationPrintFieldGrid(record, [
+      ['Intolerância alimentar?', 'intoleranciaAlimentos'], ['Qual intolerância?', 'qualIntolerancia'], ['Alergia a medicamento?', 'alergiaMedicamento'], ['Qual alergia?', 'qualAlergia'], ['Medicamento contínuo?', 'medicamentoContinuo'], ['Qual medicamento contínuo?', 'qualMedicamentoContinuo'], ['Medicamento para dor de cabeça', 'medicamentoCabeca'], ['Medicamento para dor no estômago', 'medicamentoEstomago'],
+    ])),
+  ].join('');
+}
+
+function coupleStudentRegistrationPrintContent(record, studentFormType) {
+  const sharedRows = [
+    ['Nome completo', 'nomeDele', 'nomeDela'],
+    ['Data de nascimento', 'nascimentoDele', 'nascimentoDela', 'date'],
+    ['CPF', 'cpfDele', 'cpfDela', 'cpf'],
+    ['Profissão', 'profissaoDele', 'profissaoDela'],
+    ['Telefone', 'foneDele', 'foneDela', 'phone'],
+    ['Crismado(a)?', 'crismaDele', 'crismaDela'],
+    ['Participa de movimento?', 'movimentoIgrejaDele', 'movimentoIgrejaDela'],
+    ['Qual movimento?', 'qualMovimentoDele', 'qualMovimentoDela'],
+    ['Problema de saúde?', 'saudeDele', 'saudeDela'],
+    ['Qual problema de saúde?', 'qualSaudeDele', 'qualSaudeDela'],
+    ['Intolerância alimentar?', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'],
+    ['Qual intolerância?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela'],
+    ['Manequim / camisa', 'manequimDele', 'manequimDela'],
+  ];
+  const smpOnlyRows = [
+    ['Religião', 'religiaoDele', 'religiaoDela'],
+    ['Frequenta missa?', 'missaDele', 'missaDela'],
+    ['Data do casamento', 'casamentoDele', 'casamentoDela', 'date'],
+    ['Filhos', 'filhosDele', 'filhosDela'],
+  ];
+  const rows = studentFormType === 'cursista-smp'
+    ? [...sharedRows.slice(0, 6), ...smpOnlyRows, ...sharedRows.slice(6)]
+    : sharedRows;
+  const comparison = `<table class="couple-comparison"><thead><tr><th>Informação</th><th>Ele</th><th>Ela</th></tr></thead><tbody>${rows.map(([label, hisKey, herKey, type]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${studentRegistrationPrintValue(record?.[hisKey], type)}</td><td>${studentRegistrationPrintValue(record?.[herKey], type)}</td></tr>`).join('')}</tbody></table>`;
+  const commonFields = studentFormType === 'cursista-epc' ? [
+    ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'], ['E-mail', 'emailEpc'],
+    ['Casamento religioso', 'uniaoCasal', 'date'], ['Local do casamento', 'localCasamentoEpc'], ['Tem filhos?', 'temFilhosEpc'], ['Idade dos filhos', 'idadeFilhosEpc'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
+    ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Contato de emergência', 'contatoEmergenciaEpc'], ['Fone de emergência', 'foneEmergenciaEpc', 'phone'],
+  ] : [
+    ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'],
+    ['Data da união', 'uniaoCasal', 'date'], ['Filhos da união', 'filhosUniao'], ['Outras uniões?', 'outrasUnioes'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
+    ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Curso do apresentante', 'cursoApresentante'], ['Cidade do apresentante', 'cidadeApresentante'], ['Paróquia do apresentante', 'paroquiaApresentante'], ['Familiar ou amigo', 'familiarAmigo'], ['Fone do familiar', 'foneFamiliar', 'phone'],
+  ];
+  return `${studentRegistrationPrintSection('Informações do casal', comparison)}${studentRegistrationPrintSection('Informações em comum', studentRegistrationPrintFieldGrid(record, commonFields))}`;
+}
+
+function studentRegistrationPrintDocument({ retreat, record, studentFormType }) {
+  const individual = studentFormType === 'cursista';
+  const label = individual ? 'Cursista Individual' : (studentFormType === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP');
+  const fileNumber = individual ? record?.numeroFichaIndividual : (record?.numeroFichaSmp || record?.id);
+  const participantName = individual
+    ? record?.nome
+    : [record?.nomeDele, record?.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ');
+  const content = individual ? individualStudentRegistrationPrintContent(record) : coupleStudentRegistrationPrintContent(record, studentFormType);
+  const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${escapeHtml(String(fileNumber || ''))} - ${escapeHtml(label)}</title><style>
+    @page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#1f2c28;font-family:Arial,sans-serif}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.print-page{position:relative;width:194mm;height:281mm;overflow:hidden}.print-sheet{width:194mm;transform-origin:top left}.print-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5mm;align-items:start;padding-bottom:3mm;border-bottom:.6mm solid #356d41}.print-header h1{margin:0;color:#254d30;font-size:16pt;line-height:1.05}.print-header p{margin:1mm 0 0;color:#56665a;font-size:8pt}.print-header-meta{display:grid;grid-template-columns:auto auto;gap:1mm 4mm;text-align:right}.print-header-meta strong{font-size:7pt;text-transform:uppercase;color:#627065}.print-header-meta span{font-size:8pt;font-weight:700}.print-participant{margin:2.5mm 0 0;font-size:10pt;font-weight:700}.print-sections{display:grid;gap:2mm;margin-top:2.5mm}.print-section{break-inside:avoid}.print-section h2{margin:0 0 1mm;padding:1.1mm 2mm;border-radius:1mm;background:#e9f1e7;color:#285130;font-size:9pt;line-height:1.1}.print-field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:.2mm solid #cbd5ca;border-left:.2mm solid #cbd5ca}.print-field{min-width:0;padding:1.2mm 1.5mm;border-right:.2mm solid #cbd5ca;border-bottom:.2mm solid #cbd5ca}.print-field strong,.print-field span{display:block;overflow-wrap:anywhere}.print-field strong{margin-bottom:.35mm;color:#5b695f;font-size:6.5pt;line-height:1.05}.print-field span{font-size:7.7pt;line-height:1.15}.couple-comparison{width:100%;border-collapse:collapse;table-layout:fixed}.couple-comparison th,.couple-comparison td{padding:1mm 1.4mm;border:.2mm solid #cbd5ca;vertical-align:top;overflow-wrap:anywhere;font-size:7.2pt;line-height:1.12}.couple-comparison thead th{background:#f3f6f1;color:#285130;font-size:7pt;text-transform:uppercase}.couple-comparison th:first-child{width:27%;color:#56665a;text-align:left}.couple-comparison td{width:36.5%}.print-footer{margin-top:2mm;color:#68746b;font-size:6.5pt;text-align:right}@media screen{body{display:grid;place-items:start center;min-height:100vh;padding:10mm;background:#e8ece7}.print-page{background:#fff;box-shadow:0 10px 30px #1f2c2830}}@media print{body{background:#fff}.print-page{box-shadow:none}}
+  </style></head><body><main class="print-page"><article class="print-sheet"><header class="print-header"><div><h1>Ficha de cadastro — ${escapeHtml(label)}</h1><p>${escapeHtml(retreat?.nome || 'Retiro não informado')}</p><div class="print-participant">${studentRegistrationPrintValue(participantName)}</div></div><div class="print-header-meta"><strong>Ficha</strong><span>${studentRegistrationPrintValue(fileNumber)}</span><strong>Emitida em</strong><span>${escapeHtml(generatedAt)}</span></div></header><div class="print-sections">${content}</div><footer class="print-footer">Documento para arquivo interno.</footer></article></main></body></html>`;
+}
+
+function printStudentRegistrationSheet({ retreat, record, studentFormType }) {
+  if (!retreat || !record) return;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.');
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(studentRegistrationPrintDocument({ retreat, record, studentFormType }));
+  printWindow.document.close();
+  const fitAndPrint = () => {
+    const page = printWindow.document.querySelector('.print-page');
+    const sheet = printWindow.document.querySelector('.print-sheet');
+    if (!page || !sheet) return;
+    sheet.style.transform = 'none';
+    const scale = Math.min(1, page.clientWidth / Math.max(sheet.scrollWidth, 1), page.clientHeight / Math.max(sheet.scrollHeight, 1));
+    sheet.style.transform = `scale(${scale})`;
+    printWindow.focus();
+    printWindow.print();
+  };
+  if (printWindow.document.fonts?.ready) printWindow.document.fonts.ready.then(() => printWindow.requestAnimationFrame(fitAndPrint));
+  else setTimeout(fitAndPrint, 250);
+}
+
 function setHomeStatPrintOptions(dialog, printOptions = []) {
   const actions = dialog?.querySelector('.home-stat-actions');
   if (!actions) return;
@@ -3303,6 +3413,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <div class="cursista-smp-tool-actions">
       <button type="button" id="new-cursista-smp">Novo</button>
       <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
+      <button type="button" id="print-cursista-smp" class="secondary-button" hidden>Imprimir ficha</button>
     </div>
   </section>
   <section class="panel cursista-smp-file-number">
@@ -3598,6 +3709,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const saveButton = app.querySelector('#save-cursista-smp');
   const saveNewButton = app.querySelector('#save-new-cursista-smp');
   const editButton = app.querySelector('#edit-cursista-smp');
+  const printButton = app.querySelector('#print-cursista-smp');
   const newButton = app.querySelector('#new-cursista-smp');
   const deleteButton = app.querySelector('#delete-cursista-smp');
   const cancelButton = app.querySelector('#cancel-cursista-smp');
@@ -3731,6 +3843,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (fileNumberInput) fileNumberInput.value = '';
     deleteButton.hidden = true;
     deleteButton.disabled = true;
+    printButton.hidden = true;
     form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning'));
     if (retreat?.valorInscricaoCursista && form.elements.valorInscricaoSmp) form.elements.valorInscricaoSmp.value = currency(retreat.valorInscricaoCursista);
     form.dataset.smpPaymentTouched = 'false';
@@ -3766,6 +3879,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     syncSmpKidPanels({ resetOpen: true });
     syncSmpKidsNeedVisibility();
     deleteButton.hidden = !canDeleteSmp();
+    printButton.hidden = false;
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
   };
@@ -4056,6 +4170,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const blockedReason = actionBlockedReason(`${permissionPrefix}.editar`, 'editar');
     if (blockedReason) { setMessage(blockedReason); return; }
     if (!selectedId) { setMessage(`Busque e selecione uma ficha ${label} para editar.`); return; }
+    printButton.hidden = true;
     setLocked(false);
     setMessage(`Editando ${label}.`);
     fileNumberInput?.focus();
@@ -4064,6 +4179,11 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const current = records.find((item) => item.id === selectedId);
     if (current) loadRecord(current);
     else clearForm({ unlock: false, notice: idleNotice() });
+  });
+  printButton.addEventListener('click', () => {
+    const record = records.find((item) => item.id === selectedId || item.numeroFichaSmp === selectedId);
+    if (!record) { setMessage(`Busque e selecione uma ficha ${label} para imprimir.`); return; }
+    printStudentRegistrationSheet({ retreat, record, studentFormType: expectedType });
   });
   deleteButton.addEventListener('click', async () => {
     const blockedReason = actionBlockedReason(`${permissionPrefix}.excluir`, 'excluir');
@@ -4178,7 +4298,7 @@ async function renderCursista({ publicContext = null } = {}) {
   const yesNo = (name) => choices(name, ['Sim', 'Não'], false);
   const focusStudentRetreat = selectedRetreat();
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
-  layout(`<section class="page-heading student-page-heading"><div><h1>Cursista individual</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><section class="panel student-file-number"><label class="field"><span>Número da ficha</span><input type="text" inputmode="numeric" placeholder="Sem número definido" readonly aria-label="Número da ficha apenas visual"></label></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
+  layout(`<section class="page-heading student-page-heading"><div><h1>Cursista individual</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><section class="panel student-file-number"><label class="field"><span>Número da ficha</span><input type="text" inputmode="numeric" placeholder="Sem número definido" readonly aria-label="Número da ficha apenas visual"></label></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="print-selected-student" class="secondary-button">Imprimir ficha</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
   const studentFileNumberInput = app.querySelector('.student-file-number input');
   if (studentFileNumberInput) {
@@ -8239,6 +8359,7 @@ async function route() {
     const actions = form.querySelector('.form-actions'); actions.insertAdjacentHTML('beforeend', '<button type="button" class="delete-student" hidden>Excluir cursista</button>');
     const studentHeadingActions = app.querySelector('.student-heading-actions');
     const editSelectedStudent = app.querySelector('#edit-selected-student');
+    const printSelectedStudent = app.querySelector('#print-selected-student');
     const deleteSelectedStudent = app.querySelector('#delete-selected-student');
     if (!canEditStudentRetreat) {
       editSelectedStudent?.remove();
@@ -8246,6 +8367,7 @@ async function route() {
       form.querySelector('.delete-student')?.remove();
     }
     let selectedStudentId = '';
+    let selectedStudentRecord = null;
     form.dataset.studentPaymentTouched = 'false';
     let studentFileLookupTimer = 0;
     let studentFileLookupRequest = 0;
@@ -8269,9 +8391,9 @@ async function route() {
       app.querySelector('#set-student-payment').disabled = effectiveLocked;
       app.querySelector('#clear-student-payment').disabled = effectiveLocked;
     };
-    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; studentHeadingActions.hidden = true; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
+    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; selectedStudentRecord = null; studentHeadingActions.hidden = true; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
     const deleteStudentRecord = async (id) => { if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return; if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
-    const loadStudent = (student) => { selectedStudentId = student.id || ''; studentHeadingActions.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (studentFileNumberInput) studentFileNumberInput.value = student.numeroFichaIndividual || ''; if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
+    const loadStudent = (student) => { selectedStudentId = student.id || ''; selectedStudentRecord = student; studentHeadingActions.hidden = !selectedStudentId; printSelectedStudent.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (studentFileNumberInput) studentFileNumberInput.value = student.numeroFichaIndividual || ''; if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = value || ''; }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
     const ensureLoadedStudentMedicationDefault = (student = {}) => {
       if (!['Sim', 'Não'].includes(student.medicamentoContinuo)) {
         form.querySelectorAll('[name="medicamentoContinuo"]').forEach((input) => {
@@ -8294,6 +8416,7 @@ async function route() {
     form.addEventListener('student-form-cleared-after-save', () => {
       cancelStudentFileLookup();
       selectedStudentId = '';
+      selectedStudentRecord = null;
       closeStudentSearchResults();
     });
     const renderStudentSearch = async () => {
@@ -8331,6 +8454,7 @@ async function route() {
     };
     const resetStudentFileLookupState = (fileNumber, message) => {
       selectedStudentId = '';
+      selectedStudentRecord = null;
       studentHeadingActions.hidden = true;
       form.dataset.studentPaymentTouched = 'false';
       form.reset();
@@ -8398,7 +8522,11 @@ async function route() {
       studentFileNumberInput.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       studentFileNumberInput.focus({ preventScroll: true });
     });
-    editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { cancelStudentFileLookup(); setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
+    editSelectedStudent?.addEventListener('click', () => { if (!ensureRetreatCanBeChanged(activeRetreat, 'editar cursistas')) return; if (selectedStudentId) { cancelStudentFileLookup(); printSelectedStudent.hidden = true; setStudentFormLocked(false); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); form.elements.nome.focus({ preventScroll: true }); form.querySelector('#student-message').textContent = 'Editando cadastro de cursista.'; } });
+    printSelectedStudent?.addEventListener('click', () => {
+      if (!selectedStudentRecord) return;
+      printStudentRegistrationSheet({ retreat: activeRetreat, record: selectedStudentRecord, studentFormType: 'cursista' });
+    });
     deleteSelectedStudent?.addEventListener('click', () => deleteStudentRecord(selectedStudentId));
     studentFileNumberInput?.addEventListener('input', () => lookupStudentByFileNumber());
     studentFileNumberInput?.addEventListener('keydown', (event) => {
