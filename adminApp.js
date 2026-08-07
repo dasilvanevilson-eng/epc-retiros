@@ -784,7 +784,8 @@ function layout(content, active = 'inicio') {
     closeHomeRetreatSelectorOnOutsidePointer = null;
   }
   if (publicStudentRegistrationToken) {
-    app.innerHTML = `<main class="public-student-shell shared-public-student-shell">${content}</main>`;
+    const currentStudentScreenClass = active === 'cursista' ? ' student-screen' : '';
+    app.innerHTML = `<main class="public-student-shell shared-public-student-shell${currentStudentScreenClass}">${content}</main>`;
     return;
   }
   const isPublicReceiverView = Boolean(publicReceiverToken);
@@ -4357,7 +4358,7 @@ async function renderCursista({ publicContext = null } = {}) {
     const fileNumberLabel = studentFileNumberInput.closest('.field')?.querySelector('span');
     if (fileNumberLabel) fileNumberLabel.innerHTML = 'Número da ficha <b>*</b>';
   }
-  const studentMain = app.querySelector('.admin-main');
+  const studentMain = app.querySelector('.admin-main, .shared-public-student-shell');
   studentMain?.classList.add('student-screen');
   const studentHeadingIntro = app.querySelector('.student-page-heading>div');
   if (focusStudentRetreat && studentHeadingIntro) {

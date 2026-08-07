@@ -106,6 +106,8 @@ assert.match(localServer, /identified\?\.\[1\][\s\S]*identified\?\.\[2\][\s\S]*l
 assert.match(publicPage, /src="\/adminApp\.js\?v=20260806-impressao-fichas-a4"/, 'O acesso público deve carregar a mesma aplicação de formulário usada no acesso logado.');
 assert.doesNotMatch(publicPage, /publicStudentApp\.js/, 'A página pública não deve manter uma implementação visual separada.');
 assert.match(adminSource, /renderSharedPublicStudentRegistration[\s\S]*renderCursista\(\{ publicContext: context \}\)[\s\S]*renderCursistaSmpScreen/, 'Individual, SMP e EPC públicos devem reutilizar os renderizadores internos.');
+assert.match(adminSource, /currentStudentScreenClass = active === 'cursista' \? ' student-screen' : ''[\s\S]*shared-public-student-shell\$\{currentStudentScreenClass\}/, 'O link público Individual deve aplicar a apresentação atual da ficha interna.');
+assert.match(adminSource, /student-form-workspace[\s\S]*medicamentoContinuo[\s\S]*if \(publicContext\)[\s\S]*student-registration-tools'\)\?\.remove\(\)/, 'O modo público deve receber os componentes atuais antes de retirar os controles autenticados.');
 assert.match(adminSource, /if \(publicContext\)[\s\S]*student-financial-summary[\s\S]*wireSharedPublicStudentSubmission/, 'O modo público Individual deve retirar o resumo financeiro e manter envio público.');
 assert.match(adminSource, /prepareSharedPublicCoupleStudentForm[\s\S]*smp-financial-summary[\s\S]*wireSharedPublicStudentSubmission/, 'O modo público SMP\/EPC deve retirar o resumo financeiro e manter envio público.');
 assert.match(adminSource, /publicStudentRegistrationFileNumber[\s\S]*O número da ficha não corresponde a este link/, 'A página deve rejeitar identificação divergente.');
