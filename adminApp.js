@@ -968,23 +968,23 @@ function studentRegistrationPrintDocument({ retreat, record, studentFormType }) 
   </style></head><body><main class="print-page"><article class="print-sheet"><header class="print-header"><div><h1>Ficha de cadastro — ${escapeHtml(label)}</h1><p>${escapeHtml(retreat?.nome || 'Retiro não informado')}</p><div class="print-participant">${studentRegistrationPrintValue(participantName)}</div></div><div class="print-header-meta"><strong>Ficha</strong><span>${studentRegistrationPrintValue(fileNumber)}</span><strong>Emitida em</strong><span>${escapeHtml(generatedAt)}</span></div></header><div class="print-sections">${content}</div><footer class="print-footer">Documento para arquivo interno.</footer></article></main></body></html>`;
 }
 
-function printStudentRegistrationSheet({ retreat, record, studentFormType }) {
-  if (!retreat || !record) return;
+function openStudentRegistrationPrintDocument(documentHtml) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente novamente.');
-    return;
+    return false;
   }
   printWindow.document.open();
-  printWindow.document.write(studentRegistrationPrintDocument({ retreat, record, studentFormType }));
+  printWindow.document.write(documentHtml);
   printWindow.document.close();
   const fitAndPrint = () => {
-    const page = printWindow.document.querySelector('.print-page');
-    const sheet = printWindow.document.querySelector('.print-sheet');
-    if (!page || !sheet) return;
-    sheet.style.transform = 'none';
-    const scale = Math.min(1, page.clientWidth / Math.max(sheet.scrollWidth, 1), page.clientHeight / Math.max(sheet.scrollHeight, 1));
-    sheet.style.transform = `scale(${scale})`;
+    printWindow.document.querySelectorAll('.print-page').forEach((page) => {
+      const sheet = page.querySelector('.print-sheet');
+      if (!sheet) return;
+      sheet.style.transform = 'none';
+      const scale = Math.min(1, page.clientWidth / Math.max(sheet.scrollWidth, 1), page.clientHeight / Math.max(sheet.scrollHeight, 1));
+      sheet.style.transform = `scale(${scale})`;
+    });
     printWindow.focus();
     printWindow.print();
   };
@@ -993,6 +993,25 @@ function printStudentRegistrationSheet({ retreat, record, studentFormType }) {
     : new Promise((resolve) => { image.addEventListener('load', resolve, { once: true }); image.addEventListener('error', resolve, { once: true }); })));
   Promise.all([printWindow.document.fonts?.ready || Promise.resolve(), imagesReady])
     .then(() => printWindow.requestAnimationFrame(fitAndPrint));
+  return true;
+}
+
+function studentRegistrationPrintBatchDocument({ retreat, records, studentFormType }) {
+  const documents = records.map((record) => studentRegistrationPrintDocument({ retreat, record, studentFormType }));
+  const parsed = documents.map((documentHtml) => new DOMParser().parseFromString(documentHtml, 'text/html'));
+  const head = parsed[0]?.head?.innerHTML || '';
+  const pages = parsed.map((documentNode) => documentNode.querySelector('.print-page')?.outerHTML || '').join('');
+  return `<!doctype html><html lang="pt-BR"><head>${head}<style>.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}@media screen{body{gap:10mm}}</style></head><body>${pages}</body></html>`;
+}
+
+function printStudentRegistrationSheet({ retreat, record, studentFormType }) {
+  if (!retreat || !record) return false;
+  return openStudentRegistrationPrintDocument(studentRegistrationPrintDocument({ retreat, record, studentFormType }));
+}
+
+function printStudentRegistrationSheets({ retreat, records, studentFormType }) {
+  if (!retreat || !records?.length) return false;
+  return openStudentRegistrationPrintDocument(studentRegistrationPrintBatchDocument({ retreat, records, studentFormType }));
 }
 
 function setHomeStatPrintOptions(dialog, printOptions = []) {
@@ -6059,6 +6078,85 @@ async function stageBackupRestore(backup) {
 }
 
 const operationalReportCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+
+const studentRegistrationReportFileNumber = (record, studentFormType) => {
+  const value = studentFormType === 'cursista-individual' ? record?.numeroFichaIndividual : record?.numeroFichaSmp;
+  const number = Number(String(value ?? '').trim());
+  return Number.isInteger(number) && number > 0 ? number : null;
+};
+
+async function openCompleteStudentSheetsReport() {
+  const retreat = selectedRetreat();
+  if (!retreat) throw new Error('Selecione um retiro em foco antes de gerar as fichas.');
+  const configuredType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const printType = configuredType === 'cursista-individual' ? 'cursista' : configuredType;
+  const loadedRecords = configuredType === 'cursista-individual'
+    ? (await dataService.listCursistas()).filter((record) => record.retiroId === retreat.id)
+    : await coupleStudentSource(configuredType).list(retreat.id);
+  const records = [...loadedRecords].sort((first, second) => {
+    const firstNumber = studentRegistrationReportFileNumber(first, configuredType);
+    const secondNumber = studentRegistrationReportFileNumber(second, configuredType);
+    if (firstNumber !== null && secondNumber !== null && firstNumber !== secondNumber) return firstNumber - secondNumber;
+    if (firstNumber !== null && secondNumber === null) return -1;
+    if (firstNumber === null && secondNumber !== null) return 1;
+    const firstName = configuredType === 'cursista-individual' ? first.nome : `${first.nomeDele || ''} ${first.nomeDela || ''}`;
+    const secondName = configuredType === 'cursista-individual' ? second.nome : `${second.nomeDele || ''} ${second.nomeDela || ''}`;
+    return String(firstName || '').localeCompare(String(secondName || ''), 'pt-BR', { sensitivity: 'base' });
+  });
+  const overlay = document.createElement('div');
+  overlay.className = 'receiver-sector-overlay complete-student-sheets-overlay';
+  overlay.innerHTML = `<section class="receiver-sector-dialog complete-student-sheets-dialog" role="dialog" aria-modal="true" aria-labelledby="complete-student-sheets-title"><div class="panel-heading"><div><p class="eyebrow">Cursistas · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="complete-student-sheets-title">Imprimir fichas completas</h2><p>${records.length} ficha(s) cadastrada(s). Cada ficha será impressa em uma página.</p></div></div><form class="complete-student-sheets-form"><div class="fields two-columns complete-student-sheet-range"><label class="field"><span>Ficha inicial</span><input name="initialFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Inicial" ${records.length ? '' : 'disabled'}></label><label class="field"><span>Ficha final</span><input name="finalFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Final" ${records.length ? '' : 'disabled'}></label></div><label class="complete-student-sheets-all"><input type="checkbox" name="printAll" ${records.length ? '' : 'disabled'}><span><strong>Imprimir todas</strong><small>Ignora o intervalo e inclui todas as fichas deste retiro.</small></span></label><p class="form-message" data-complete-student-sheets-message aria-live="polite">${records.length ? 'Informe o intervalo ou marque Imprimir todas.' : 'Não há fichas cadastradas para este retiro.'}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-complete-student-sheets-close>Cancelar</button><button type="submit" class="primary-button" ${records.length ? '' : 'disabled'}>Imprimir fichas</button></div></form></section>`;
+  app.append(overlay);
+  const form = overlay.querySelector('form');
+  const initialInput = form.elements.initialFile;
+  const finalInput = form.elements.finalFile;
+  const printAllInput = form.elements.printAll;
+  const message = overlay.querySelector('[data-complete-student-sheets-message]');
+  const submitButton = form.querySelector('button[type="submit"]');
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-complete-student-sheets-close]').addEventListener('click', close);
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+  overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+  printAllInput.addEventListener('change', () => {
+    initialInput.disabled = printAllInput.checked;
+    finalInput.disabled = printAllInput.checked;
+    message.textContent = printAllInput.checked ? `${records.length} ficha(s) serão impressas.` : 'Informe o intervalo de fichas.';
+  });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    let selectedRecords = records;
+    if (!printAllInput.checked) {
+      const initial = Number(initialInput.value);
+      const final = Number(finalInput.value);
+      if (!initialInput.value || !finalInput.value || !Number.isInteger(initial) || !Number.isInteger(final) || initial < 1 || final < 1) {
+        message.textContent = 'Informe números válidos para a ficha inicial e a ficha final.';
+        return;
+      }
+      if (initial > final) {
+        message.textContent = 'A ficha inicial não pode ser maior que a ficha final.';
+        return;
+      }
+      selectedRecords = records.filter((record) => {
+        const fileNumber = studentRegistrationReportFileNumber(record, configuredType);
+        return fileNumber !== null && fileNumber >= initial && fileNumber <= final;
+      });
+    }
+    if (!selectedRecords.length) {
+      message.textContent = 'Nenhuma ficha cadastrada foi encontrada no intervalo informado.';
+      return;
+    }
+    submitButton.disabled = true;
+    message.textContent = `Preparando ${selectedRecords.length} ficha(s) para impressão...`;
+    const opened = printStudentRegistrationSheets({ retreat, records: selectedRecords, studentFormType: printType });
+    if (opened) close();
+    else {
+      submitButton.disabled = false;
+      message.textContent = 'A janela de impressão foi bloqueada. Permita pop-ups e tente novamente.';
+    }
+  });
+  initialInput.focus();
+}
+
 const operationalReports = [
   { id: 'community-shirts-summary', topic: 'Comunidades', title: 'Camisetas dos cursistas por comunidade', description: 'Lista os cursistas e os tamanhos de camiseta agrupados por comunidade.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Impressão'], steps: ['[data-home-stat="shirts"]', '.home-stat-dialog [data-home-stat-print="1"]'] },
   { id: 'community-shirts-large', topic: 'Comunidades', title: 'Número das camisetas por comunidade — formato ampliado', description: 'Gera a relação de camisetas por comunidade em A4, duas colunas e fonte ampliada.', permission: 'comunidades.ver', source: 'comunidades', formats: ['Impressão'], steps: ['#print-community-shirts'] },
@@ -6074,6 +6172,7 @@ const operationalReports = [
   { id: 'student-parent-medication', topic: 'Cursistas', title: 'Medicação sugerida pelos pais', description: 'Mostra os medicamentos para dor de cabeça ou estômago sugeridos pelos responsáveis.', permission: 'inicio.ver', formTypes: ['cursista-individual'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="parent-suggested-medication"]'] },
   { id: 'student-welcome', topic: 'Cursistas', title: 'Necessidade de acolhimento', description: 'Lista os casais SMP ou EPC que informaram necessidade de acolhimento.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-acolhimento"]'] },
   { id: 'student-health-couple', topic: 'Cursistas', title: 'Problemas de saúde', description: 'Relaciona as pessoas das fichas SMP ou EPC com problemas de saúde informados.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-health"]'] },
+  { id: 'student-complete-sheets', topic: 'Cursistas', title: 'Imprimir fichas completas', description: 'Imprime as fichas completas dos cursistas do retiro em foco por intervalo ou todas de uma vez.', permissionsByFormType: { 'cursista-individual': 'cursista.ver', 'cursista-smp': 'cursista-smp.ver', 'cursista-epc': 'cursista-epc.ver' }, source: 'relatorios', formats: ['Impressão'], actionLabel: 'Selecionar fichas', direct: true, steps: [] },
   { id: 'team-birthdays', topic: 'Equipe de trabalho', title: 'Aniversariantes da equipe', description: 'Apresenta aniversariantes da equipe com setor e data de nascimento.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="team-birthdays"]'] },
   { id: 'team-photos', topic: 'Equipe de trabalho', title: 'Fotos solicitadas', description: 'Lista as fichas da equipe que solicitaram a foto oficial do retiro.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="photo"]'] },
   { id: 'team-groups', topic: 'Equipe de trabalho', title: 'Pessoas por grupo', description: 'Resume a equipe por grupo de participação e permite detalhar um grupo.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="groups"]'] },
@@ -6089,6 +6188,7 @@ const operationalReports = [
 ].map((report) => ({ ...report, generate: () => runOperationalReportGenerator(report) }));
 
 async function runOperationalReportGenerator(report) {
+  if (report.id === 'student-complete-sheets') return openCompleteStudentSheetsReport();
   for (const selector of report.steps) {
     await new Promise((resolve) => setTimeout(resolve, 80));
     const control = app.querySelector(selector);
@@ -6140,8 +6240,11 @@ const restoreOperationalReportPosition = async () => {
   launch?.focus({ preventScroll: true });
 };
 
-const operationalReportAvailable = (report, retreat) => canAccess(report.permission)
-  && (!report.formTypes?.length || report.formTypes.includes(retreat?.tipoFichaCursista || defaultStudentFormType));
+const operationalReportAvailable = (report, retreat) => {
+  const formType = retreat?.tipoFichaCursista || defaultStudentFormType;
+  const permission = report.permissionsByFormType?.[formType] || report.permission;
+  return canAccess(permission) && (!report.formTypes?.length || report.formTypes.includes(formType));
+};
 
 const launchOperationalReport = async (reportId) => {
   const report = operationalReports.find((item) => item.id === reportId);
@@ -6154,6 +6257,16 @@ const launchOperationalReport = async (reportId) => {
     descriptionExpanded: toggle?.getAttribute('aria-expanded') === 'true',
     returning: false,
   };
+  if (report.direct) {
+    try {
+      await report.generate();
+      watchOperationalReportClose();
+    } catch (error) {
+      alert(error.message);
+      operationalReportReturnState = null;
+    }
+    return;
+  }
   pendingOperationalReportId = report.id;
   if (location.hash === '#' + report.source) {
     await routeAndLaunchOperationalReport();

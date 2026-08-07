@@ -14,6 +14,8 @@ assert.match(printSource, /Não informado/, 'Campos vazios devem ser identificad
 assert.match(printSource, /@page\{size:A4 portrait;margin:8mm\}/, 'Todas as fichas devem usar A4 vertical.');
 assert.match(printSource, /\.print-page\{[^}]*width:194mm;height:281mm;overflow:hidden/, 'A área impressa deve ficar limitada a uma página A4.');
 assert.match(printSource, /Math\.min\(1,[\s\S]*page\.clientHeight \/ Math\.max\(sheet\.scrollHeight, 1\)/, 'Conteúdo extenso deve ser reduzido proporcionalmente para caber na página.');
+assert.match(printSource, /studentRegistrationPrintBatchDocument[\s\S]*studentRegistrationPrintDocument\(\{ retreat, record, studentFormType \}\)/, 'A impressão em lote deve reutilizar o mesmo gerador das fichas individuais.');
+assert.match(printSource, /break-after:page;page-break-after:always/, 'Cada ficha do lote deve ocupar uma página própria.');
 assert.match(printSource, /Dados pessoais[\s\S]*Endereço[\s\S]*Formação e vivência[\s\S]*Família e convite[\s\S]*Saúde e cuidados/, 'A ficha Individual deve conter as seções operacionais do cadastro.');
 assert.match(printSource, /<th>Informação<\/th><th>Ele<\/th><th>Ela<\/th>/, 'SMP e EPC devem usar o quadro comparativo Ele e Ela.');
 assert.match(printSource, /Contato de emergência/, 'As informações comuns específicas do EPC devem ser contempladas.');

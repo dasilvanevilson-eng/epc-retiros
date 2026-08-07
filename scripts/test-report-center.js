@@ -22,7 +22,7 @@ for (const title of [
   'Camisetas dos cursistas por comunidade', 'Número das camisetas por comunidade — formato ampliado',
   'Crachás por comunidade', 'Crachás por setor', 'Alergias a medicamentos', 'Aniversariantes dos cursistas',
   'Camisetas por casal', 'Camisetas por tamanho', 'Intolerâncias alimentares', 'Medicação contínua',
-  'Medicação sugerida pelos pais', 'Necessidade de acolhimento', 'Problemas de saúde',
+  'Medicação sugerida pelos pais', 'Necessidade de acolhimento', 'Problemas de saúde', 'Imprimir fichas completas',
   'Aniversariantes da equipe', 'Fotos solicitadas', 'Pessoas por grupo', 'Pessoas por setor',
   'Solicitações de quadrante impresso', 'Crianças cadastradas', 'Crianças com intolerância alimentar',
   'Crianças com problema de saúde',
@@ -52,8 +52,11 @@ assert.match(reportRenderSource, /Retiro em foco:/, 'A Central deve identificar 
 assert.match(reportRenderSource, /Nenhum retiro está em foco[\s\S]*href: '#inicio'/, 'Sem foco, a Central deve orientar o usuario a voltar ao Inicio.');
 assert.match(catalogSource, /formTypes: \['cursista-individual'\]/, 'O catalogo deve filtrar relatorios de Cursista Individual.');
 assert.match(catalogSource, /formTypes: \['cursista-smp', 'cursista-epc'\]/, 'O catalogo deve filtrar relatorios compartilhados de SMP e EPC.');
-assert.match(app, /canAccess\(report\.permission\)/);
+assert.match(app, /const permission = report\.permissionsByFormType\?\.\[formType\] \|\| report\.permission;[\s\S]*return canAccess\(permission\)/, 'Cada relatório deve validar sua permissão efetiva.');
 assert.match(app, /report\.formTypes\.includes/);
+assert.match(catalogSource, /id: 'student-complete-sheets'[\s\S]*permissionsByFormType:[\s\S]*'cursista-individual': 'cursista\.ver'[\s\S]*'cursista-smp': 'cursista-smp\.ver'[\s\S]*'cursista-epc': 'cursista-epc\.ver'/, 'A impressao completa deve respeitar a permissao da modalidade em foco.');
+assert.match(app, /Ficha inicial[\s\S]*Ficha final[\s\S]*Imprimir todas/, 'O relatorio deve oferecer intervalo de fichas e impressao integral.');
+assert.match(app, /fileNumber >= initial && fileNumber <= final/, 'O intervalo de fichas deve ser inclusivo.');
 assert.match(app, /generate: \(\) => runOperationalReportGenerator\(report\)/, 'Cada item deve registrar sua funcao geradora.');
 assert.match(app, /control\.click\(\)/, 'A funcao geradora deve executar o controle original do relatorio.');
 assert.match(app, /scrollY: window\.scrollY/, 'A Central deve guardar a posicao de rolagem antes de abrir o relatorio.');
