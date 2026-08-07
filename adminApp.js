@@ -2471,7 +2471,10 @@ async function renderRetreat(id, selectedSector = '') {
     }));
     sectorLinkSearch.addEventListener('focus', () => { filterSectorLinks(); openSectorLinksMenu(); });
     sectorLinkSearch.addEventListener('click', () => { filterSectorLinks(); openSectorLinksMenu(); });
-    sectorLinkSearch.addEventListener('input', filterSectorLinks);
+    sectorLinkSearch.addEventListener('input', () => {
+      if (!sectorLinkSearch.value.trim()) selectedLinks.innerHTML = '<p class="empty-state">Selecione um setor para visualizar os links.</p>';
+      filterSectorLinks();
+    });
     document.addEventListener('pointerdown', (event) => {
       if (!sectorLinksPanel.contains(event.target)) closeSectorLinksMenu();
     });
