@@ -34,7 +34,9 @@ assert.match(printSource, /Familiar ou amigo/, 'As informações comuns específ
 assert.match(printSource, /Informações em comum/, 'A ficha de casal deve identificar os dados compartilhados.');
 assert.match(printSource, /const addressFields = \[[\s\S]*CEP[\s\S]*Endereço[\s\S]*Número[\s\S]*Apartamento[\s\S]*Bairro[\s\S]*Cidade[\s\S]*Estado[\s\S]*studentFormType === 'cursista-smp'[\s\S]*Informações em comum[\s\S]*Endereço/, 'A impressão SMP deve separar o endereço das demais informações em comum.');
 assert.match(printSource, /studentRegistrationPrintFieldGrid\(record, commonFields, 'print-smp-common-grid'\)/, 'As informações em comum do SMP devem possuir layout próprio.');
-assert.match(printSource, /\.print-smp-common-grid \.print-field:nth-child\(5\),\.print-smp-common-grid \.print-field:nth-child\(10\)\{grid-column:1\}/, 'Os campos Apresentante e Familiar ou amigo devem iniciar novas linhas na impressão SMP.');
+assert.match(printSource, /\.print-smp-common-grid\{grid-template-columns:repeat\(6,minmax\(0,1fr\)\)\}/, 'A grade SMP deve permitir linhas completas com um, dois ou três campos.');
+assert.match(printSource, /nth-child\(4\)\{grid-column:span 6\}/, 'O campo anterior a Apresentante deve completar sua linha.');
+assert.match(printSource, /nth-child\(8\)[\s\S]*nth-child\(9\)[\s\S]*nth-child\(10\)[\s\S]*nth-child\(11\)\{grid-column:span 3\}/, 'As duas linhas finais devem ter dois campos e contornos completos.');
 assert.match(printSource, /studentFormType === 'cursista-epc' \? \[[\s\S]*\.\.\.addressFields/, 'A impressão EPC deve permanecer com o endereço dentro das informações em comum.');
 assert.doesNotMatch(printSource, /smpKid|Espaço Kids|valorInscricao|valorPago|saldoPagar|recebedor|formaPagamento|observacaoPagamento/, 'A ficha impressa não pode conter Espaço Kids nem informações financeiras.');
 assert.match(printSource, /window\.open\('', '_blank'\)[\s\S]*O navegador bloqueou a janela de impressão/, 'O fluxo deve abrir uma prévia isolada e tratar bloqueio de pop-up.');
