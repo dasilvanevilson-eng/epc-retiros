@@ -17,6 +17,12 @@ assert.match(printSource, /Math\.min\(1,[\s\S]*page\.clientHeight \/ Math\.max\(
 assert.match(printSource, /studentRegistrationPrintBatchDocument[\s\S]*studentRegistrationPrintDocument\(\{ retreat, record, studentFormType \}\)/, 'A impressão em lote deve reutilizar o mesmo gerador das fichas individuais.');
 assert.match(printSource, /break-after:page;page-break-after:always/, 'Cada ficha do lote deve ocupar uma página própria.');
 assert.match(printSource, /Dados pessoais[\s\S]*Endereço[\s\S]*Formação e vivência[\s\S]*Família e convite[\s\S]*Saúde e cuidados/, 'A ficha Individual deve conter as seções operacionais do cadastro.');
+assert.match(printSource, /Nome do pai[\s\S]*Telefone do pai[\s\S]*Nome da mãe[\s\S]*Telefone da mãe[\s\S]*'print-family-grid'/, 'Mãe e telefone devem aparecer logo abaixo de pai e telefone em duas colunas.');
+assert.match(printSource, /\.print-family-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/, 'O bloco familiar deve usar duas colunas na impressão.');
+assert.match(printSource, /dependsOn && normalizeText\(record\?\.\[dependsOn\]\) === 'nao'[\s\S]*\? ''/, 'Descrições condicionais devem ficar em branco quando a resposta for Não.');
+for (const dependency of ['estuda', 'fezRetiro', 'paisMovimento', 'intoleranciaAlimentos', 'alergiaMedicamento', 'medicamentoContinuo']) {
+  assert.match(printSource, new RegExp(`'${dependency}'`), `A impressão deve respeitar a resposta de ${dependency}.`);
+}
 assert.match(printSource, /<th>Informação<\/th><th>Ele<\/th><th>Ela<\/th>/, 'SMP e EPC devem usar o quadro comparativo Ele e Ela.');
 assert.match(printSource, /Contato de emergência/, 'As informações comuns específicas do EPC devem ser contempladas.');
 assert.match(printSource, /Familiar ou amigo/, 'As informações comuns específicas do SMP devem ser contempladas.');
