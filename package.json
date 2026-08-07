@@ -8,6 +8,7 @@
     "test:epc": "node scripts/test-cursista-epc-migration.js",
     "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:cursista-kids-age": "node scripts/test-cursista-kids-age-limit.js",
+    "test:dates": "node scripts/test-date-inputs.js && node scripts/test-date-persistence.js",
     "test:home-kids-care": "node scripts/test-home-kids-care.js",
     "test:retreat-focus": "node scripts/test-retreat-focus.js",
     "test:retreat-expected-files": "node scripts/test-retreat-expected-student-files.js",
@@ -31,6 +32,7 @@
     "test:reports": "node scripts/test-report-center.js",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",
+    "audit:dates": "node scripts/audit-date-integrity.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "audit:registrations": "node scripts/audit-registration-integrity.js"
   }

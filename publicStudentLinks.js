@@ -271,6 +271,42 @@ function publicStudentError(message, statusCode = 400, code = '') {
   return error;
 }
 
+const individualDateFields = ['nascimento'];
+const coupleDateFields = [
+  'nascimentoDele', 'nascimentoDela', 'casamentoDele', 'casamentoDela', 'uniaoCasal',
+  ...Array.from({ length: 5 }, (_, index) => `smpKidNascimento${index + 1}`),
+];
+
+function normalizePublicDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!iso && !br) return '';
+  const year = Number(iso ? iso[1] : br[3]);
+  const month = Number(iso ? iso[2] : br[2]);
+  const day = Number(iso ? iso[3] : br[1]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) return '';
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function normalizePublicRecordDates(record, type) {
+  const fields = type === 'cursista-individual' ? individualDateFields : coupleDateFields;
+  fields.forEach((field) => {
+    if (!Object.prototype.hasOwnProperty.call(record, field)) return;
+    const raw = String(record[field] || '').trim();
+    if (!raw) {
+      record[field] = '';
+      return;
+    }
+    const normalized = normalizePublicDate(raw);
+    if (!normalized) throw publicStudentError('Revise a data informada. Use o formato dd/mm/aaaa.');
+    record[field] = normalized;
+  });
+}
+
 function validateIndividual(record) {
   const required = [
     'cpf', 'nome', 'nascimento', 'telefone', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'estado',
@@ -340,6 +376,7 @@ async function savePublicStudentRegistration(token, incoming, expectedFileNumber
         .forEach((field) => { record[field] = ''; });
     }
   }
+  normalizePublicRecordDates(record, context.type);
   if (context.type === 'cursista-individual') validateIndividual(record);
   else validateCouple(record);
   await validateCpfAvailability(context.retreat.id, record, context.type);

@@ -47,7 +47,7 @@ const individualPayload = {
   recebedorTaxaPaga: true,
   cpf: '529.982.247-25',
   nome: 'Cursista Público',
-  nascimento: '2008-01-01',
+  nascimento: '01/02/2008',
   telefone: '47999999999',
   cep: '89000000',
   rua: 'Rua Teste',
@@ -69,7 +69,13 @@ const individualPayload = {
 (async () => {
   const before = await resolvePublicStudentLink('token-publico');
   assert(before.active && !before.occupied);
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...individualPayload, nascimento: '31/02/2008' }),
+    /Revise a data informada/,
+  );
+  assert.equal(savedIndividual, null, 'Data individual invalida nao pode chegar a persistencia.');
   await savePublicStudentRegistration('token-publico', individualPayload);
+  assert.equal(savedIndividual.nascimento, '2008-02-01', 'Data individual em formato brasileiro deve ser persistida em ISO.');
   assert.equal(savedIndividual.retiroId, retreat.id);
   assert.equal(savedIndividual.numeroFichaIndividual, 1);
   assert.notEqual(savedIndividual.id, 'id-forjado');
@@ -84,6 +90,10 @@ const individualPayload = {
   assert.equal(individualStatus.nomeCadastrado, 'Cursista Público');
 
   await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /Ficha ja cadastrada/);
+  database.cursistas.length = 0;
+  savedIndividual = null;
+  await savePublicStudentRegistration('token-publico', { ...individualPayload, nascimento: '2008-02-01' });
+  assert.equal(savedIndividual.nascimento, '2008-02-01', 'O endpoint deve continuar aceitando datas ISO de clientes anteriores.');
   database.cursistas.length = 0;
   retreat = { ...retreat, linksCadastroCursistas: retreat.linksCadastroCursistas.map((link) => ({ ...link, inscricaoEncerrada: true })) };
   const closedContext = await resolvePublicStudentLink('token-publico');
@@ -105,7 +115,35 @@ const individualPayload = {
   await assert.rejects(() => savePublicStudentRegistration('token-publico', individualPayload), /nao esta disponivel/);
 
   retreat = { ...retreat, status: 'preparacao', tipoFichaCursista: 'cursista-smp' };
-  await savePublicStudentRegistration('token-publico', { nomeDele: 'João', nomeDela: 'Maria', valorPagoSmp: 900, id: '99' });
+  const smpPayload = {
+    nomeDele: 'João',
+    nomeDela: 'Maria',
+    nascimentoDele: '01/02/1980',
+    nascimentoDela: '29/02/1984',
+    casamentoDele: '03/04/2001',
+    casamentoDela: '04/05/2002',
+    uniaoCasal: '05/06/2010',
+    smpKidNascimento1: '06/07/2015',
+    smpKidNascimento2: '07/08/2016',
+    smpKidNascimento3: '08/09/2017',
+    smpKidNascimento4: '09/10/2018',
+    smpKidNascimento5: '10/11/2019',
+    valorPagoSmp: 900,
+    id: '99',
+  };
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...smpPayload, smpKidNascimento1: '29/02/2023' }),
+    /Revise a data informada/,
+  );
+  assert.equal(savedSmp, null, 'Data SMP invalida nao pode chegar a persistencia.');
+  await savePublicStudentRegistration('token-publico', smpPayload);
+  assert.deepEqual(
+    [savedSmp.nascimentoDele, savedSmp.nascimentoDela, savedSmp.casamentoDele, savedSmp.casamentoDela, savedSmp.uniaoCasal,
+      savedSmp.smpKidNascimento1, savedSmp.smpKidNascimento2, savedSmp.smpKidNascimento3, savedSmp.smpKidNascimento4, savedSmp.smpKidNascimento5],
+    ['1980-02-01', '1984-02-29', '2001-04-03', '2002-05-04', '2010-06-05',
+      '2015-07-06', '2016-08-07', '2017-09-08', '2018-10-09', '2019-11-10'],
+    'Todas as datas SMP devem ser persistidas em ISO.',
+  );
   assert.equal(savedSmp.id, '1');
   assert.equal(savedSmp.retiroId, retreat.id);
   assert.equal(savedSmp.valorPagoSmp, 0);
@@ -115,7 +153,31 @@ const individualPayload = {
 
   savedSmp = null;
   retreat = { ...retreat, status: 'preparacao', tipoFichaCursista: 'cursista-epc' };
-  await savePublicStudentRegistration('token-publico', { nomeDele: 'José', nomeDela: 'Ana', retiroId: 'outro' });
+  const epcPayload = {
+    nomeDele: 'José',
+    nomeDela: 'Ana',
+    nascimentoDele: '11/12/1978',
+    nascimentoDela: '12/01/1980',
+    uniaoCasal: '13/02/2000',
+    smpKidNascimento1: '14/03/2010',
+    smpKidNascimento2: '15/04/2011',
+    smpKidNascimento3: '16/05/2012',
+    smpKidNascimento4: '17/06/2013',
+    smpKidNascimento5: '18/07/2014',
+    retiroId: 'outro',
+  };
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...epcPayload, uniaoCasal: '2020-13-01' }),
+    /Revise a data informada/,
+  );
+  assert.equal(savedEpc, null, 'Data EPC invalida nao pode chegar a persistencia.');
+  await savePublicStudentRegistration('token-publico', epcPayload);
+  assert.deepEqual(
+    [savedEpc.nascimentoDele, savedEpc.nascimentoDela, savedEpc.uniaoCasal,
+      savedEpc.smpKidNascimento1, savedEpc.smpKidNascimento2, savedEpc.smpKidNascimento3, savedEpc.smpKidNascimento4, savedEpc.smpKidNascimento5],
+    ['1978-12-11', '1980-01-12', '2000-02-13', '2010-03-14', '2011-04-15', '2012-05-16', '2013-06-17', '2014-07-18'],
+    'Todas as datas EPC devem ser persistidas em ISO.',
+  );
   assert.equal(savedEpc.id, '1');
   assert.equal(savedEpc.retiroId, retreat.id);
   const epcStatus = (await studentRegistrationLinkStatus(retreat))[0];

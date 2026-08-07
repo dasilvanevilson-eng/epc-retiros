@@ -134,6 +134,21 @@ const compact = (object) => Object.fromEntries(Object.entries(object).filter(([,
 const array = (value) => Array.isArray(value) ? value : [];
 const nonEmptyArray = (value) => Array.isArray(value) && value.length > 0;
 const dateOrNull = (value) => value ? String(value) : null;
+const dateOnlyOrNull = (value) => {
+  const raw = value === undefined || value === null ? '' : String(value).trim();
+  if (!raw) return null;
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const year = Number(iso?.[1] || br?.[3]);
+  const month = Number(iso?.[2] || br?.[2]);
+  const day = Number(iso?.[3] || br?.[1]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysByMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (!iso && !br || year < 1 || month < 1 || month > 12 || day < 1 || day > daysByMonth[month - 1]) {
+    throw new Error('Data invalida. Use o formato dd/mm/aaaa.');
+  }
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
 const textOrNull = (value) => value === undefined || value === null || value === '' ? null : String(value);
 const numberOrZero = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -307,8 +322,8 @@ async function saveRetreat(record) {
   await upsert('retiros', compact({
     id: record.id,
     nome: record.nome || 'Retiro sem nome',
-    data_inicio: dateOrNull(record.dataInicio),
-    data_termino: dateOrNull(record.dataTermino),
+    data_inicio: dateOnlyOrNull(record.dataInicio),
+    data_termino: dateOnlyOrNull(record.dataTermino),
     local: record.local || '',
     coordenacao_geral: record.coordenacaoGeral || '',
     coordenacao_retiro: record.coordenacaoRetiro || '',
@@ -415,7 +430,7 @@ async function savePerson(record) {
     cpf: textOrNull(cpf),
     nome: record.nome || 'Sem nome',
     nome_normalizado: record.nomeNormalizado || normalizeText(record.nome || ''),
-    nascimento: dateOrNull(record.nascimento),
+    nascimento: dateOnlyOrNull(record.nascimento),
     genero: record.genero || '',
     telefone: record.telefone || '',
     cep: record.cep || '',
@@ -583,6 +598,16 @@ async function saveEnrolment(record) {
     }
   });
   record = nextRecord;
+  const spaceKidsRows = array(record.espacoKids).map((kid, index) => ({
+    adesao_id: record.id,
+    nome: kid.nome || '',
+    nascimento: dateOnlyOrNull(kid.nascimento),
+    problema_saude: boolOrNull(kid.problemaSaude),
+    descricao_saude: textOrNull(kid.descricaoSaude),
+    intolerancia_alimentar: boolOrNull(kid.intoleranciaAlimentar),
+    descricao_intolerancia: textOrNull(kid.descricaoIntolerancia),
+    ordem: index + 1,
+  }));
   const person = await findPersonRow(record.pessoaId);
   await assertUniqueEnrolmentPerson(record, person);
   const couple = await ensureCouple(record);
@@ -640,7 +665,7 @@ async function saveEnrolment(record) {
     dias.length ? upsert('adesao_dias', dias.map((dia) => ({ adesao_id: record.id, dia_id: dia.id })), 'adesao_id,dia_id') : null,
     setores.length ? upsert('adesao_setores', setores.map((setor) => ({ adesao_id: record.id, setor_id: setor.id })), 'adesao_id,setor_id') : null,
     array(record.retirosAnteriores).length ? upsert('adesao_retiros_anteriores', array(record.retirosAnteriores).map((nome, index) => ({ adesao_id: record.id, nome, ordem: index + 1 }))) : null,
-    array(record.espacoKids).length ? upsert('adesao_espaco_kids', array(record.espacoKids).map((kid, index) => ({ adesao_id: record.id, nome: kid.nome || '', nascimento: dateOrNull(kid.nascimento), problema_saude: boolOrNull(kid.problemaSaude), descricao_saude: textOrNull(kid.descricaoSaude), intolerancia_alimentar: boolOrNull(kid.intoleranciaAlimentar), descricao_intolerancia: textOrNull(kid.descricaoIntolerancia), ordem: index + 1 }))) : null,
+    spaceKidsRows.length ? upsert('adesao_espaco_kids', spaceKidsRows) : null,
     couple ? upsert('casal_membros', { casal_id: couple.id, adesao_id: record.id, papel: record.papelNoCasal || '' }, 'casal_id,adesao_id') : null,
   ]);
   return getEnrolment(record.id);
@@ -751,7 +776,7 @@ async function saveStudent(record) {
     retiro_id: record.retiroId,
     numero_ficha_individual: record.numeroFichaIndividual ? Number(record.numeroFichaIndividual) : null,
     nome: record.nome || 'Sem nome',
-    nascimento: dateOrNull(record.nascimento),
+    nascimento: dateOnlyOrNull(record.nascimento),
     telefone: record.telefone || '',
     cep: record.cep || '',
     rua: record.rua || record.endereco || '',
@@ -933,7 +958,7 @@ async function saveCursistaSmp(record) {
     retiro_id: record.retiroId,
     id,
     ele_nome: record.nomeDele || '',
-    ele_nascimento: dateOrNull(record.nascimentoDele),
+    ele_nascimento: dateOnlyOrNull(record.nascimentoDele),
     ele_cpf: textOrNull(record.cpfDele),
     ele_profissao: record.profissaoDele || '',
     ele_fone: record.foneDele || '',
@@ -942,7 +967,7 @@ async function saveCursistaSmp(record) {
     ele_participa_missas: record.missaDele || '',
     ele_movimento_igreja: boolOrNull(record.movimentoIgrejaDele),
     ele_qual_movimento: record.qualMovimentoDele || '',
-    ele_data_primeiro_casamento: dateOrNull(record.casamentoDele),
+    ele_data_primeiro_casamento: dateOnlyOrNull(record.casamentoDele),
     ele_filhos_primeiro_casamento: record.filhosDele || '',
     ele_problema_saude: boolOrNull(record.saudeDele),
     ele_qual_problema_saude: record.qualSaudeDele || '',
@@ -950,7 +975,7 @@ async function saveCursistaSmp(record) {
     ele_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDele || '',
     ele_manequim: record.manequimDele || '',
     ela_nome: record.nomeDela || '',
-    ela_nascimento: dateOrNull(record.nascimentoDela),
+    ela_nascimento: dateOnlyOrNull(record.nascimentoDela),
     ela_cpf: textOrNull(record.cpfDela),
     ela_profissao: record.profissaoDela || '',
     ela_fone: record.foneDela || '',
@@ -959,7 +984,7 @@ async function saveCursistaSmp(record) {
     ela_participa_missas: record.missaDela || '',
     ela_movimento_igreja: boolOrNull(record.movimentoIgrejaDela),
     ela_qual_movimento: record.qualMovimentoDela || '',
-    ela_data_primeiro_casamento: dateOrNull(record.casamentoDela),
+    ela_data_primeiro_casamento: dateOnlyOrNull(record.casamentoDela),
     ela_filhos_primeiro_casamento: record.filhosDela || '',
     ela_problema_saude: boolOrNull(record.saudeDela),
     ela_qual_problema_saude: record.qualSaudeDela || '',
@@ -973,20 +998,20 @@ async function saveCursistaSmp(record) {
     comum_bairro: record.bairro || '',
     comum_cidade: record.cidade || '',
     comum_estado: record.estadoSmp || '',
-    comum_data_uniao_casal: dateOrNull(record.uniaoCasal),
+    comum_data_uniao_casal: dateOnlyOrNull(record.uniaoCasal),
     comum_filhos_uniao: record.filhosUniao || '',
     comum_outras_unioes: boolOrNull(record.outrasUnioes),
     comum_espaco_kids_nao_necessito: Boolean(record.smpKidsNotNeeded),
     comum_kid_1_nome: record.smpKidNome1 || '',
-    comum_kid_1_nascimento: dateOrNull(record.smpKidNascimento1),
+    comum_kid_1_nascimento: dateOnlyOrNull(record.smpKidNascimento1),
     comum_kid_2_nome: record.smpKidNome2 || '',
-    comum_kid_2_nascimento: dateOrNull(record.smpKidNascimento2),
+    comum_kid_2_nascimento: dateOnlyOrNull(record.smpKidNascimento2),
     comum_kid_3_nome: record.smpKidNome3 || '',
-    comum_kid_3_nascimento: dateOrNull(record.smpKidNascimento3),
+    comum_kid_3_nascimento: dateOnlyOrNull(record.smpKidNascimento3),
     comum_kid_4_nome: record.smpKidNome4 || '',
-    comum_kid_4_nascimento: dateOrNull(record.smpKidNascimento4),
+    comum_kid_4_nascimento: dateOnlyOrNull(record.smpKidNascimento4),
     comum_kid_5_nome: record.smpKidNome5 || '',
-    comum_kid_5_nascimento: dateOrNull(record.smpKidNascimento5),
+    comum_kid_5_nascimento: dateOnlyOrNull(record.smpKidNascimento5),
     ...mapCursistaSmpKidCareRow(record),
     comum_precisa_acolhimento: boolOrNull(record.precisaAcolhimento),
     comum_nome_apresentante: record.nomeApresentante || '',
@@ -1095,7 +1120,7 @@ async function saveCursistaEpc(record) {
     retiro_id: record.retiroId,
     id,
     ele_nome: record.nomeDele || '',
-    ele_nascimento: dateOrNull(record.nascimentoDele),
+    ele_nascimento: dateOnlyOrNull(record.nascimentoDele),
     ele_cpf: textOrNull(record.cpfDele),
     ele_profissao: record.profissaoDele || '',
     ele_fone: record.foneDele || '',
@@ -1108,7 +1133,7 @@ async function saveCursistaEpc(record) {
     ele_qual_intolerancia_alimentar: record.qualIntoleranciaAlimentarDele || '',
     ele_manequim: record.manequimDele || '',
     ela_nome: record.nomeDela || '',
-    ela_nascimento: dateOrNull(record.nascimentoDela),
+    ela_nascimento: dateOnlyOrNull(record.nascimentoDela),
     ela_cpf: textOrNull(record.cpfDela),
     ela_profissao: record.profissaoDela || '',
     ela_fone: record.foneDela || '',
@@ -1128,7 +1153,7 @@ async function saveCursistaEpc(record) {
     comum_cidade: record.cidade || '',
     comum_estado: record.estadoSmp || '',
     comum_email: record.emailEpc || '',
-    comum_data_casamento_religioso: dateOrNull(record.uniaoCasal),
+    comum_data_casamento_religioso: dateOnlyOrNull(record.uniaoCasal),
     comum_local_casamento: record.localCasamentoEpc || '',
     comum_precisa_acolhimento: boolOrNull(record.precisaAcolhimento),
     comum_tem_filhos: boolOrNull(record.temFilhosEpc),
@@ -1152,7 +1177,7 @@ async function saveCursistaEpc(record) {
   };
   for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
     rowData[`comum_kid_${kidNumber}_nome`] = record[`smpKidNome${kidNumber}`] || '';
-    rowData[`comum_kid_${kidNumber}_nascimento`] = dateOrNull(record[`smpKidNascimento${kidNumber}`]);
+    rowData[`comum_kid_${kidNumber}_nascimento`] = dateOnlyOrNull(record[`smpKidNascimento${kidNumber}`]);
     rowData[`comum_kid_${kidNumber}_problema_saude`] = boolOrNull(record[`smpKidProblemaSaude${kidNumber}Epc`]);
     rowData[`comum_kid_${kidNumber}_descricao_saude`] = textOrNull(record[`smpKidDescricaoSaude${kidNumber}Epc`]);
     rowData[`comum_kid_${kidNumber}_intolerancia_alimentar`] = boolOrNull(record[`smpKidIntolerancia${kidNumber}Epc`]);
@@ -1591,6 +1616,7 @@ async function checkDatabaseConnection() {
 
 module.exports = {
   checkDatabaseConnection,
+  dateOnlyOrNull,
   emptyDatabase,
   hasSupabase,
   importDatabase,
