@@ -17,6 +17,10 @@ assert.match(printSource, /Math\.min\(1,[\s\S]*page\.clientHeight \/ Math\.max\(
 assert.match(printSource, /studentRegistrationPrintBatchDocument[\s\S]*studentRegistrationPrintDocument\(\{ retreat, record, studentFormType \}\)/, 'A impressão em lote deve reutilizar o mesmo gerador das fichas individuais.');
 assert.match(printSource, /break-after:page;page-break-after:always/, 'Cada ficha do lote deve ocupar uma página própria.');
 assert.match(printSource, /Dados pessoais[\s\S]*Endereço[\s\S]*Formação e vivência[\s\S]*Família e convite[\s\S]*Saúde e cuidados/, 'A ficha Individual deve conter as seções operacionais do cadastro.');
+assert.match(printSource, /É batizado\(a\)\?[\s\S]*Fez primeira comunhão\?[\s\S]*Estuda\?[\s\S]*Série[\s\S]*Escola[\s\S]*Fez algum retiro\?[\s\S]*Qual retiro\?[\s\S]*'print-formation-grid'/, 'Formação e vivência deve manter a sequência solicitada.');
+assert.match(printSource, /\.print-formation-grid\{grid-template-columns:repeat\(6,minmax\(0,1fr\)\)\}/, 'Formação e vivência deve permitir linhas de duas e três colunas.');
+assert.match(printSource, /nth-child\(1\)[\s\S]*nth-child\(2\)[\s\S]*nth-child\(6\)[\s\S]*nth-child\(7\)\{grid-column:span 3\}/, 'A primeira e a terceira linhas devem possuir dois campos.');
+assert.match(printSource, /nth-child\(3\)[\s\S]*nth-child\(4\)[\s\S]*nth-child\(5\)\{grid-column:span 2\}/, 'A segunda linha deve possuir três campos.');
 assert.match(printSource, /Nome do pai[\s\S]*Telefone do pai[\s\S]*Nome da mãe[\s\S]*Telefone da mãe[\s\S]*'print-family-grid'/, 'Mãe e telefone devem aparecer logo abaixo de pai e telefone em duas colunas.');
 assert.match(printSource, /\.print-family-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/, 'O bloco familiar deve usar duas colunas na impressão.');
 assert.match(printSource, /dependsOn && normalizeText\(record\?\.\[dependsOn\]\) === 'nao'[\s\S]*\? ''/, 'Descrições condicionais devem ficar em branco quando a resposta for Não.');
