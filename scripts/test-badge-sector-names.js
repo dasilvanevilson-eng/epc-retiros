@@ -10,7 +10,7 @@ const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
 
 assert.match(source, /const badgeSectorNamesType = 'sector-display-names'/);
 assert.match(source, /badgeTechnicalRecordTypes = new Set\(\[badgeSectorAssignmentsType, badgeSectorNamesType\]\)/);
-assert.match(source, /data-badge-view="sector-names"><strong>Setores no crach&aacute;<\/strong><span>Ajuste o nome do setor para aparecer no crach&aacute;<\/span>/);
+assert.match(source, /data-badge-view="sector-names"><strong>Personalizar nome do setor no crach&aacute;<\/strong><span>Ajuste o nome do setor para aparecer no crach&aacute;<\/span>/);
 assert.match(source, /id="badge-sector-name-panel" hidden/);
 assert.match(source, /const renderBadgeSectorNamesPanel = \(\) =>/);
 assert.match(source, /<strong>Nome original<\/strong><strong>Nome exibido no crach&aacute;<\/strong>/);

@@ -17,7 +17,7 @@ const configPosition = startPanel.indexOf('data-badge-view="config"');
 assert(printPosition >= 0 && printPosition < assignmentPosition && assignmentPosition < sectorNamesPosition && sectorNamesPosition < configPosition, 'As quatro opções devem aparecer na ordem definida.');
 assert.match(startPanel, /<strong>Imprimir<\/strong><span>/);
 assert.match(startPanel, /<strong>Definir crach&aacute;s por setor<\/strong><span>/);
-assert.match(startPanel, /<strong>Setores no crach&aacute;<\/strong><span>/);
+assert.match(startPanel, /<strong>Personalizar nome do setor no crach&aacute;<\/strong><span>/);
 assert.match(startPanel, /<strong>Configurar crach&aacute;s<\/strong><span>/);
 
 assert.match(appSource, /id="badge-config-toolbar" hidden>[\s\S]*?data-badge-home>Voltar<\/button>/);
