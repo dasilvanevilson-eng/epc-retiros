@@ -106,6 +106,7 @@ assert.match(stylesSource, /@media \(max-width:640px\)[\s\S]*\.student-registrat
 assert.match(adminSource, /setStudentRegistrationLinkClosed\(id, numeroFicha, checkbox\.checked\)/);
 assert.match(adminSource, /canAccess\('links-cadastro\.editar'\) && canModifyRetreat\(retreat\)/);
 assert.match(adminSource, /setSectorRegistrationLinkClosed\(id, sector, nextClosed\)/);
+assert.match(adminSource, /id="sector-link-search" type="search"[^>]*placeholder="Digite o nome do setor"/, 'A busca de links por setor deve oferecer o controle nativo para limpar o campo.');
 assert.match(vercelRoutes, /cadastro-cursista\/ficha\(\[0-9\]\+\)\/\(\[\^\/\]\+\)/, 'A rota identificada deve preceder a compatibilidade antiga.');
 assert.match(vercelRoutes, /cadastro-cursista\/\(\[\^\/\]\+\)/, 'A rota antiga deve permanecer disponível.');
 assert.match(localServer, /identified\?\.\[1\][\s\S]*identified\?\.\[2\][\s\S]*legacy\?\.\[1\]/, 'O servidor local deve aceitar os dois formatos.');
