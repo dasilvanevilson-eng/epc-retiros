@@ -7173,6 +7173,13 @@ body:has(.login-shell) {
 }
 /* Fotos privadas das fichas de cursistas */
 .student-photo-field{border:1px solid #d8e4d6;border-radius:18px;padding:22px;background:#f8fbf7}
+.student-file-number,.cursista-smp-file-number{display:grid;grid-template-columns:minmax(180px,280px) minmax(0,1fr);gap:22px;align-items:start}
+.student-file-number>.field,.cursista-smp-file-number>.field{margin:0}
+.student-photo-field.is-file-number-photo{padding:16px;border-radius:14px}
+.student-photo-field.is-file-number-photo .section-heading{margin-bottom:12px}
+.student-photo-field.is-file-number-photo .student-photo-layout{gap:16px}
+.student-photo-field.is-file-number-photo .student-photo-preview.is-portrait{width:96px}
+.student-photo-field.is-file-number-photo .student-photo-preview.is-landscape{width:160px}
 .student-photo-layout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:center}
 .student-photo-preview{display:grid;place-items:center;overflow:hidden;border:2px dashed #aabda8;border-radius:16px;background:#eef4ec;color:#60705f;text-align:center}
 .student-photo-preview.is-portrait{width:180px;aspect-ratio:3/4}.student-photo-preview.is-landscape{width:260px;aspect-ratio:4/3}
@@ -7183,4 +7190,4 @@ body:has(.login-shell) {
 .student-photo-editor canvas{display:block;width:min(100%,420px);height:auto;margin:18px auto;border-radius:14px;background:#1c241e;touch-action:none;cursor:grab}
 .student-photo-editor canvas:active{cursor:grabbing}.student-photo-zoom{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin:16px 0}
 .student-photo-editor-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}.student-detail-photo img{display:block;width:min(240px,100%);aspect-ratio:3/4;object-fit:cover;border-radius:16px}
-@media(max-width:640px){.student-photo-layout{grid-template-columns:1fr}.student-photo-preview.is-portrait,.student-photo-preview.is-landscape{width:min(100%,280px);margin:auto}.student-photo-controls{justify-content:center}.student-photo-editor{padding:18px}.student-photo-editor-actions>*{flex:1 1 140px}}
+@media(max-width:640px){.student-file-number,.cursista-smp-file-number{grid-template-columns:1fr}.student-photo-layout{grid-template-columns:1fr}.student-photo-preview.is-portrait,.student-photo-preview.is-landscape,.student-photo-field.is-file-number-photo .student-photo-preview.is-portrait,.student-photo-field.is-file-number-photo .student-photo-preview.is-landscape{width:min(100%,280px);margin:auto}.student-photo-controls{justify-content:center}.student-photo-editor{padding:18px}.student-photo-editor-actions>*{flex:1 1 140px}}

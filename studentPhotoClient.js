@@ -126,15 +126,19 @@ function cropDialog(blob, { type }) {
 
 const photoUrl = (type, retreatId, recordId) => `/api/cursista-foto/${encodeURIComponent(type)}/${encodeURIComponent(retreatId)}/${encodeURIComponent(recordId)}`;
 
-export function attachStudentPhotoField(form, { type, publicMode = false } = {}) {
+export function attachStudentPhotoField(form, { type, publicMode = false, mountTarget = null } = {}) {
   if (!form || form.querySelector('[data-student-photo-field]')) return form?._studentPhotoController || null;
   const individual = type === 'individual';
   const section = document.createElement('section');
-  section.className = 'form-section student-photo-field';
+  section.className = 'student-photo-field is-file-number-photo';
   section.dataset.studentPhotoField = type;
   section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
-  const anchor = form.querySelector('.form-section, .cursista-smp-section');
-  if (anchor) form.insertBefore(section, anchor); else form.prepend(section);
+  const target = mountTarget || form;
+  if (mountTarget) target.append(section);
+  else {
+    const anchor = form.querySelector('.form-section, .cursista-smp-section');
+    if (anchor) form.insertBefore(section, anchor); else form.prepend(section);
+  }
   const preview = section.querySelector('.student-photo-preview');
   const image = preview.querySelector('img');
   const placeholder = preview.querySelector('span');

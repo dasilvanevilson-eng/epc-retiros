@@ -49,6 +49,8 @@ assert.match(client, /heic2any\.min\.js/);
 assert.match(client, /\[0\.92, 0\.89, 0\.86, 0\.85\]/);
 assert.match(client, /900, height: 1200[\s\S]*1200, height: 900/);
 assert.match(app, /attachStudentPhotoField[\s\S]*uploadPublic[\s\S]*uploadLogged/);
+assert.match(app, /mountTarget: app\.querySelector\('\.student-file-number'\)/, 'Individual deve posicionar foto ao lado do numero da ficha.');
+assert.match(app, /mountTarget: app\.querySelector\('\.cursista-smp-file-number'\)/, 'SMP e EPC devem posicionar foto ao lado do numero da ficha.');
 assert.match(backup, /\['cursista_fotos', \['id'\]\]/);
 assert(fs.existsSync(path.join(root, 'assets', 'vendor', 'heic2any.min.js')));
 assert(fs.existsSync(path.join(root, 'assets', 'vendor', 'heic2any.LICENSE.md')));
