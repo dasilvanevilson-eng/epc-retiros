@@ -4239,7 +4239,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       hideSearch();
       searchInput.value = '';
       loadRecord(record);
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      app.querySelector('.cursista-smp-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
   };
   const saveRecord = async ({ clearAfter = false } = {}) => {
@@ -8872,7 +8872,7 @@ async function route() {
           loadStudent(student);
           form._studentPhotoController?.load(student);
           ensureLoadedStudentMedicationDefault(student);
-          form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          app.querySelector('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setTimeout(() => {
             editSelectedStudent?.focus({ preventScroll: true });
           }, 0);
