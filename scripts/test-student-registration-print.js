@@ -22,7 +22,8 @@ assert.match(printSource, /\.print-formation-grid\{grid-template-columns:repeat\
 assert.match(printSource, /nth-child\(1\)[\s\S]*nth-child\(2\)[\s\S]*nth-child\(6\)[\s\S]*nth-child\(7\)\{grid-column:span 3\}/, 'A primeira e a terceira linhas devem possuir dois campos.');
 assert.match(printSource, /nth-child\(3\)[\s\S]*nth-child\(4\)[\s\S]*nth-child\(5\)\{grid-column:span 2\}/, 'A segunda linha deve possuir três campos.');
 assert.match(printSource, /Nome do pai[\s\S]*Telefone do pai[\s\S]*Nome da mãe[\s\S]*Telefone da mãe[\s\S]*'print-family-grid'/, 'Mãe e telefone devem aparecer logo abaixo de pai e telefone em duas colunas.');
-assert.match(printSource, /\.print-family-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/, 'O bloco familiar deve usar duas colunas na impressão.');
+assert.match(printSource, /Intolerância alimentar\?[\s\S]*Qual intolerância\?[\s\S]*Alergia a medicamentos\?[\s\S]*Qual medicamento\?[\s\S]*Medicamento contínuo\?[\s\S]*Qual medicamento\?[\s\S]*Medicamento para dor de cabeça[\s\S]*Medicamento para dor no estômago[\s\S]*'print-health-grid'/, 'Saúde e cuidados deve manter a sequência solicitada.');
+assert.match(printSource, /\.print-family-grid,\.print-health-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/, 'Família e saúde devem usar duas colunas na impressão.');
 assert.match(printSource, /dependsOn && normalizeText\(record\?\.\[dependsOn\]\) === 'nao'[\s\S]*\? ''/, 'Descrições condicionais devem ficar em branco quando a resposta for Não.');
 for (const dependency of ['estuda', 'fezRetiro', 'paisMovimento', 'intoleranciaAlimentos', 'alergiaMedicamento', 'medicamentoContinuo']) {
   assert.match(printSource, new RegExp(`'${dependency}'`), `A impressão deve respeitar a resposta de ${dependency}.`);
