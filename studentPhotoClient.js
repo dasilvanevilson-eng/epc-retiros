@@ -132,7 +132,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const section = document.createElement('section');
   section.className = 'student-photo-field is-file-number-photo';
   section.dataset.studentPhotoField = type;
-  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
+  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><button type="button" class="delete-student-photo" data-photo-delete hidden>Excluir foto</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
   const target = mountTarget || form;
   if (mountTarget) target.append(section);
   else {
@@ -145,7 +145,9 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const message = section.querySelector('[data-photo-message]');
   const fileInput = section.querySelector('[data-photo-file]');
   const cameraInput = section.querySelector('[data-photo-camera]');
-  let pendingBlob = null; let previewUrl = '';
+  const deleteButton = section.querySelector('[data-photo-delete]');
+  if (publicMode) deleteButton.remove();
+  let pendingBlob = null; let previewUrl = ''; let currentRecord = null;
   const setMessage = (text) => { message.textContent = text || ''; };
   const showBlob = (blob) => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -176,7 +178,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
       const response = await fetch(photoUrl(type, retreatId, recordId), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: pendingBlob });
       const details = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(details.error || 'Nao foi possivel enviar a foto.');
-      pendingBlob = null; setMessage('Foto salva com segurança.'); return true;
+      pendingBlob = null; currentRecord = record; if (deleteButton) deleteButton.hidden = false; setMessage('Foto salva com segurança.'); return true;
     },
     async uploadPublic(photoUploadToken, apiUrl) {
       if (!pendingBlob) return false;
@@ -191,6 +193,8 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
     },
     async load(record) {
       pendingBlob = null;
+      currentRecord = record || null;
+      if (deleteButton) deleteButton.hidden = true;
       if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = ''; }
       image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; setMessage('');
       if (publicMode || !record?.retiroId || !(record.id || record.numeroFichaSmp)) return;
@@ -198,11 +202,24 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
         const response = await fetch(photoUrl(type, record.retiroId, record.id || record.numeroFichaSmp), { credentials: 'same-origin', cache: 'no-store' });
         if (response.status === 404) return;
         if (!response.ok) return;
-        showBlob(await response.blob()); placeholder.textContent = '';
+        showBlob(await response.blob()); placeholder.textContent = ''; if (deleteButton) deleteButton.hidden = false;
       } catch { /* A ficha permanece utilizavel mesmo se a foto estiver indisponivel. */ }
     },
-    reset() { pendingBlob = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto selecionada'; setMessage(''); },
+    reset() { pendingBlob = null; currentRecord = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto selecionada'; if (deleteButton) deleteButton.hidden = true; setMessage(''); },
   };
+  deleteButton?.addEventListener('click', async () => {
+    const retreatId = currentRecord?.retiroId; const recordId = currentRecord?.id || currentRecord?.numeroFichaSmp;
+    if (!retreatId || !recordId) return;
+    if (!confirm('Excluir definitivamente a foto e todas as versões anteriores desta ficha? Esta ação não poderá ser desfeita.')) return;
+    deleteButton.disabled = true; setMessage('Excluindo foto definitivamente...');
+    try {
+      const response = await fetch(photoUrl(type, retreatId, recordId), { method: 'DELETE', credentials: 'same-origin', headers: { 'X-Confirm-Photo-Deletion': 'definitive' } });
+      const details = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(details.error || 'Nao foi possivel excluir a foto.');
+      pendingBlob = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; deleteButton.hidden = true; setMessage('Foto excluída definitivamente.');
+    } catch (error) { setMessage(error.message || 'Nao foi possivel excluir a foto.'); }
+    finally { deleteButton.disabled = false; }
+  });
   form._studentPhotoController = controller;
   return controller;
 }

@@ -13,6 +13,7 @@ const {
 } = require('./publicStudentLinks');
 const {
   createPublicPhotoTicket,
+  deleteStudentPhotos,
   downloadPhoto,
   findStudent,
   findStudentByFile,
@@ -472,6 +473,15 @@ async function handleApi(req, res, pathname) {
         const buffer = await readRawImage(req);
         await savePhoto({ type, retreatId, recordId, fileNumber, buffer, origin: 'logado', actorId: session.id || session.sub, allowReplace: true });
         return sendJson(res, 201, { saved: true });
+      }
+      if (req.method === 'DELETE') {
+        if (denyIfMissingPermission(res, session, `${permissionPrefix}.editar`)) return;
+        const retreat = await getRecord('retiros', retreatId).catch(() => null);
+        if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
+        if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+        if (req.headers['x-confirm-photo-deletion'] !== 'definitive') return sendError(res, 400, 'Confirme explicitamente a exclusao definitiva da foto.');
+        const result = await deleteStudentPhotos(type, retreatId, recordId);
+        return sendJson(res, 200, { deleted: true, versionsDeleted: result.deleted });
       }
       return sendError(res, 405, 'Metodo nao permitido para foto de cursista.');
     } catch (error) {

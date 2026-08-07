@@ -141,6 +141,25 @@ async function downloadPhoto(type, retreatId, recordId) {
   return { metadata, buffer: Buffer.from(await response.arrayBuffer()) };
 }
 
+async function deleteStudentPhotos(type, retreatId, recordId) {
+  type = normalizeType(type);
+  const rows = await rest(`cursista_fotos?retiro_id=eq.${enc(retreatId)}&tipo=eq.${enc(type)}&registro_id=eq.${enc(recordId)}&select=id,storage_path`);
+  if (!rows.length) return { deleted: 0 };
+  const paths = rows.map((row) => row.storage_path).filter(Boolean);
+  if (paths.length) {
+    await request(`${baseUrl()}/storage/v1/object/${BUCKET}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ prefixes: paths }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  await rest(`cursista_fotos?retiro_id=eq.${enc(retreatId)}&tipo=eq.${enc(type)}&registro_id=eq.${enc(recordId)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  });
+  return { deleted: rows.length };
+}
+
 const ticketSecret = () => process.env.EPC_AUTH_SECRET || (!process.env.VERCEL ? 'epc-local-development-secret' : '');
 function createPublicPhotoTicket({ token, retreatId, type, recordId, fileNumber }) {
   const secret = ticketSecret();
@@ -166,4 +185,4 @@ function verifyPublicPhotoTicket(ticket, token) {
   return data;
 }
 
-module.exports = { activePhoto, createPublicPhotoTicket, downloadPhoto, findStudent, findStudentByFile, normalizeType, readRawImage, savePhoto, verifyPublicPhotoTicket, validatePhotoBuffer };
+module.exports = { activePhoto, createPublicPhotoTicket, deleteStudentPhotos, downloadPhoto, findStudent, findStudentByFile, normalizeType, readRawImage, savePhoto, verifyPublicPhotoTicket, validatePhotoBuffer };

@@ -7185,6 +7185,7 @@ body:has(.login-shell) {
 .student-photo-preview.is-portrait{width:180px;aspect-ratio:3/4}.student-photo-preview.is-landscape{width:260px;aspect-ratio:4/3}
 .student-photo-preview img{width:100%;height:100%;object-fit:cover}.student-photo-preview span{padding:16px;font-size:.9rem}
 .student-photo-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.student-photo-controls .hint,.student-photo-controls .form-message{flex-basis:100%;margin:0}
+.delete-student-photo{color:#8b2020;border-color:#d9a5a5;background:#fff7f7}
 .student-photo-editor-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(18,31,23,.76)}
 .student-photo-editor{width:min(620px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:24px;border-radius:20px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.35)}
 .student-photo-editor canvas{display:block;width:min(100%,420px);height:auto;margin:18px auto;border-radius:14px;background:#1c241e;touch-action:none;cursor:grab}
