@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 assert.match(appSource, /id="badge-print-by-sector">Impress&atilde;o por setor<\/button>/);
 assert.match(appSource, /id="badge-print-by-community">Impress&atilde;o por comunidade<\/button>/);
 assert.doesNotMatch(appSource, /id="badge-print-model-select"|Modelo padr&atilde;o do crach&aacute;/, 'A impressão não deve permitir escolher um modelo padrão.');
-assert.match(appSource, /Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor"/);
+assert.match(appSource, /Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor\/comunidade"/);
 assert.doesNotMatch(appSource, /id="badge-mode"|id="badge-sector"|id="badge-person"/, 'Os seletores antigos de impressão devem ser removidos.');
 assert.match(appSource, /openBadgeGroupPicker\('sector'\)/);
 assert.match(appSource, /openBadgeGroupPicker\('community'\)/);
@@ -32,7 +32,7 @@ assert.match(pickerSource, /preparedGroups\.flatMap/, 'Os vínculos dos grupos d
 assert.match(pickerSource, /return badgeProfiles\.find\(\(profile\) => profile\.id === assignedId\) \|\| null;/, 'A impressão deve usar somente o modelo associado ao setor ou comunidade.');
 assert.doesNotMatch(pickerSource, /printModelSelect|modelo padrão/i, 'Não deve existir fallback para um modelo escolhido na tela de impressão.');
 assert.match(pickerSource, /const missingGroups =/);
-assert.match(pickerSource, /Defina um modelo em "Definir crachás por setor" para:/);
+assert.match(pickerSource, /Defina um modelo em "Definir crachás por setor\/comunidade" para:/);
 assert.match(pickerSource, /profileId: profile\.id/);
 assert.match(pickerSource, /badgeSettings/);
 

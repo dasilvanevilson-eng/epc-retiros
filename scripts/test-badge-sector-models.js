@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(appSource, /const badgeSectorAssignmentsType = 'sector-model-assignments'/);
 assert.match(appSource, /badgeTechnicalRecordTypes\.has\(profile\.tipo\)/, 'Configurações técnicas não podem aparecer como modelos de crachá.');
-assert.match(appSource, /data-badge-view="assignments"><strong>Definir crach&aacute;s por setor/);
+assert.match(appSource, /data-badge-view="assignments"><strong>Definir crach&aacute;s por setor\/comunidade/);
 assert.match(appSource, /id="badge-assignment-panel" hidden/);
 assert.match(appSource, /const renderBadgeAssignmentsPanel = \(\) =>/);
 assert.doesNotMatch(appSource, /badge-sector-models-tab/, 'A definição não deve permanecer dentro da configuração de modelos.');
