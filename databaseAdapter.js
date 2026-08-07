@@ -1503,6 +1503,14 @@ async function getRecord(storeName, id) {
   return withLocalFallback(async (useSupabase) => (useSupabase ? getRelational(storeName, id) : (await readFileDatabase())[storeName].find((item) => item.id === id) || null));
 }
 
+// Exclusoes de fichas com arquivos privados nao podem cair silenciosamente no
+// banco local quando o Supabase esta configurado. Estes helpers mantem o modo
+// arquivo quando ele e a configuracao real, mas propagam qualquer falha remota.
+async function getRecordStrict(storeName, id) {
+  if (hasSupabase()) return getRelational(storeName, id);
+  return (await readFileDatabase())[storeName].find((item) => item.id === id) || null;
+}
+
 async function saveRecord(storeName, record) {
   return withLocalFallback(async (useSupabase) => {
     if (useSupabase) return saveRelational(storeName, record);
@@ -1608,6 +1616,39 @@ async function deleteRecord(storeName, id) {
   });
 }
 
+async function deleteRecordStrict(storeName, id) {
+  if (hasSupabase()) {
+    if (storeName !== 'cursistas') return deleteRelational(storeName, id);
+    const row = await findStudentRow(id);
+    if (!row) return null;
+    const deleted = await supabaseRequest(`cursistas?id=eq.${enc(row.id)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=representation' },
+    });
+    return Array.isArray(deleted) && deleted.length ? mapStudent(deleted[0]) : null;
+  }
+
+  const database = await readFileDatabase();
+  const collection = database[storeName];
+  const index = collection.findIndex((item) => item.id === id);
+  if (index < 0) return null;
+  const [deleted] = collection.splice(index, 1);
+  if (storeName === 'cursistas') {
+    const identifiers = new Set([String(deleted.id || ''), String(deleted.cpf || '').replace(/\D/g, '')].filter(Boolean));
+    database.comunidades = database.comunidades.map((community) => {
+      const currentMemberIds = Array.isArray(community.membroIds) ? community.membroIds : [];
+      const membroIds = currentMemberIds.filter((memberId) => {
+        const rawMemberId = String(memberId || '');
+        const normalizedMemberId = rawMemberId.replace(/\D/g, '');
+        return !identifiers.has(rawMemberId) && !identifiers.has(normalizedMemberId);
+      });
+      return membroIds.length === currentMemberIds.length ? community : { ...community, membroIds };
+    });
+  }
+  await writeFileDatabase(database);
+  return deleted;
+}
+
 async function checkDatabaseConnection() {
   if (!hasSupabase()) return { database: 'file', ok: true };
   await supabaseRequest('retiros?select=id&limit=1');
@@ -1630,9 +1671,11 @@ module.exports = {
   replaceDatabase,
   listRecords,
   getRecord,
+  getRecordStrict,
   saveRecord,
   saveRetreatStudentRegistrationLinks,
   saveRetreatClosedRegistrationSectors,
   deleteRecord,
+  deleteRecordStrict,
   ensureFileDatabase,
 };

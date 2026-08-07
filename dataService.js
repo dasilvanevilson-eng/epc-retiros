@@ -270,21 +270,23 @@ export const dataService = {
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: () => list('cursistas'),
   saveCursista: (student) => saveStudentRegistration(student),
-  deleteCursista: (id) => remove('cursistas', id),
+  // A exclusao precisa passar pelo servidor para remover a foto privada antes
+  // da ficha; nunca use o fallback IndexedDB nesta operacao.
+  deleteCursista: (id) => api(`/cursistas/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listCursistasSmp: (retiroId = '') => api(`/cursista-smp${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
   saveCursistaSmp: (student) => {
     const retiroId = student.retiroId || '';
     const numeroFicha = student.id || student.numeroFichaSmp || '';
     return api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
   },
-  deleteCursistaSmp: (retiroId, numeroFicha) => api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
+  deleteCursistaSmp: (retiroId, numeroFicha) => api(`/cursista-smp/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listCursistasEpc: (retiroId = '') => api(`/cursista-epc${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
   saveCursistaEpc: (student) => {
     const retiroId = student.retiroId || '';
     const numeroFicha = student.id || student.numeroFichaSmp || '';
     return api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
   },
-  deleteCursistaEpc: (retiroId, numeroFicha) => api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE' }),
+  deleteCursistaEpc: (retiroId, numeroFicha) => api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listComunidades: () => list('comunidades'),
   saveComunidade: (community) => save('comunidades', community),
   saveComunidadeMembros: async (community, membershipType, memberIds = []) => {

@@ -1,6 +1,6 @@
 const { stores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 const {
@@ -55,6 +55,25 @@ function sendJpeg(res, photo) {
 
 function sendError(res, status, message) {
   sendJson(res, status, { error: message });
+}
+
+const uniquePhotoRecordIds = (...recordIds) => [...new Set(recordIds.map((value) => String(value || '').trim()).filter(Boolean))];
+async function deleteStudentPhotoAliases(type, retreatId, ...recordIds) {
+  const total = { deleted: 0, objectsDeleted: 0 };
+  for (const recordId of uniquePhotoRecordIds(...recordIds)) {
+    const result = await deleteStudentPhotos(type, retreatId, recordId);
+    total.deleted += Number(result.deleted) || 0;
+    total.objectsDeleted += Number(result.objectsDeleted) || 0;
+  }
+  return total;
+}
+
+async function downloadStudentPhotoAliases(type, retreatId, ...recordIds) {
+  for (const recordId of uniquePhotoRecordIds(...recordIds)) {
+    const photo = await downloadPhoto(type, retreatId, recordId);
+    if (photo) return photo;
+  }
+  return null;
 }
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
@@ -458,9 +477,10 @@ async function handleApi(req, res, pathname) {
       if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
       const student = await findStudent(type, retreatId, recordId);
       if (!student) return sendError(res, 404, 'Ficha de cursista nao encontrada.');
+      const canonicalRecordId = String(student.id || student.numeroFichaSmp || recordId);
       if (req.method === 'GET') {
         if (denyIfMissingPermission(res, session, `${permissionPrefix}.ver`)) return;
-        const photo = await downloadPhoto(type, retreatId, recordId);
+        const photo = await downloadStudentPhotoAliases(type, retreatId, canonicalRecordId, recordId);
         if (!photo) return sendError(res, 404, 'Esta ficha ainda nao possui foto.');
         return sendJpeg(res, photo);
       }
@@ -471,7 +491,7 @@ async function handleApi(req, res, pathname) {
         if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
         const fileNumber = type === 'individual' ? student.numeroFichaIndividual : (student.numeroFichaSmp || student.id);
         const buffer = await readRawImage(req);
-        await savePhoto({ type, retreatId, recordId, fileNumber, buffer, origin: 'logado', actorId: session.id || session.sub, allowReplace: true });
+        await savePhoto({ type, retreatId, recordId: canonicalRecordId, fileNumber, buffer, origin: 'logado', actorId: session.id || session.sub, allowReplace: true });
         return sendJson(res, 201, { saved: true });
       }
       if (req.method === 'DELETE') {
@@ -480,7 +500,7 @@ async function handleApi(req, res, pathname) {
         if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
         if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
         if (req.headers['x-confirm-photo-deletion'] !== 'definitive') return sendError(res, 400, 'Confirme explicitamente a exclusao definitiva da foto.');
-        const result = await deleteStudentPhotos(type, retreatId, recordId);
+        const result = await deleteStudentPhotoAliases(type, retreatId, canonicalRecordId, recordId);
         return sendJson(res, 200, { deleted: true, versionsDeleted: result.deleted });
       }
       return sendError(res, 405, 'Metodo nao permitido para foto de cursista.');
@@ -672,9 +692,16 @@ async function handleApi(req, res, pathname) {
       if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
       const retreat = await getRecord('retiros', retreatId).catch(() => null);
       if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
       const deletingId = decodeURIComponent(action);
-      await deleteStudentPhotos(resource === 'cursista-epc' ? 'epc' : 'smp', retreatId, deletingId);
-      await deleteCoupleStudent(retreatId, deletingId);
+      const existing = (await listCoupleStudents(retreatId)).find((item) => (
+        String(item.id || '') === String(deletingId)
+        || String(item.numeroFichaSmp || '') === String(deletingId)
+      ));
+      if (!existing) return sendError(res, 404, `${label} nao encontrado.`);
+      const canonicalId = String(existing.id || existing.numeroFichaSmp);
+      await deleteStudentPhotoAliases(resource === 'cursista-epc' ? 'epc' : 'smp', retreatId, canonicalId, existing.numeroFichaSmp);
+      await deleteCoupleStudent(retreatId, canonicalId);
       return sendNoContent(res);
     }
     return sendError(res, 405, `Metodo nao permitido para ${label}.`);
@@ -719,8 +746,15 @@ async function handleApi(req, res, pathname) {
   if (req.method === 'DELETE' && id) {
     if (!publicRegistrationRequest && await denyIfMissingRetreatAccess(res, session, resource, decodeURIComponent(id))) return;
     if (resource === 'cursistas') {
-      const student = await getRecord('cursistas', decodeURIComponent(id)).catch(() => null);
-      if (student) await deleteStudentPhotos('individual', student.retiroId, student.id);
+      const student = await getRecordStrict('cursistas', decodeURIComponent(id));
+      if (!student) return sendError(res, 404, 'Cursista nao encontrado.');
+      const retreat = await getRecordStrict('retiros', student.retiroId);
+      if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
+      if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+      await deleteStudentPhotoAliases('individual', student.retiroId, student.id, student.cpf);
+      const deleted = await deleteRecordStrict('cursistas', student.id);
+      if (!deleted) return sendError(res, 409, 'A foto foi processada, mas nao foi possivel confirmar a exclusao da ficha. Recarregue e tente novamente.');
+      return sendNoContent(res);
     }
     await deleteRecord(resource, decodeURIComponent(id));
     return sendNoContent(res);

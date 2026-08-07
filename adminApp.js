@@ -4869,9 +4869,16 @@ async function renderCursistaDetalhe(id) {
   app.querySelector('#delete-consulted-student')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'excluir cursistas')) return;
     if (!confirm('Excluir este cursista?')) return;
-    await removeStudentFromCommunities(student);
-    await dataService.deleteCursista(student.id);
-    location.hash = '#cursista';
+    const button = app.querySelector('#delete-consulted-student');
+    button.disabled = true;
+    try {
+      await dataService.deleteCursista(student.id);
+      await removeStudentFromCommunities(student).catch(() => null);
+      location.hash = '#cursista';
+    } catch (error) {
+      button.disabled = false;
+      alert(error.message || 'Não foi possível concluir a exclusão do cursista e da foto. Recarregue a ficha e tente novamente.');
+    }
   });
 }
 async function renderComunidades() {
@@ -8796,8 +8803,22 @@ async function route() {
       app.querySelector('#clear-student-payment').disabled = effectiveLocked;
       form._studentPhotoController?.setEditable(!effectiveLocked);
     };
-    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; selectedStudentRecord = null; studentHeadingActions.hidden = true; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
-    const deleteStudentRecord = async (id) => { if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return; if (!id || !confirm('Excluir este cursista?')) return; const students = await dataService.listCursistas(); const student = students.find((item) => item.id === id) || id; await removeStudentFromCommunities(student); await dataService.deleteCursista(id); clearStudentForm({ focus: false, message: 'Cursista excluído com sucesso.' }); setStudentFormLocked(true); };
+    const clearStudentForm = ({ focus = true, message = '' } = {}) => { selectedStudentId = ''; selectedStudentRecord = null; studentHeadingActions.hidden = true; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form._studentPhotoController?.reset(); form.reset(); form.querySelectorAll('.field-warning').forEach((item) => item.classList.remove('field-warning')); form.querySelector('input[name="id"]')?.remove(); form.elements.retiroId.value = activeRetreat?.id || ''; form.elements.valorInscricao.value = currency(activeRetreat?.valorInscricaoCursista); setStudentPaymentDetails({ paidAmount: 0 }); form.querySelector('.delete-student')?.setAttribute('hidden', ''); form.querySelector('button[type="submit"]').innerHTML = 'Salvar cadastro <span>→</span>'; form.querySelector('#student-message').textContent = message; recalculateBalance(); if (focus) form.elements.cpf.focus(); };
+    const deleteStudentRecord = async (id) => {
+      if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return;
+      if (!id || !confirm('Excluir este cursista?')) return;
+      const students = await dataService.listCursistas();
+      const student = students.find((item) => item.id === id) || id;
+      form.querySelector('#student-message').textContent = 'Excluindo cursista e foto...';
+      try {
+        await dataService.deleteCursista(id);
+        await removeStudentFromCommunities(student).catch(() => null);
+        clearStudentForm({ focus: false, message: 'Cursista e foto excluídos com sucesso.' });
+        setStudentFormLocked(true);
+      } catch (error) {
+        form.querySelector('#student-message').textContent = error.message || 'Não foi possível concluir a exclusão do cursista e da foto. Recarregue a ficha e tente novamente.';
+      }
+    };
     const loadStudent = (student) => { selectedStudentId = student.id || ''; selectedStudentRecord = student; studentHeadingActions.hidden = !selectedStudentId; printSelectedStudent.hidden = !selectedStudentId; form.dataset.studentPaymentTouched = 'false'; setStudentFormLocked(false); form.reset(); if (studentFileNumberInput) studentFileNumberInput.value = student.numeroFichaIndividual || ''; if (!form.elements.id) form.insertAdjacentHTML('beforeend', '<input type="hidden" name="id">'); Object.entries(student).forEach(([key, value]) => { const field = form.elements[key]; if (!field) return; if (field.type === 'radio') form.querySelectorAll(`[name="${key}"]`).forEach((input) => { input.checked = input.value === value; }); else field.value = key === 'nascimento' ? (formatDateInput(value) || value || '') : (value || ''); }); form.elements.retiroId.value = student.retiroId || activeRetreat?.id || ''; const receiverPaid = Math.max(0, parseCurrency(student.recebedorValorPago) - parseCurrency(student.valorPago)); const advanceMethod = student.formaPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorFormaPagamento : ''); const advanceObservation = student.observacaoPagamento || (parseCurrency(student.valorPago) > 0 && receiverPaid <= 0 ? student.recebedorObservacao : ''); setStudentPaymentDetails({ method: advanceMethod, observation: advanceObservation, paidAmount: parseCurrency(student.valorPago) }); form.elements.recebedorValorPago.value = student.recebedorValorPago || parseCurrency(student.valorPago) || 0; form.elements.recebedorTaxaPaga.value = student.recebedorTaxaPaga ? 'true' : ''; form.elements.recebedorFormaPagamento.value = receiverPaid > 0 ? (student.recebedorFormaPagamento || '') : ''; form.elements.recebedorObservacao.value = receiverPaid > 0 ? (student.recebedorObservacao || '') : ''; form.querySelector('button[type="submit"]').innerHTML = 'Salvar alterações <span>→</span>'; form.querySelector('.delete-student')?.setAttribute('hidden', ''); recalculateBalance(); setStudentFormLocked(true); form.querySelector('#student-message').textContent = canEditStudentRetreat ? 'Cadastro de cursista carregado. Clique em Editar para alterar.' : 'Retiro concluido: cadastro de cursista carregado apenas para consulta.'; };
     const ensureLoadedStudentMedicationDefault = (student = {}) => {
       if (!['Sim', 'Não'].includes(student.medicamentoContinuo)) {

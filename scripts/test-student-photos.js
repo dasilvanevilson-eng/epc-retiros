@@ -45,9 +45,9 @@ assert.match(migration, /where ativo/i, 'Deve existir apenas uma foto ativa por 
 assert.match(migration, /p_permitir_substituir/i, 'Ativacao deve diferenciar inclusao publica e substituicao logada.');
 assert.match(api, /action === 'foto'[\s\S]*verifyPublicPhotoTicket[\s\S]*allowReplace: false/);
 assert.match(api, /resource === 'cursista-foto'[\s\S]*denyIfMissingPermission[\s\S]*allowReplace: true/);
-assert.match(api, /req\.method === 'DELETE'[\s\S]*x-confirm-photo-deletion[\s\S]*deleteStudentPhotos/, 'Exclusao deve exigir permissao e confirmacao explicita no servidor.');
-assert.match(api, /resource === 'cursistas'[\s\S]*deleteStudentPhotos\('individual'[\s\S]*deleteRecord/, 'Excluir ficha individual deve remover suas fotos antes do cadastro.');
-assert.match(api, /deleteStudentPhotos\(resource === 'cursista-epc' \? 'epc' : 'smp'[\s\S]*deleteCoupleStudent/, 'Excluir ficha SMP ou EPC deve remover suas fotos antes do cadastro.');
+assert.match(api, /req\.method === 'DELETE'[\s\S]*x-confirm-photo-deletion[\s\S]*deleteStudentPhotoAliases/, 'Exclusao deve exigir permissao e confirmacao explicita no servidor.');
+assert.match(api, /resource === 'cursistas'[\s\S]*deleteStudentPhotoAliases\('individual'[\s\S]*deleteRecordStrict/, 'Excluir ficha individual deve remover suas fotos antes do cadastro.');
+assert.match(api, /deleteStudentPhotoAliases\(resource === 'cursista-epc' \? 'epc' : 'smp'[\s\S]*deleteCoupleStudent/, 'Excluir ficha SMP ou EPC deve remover suas fotos antes do cadastro.');
 assert.match(client, /\['heic'.*'mif1'.*'msf1'\]/s);
 assert.match(client, /heic2any\.min\.js/);
 assert.match(client, /\[0\.92, 0\.89, 0\.86, 0\.85\]/);

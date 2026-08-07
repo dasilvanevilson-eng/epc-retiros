@@ -34,3 +34,7 @@ O backup relacional da aplicação inclui a tabela `cursista_fotos`, isto é, os
 As substituições criam uma nova versão e não removem objetos anteriores. A ação logada **Excluir foto** remove definitivamente a foto ativa, todas as versões anteriores daquela ficha e seus metadados. Ela exige confirmação explícita e não fica disponível no acesso público.
 
 Ao excluir definitivamente uma ficha Individual, SMP ou EPC, o backend remove primeiro todas as fotos e versões vinculadas àquela ficha. Se a limpeza do Storage falhar, a exclusão da ficha é interrompida para evitar arquivos privados órfãos no bucket.
+
+A limpeza confere tanto os metadados quanto a pasta exclusiva da ficha no bucket, elimina os arquivos em lotes e confirma novamente Storage e metadados antes de apagar o cadastro. Assim, uma resposta HTTP de sucesso sem remoção efetiva não é aceita como conclusão. A exclusão Individual também é sempre enviada ao backend e não utiliza o fallback local do navegador.
+
+A limpeza de arquivos antigos cuja ficha já tenha sido excluída deve continuar sendo precedida por auditoria e autorização específicas.
