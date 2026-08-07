@@ -146,6 +146,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const fileInput = section.querySelector('[data-photo-file]');
   const cameraInput = section.querySelector('[data-photo-camera]');
   const deleteButton = section.querySelector('[data-photo-delete]');
+  const controls = section.querySelector('.student-photo-controls');
   if (publicMode) deleteButton.remove();
   let pendingBlob = null; let previewUrl = ''; let currentRecord = null;
   const setMessage = (text) => { message.textContent = text || ''; };
@@ -170,6 +171,11 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   cameraInput.addEventListener('change', () => choose(cameraInput.files?.[0]));
   const controller = {
     hasPending: () => Boolean(pendingBlob),
+    setEditable(editable) {
+      const allowed = publicMode || Boolean(editable);
+      controls.hidden = !allowed;
+      section.classList.toggle('is-photo-readonly', !allowed);
+    },
     async uploadLogged(record) {
       if (!pendingBlob) return false;
       const retreatId = record?.retiroId; const recordId = record?.id || record?.numeroFichaSmp;
@@ -221,6 +227,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
     finally { deleteButton.disabled = false; }
   });
   form._studentPhotoController = controller;
+  controller.setEditable(publicMode);
   return controller;
 }
 

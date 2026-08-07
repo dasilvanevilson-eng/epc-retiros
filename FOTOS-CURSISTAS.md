@@ -32,3 +32,5 @@ Confirme que:
 O backup relacional da aplicação inclui a tabela `cursista_fotos`, isto é, os vínculos e o histórico das versões. Os binários permanecem no Supabase Storage e precisam de uma cópia própria do bucket. Não restaure metadados de fotos em outro projeto sem restaurar também os mesmos caminhos do bucket.
 
 As substituições criam uma nova versão e não removem objetos anteriores. A ação logada **Excluir foto** remove definitivamente a foto ativa, todas as versões anteriores daquela ficha e seus metadados. Ela exige confirmação explícita e não fica disponível no acesso público.
+
+Ao excluir definitivamente uma ficha Individual, SMP ou EPC, o backend remove primeiro todas as fotos e versões vinculadas àquela ficha. Se a limpeza do Storage falhar, a exclusão da ficha é interrompida para evitar arquivos privados órfãos no bucket.

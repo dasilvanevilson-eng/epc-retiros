@@ -143,7 +143,14 @@ async function downloadPhoto(type, retreatId, recordId) {
 
 async function deleteStudentPhotos(type, retreatId, recordId) {
   type = normalizeType(type);
-  const rows = await rest(`cursista_fotos?retiro_id=eq.${enc(retreatId)}&tipo=eq.${enc(type)}&registro_id=eq.${enc(recordId)}&select=id,storage_path`);
+  if (!hasSupabase()) return { deleted: 0 };
+  let rows;
+  try {
+    rows = await rest(`cursista_fotos?retiro_id=eq.${enc(retreatId)}&tipo=eq.${enc(type)}&registro_id=eq.${enc(recordId)}&select=id,storage_path`);
+  } catch (error) {
+    if (/PGRST205|cursista_fotos.*nao.*encontr|cursista_fotos.*not.*found/i.test(String(error.message || ''))) return { deleted: 0 };
+    throw error;
+  }
   if (!rows.length) return { deleted: 0 };
   const paths = rows.map((row) => row.storage_path).filter(Boolean);
   if (paths.length) {

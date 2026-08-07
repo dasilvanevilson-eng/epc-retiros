@@ -672,7 +672,9 @@ async function handleApi(req, res, pathname) {
       if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
       const retreat = await getRecord('retiros', retreatId).catch(() => null);
       if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
-      await deleteCoupleStudent(retreatId, decodeURIComponent(action));
+      const deletingId = decodeURIComponent(action);
+      await deleteStudentPhotos(resource === 'cursista-epc' ? 'epc' : 'smp', retreatId, deletingId);
+      await deleteCoupleStudent(retreatId, deletingId);
       return sendNoContent(res);
     }
     return sendError(res, 405, `Metodo nao permitido para ${label}.`);
@@ -711,6 +713,10 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === 'DELETE' && id) {
     if (!publicRegistrationRequest && await denyIfMissingRetreatAccess(res, session, resource, decodeURIComponent(id))) return;
+    if (resource === 'cursistas') {
+      const student = await getRecord('cursistas', decodeURIComponent(id)).catch(() => null);
+      if (student) await deleteStudentPhotos('individual', student.retiroId, student.id);
+    }
     await deleteRecord(resource, decodeURIComponent(id));
     return sendNoContent(res);
   }
