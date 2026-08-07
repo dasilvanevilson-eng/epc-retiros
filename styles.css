@@ -5257,22 +5257,13 @@ body:has(.login-shell) {
   }
 
   .student-screen #new-student {
-    display:grid;
-    place-items:center;
-    width:42px;
-    min-width:42px;
-    height:42px;
-    padding:0;
-    overflow:hidden;
-    border-radius:50%;
-    font-size:0;
-  }
-
-  .student-screen #new-student::before {
-    content:'+';
-    font-size:26px;
-    font-weight:400;
-    line-height:1;
+    width:100%;
+    min-width:0;
+    min-height:48px;
+    height:auto;
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:14px;
   }
 
   .student-form-workspace {
@@ -5771,7 +5762,10 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-tool-actions button {
-  min-width:96px;
+  min-width:112px;
+  min-height:44px;
+  padding:10px 16px;
+  box-shadow:none;
 }
 
 .cursista-smp-file-number {
@@ -6349,11 +6343,17 @@ body:has(.login-shell) {
   }
 
   .cursista-smp-tool-actions {
-    justify-content:stretch;
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    width:100%;
   }
 
   .cursista-smp-tool-actions button {
-    flex:1 1 120px;
+    width:100%;
+    min-width:0;
+    min-height:48px;
+    padding:10px 8px;
+    white-space:normal;
   }
 
   .cursista-smp-section {
@@ -7195,3 +7195,91 @@ body:has(.login-shell) {
 .student-photo-editor canvas:active{cursor:grabbing}.student-photo-zoom{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin:16px 0}
 .student-photo-editor-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}.student-detail-photo img{display:block;width:min(240px,100%);aspect-ratio:3/4;object-fit:cover;border-radius:16px}
 @media(max-width:640px){.student-file-number,.cursista-smp-file-number{grid-template-columns:1fr}.student-photo-layout{grid-template-columns:1fr}.student-photo-preview.is-portrait,.student-photo-preview.is-landscape,.student-photo-field.is-file-number-photo .student-photo-preview.is-portrait,.student-photo-field.is-file-number-photo .student-photo-preview.is-landscape{width:min(100%,280px);margin:auto}.student-photo-controls{justify-content:center}.student-photo-editor{padding:18px}.student-photo-editor-actions>*{flex:1 1 140px}}
+
+/* Barra de acoes das fichas de cursistas */
+.student-registration-actions,
+.student-heading-actions,
+.cursista-smp-tool-actions {
+  align-items:stretch;
+}
+
+.student-registration-actions button,
+.student-heading-actions button,
+.cursista-smp-tool-actions button {
+  min-height:44px;
+  box-shadow:none;
+  white-space:nowrap;
+}
+
+.student-registration-actions .student-heading-actions {
+  gap:10px;
+}
+
+#delete-cursista-smp {
+  background:#b94137;
+  color:#fff;
+}
+
+#delete-cursista-smp:hover {
+  background:#9f352d;
+}
+
+.student-registration-actions button:focus-visible,
+.cursista-smp-tool-actions button:focus-visible {
+  outline:3px solid #f0bd59;
+  outline-offset:2px;
+}
+
+@media(max-width:720px) {
+  .student-screen .student-registration-tools {
+    grid-template-columns:minmax(0, 1fr);
+    gap:10px;
+  }
+
+  .student-screen .registration-search-field,
+  .student-screen .student-registration-actions {
+    grid-column:1;
+  }
+
+  .student-screen .student-registration-actions {
+    display:grid;
+    width:100%;
+    gap:10px;
+  }
+
+  .student-screen .student-heading-actions {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    width:100%;
+  }
+
+  .student-screen .student-heading-actions #delete-selected-student {
+    grid-column:1 / -1;
+  }
+
+  .student-screen .student-registration-actions button,
+  .cursista-smp-tool-actions button {
+    width:100%;
+    min-width:0;
+    min-height:48px;
+    padding:10px 8px;
+    white-space:normal;
+  }
+
+  .cursista-smp-tool-actions {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    width:100%;
+  }
+}
+
+@media(max-width:380px) {
+  .student-screen .student-heading-actions,
+  .cursista-smp-tool-actions {
+    grid-template-columns:1fr;
+  }
+
+  .student-screen .student-heading-actions #delete-selected-student {
+    grid-column:auto;
+  }
+}

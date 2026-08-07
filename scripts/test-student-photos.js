@@ -36,6 +36,7 @@ const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
 const client = fs.readFileSync(path.join(root, 'studentPhotoClient.js'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
 const backup = fs.readFileSync(path.join(root, 'backupService.js'), 'utf8');
+const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(migration, /'cursista-fotos'.*false.*2097152.*image\/jpeg/s, 'Bucket deve ser privado e aceitar somente JPEG de ate 2 MB.');
 assert.match(migration, /alter table public\.cursista_fotos enable row level security/i);
@@ -59,6 +60,10 @@ assert.match(app, /mountTarget: app\.querySelector\('\.student-file-number'\)/, 
 assert.match(app, /mountTarget: app\.querySelector\('\.cursista-smp-file-number'\)/, 'SMP e EPC devem posicionar foto ao lado do numero da ficha.');
 assert.match(app, /student-registration-actions'\)\?\.append\(app\.querySelector\('\.student-heading-actions'\)\)/, 'Acoes Individual devem ficar junto de Incluir novo.');
 assert.match(app, /cursista-smp-tool-actions'\)\?\.append\(deleteButton\)/, 'Excluir SMP e EPC deve ficar junto de Novo, Editar e Imprimir.');
+assert.match(app, /id="new-cursista-smp">Incluir novo<\/button>/, 'SMP e EPC devem exibir Incluir novo por extenso.');
+assert.doesNotMatch(styles, /#new-student::before\s*\{[\s\S]*?content:\s*'\+'/s, 'Individual nao deve substituir Incluir novo por um simbolo no mobile.');
+assert.match(styles, /@media\(max-width:720px\)[\s\S]*?\.student-screen \.student-registration-tools\s*\{[\s\S]*?grid-template-columns:minmax\(0, 1fr\)/, 'A barra Individual deve ocupar a largura disponivel no mobile.');
+assert.match(styles, /@media\(max-width:720px\)[\s\S]*?\.cursista-smp-tool-actions\s*\{[\s\S]*?grid-template-columns:repeat\(2, minmax\(0, 1fr\)\)/, 'As barras SMP e EPC devem organizar os comandos em grade no mobile.');
 assert.match(backup, /\['cursista_fotos', \['id'\]\]/);
 assert(fs.existsSync(path.join(root, 'assets', 'vendor', 'heic2any.min.js')));
 assert(fs.existsSync(path.join(root, 'assets', 'vendor', 'heic2any.LICENSE.md')));
