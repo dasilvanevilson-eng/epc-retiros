@@ -2190,7 +2190,7 @@ async function renderRetreat(id, selectedSector = '') {
   const studentLinksContent = studentLinkData?.error
     ? `<p class="empty-state">${escapeHtml(studentLinkData.error)}</p>`
     : studentLinks.length
-      ? `<div class="student-registration-link-search-shell"><label class="field student-registration-link-search"><span>Buscar ficha</span><input id="student-registration-link-search" type="search" inputmode="numeric" autocomplete="off" list="student-registration-link-options" aria-controls="student-registration-link-list" aria-describedby="student-registration-link-search-feedback" placeholder="Digite o número da ficha"></label><datalist id="student-registration-link-options">${studentLinks.map((link) => `<option value="${escapeHtml(link.numeroFicha)}" label="${escapeHtml(studentLinkSearchOptionLabel(link))}" data-student-link-option="${escapeHtml(link.numeroFicha)}"></option>`).join('')}</datalist><p id="student-registration-link-search-feedback" class="student-registration-link-search-feedback" role="status">Digite o número para visualizar os dados de uma ficha.</p></div><div class="student-registration-link-list" id="student-registration-link-list">${studentLinks.map((link) => {
+      ? `<div class="student-registration-link-search-shell"><div class="student-registration-link-search-control"><label class="field student-registration-link-search"><span>Buscar ficha</span><input id="student-registration-link-search" type="search" inputmode="numeric" autocomplete="off" aria-controls="student-registration-link-options" aria-expanded="false" aria-autocomplete="list" aria-describedby="student-registration-link-search-feedback" placeholder="Digite o número da ficha"></label><div id="student-registration-link-options" class="student-registration-link-options" role="listbox" hidden>${studentLinks.map((link) => { const optionLabel = studentLinkSearchOptionLabel(link); return `<button type="button" role="option" data-student-link-option="${escapeHtml(link.numeroFicha)}" data-student-link-option-search="${escapeHtml(normalizeText(`${link.numeroFicha} ${optionLabel}`))}"><strong>Ficha ${escapeHtml(link.numeroFicha)}</strong><span>${escapeHtml(optionLabel)}</span></button>`; }).join('')}<p class="student-registration-link-option-empty" hidden>Nenhuma ficha encontrada.</p></div></div><p id="student-registration-link-search-feedback" class="student-registration-link-search-feedback" role="status">Selecione uma ficha para visualizar seus dados.</p></div><div class="student-registration-link-list" id="student-registration-link-list">${studentLinks.map((link) => {
         const publicUrl = `${location.origin}/cadastro-cursista/ficha${link.numeroFicha}/${encodeURIComponent(link.token)}`;
         const registered = link.status === 'cadastrada';
         const closed = link.inscricaoEncerrada === true;
@@ -2234,24 +2234,58 @@ async function renderRetreat(id, selectedSector = '') {
   const refreshStudentLinkSearchOption = (numeroFicha) => {
     const link = studentLinks.find((item) => Number(item.numeroFicha) === Number(numeroFicha));
     const option = studentRegistrationLinksPanel.querySelector(`[data-student-link-option="${Number(numeroFicha)}"]`);
-    if (link && option) option.label = studentLinkSearchOptionLabel(link);
+    if (link && option) {
+      const label = studentLinkSearchOptionLabel(link);
+      option.dataset.studentLinkOptionSearch = normalizeText(`${link.numeroFicha} ${label}`);
+      const details = option.querySelector('span');
+      if (details) details.textContent = label;
+    }
   };
   if (studentLinkSearch) {
     const rows = [...studentRegistrationLinksPanel.querySelectorAll('[data-student-link-row]')];
+    const options = [...studentRegistrationLinksPanel.querySelectorAll('[data-student-link-option]')];
+    const menu = studentRegistrationLinksPanel.querySelector('#student-registration-link-options');
+    const empty = menu.querySelector('.student-registration-link-option-empty');
+    const searchControl = studentRegistrationLinksPanel.querySelector('.student-registration-link-search-control');
     const feedback = studentRegistrationLinksPanel.querySelector('#student-registration-link-search-feedback');
-    const selectStudentLink = () => {
-      const typed = String(studentLinkSearch.value || '').trim();
-      const number = Number(typed);
-      const validNumber = Number.isInteger(number) && number > 0;
-      const selectedRow = validNumber ? rows.find((row) => Number(row.dataset.studentLinkRow) === number) : null;
-      rows.forEach((row) => { row.hidden = row !== selectedRow; });
-      if (!typed) feedback.textContent = 'Digite o número para visualizar os dados de uma ficha.';
-      else if (selectedRow) feedback.textContent = `Ficha ${number} selecionada.`;
-      else feedback.textContent = 'Nenhuma ficha encontrada com esse número.';
+    const openStudentLinkOptions = () => { menu.hidden = false; studentLinkSearch.setAttribute('aria-expanded', 'true'); };
+    const closeStudentLinkOptions = () => { menu.hidden = true; studentLinkSearch.setAttribute('aria-expanded', 'false'); };
+    const filterStudentLinkOptions = () => {
+      const query = normalizeText(studentLinkSearch.value);
+      let visible = 0;
+      options.forEach((option) => {
+        const matches = !query || option.dataset.studentLinkOptionSearch.includes(query);
+        option.hidden = !matches;
+        if (matches) visible += 1;
+      });
+      empty.hidden = visible > 0;
     };
-    studentLinkSearch.addEventListener('input', selectStudentLink);
-    studentLinkSearch.addEventListener('change', selectStudentLink);
-    selectStudentLink();
+    const selectStudentLink = (numeroFicha) => {
+      const number = Number(numeroFicha);
+      const selectedRow = rows.find((row) => Number(row.dataset.studentLinkRow) === number);
+      rows.forEach((row) => { row.hidden = row !== selectedRow; });
+      if (!selectedRow) return;
+      studentLinkSearch.value = String(number);
+      feedback.textContent = `Ficha ${number} selecionada.`;
+      closeStudentLinkOptions();
+    };
+    options.forEach((option) => option.addEventListener('click', () => selectStudentLink(option.dataset.studentLinkOption)));
+    studentLinkSearch.addEventListener('focus', () => { filterStudentLinkOptions(); openStudentLinkOptions(); });
+    studentLinkSearch.addEventListener('click', () => { filterStudentLinkOptions(); openStudentLinkOptions(); });
+    studentLinkSearch.addEventListener('input', () => {
+      rows.forEach((row) => { row.hidden = true; });
+      feedback.textContent = 'Selecione uma ficha na lista abaixo do campo.';
+      filterStudentLinkOptions();
+      openStudentLinkOptions();
+    });
+    studentLinkSearch.addEventListener('keydown', (event) => {
+      const visibleOptions = options.filter((option) => !option.hidden);
+      if (event.key === 'Escape') { closeStudentLinkOptions(); return; }
+      if (event.key === 'ArrowDown') { event.preventDefault(); visibleOptions[0]?.focus(); return; }
+      if (event.key === 'Enter' && visibleOptions.length) { event.preventDefault(); const exact = visibleOptions.find((option) => Number(option.dataset.studentLinkOption) === Number(studentLinkSearch.value)); (exact || visibleOptions[0]).click(); }
+    });
+    searchControl.addEventListener('focusout', () => setTimeout(() => { if (!searchControl.contains(document.activeElement)) closeStudentLinkOptions(); }, 0));
+    filterStudentLinkOptions();
   }
   const openStudentLinkStatusWindow = () => {
     app.querySelector('.student-link-status-overlay')?.remove();
