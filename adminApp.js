@@ -970,7 +970,9 @@ function studentRegistrationPrintDocument({ retreat, record, studentFormType }) 
   const photoType = individual ? 'individual' : (studentFormType === 'cursista-epc' ? 'epc' : 'smp');
   const photoRecordId = record?.id || record?.numeroFichaSmp;
   const photoSrc = retreat?.id && photoRecordId ? studentPhotoUrl(photoType, retreat.id, photoRecordId) : '';
-  const photoPrint = photoSrc ? `<section class="print-section print-photo-section"><h2>Foto</h2><img src="${escapeHtml(photoSrc)}" alt="${individual ? 'Foto do cursista' : 'Foto do casal'}" style="display:block;${individual ? 'width:31.2mm;height:41.6mm' : 'width:49.4mm;height:37.05mm'};margin:0 auto;object-fit:cover;border:1px solid #cbd5ca;border-radius:2mm" onerror="this.closest('section').remove()"></section>` : '';
+  const photoFrameSize = individual ? 'width:31.2mm;height:41.6mm' : 'width:49.4mm;height:37.05mm';
+  const photoImage = photoSrc ? `<img src="${escapeHtml(photoSrc)}" alt="${individual ? 'Foto do cursista' : 'Foto do casal'}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:1.6mm" onerror="this.remove()">` : '';
+  const photoPrint = `<section class="print-section print-photo-section"><h2>Foto</h2><div class="print-photo-frame" style="position:relative;display:grid;place-items:center;${photoFrameSize};margin:0 auto;border:.35mm dashed #9aa89d;border-radius:2mm;background:#f7f9f6;overflow:hidden"><span style="color:#748078;font-size:7pt">Foto não cadastrada</span>${photoImage}</div></section>`;
   const content = `${photoPrint}${baseContent}`;
   const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${escapeHtml(String(fileNumber || ''))} - ${escapeHtml(label)}</title><style>
