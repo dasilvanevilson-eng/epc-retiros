@@ -55,3 +55,6 @@ Com essas variaveis presentes, a API passa a gravar no Supabase. Sem elas, usa o
 4. Publique.
 
 A Vercel usa os arquivos em `api/` como funcoes serverless e serve os HTML/CSS/JS como arquivos estaticos.
+# Fotos privadas de cursistas
+
+Para aplicar com segurança o bucket e a migração das fotos das fichas Individual, SMP e EPC, consulte [FOTOS-CURSISTAS.md](FOTOS-CURSISTAS.md).

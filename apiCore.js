@@ -11,6 +11,15 @@ const {
   studentRegistrationLinkStatus,
   withSyncedStudentRegistrationLinks,
 } = require('./publicStudentLinks');
+const {
+  createPublicPhotoTicket,
+  downloadPhoto,
+  findStudent,
+  findStudentByFile,
+  readRawImage,
+  savePhoto,
+  verifyPublicPhotoTicket,
+} = require('./studentPhotoService');
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 
@@ -31,6 +40,16 @@ function sendJson(res, status, data, headers = {}) {
 function sendNoContent(res, headers = {}) {
   res.writeHead(204, headers);
   res.end();
+}
+
+function sendJpeg(res, photo) {
+  res.writeHead(200, {
+    'Content-Type': 'image/jpeg',
+    'Content-Length': photo.buffer.length,
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  res.end(photo.buffer);
 }
 
 function sendError(res, status, message) {
@@ -338,13 +357,13 @@ async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
 
 async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
-  const [resource, id, action] = parts;
+  const [resource, id, action, fourth] = parts;
 
   if (resource === 'cadastro-cursista' && id) {
     try {
       const publicStudentUrl = new URL(req.url || '/', 'https://familiaepcindaial.local');
       const requestedFileNumber = Number(publicStudentUrl.searchParams.get('ficha')) || 0;
-      if (req.method === 'GET') {
+      if (req.method === 'GET' && !action) {
         const context = await resolvePublicStudentLink(id);
         if (!context) return sendError(res, 404, 'Link de cadastro nao encontrado.');
         if (requestedFileNumber && requestedFileNumber !== context.numeroFicha) return sendError(res, 404, 'O numero da ficha nao corresponde a este link.');
@@ -365,10 +384,29 @@ async function handleApi(req, res, pathname) {
           }),
         });
       }
-      if (req.method === 'POST') {
+      if (req.method === 'POST' && action === 'foto') {
         if (await isMaintenanceActive()) return sendError(res, 503, 'O sistema esta temporariamente em manutencao. Tente novamente em alguns minutos.');
-        await savePublicStudentRegistration(id, await readBody(req), requestedFileNumber);
+        const grant = verifyPublicPhotoTicket(req.headers['x-photo-upload-token'], id);
+        const context = await resolvePublicStudentLink(id);
+        if (!context || context.retreat.id !== grant.retreatId || context.numeroFicha !== Number(grant.fileNumber) || !context.occupied) {
+          return sendError(res, 403, 'A autorizacao nao corresponde a esta ficha.');
+        }
+        const student = await findStudentByFile(grant.type, grant.retreatId, grant.fileNumber);
+        if (!student || String(student.id || student.numeroFichaSmp) !== String(grant.recordId)) return sendError(res, 404, 'Ficha cadastrada nao encontrada.');
+        const buffer = await readRawImage(req);
+        await savePhoto({ type: grant.type, retreatId: grant.retreatId, recordId: grant.recordId, fileNumber: grant.fileNumber, buffer, origin: 'publico', actorId: null, allowReplace: false });
         return sendJson(res, 201, { saved: true });
+      }
+      if (req.method === 'POST' && !action) {
+        if (await isMaintenanceActive()) return sendError(res, 503, 'O sistema esta temporariamente em manutencao. Tente novamente em alguns minutos.');
+        const before = await resolvePublicStudentLink(id);
+        const saved = await savePublicStudentRegistration(id, await readBody(req), requestedFileNumber);
+        const type = before.type === 'cursista-individual' ? 'individual' : (before.type === 'cursista-epc' ? 'epc' : 'smp');
+        const recordId = String(saved.id || saved.numeroFichaSmp);
+        return sendJson(res, 201, {
+          saved: true,
+          photoUploadToken: createPublicPhotoTicket({ token: id, retreatId: before.retreat.id, type, recordId, fileNumber: before.numeroFicha }),
+        });
       }
       return sendError(res, 405, 'Metodo nao permitido.');
     } catch (error) {
@@ -408,6 +446,38 @@ async function handleApi(req, res, pathname) {
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
+
+  if (resource === 'cursista-foto' && id && action && fourth) {
+    try {
+      const type = decodeURIComponent(id);
+      const retreatId = decodeURIComponent(action);
+      const recordId = decodeURIComponent(fourth);
+      const permissionPrefix = type === 'individual' ? 'cursista' : `cursista-${type}`;
+      if (!['individual', 'smp', 'epc'].includes(type)) return sendError(res, 400, 'Tipo de ficha invalido.');
+      if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+      const student = await findStudent(type, retreatId, recordId);
+      if (!student) return sendError(res, 404, 'Ficha de cursista nao encontrada.');
+      if (req.method === 'GET') {
+        if (denyIfMissingPermission(res, session, `${permissionPrefix}.ver`)) return;
+        const photo = await downloadPhoto(type, retreatId, recordId);
+        if (!photo) return sendError(res, 404, 'Esta ficha ainda nao possui foto.');
+        return sendJpeg(res, photo);
+      }
+      if (req.method === 'PUT') {
+        if (denyIfMissingPermission(res, session, `${permissionPrefix}.editar`)) return;
+        const retreat = await getRecord('retiros', retreatId).catch(() => null);
+        if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
+        if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
+        const fileNumber = type === 'individual' ? student.numeroFichaIndividual : (student.numeroFichaSmp || student.id);
+        const buffer = await readRawImage(req);
+        await savePhoto({ type, retreatId, recordId, fileNumber, buffer, origin: 'logado', actorId: session.id || session.sub, allowReplace: true });
+        return sendJson(res, 201, { saved: true });
+      }
+      return sendError(res, 405, 'Metodo nao permitido para foto de cursista.');
+    } catch (error) {
+      return sendError(res, error.statusCode || 400, error.message || 'Nao foi possivel processar a foto.');
+    }
+  }
 
   if (resource === 'cursista-links' && id && action === 'sync' && req.method === 'POST') {
     if (denyIfMissingPermission(res, session, 'retiros.ver')) return;

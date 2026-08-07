@@ -1,5 +1,7 @@
 const { handleApi, sendError } = require('../apiCore');
 
+module.exports.config = { api: { bodyParser: false } };
+
 module.exports = async function handler(req, res) {
   try {
     const pathname = new URL(req.url || '/api/health', 'https://familiaepcindaial.local').pathname;

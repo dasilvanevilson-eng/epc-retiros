@@ -25,6 +25,7 @@
     "test:community-shirt-print": "node scripts/test-community-shirt-print.js",
     "test:student-financial-summary": "node scripts/test-student-financial-summary.js",
     "test:student-registration-print": "node scripts/test-student-registration-print.js",
+    "test:student-photos": "node scripts/test-student-photos.js",
     "test:reports": "node scripts/test-report-center.js",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",

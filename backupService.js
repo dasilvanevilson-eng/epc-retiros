@@ -29,6 +29,7 @@ const relationalTables = [
   ['cursistas', ['id']],
   ['cursista_smp', ['retiro_id', 'id']],
   ['cursista_epc', ['retiro_id', 'id']],
+  ['cursista_fotos', ['id']],
   ['comunidades', ['id']],
   ['comunidade_monitores', ['comunidade_id', 'pessoa_id']],
   ['comunidade_cursistas', ['comunidade_id', 'cursista_id']],
@@ -47,7 +48,7 @@ const tablePrimaryKeys = Object.fromEntries(relationalTables);
 const allowedRelationalTables = new Set(relationalTables.map(([name]) => name));
 const requiredRelationalTables = new Set(relationalTables
   .map(([name]) => name)
-  .filter((name) => name !== 'epc_store'));
+  .filter((name) => !['epc_store', 'cursista_fotos'].includes(name)));
 const localOperations = new Map();
 
 const stableValue = (value) => {

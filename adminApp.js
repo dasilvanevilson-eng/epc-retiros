@@ -1,6 +1,7 @@
 import { dataService, retreatDefaults } from './dataService.js';
 import { buildKidsCareSummary } from './kidsCareSummary.js';
 import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
+import { attachStudentPhotoField, photoUrl as studentPhotoUrl } from './studentPhotoClient.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -955,7 +956,12 @@ function studentRegistrationPrintDocument({ retreat, record, studentFormType }) 
   const participantName = individual
     ? record?.nome
     : [record?.nomeDele, record?.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ');
-  const content = individual ? individualStudentRegistrationPrintContent(record) : coupleStudentRegistrationPrintContent(record, studentFormType);
+  const baseContent = individual ? individualStudentRegistrationPrintContent(record) : coupleStudentRegistrationPrintContent(record, studentFormType);
+  const photoType = individual ? 'individual' : (studentFormType === 'cursista-epc' ? 'epc' : 'smp');
+  const photoRecordId = record?.id || record?.numeroFichaSmp;
+  const photoSrc = retreat?.id && photoRecordId ? studentPhotoUrl(photoType, retreat.id, photoRecordId) : '';
+  const photoPrint = photoSrc ? `<section class="print-section print-photo-section"><h2>Foto</h2><img src="${escapeHtml(photoSrc)}" alt="${individual ? 'Foto do cursista' : 'Foto do casal'}" style="display:block;${individual ? 'width:24mm;height:32mm' : 'width:38mm;height:28.5mm'};object-fit:cover;border:1px solid #cbd5ca;border-radius:2mm" onerror="this.closest('section').remove()"></section>` : '';
+  const content = `${photoPrint}${baseContent}`;
   const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${escapeHtml(String(fileNumber || ''))} - ${escapeHtml(label)}</title><style>
     @page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#1f2c28;font-family:Arial,sans-serif}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.print-page{position:relative;width:194mm;height:281mm;overflow:hidden}.print-sheet{width:194mm;transform-origin:top left}.print-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5mm;align-items:start;padding-bottom:3mm;border-bottom:.6mm solid #356d41}.print-header h1{margin:0;color:#254d30;font-size:16pt;line-height:1.05}.print-header p{margin:1mm 0 0;color:#56665a;font-size:8pt}.print-header-meta{display:grid;grid-template-columns:auto auto;gap:1mm 4mm;text-align:right}.print-header-meta strong{font-size:7pt;text-transform:uppercase;color:#627065}.print-header-meta span{font-size:8pt;font-weight:700}.print-participant{margin:2.5mm 0 0;font-size:10pt;font-weight:700}.print-sections{display:grid;gap:2mm;margin-top:2.5mm}.print-section{break-inside:avoid}.print-section h2{margin:0 0 1mm;padding:1.1mm 2mm;border-radius:1mm;background:#e9f1e7;color:#285130;font-size:9pt;line-height:1.1}.print-field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:.2mm solid #cbd5ca;border-left:.2mm solid #cbd5ca}.print-field{min-width:0;padding:1.2mm 1.5mm;border-right:.2mm solid #cbd5ca;border-bottom:.2mm solid #cbd5ca}.print-field strong,.print-field span{display:block;overflow-wrap:anywhere}.print-field strong{margin-bottom:.35mm;color:#5b695f;font-size:6.5pt;line-height:1.05}.print-field span{font-size:7.7pt;line-height:1.15}.couple-comparison{width:100%;border-collapse:collapse;table-layout:fixed}.couple-comparison th,.couple-comparison td{padding:1mm 1.4mm;border:.2mm solid #cbd5ca;vertical-align:top;overflow-wrap:anywhere;font-size:7.2pt;line-height:1.12}.couple-comparison thead th{background:#f3f6f1;color:#285130;font-size:7pt;text-transform:uppercase}.couple-comparison th:first-child{width:27%;color:#56665a;text-align:left}.couple-comparison td{width:36.5%}.print-footer{margin-top:2mm;color:#68746b;font-size:6.5pt;text-align:right}@media screen{body{display:grid;place-items:start center;min-height:100vh;padding:10mm;background:#e8ece7}.print-page{background:#fff;box-shadow:0 10px 30px #1f2c2830}}@media print{body{background:#fff}.print-page{box-shadow:none}}
@@ -982,8 +988,11 @@ function printStudentRegistrationSheet({ retreat, record, studentFormType }) {
     printWindow.focus();
     printWindow.print();
   };
-  if (printWindow.document.fonts?.ready) printWindow.document.fonts.ready.then(() => printWindow.requestAnimationFrame(fitAndPrint));
-  else setTimeout(fitAndPrint, 250);
+  const imagesReady = Promise.all([...printWindow.document.images].map((image) => image.complete
+    ? Promise.resolve()
+    : new Promise((resolve) => { image.addEventListener('load', resolve, { once: true }); image.addEventListener('error', resolve, { once: true }); })));
+  Promise.all([printWindow.document.fonts?.ready || Promise.resolve(), imagesReady])
+    .then(() => printWindow.requestAnimationFrame(fitAndPrint));
 }
 
 function setHomeStatPrintOptions(dialog, printOptions = []) {
@@ -3320,24 +3329,34 @@ const publicStudentPayload = (form) => {
 };
 const wireSharedPublicStudentSubmission = (form, context, messageSelector) => {
   const message = app.querySelector(messageSelector);
+  let registrationSaved = false;
+  let photoUploadToken = '';
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!form.reportValidity()) return;
+    if (!registrationSaved && !form.reportValidity()) return;
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
-    if (message) message.textContent = 'Salvando cadastro...';
+    if (message) message.textContent = registrationSaved ? 'Tentando enviar a foto novamente...' : 'Salvando cadastro...';
     try {
-      const response = await fetch(publicStudentRegistrationApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(publicStudentPayload(form)),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Não foi possível concluir o cadastro.');
+      if (!registrationSaved) {
+        const response = await fetch(publicStudentRegistrationApiUrl(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(publicStudentPayload(form)),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Não foi possível concluir o cadastro.');
+        registrationSaved = true;
+        photoUploadToken = result.photoUploadToken || '';
+      }
+      if (form._studentPhotoController?.hasPending()) {
+        await form._studentPhotoController.uploadPublic(photoUploadToken, publicStudentRegistrationApiUrl());
+      }
       publicStudentUnavailable('Cadastro realizado', `A ficha ${context.numeroFicha} foi cadastrada com sucesso.`);
     } catch (error) {
       if (message) message.textContent = error.message || 'Não foi possível concluir o cadastro.';
       button.disabled = false;
+      if (registrationSaved) button.innerHTML = 'Tentar enviar a foto novamente <span>→</span>';
     }
   });
 };
@@ -3390,6 +3409,7 @@ async function renderSharedPublicStudentRegistration() {
     if (context.tipoFichaCursista === 'cursista-individual') return renderCursista({ publicContext: context });
     const active = context.tipoFichaCursista === 'cursista-epc' ? 'cursista-epc' : 'cursista-smp';
     renderCursistaSmpScreen({ title: active === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP', active });
+    attachStudentPhotoField(app.querySelector('#cursista-smp-form'), { type: active === 'cursista-epc' ? 'epc' : 'smp', publicMode: true });
     prepareSharedPublicCoupleStudentForm(context);
   } catch (error) {
     publicStudentUnavailable('Link indisponível', error.message || 'Confira o endereço recebido da equipe do retiro.');
@@ -3701,6 +3721,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
 async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permissionPrefix = 'cursista-smp', label = 'Cursista SMP', initialFileNumber = 0 } = {}) {
   const form = app.querySelector('#cursista-smp-form');
   if (!form) return;
+  const photoController = attachStudentPhotoField(form, { type: expectedType === 'cursista-epc' ? 'epc' : 'smp' });
   const retreat = selectedRetreat();
   const fileNumberInput = app.querySelector('[name="numeroFichaSmp"]');
   const searchInput = app.querySelector('#cursista-smp-search');
@@ -3837,6 +3858,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   const clearForm = ({ unlock = false, focus = false, notice = '' } = {}) => {
     selectedId = '';
+    photoController?.reset();
     form.reset();
     syncChoiceStates(form);
     form.querySelectorAll('input, select, textarea').forEach((control) => control.setCustomValidity?.(''));
@@ -3882,6 +3904,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     printButton.hidden = false;
     setLocked(true);
     setMessage(canUseSmp() || (!canEditSmp() ? `${label} carregado apenas para consulta.` : `${label} carregado. Clique em Editar para alterar.`));
+    photoController?.load(record);
   };
   const normalizeSmpFileNumberLookup = (value) => {
     const fileNumber = String(value || '').trim();
@@ -4059,6 +4082,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     setMessage(`Salvando ${label}...`);
     try {
       const saved = await saveCoupleStudent(record);
+      if (photoController?.hasPending()) await photoController.uploadLogged(saved);
       if (previousId && previousId !== saved.id) await deleteCoupleStudent(retreat.id, previousId);
       await refreshRecords();
       if (clearAfter) {
@@ -4300,6 +4324,7 @@ async function renderCursista({ publicContext = null } = {}) {
   const canEditStudentRetreat = canModifyRetreat(focusStudentRetreat);
   layout(`<section class="page-heading student-page-heading"><div><h1>Cursista individual</h1><p>Registre as informações necessárias para acolher e acompanhar o cursista.</p></div><button type="button" id="student-financial-summary" class="primary-button">Resumo financeiro</button></section><section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro</h2><p>Busque por nome, CPF ou telefone para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions"><button type="button" id="new-student">Incluir novo</button></div></div><label class="field registration-search-field"><span>Busca</span><input id="student-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="student-search-results" class="registration-search-results" hidden></div></section><section class="panel student-file-number"><label class="field"><span>Número da ficha</span><input type="text" inputmode="numeric" placeholder="Sem número definido" readonly aria-label="Número da ficha apenas visual"></label></section><form id="student-form" class="panel student-form">${stateDatalist()}<section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Dados pessoais</h2><p>Informações básicas de identificação e contato.</p></div><div class="student-heading-actions" hidden><button type="button" id="edit-selected-student">Editar</button><button type="button" id="print-selected-student" class="secondary-button">Imprimir ficha</button><button type="button" id="delete-selected-student">Excluir</button></div></div><div class="fields two-columns"><label class="field"><span>CPF <b>*</b></span><input name="cpf" required></label><label class="field full"><span>Nome completo <b>*</b></span><input name="nome" required></label><label class="field"><span>Data de nascimento <b>*</b></span><input name="nascimento" type="date" required></label><label class="field"><span>Telefone <b>*</b></span><input name="telefone" required></label></div></section><section class="form-section"><div class="section-heading"><span>02</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua <b>*</b></span><input name="rua" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section><section class="form-section"><div class="section-heading"><span>03</span><div><h2>Formação e vivência</h2></div></div><div class="student-questions"><fieldset><legend>É batizado(a)? <b>*</b></legend>${yesNo('batizado')}</fieldset><fieldset><legend>Fez primeira comunhão? <b>*</b></legend>${yesNo('primeiraComunhao')}</fieldset><fieldset><legend>Estuda? <b>*</b></legend>${yesNo('estuda')}<div class="fields two-columns"><label class="field"><span>Série</span><input name="serie"></label><label class="field"><span>Escola</span><input name="escola"></label></div></fieldset><fieldset><legend>Fez algum retiro? <b>*</b></legend>${yesNo('fezRetiro')}<label class="field"><span>Qual?</span><input name="qualRetiro"></label></fieldset></div></section><section class="form-section"><div class="section-heading"><span>04</span><div><h2>Família e convite</h2></div></div><div class="fields two-columns"><label class="field"><span>Nome do pai</span><input name="nomePai"></label><label class="field"><span>Telefone de contato</span><input name="telefonePai"></label><label class="field"><span>Nome da mãe</span><input name="nomeMae"></label><label class="field"><span>Telefone de contato</span><input name="telefoneMae"></label></div><fieldset class="student-fieldset"><legend>Os pais participam de algum movimento na igreja? <b>*</b></legend>${yesNo('paisMovimento')}<label class="field"><span>Qual?</span><input name="qualMovimento"></label></fieldset><div class="fields"><label class="field"><span>Quem o(a) convidou?</span><input name="convidou"></label><fieldset class="student-fieldset full"><legend>Tamanho da camiseta <b>*</b></legend>${choices('camiseta', ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'], false)}</fieldset></div></section><section class="form-section"><div class="section-heading"><span>05</span><div><h2>Saúde e cuidados</h2></div></div><div class="student-questions"><fieldset><legend>Tem intolerância a alimentos? <b>*</b></legend>${yesNo('intoleranciaAlimentos')}<label class="field"><span>Qual?</span><input name="qualIntolerancia"></label></fieldset><fieldset><legend>É alérgico(a) a algum medicamento? <b>*</b></legend>${yesNo('alergiaMedicamento')}<label class="field"><span>Qual?</span><input name="qualAlergia"></label></fieldset></div><div class="fields two-columns"><label class="field"><span>Medicamento para dor de cabeça</span><input name="medicamentoCabeca"></label><label class="field"><span>Medicamento para dor no estômago</span><input name="medicamentoEstomago"></label></div></section><p id="student-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">Salvar cadastro <span>→</span></button></div></form>`, 'cursista');
   const form = app.querySelector('#student-form');
+  const photoController = attachStudentPhotoField(form, { type: 'individual', publicMode: Boolean(publicContext) });
   const studentFileNumberInput = app.querySelector('.student-file-number input');
   if (studentFileNumberInput) {
     studentFileNumberInput.name = 'numeroFichaIndividual';
@@ -4316,7 +4341,7 @@ async function renderCursista({ publicContext = null } = {}) {
   if (focusStudentRetreat && studentHeadingIntro) {
     studentHeadingIntro.insertAdjacentHTML('beforeend', `<small class="student-retreat-context">Retiro em foco: <strong>${escapeHtml(focusStudentRetreat.nome || 'Retiro')}</strong></small>`);
   }
-  const studentStepLabels = ['Dados pessoais', 'Endereço', 'Formação e vivência', 'Família e convite', 'Saúde e cuidados', 'Inscrição'];
+  const studentStepLabels = ['Foto', 'Dados pessoais', 'Endereço', 'Formação e vivência', 'Família e convite', 'Saúde e cuidados', 'Inscrição'];
   const studentSections = [...form.querySelectorAll(':scope > .form-section')];
   const studentWorkspace = document.createElement('div');
   studentWorkspace.className = 'student-form-workspace';
@@ -4515,6 +4540,7 @@ async function renderCursista({ publicContext = null } = {}) {
     return warnDuplicateStudentCpf(focus);
   };
   const resetStudentScreenAfterSave = () => {
+    photoController?.reset();
     form.reset();
     form.querySelectorAll('input, select, textarea').forEach((control) => {
       control.setCustomValidity?.('');
@@ -4633,7 +4659,8 @@ async function renderCursista({ publicContext = null } = {}) {
     values.set('numeroFichaIndividual', numeroFichaIndividual);
     const record = { ...(currentStudent || {}), ...Object.fromEntries(values), id: currentStudent?.id || createId(), cpf, numeroFichaIndividual, __userSubmittedRegistration: true, ...(paymentTouched ? { __allowRegistrationDataLoss: true } : {}), criadoEm: currentStudent?.criadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString() };
     try {
-      await dataService.saveCursista(record);
+      const saved = await dataService.saveCursista(record);
+      if (photoController?.hasPending()) await photoController.uploadLogged(saved);
     } catch (error) {
       const message = String(error?.message || 'Nao foi possivel salvar o cursista.');
       app.querySelector('#student-message').textContent = message;
@@ -4653,6 +4680,10 @@ async function renderCursistaDetalhe(id) {
   const field = (label, value) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value || 'Não informado')}</span></div>`;
   const address = [student.rua, student.numero, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ');
   layout(`<section class="page-heading compact"><div><a class="back-link" href="#cursista">← Voltar</a><p class="eyebrow">Consulta de cursista</p><h1>${escapeHtml(student.nome || 'Cursista')}</h1><p>${retreat ? `Ficha cadastrada para ${escapeHtml(retreat.nome)}` : 'Cadastro de cursista'}</p></div></section><section class="panel"><h2>Dados pessoais</h2><div class="simple-list">${field('Número da ficha', student.numeroFichaIndividual)}${field('CPF', formatCpf(student.cpf))}${field('Nascimento', date(student.nascimento))}${field('Telefone', student.telefone)}${field('Endereço', address)}</div></section><section class="panel"><h2>Formação e vivência</h2><div class="simple-list">${field('É batizado(a)?', student.batizado)}${field('Fez primeira comunhão?', student.primeiraComunhao)}${field('Estuda?', student.estuda)}${field('Série', student.serie)}${field('Escola', student.escola)}${field('Fez algum retiro?', student.fezRetiro)}${field('Qual retiro?', student.qualRetiro)}</div></section><section class="panel"><h2>Família e convite</h2><div class="simple-list">${field('Pai', student.nomePai)}${field('Telefone do pai', student.telefonePai)}${field('Mãe', student.nomeMae)}${field('Telefone da mãe', student.telefoneMae)}${field('Movimento dos pais', student.paisMovimento)}${field('Qual movimento?', student.qualMovimento)}${field('Quem convidou?', student.convidou)}${field('Camiseta', student.camiseta)}</div></section><section class="panel"><h2>Saúde e inscrição</h2><div class="simple-list">${field('Intolerância a alimentos', student.intoleranciaAlimentos)}${field('Qual intolerância?', student.qualIntolerancia)}${field('Alergia a medicamento', student.alergiaMedicamento)}${field('Qual alergia?', student.qualAlergia)}${field('Medicamento para dor de cabeça', student.medicamentoCabeca)}${field('Medicamento para dor no estômago', student.medicamentoEstomago)}${field('Valor da inscrição', student.valorInscricao)}${field('Valor pago', student.valorPago)}${field('Saldo a pagar', student.saldoPagar)}</div></section><section class="panel"><div class="form-actions"><p>Esta ação remove o cadastro do cursista.</p><button type="button" id="delete-consulted-student" class="delete-student">Excluir cursista</button></div></section>`, 'cursista');
+  const detailPhoto = document.createElement('section');
+  detailPhoto.className = 'panel student-detail-photo';
+  detailPhoto.innerHTML = `<h2>Foto</h2><img src="${escapeHtml(studentPhotoUrl('individual', student.retiroId, student.id))}" alt="Foto de ${escapeHtml(student.nome || 'cursista')}" onerror="this.closest('section').remove()">`;
+  app.querySelector('.admin-main .panel')?.before(detailPhoto);
   const studentHealthItems = [...app.querySelectorAll('.panel')].find((panel) => panel.querySelector('h2')?.textContent === 'Saúde e inscrição')?.querySelectorAll('.simple-list > div');
   studentHealthItems?.[3]?.insertAdjacentHTML('afterend', `${field('Toma medicamento contínuo', student.medicamentoContinuo || 'Não')}${field('Qual medicamento contínuo?', student.qualMedicamentoContinuo)}`);
   if (!canDeleteStudentDetail) app.querySelector('#delete-consulted-student')?.closest('.panel')?.remove();
@@ -8444,6 +8475,7 @@ async function route() {
         if (student) {
           closeStudentSearchResults();
           loadStudent(student);
+          form._studentPhotoController?.load(student);
           ensureLoadedStudentMedicationDefault(student);
           form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setTimeout(() => {
@@ -8455,6 +8487,7 @@ async function route() {
     const resetStudentFileLookupState = (fileNumber, message) => {
       selectedStudentId = '';
       selectedStudentRecord = null;
+      form._studentPhotoController?.reset();
       studentHeadingActions.hidden = true;
       form.dataset.studentPaymentTouched = 'false';
       form.reset();
@@ -8487,6 +8520,7 @@ async function route() {
           return;
         }
         loadStudent(student);
+        form._studentPhotoController?.load(student);
         ensureLoadedStudentMedicationDefault(student);
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => editSelectedStudent?.focus({ preventScroll: true }), 0);
@@ -8555,10 +8589,12 @@ async function route() {
       const requestedStudent = students.find((student) => student.retiroId === activeRetreat?.id && Number(student.numeroFichaIndividual) === requestedStudentFileNumber);
       if (requestedStudent) {
         loadStudent(requestedStudent);
+        form._studentPhotoController?.load(requestedStudent);
         ensureLoadedStudentMedicationDefault(requestedStudent);
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else if (canEditStudentRetreat && canAccess('cursista.criar')) {
         clearStudentForm({ focus: false, message: `Nova ficha ${requestedStudentFileNumber} - Cursista Individual.` });
+        form._studentPhotoController?.reset();
         studentFileNumberInput.value = String(requestedStudentFileNumber);
         setStudentFormLocked(false);
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });

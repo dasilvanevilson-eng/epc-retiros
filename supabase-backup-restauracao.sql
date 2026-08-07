@@ -58,6 +58,7 @@ as $$
     ('cursistas', 150, true),
     ('cursista_smp', 160, true),
     ('cursista_epc', 165, true),
+    ('cursista_fotos', 168, false),
     ('comunidades', 170, true),
     ('comunidade_monitores', 180, true),
     ('comunidade_cursistas', 190, true),
