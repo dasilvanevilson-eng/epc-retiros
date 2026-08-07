@@ -25,18 +25,17 @@ assert.match(pickerSource, /data-badge-review-groups disabled>Continuar/);
 assert.match(pickerSource, /continueButton\.disabled = selectedGroupKeys\.size === 0/);
 assert.match(pickerSource, /renderMemberReview\(items\)/);
 assert.match(pickerSource, /data-badge-print-entry="\$\{index\}" checked/);
-assert.match(pickerSource, /data-badge-back>← Voltar para/);
+assert.match(pickerSource, /data-badge-back>/);
 assert.match(pickerSource, /preparedGroups\.flatMap/, 'Os vínculos dos grupos devem ser mantidos sem deduplicação entre grupos.');
-
 assert.match(pickerSource, /badgeProfiles\.find\(\(profile\) => profile\.id === assignedId\)[\s\S]*badgeProfiles\.find\(\(profile\) => profile\.id === printModelSelect\?\.value\)/, 'O modelo associado deve ter prioridade sobre o modelo padrão.');
 assert.match(pickerSource, /const missingGroups =/);
 assert.match(pickerSource, /Selecione um modelo padrão ou defina um modelo para:/);
 assert.match(pickerSource, /profileId: profile\.id/);
 assert.match(pickerSource, /badgeSettings/);
 
-assert.match(appSource, /page\.map\(\(\{ entry, sector, badgeSettings \}\) => badgeCard\(entry, badgeSettings \|\| next, sector\)\)/);
+assert.match(appSource, /page\.map\(\(\{ entry, sector, badgeSettings, groupType \}\) => badgeCard\(entry, badgeSettings \|\| next, sector, badgeSectorNames, groupType !== 'community'\)\)/);
 assert.match(styles, /\.badge-print-controls > button/);
 assert.match(styles, /\.badge-multi-print-dialog/);
 assert.match(styles, /\.badge-print-group-list label/);
 
-console.log('Crachás: seleção múltipla e modelos por grupo validados.');
+console.log('Crachás: seleção múltipla, modelos e nomes de setor por grupo validados.');

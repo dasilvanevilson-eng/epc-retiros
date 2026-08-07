@@ -12,32 +12,36 @@ assert(startPanelStart >= 0 && startPanelEnd > startPanelStart, 'Menu inicial de
 const startPanel = appSource.slice(startPanelStart, startPanelEnd);
 const printPosition = startPanel.indexOf('data-badge-view="print"');
 const assignmentPosition = startPanel.indexOf('data-badge-view="assignments"');
+const sectorNamesPosition = startPanel.indexOf('data-badge-view="sector-names"');
 const configPosition = startPanel.indexOf('data-badge-view="config"');
-assert(printPosition >= 0 && printPosition < assignmentPosition && assignmentPosition < configPosition, 'As três opções devem aparecer na ordem solicitada.');
+assert(printPosition >= 0 && printPosition < assignmentPosition && assignmentPosition < sectorNamesPosition && sectorNamesPosition < configPosition, 'As quatro opções devem aparecer na ordem definida.');
 assert.match(startPanel, /<strong>Imprimir<\/strong><span>/);
 assert.match(startPanel, /<strong>Definir crach&aacute;s por setor<\/strong><span>/);
+assert.match(startPanel, /<strong>Setores no crach&aacute;<\/strong><span>/);
 assert.match(startPanel, /<strong>Configurar crach&aacute;s<\/strong><span>/);
 
 assert.match(appSource, /id="badge-config-toolbar" hidden>[\s\S]*?data-badge-home>Voltar<\/button>/);
 assert.match(appSource, /id="badge-print-panel" hidden>[\s\S]*?data-badge-home>Voltar<\/button>/);
 assert.match(appSource, /badge-sector-model-page[^`]*data-badge-home>Voltar<\/button>/);
+assert.match(appSource, /badge-sector-name-page[^`]*data-badge-home>Voltar<\/button>/);
 assert.doesNotMatch(appSource, /badge-view-switch" data-badge-view/, 'Não deve haver atalho direto entre os fluxos.');
-
 assert.match(appSource, /\['config', 'assignments'\]\.includes\(view\) && !canConfigureBadges/);
+assert.match(appSource, /view === 'sector-names' && !canViewBadgeSectorNames/);
 assert.match(appSource, /view === 'print' && !canPrintBadges/);
 assert.match(appSource, /assignmentPanel\.hidden = !isAssignment/);
-assert.match(appSource, /workbench\.hidden = isAssignment/);
+assert.match(appSource, /sectorNamePanel\.hidden = !isSectorNames/);
+assert.match(appSource, /workbench\.hidden = isStandalonePanel/);
 assert.match(appSource, /showBadgeView\(''\)/);
 
 const assignmentFunctionStart = appSource.indexOf('const renderBadgeAssignmentsPanel');
-const assignmentFunctionEnd = appSource.indexOf('const deleteCurrentProfile', assignmentFunctionStart);
+const assignmentFunctionEnd = appSource.indexOf('const renderBadgeSectorNamesPanel', assignmentFunctionStart);
 const assignmentFunction = appSource.slice(assignmentFunctionStart, assignmentFunctionEnd);
 assert.doesNotMatch(assignmentFunction, /document\.createElement|receiver-sector-overlay|app\.append/, 'A definição por setor deve ser um painel da página, não um modal.');
 
-assert.match(styles, /\.badge-start-panel \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+assert.match(styles, /\.badge-start-panel \{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(styles, /\.badge-start-option \{/);
 assert.match(styles, /@media\(max-width:820px\) \{ \.badge-start-panel \{ grid-template-columns:1fr/);
-assert.match(styles, /\.badge-assignment-panel \{/);
+assert.match(styles, /\.badge-assignment-panel,\.badge-sector-name-panel \{/);
 assert.match(styles, /\.badge-active-area\[hidden\],\.badge-active-area \[hidden\] \{ display:none !important; \}/);
 
-console.log('Crachás: menu e três fluxos independentes validados.');
+console.log('Crachás: menu e quatro fluxos independentes validados.');

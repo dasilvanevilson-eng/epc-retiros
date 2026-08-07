@@ -702,6 +702,11 @@ async function handleApi(req, res, pathname) {
   if (req.method === 'PUT' && id) {
     let record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
     if (!publicRegistrationRequest && resource !== 'pessoas' && await denyIfMissingRetreatAccess(res, session, resource, record)) return;
+    if (!publicRegistrationRequest && resource === 'crachas') {
+      const retreat = await getRecord('retiros', recordRetreatId(record)).catch(() => null);
+      if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
+      if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: configuracoes de cracha disponiveis apenas para consulta.');
+    }
     if (await denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest)) return;
     if (!publicRegistrationRequest && resource === 'retiros') {
       const current = await getRecord('retiros', record.id).catch(() => null);

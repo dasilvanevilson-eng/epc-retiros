@@ -18,6 +18,7 @@
     "test:badge-community": "node scripts/test-badge-student-community.js",
     "test:badge-picker": "node scripts/test-badge-profile-picker.js",
     "test:badge-sector-models": "node scripts/test-badge-sector-models.js",
+    "test:badge-sector-names": "node scripts/test-badge-sector-names.js",
     "test:badge-workflows": "node scripts/test-badge-workflows.js",
     "test:badge-multi-print": "node scripts/test-badge-multi-print.js",
     "test:quadrante-print": "node scripts/test-quadrante-print.js",

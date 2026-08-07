@@ -8,7 +8,7 @@ const appSource = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(appSource, /const badgeSectorAssignmentsType = 'sector-model-assignments'/);
-assert.match(appSource, /profile\.tipo !== badgeSectorAssignmentsType/, 'A configuração por setor não pode aparecer como modelo de crachá.');
+assert.match(appSource, /badgeTechnicalRecordTypes\.has\(profile\.tipo\)/, 'Configurações técnicas não podem aparecer como modelos de crachá.');
 assert.match(appSource, /data-badge-view="assignments"><strong>Definir crach&aacute;s por setor/);
 assert.match(appSource, /id="badge-assignment-panel" hidden/);
 assert.match(appSource, /const renderBadgeAssignmentsPanel = \(\) =>/);
@@ -22,13 +22,13 @@ assert.match(appSource, /data-assignment-kind/);
 assert.match(appSource, /data-assignment-key/);
 assert.match(appSource, /saveBadgeSectorAssignments\(retreat\.id, assignments, badgeSectorAssignmentsRecordId\)/);
 assert.match(appSource, /type === 'sector' \? assignedProfileIdForSector\(key\) : assignedProfileIdForCommunity\(key\)/, 'A impressão deve resolver o modelo associado a cada setor ou comunidade.');
-assert.match(appSource, /badgeCard\(entry, badgeSettings \|\| next, sector\)/, 'Cada crachá deve usar as configurações do seu próprio grupo.');
+assert.match(appSource, /badgeCard\(entry, badgeSettings \|\| next, sector, badgeSectorNames, groupType !== 'community'\)/, 'Cada crachá deve usar as configurações do seu próprio grupo e o nome de setor aplicável.');
 assert.match(appSource, /sectors:[\s\S]*communities:/, 'Setores e comunidades devem ser armazenados separadamente.');
 assert.match(styles, /\.badge-sector-model-heading,\.badge-sector-model-row/);
 assert.match(styles, /\.badge-assignment-group/);
 
 const helperStart = appSource.indexOf('const normalizeBadgeSectorAssignments');
-const helperEnd = appSource.indexOf('const copyBadgeProfilesToRetreat', helperStart);
+const helperEnd = appSource.indexOf('const normalizeBadgeSectorNames', helperStart);
 assert(helperStart >= 0 && helperEnd > helperStart, 'Funções de persistência dos vínculos não encontradas.');
 const helperSource = appSource.slice(helperStart, helperEnd);
 const generatedId = '7d91f0ce-2f25-4f2a-a01c-7c46c734fe44';
@@ -41,10 +41,7 @@ const context = {
   createId: () => generatedId,
   dataService: {
     listCrachas: async () => listedRecords,
-    saveCracha: async (record) => {
-      savedRecords.push(record);
-      return record;
-    },
+    saveCracha: async (record) => { savedRecords.push(record); return record; },
   },
 };
 vm.runInNewContext(`${helperSource};globalThis.badgeAssignmentTests={normalizeBadgeSectorAssignments,loadBadgeSectorAssignments,saveBadgeSectorAssignments};`, context);

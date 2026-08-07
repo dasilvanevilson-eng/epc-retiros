@@ -52,7 +52,8 @@ const path = require('node:path');
   assert.match(adminSource, /buildCommunityStudentBadgeEntries\(\{/);
   assert.match(adminSource, /const preparedName = String\(entry\.badgeName/);
   assert.match(adminSource, /badgeUsesCoupleStudentForm \? badgeCoupleStudentSource\.list\(retreat\.id\)/);
-  assert.match(adminSource, /first && selected\.length \? badgeCard\(first\.entry, firstSettings, first\.sector\)/, 'A prévia de impressão deve usar o participante e o modelo do grupo selecionado.');
+  assert.match(adminSource, /first && selected\.length \? badgeCard\(first\.entry, firstSettings, first\.sector, badgeSectorNames, firstUsesConfiguredSectorName\)/, 'A prévia deve usar participante, modelo e regra de nome do grupo selecionado.');
+  assert.match(adminSource, /firstUsesConfiguredSectorName = first\?\.groupType !== 'community'/, 'Rótulos de comunidade não devem receber nomes configurados para setores.');
 
   console.log('Crachás: comunidade dos cursistas individuais, SMP e EPC validada.');
 })().catch((error) => {
