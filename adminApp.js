@@ -5403,9 +5403,8 @@ async function renderCrachas() {
       <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
-      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Selecione um modelo salvo e escolha quais crach&aacute;s ser&atilde;o gerados.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
+      <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Escolha os setores ou comunidades. Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor".</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
       <div class="badge-heading-tools">
-        <label class="field"><span>Modelo padr&atilde;o do crach&aacute;</span><select id="badge-print-model-select">${profileOptions()}</select></label>
         <div class="badge-print-controls">
           <button type="button" class="secondary-button" id="badge-print-by-sector">Impress&atilde;o por setor</button>
           <button type="button" class="secondary-button" id="badge-print-by-community">Impress&atilde;o por comunidade</button>
@@ -5431,7 +5430,6 @@ async function renderCrachas() {
   const profilePicker = app.querySelector('.badge-profile-picker');
   const profileTrigger = app.querySelector('#badge-profile-trigger');
   const profileMenu = app.querySelector('#badge-profile-menu');
-  const printModelSelect = printPanel.querySelector('#badge-print-model-select');
   const configName = app.querySelector('#badge-config-name');
   const configMessage = app.querySelector('#badge-config-message');
   const tabButtons = [...app.querySelectorAll('[data-badge-tab]')];
@@ -5584,9 +5582,7 @@ async function renderCrachas() {
     : badgeCommunities.map((community) => ({ key: community.id, label: communityName(community), count: communityBadgeEntries(community.id).length }));
   const printGroupProfile = (type, key) => {
     const assignedId = type === 'sector' ? assignedProfileIdForSector(key) : assignedProfileIdForCommunity(key);
-    return badgeProfiles.find((profile) => profile.id === assignedId)
-      || badgeProfiles.find((profile) => profile.id === printModelSelect?.value)
-      || null;
+    return badgeProfiles.find((profile) => profile.id === assignedId) || null;
   };
   const printGroupEntries = (type, group, profile) => {
     const groupEntries = type === 'sector'
@@ -5635,7 +5631,7 @@ async function renderCrachas() {
         const preparedGroups = selectedGroups.map((group) => ({ group, profile: printGroupProfile(type, group.key) }));
         const missingGroups = preparedGroups.filter((item) => !item.profile).map((item) => item.group.label);
         if (missingGroups.length) {
-          message.textContent = `Selecione um modelo padrão ou defina um modelo para: ${missingGroups.join(', ')}.`;
+          message.textContent = `Defina um modelo em "Definir crachás por setor" para: ${missingGroups.join(', ')}.`;
           return;
         }
         const items = preparedGroups.flatMap(({ group, profile }) => printGroupEntries(type, group, profile));
