@@ -111,6 +111,11 @@ const path = require('node:path');
 
   assert.match(adminSource, /const dayCount = \(day\).*?\+ kidsCareSummary\.children\.length;/, 'A presenca do painel Inicio deve somar o total consolidado de criancas.');
   assert.match(adminSource, /homeHealthCard\('Total de crianças', kidsCareSummary\.children\.length, 'kids'\)/, 'O card Total de criancas deve usar a fonte consolidada.');
+  assert.match(adminSource, /\['cursista-smp', 'cursista-epc'\]\.includes\(studentFormType\)[\s\S]*?\? coupleStudents\.length \* 2[\s\S]*?: individualStudents\.length/, 'A quantidade de cursistas deve contar uma pessoa por ficha Individual e duas por ficha SMP ou EPC.');
+  assert.match(adminSource, /activeStudentPresenceCount = studentPresenceCount\(activeStudentFormType, activeStudents, coupleStudents\)/, 'O painel Inicio deve escolher a fonte conforme o tipo de ficha do retiro.');
+  assert.match(adminSource, /retreatStudentPresenceCount = studentPresenceCount\(retreatStudentFormType, registeredStudents, coupleStudents\)/, 'A tela Links de cadastro deve usar a mesma regra de presença.');
+  assert.match(adminSource, /const dayCount = \(day\).*?\+ activeStudentPresenceCount \+ kidsCareSummary\.children\.length;/, 'A presença do painel Inicio deve combinar equipe, cursistas da fonte configurada e crianças.');
+  assert.match(adminSource, /const dayCount = \(day\).*?\+ retreatStudentPresenceCount \+ retreatKidsSummary\.children\.length;/, 'A presença em Links de cadastro deve combinar equipe, cursistas da fonte configurada e crianças.');
   assert.match(adminSource, /Equipe de trabalho \+ Cursistas \+ Crianças Kids/, 'O card de presenca deve informar que inclui as criancas do Espaco Kids.');
 
   console.log('Inicio: indicadores combinados de saude das criancas validados.');

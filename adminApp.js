@@ -84,6 +84,11 @@ const coupleStudentSource = (studentFormType = 'cursista-smp') => {
     delete: isEpc ? dataService.deleteCursistaEpc : dataService.deleteCursistaSmp,
   };
 };
+const studentPresenceCount = (studentFormType, individualStudents = [], coupleStudents = []) => (
+  ['cursista-smp', 'cursista-epc'].includes(studentFormType)
+    ? coupleStudents.length * 2
+    : individualStudents.length
+);
 const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFormTypes
   .map(([value, label]) => `<option value="${value}" ${value === (selected || defaultStudentFormType) ? 'selected' : ''}>${escapeHtml(label)}</option>`)
   .join('');
@@ -1413,6 +1418,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const activeCommunityDetails = studentCommunityDetails(activeCommunities);
   const activeCoupleCommunityDetails = coupleCommunityDetails(activeCommunities, activeStudentFormType);
   const activeStudents = active ? uniqueByParticipant(allStudents.filter((student) => student.retiroId === active.id)) : [];
+  const activeStudentPresenceCount = studentPresenceCount(activeStudentFormType, activeStudents, coupleStudents);
   const coupleStudentTitle = activeStudentFormType === 'cursista-epc' ? 'Cursista EPC' : 'Cursista SMP';
   const smpYes = (value) => normalizeText(value) === 'sim';
   const smpCoupleName = (record = {}) => [record.nomeDele, record.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || (record.numeroFichaSmp || record.id ? `Ficha ${record.numeroFichaSmp || record.id}` : 'Casal sem nome');
@@ -1458,7 +1464,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeStatEntries.flatMap(entrySectors)]))
     .map((sector) => [sector, activeStatEntries.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
-  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length + kidsCareSummary.children.length;
+  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudentPresenceCount + kidsCareSummary.children.length;
   const shirtCounts = activeStudents.reduce((counts, student) => {
     const size = String(student.camiseta || '').trim();
     if (size) counts[size] = (counts[size] || 0) + 1;
@@ -2011,13 +2017,22 @@ async function renderRetreat(id, selectedSector = '') {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
-  const [allStudents, allCommunities, studentLinkData] = await Promise.all([
+  const retreatStudentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(retreatStudentFormType);
+  const [allStudents, allCommunities, studentLinkData, coupleStudents] = await Promise.all([
     dataService.listCursistas(),
     dataService.listComunidades(),
     dataService.syncStudentRegistrationLinks(id).catch((error) => ({ error: error.message || 'Não foi possível carregar os links.' })),
+    usesCoupleStudentForm ? coupleStudentSource(retreatStudentFormType).list(id).catch((error) => {
+      console.error(error);
+      return [];
+    }) : Promise.resolve([]),
   ]);
   const registeredStudents = uniqueByParticipant(allStudents.filter((student) => student.retiroId === id));
-  const retreatCommunityDetails = studentCommunityDetails(allCommunities.filter((community) => community.retiroId === id));
+  const retreatCommunities = allCommunities.filter((community) => community.retiroId === id);
+  const retreatCommunityDetails = studentCommunityDetails(retreatCommunities);
+  const retreatCoupleCommunityDetails = coupleCommunityDetails(retreatCommunities, retreatStudentFormType);
+  const retreatStudentPresenceCount = studentPresenceCount(retreatStudentFormType, registeredStudents, coupleStudents);
   const retreatEntries = enrolments.filter((item) => item.retiroId === id);
   const retreatEnrolments = mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === id));
   const retreatStatEntries = retreatEntries.length ? retreatEntries : retreatEnrolments;
@@ -2031,7 +2046,7 @@ async function renderRetreat(id, selectedSector = '') {
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
   const averageAge = ages.length ? `${(ages.reduce((sum, age) => sum + age, 0) / ages.length).toFixed(1).replace('.', ',')} anos` : 'Sem dados';
-  const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length + spaceKidsRows.length;
+  const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + retreatStudentPresenceCount + retreatKidsSummary.children.length;
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
   const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
@@ -2106,6 +2121,15 @@ async function renderRetreat(id, selectedSector = '') {
   const photoRows = groupedPreferenceRows(retreatEnrolments, 'foto');
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const spaceKidsRows = spaceKidsRowsForEnrolments(retreatEnrolments, peopleById);
+  const retreatKidsSummary = buildKidsCareSummary({
+    teamKids: spaceKidsRows,
+    coupleStudents: coupleStudents.map((record) => ({
+      ...record,
+      kidsCommunity: coupleCommunityDetail(record, retreatCoupleCommunityDetails).name,
+    })),
+    studentFormType: retreatStudentFormType,
+    retreatId: id,
+  });
   const cityStats = new Map();
   const addCityCount = (city, type) => {
     const label = String(city || '').trim();
@@ -2145,14 +2169,14 @@ async function renderRetreat(id, selectedSector = '') {
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(details || 'Medicamento não detalhado')}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
-  const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><small>Responsável: ${escapeHtml(kid.responsible || kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ''}</small><small>Origem: ${escapeHtml(kid.origin || 'Equipe de trabalho')} · ${escapeHtml(kid.contextLabel || 'Setor de trabalho')}: ${escapeHtml(kid.contextValue || (Array.isArray(kid.sectors) && kid.sectors.length ? kid.sectors.join(', ') : 'Não informado'))}</small></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
   const cityRowsHtml = (rows) => {
     if (!rows.length) return '<p class="empty-state">Nenhuma cidade informada nos cadastros deste retiro.</p>';
     const totals = rows.reduce((sum, row) => ({ students: sum.students + row.students, team: sum.team + row.team }), { students: 0, team: 0 });
     return `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}<div class="city-health-total"><strong>Total geral</strong><span><b>${totals.students}</b><small>Cursistas</small></span><span><b>${totals.team}</b><small>Equipe de trabalho</small></span><span><b>${totals.students + totals.team}</b><small>Participantes</small></span></div></div>`;
   };
   const retreatStatisticsHtml = `<section class="metric-grid dashboard-metrics">
-      <article class="metric-card static-metric"><span>Cursistas</span><strong>${registeredStudents.length}</strong><small>pessoa(s)</small></article>
+      <article class="metric-card static-metric"><span>Cursistas</span><strong>${retreatStudentPresenceCount}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Equipe de trabalho</span><strong>${retreatEnrolments.length}</strong><small>pessoa(s)</small></article>
       <article class="metric-card static-metric"><span>Fichas da equipe de trabalho aguardando validação</span><strong>${pendingValidationGroups.length}</strong><small>ficha(s)</small></article>
     </section>
@@ -2163,7 +2187,7 @@ async function renderRetreat(id, selectedSector = '') {
       <article class="student-health-card"><div><span>Cursistas com remédios sugerido pelos pais</span><strong>${parentSuggestedMedicationStudents.length}</strong></div><button type="button" data-home-health="parent-suggested-medication">Visualizar</button></article>
       <article class="student-health-card"><div><span>Quadrante impresso Equipe de trabalho</span><strong>${quadranteRows.length}</strong></div><button type="button" data-home-health="quadrante">Visualizar</button></article>
       <article class="student-health-card"><div><span>Fotos solicitadas pela equipe de trabalho</span><strong>${photoRows.length}</strong></div><button type="button" data-home-health="photo">Visualizar</button></article>
-      <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${spaceKidsRows.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
+      <article class="student-health-card"><div><span>Número de crianças no Espaço Kids</span><strong>${retreatKidsSummary.children.length}</strong></div><button type="button" data-home-health="kids">Visualizar</button></article>
       <article class="student-health-card"><div><span>Número de cidades com participantes</span><strong>${cityRows.length}</strong></div><button type="button" data-home-health="cities">Visualizar</button></article>
     </section>
     <section class="dashboard-grid retreat-stats-grid">
@@ -2178,7 +2202,7 @@ async function renderRetreat(id, selectedSector = '') {
     'parent-suggested-medication': `<div class="panel-heading"><div><h2>Cursistas com remédios sugerido pelos pais</h2><p>Comunidade, nome do cursista e remédios sugeridos pelos pais na ficha.</p></div></div>${parentSuggestedMedicationRows(parentSuggestedMedicationStudents, retreatCommunityDetails)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante impresso Equipe de trabalho</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas pela equipe de trabalho</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
-    kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    kids: `<div class="panel-heading"><div><h2>Número de crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(retreatKidsSummary.children)}`,
     cities: `<div class="panel-heading"><div><h2>Número de cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
   };
   const sortedParticipants = [...retreatEnrolments].sort((first, second) => {
