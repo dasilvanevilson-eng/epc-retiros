@@ -1,4 +1,5 @@
-const { stores } = require('./storeConfig');
+const { randomUUID } = require('crypto');
+const { stores, financeStores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
 const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
 const { can } = require('./permissions');
@@ -23,6 +24,8 @@ const {
 } = require('./studentPhotoService');
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
+const financeStoreSet = new Set(financeStores);
+const scopedFinanceStores = new Set(['financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria']);
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -219,6 +222,12 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
 }
 
 function permissionForRequest(resource, id, req) {
+  if (financeStoreSet.has(resource)) {
+    if (resource === 'financeiro_auditoria') return req.method === 'GET' ? 'financeiro.ver' : 'financeiro.excluir';
+    if (req.method === 'GET') return 'financeiro.ver';
+    if (req.method === 'PUT') return 'financeiro.editar';
+    if (req.method === 'DELETE') return 'financeiro.excluir';
+  }
   if (resource === 'database') return req.method === 'GET' ? 'usuarios.ver' : 'usuarios.editar';
   if (resource === 'retiros') {
     if (req.method === 'GET') return 'retiros.ver';
@@ -261,6 +270,90 @@ function permissionForRequest(resource, id, req) {
     if (req.method === 'DELETE') return 'usuarios.editar';
   }
   return null;
+}
+
+const financeOutputTypes = new Set(['retirada', 'perda', 'ajuste_saida']);
+const financeInputTypes = new Set(['entrada', 'devolucao', 'ajuste_entrada']);
+const financeNumber = (value) => {
+  const raw = String(value ?? '').trim().replace(/[^\d,.-]/g, '');
+  const number = typeof value === 'number' ? value : Number(raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw);
+  return Number.isFinite(number) ? number : 0;
+};
+const movementDirection = (movement) => financeOutputTypes.has(movement.tipo) ? -1 : 1;
+const movementQuantity = (movement) => Math.max(0, financeNumber(movement.quantidade));
+const productLedger = (movements, productId, excludeId = '') => movements.filter((item) => item.produtoId === productId && item.id !== excludeId);
+const ledgerBalance = (ledger) => ledger.reduce((total, item) => total + movementDirection(item) * movementQuantity(item), 0);
+const ledgerAverageCost = (ledger) => {
+  let quantity = 0;
+  let value = 0;
+  ledger.forEach((item) => {
+    const qty = movementQuantity(item);
+    const cost = Math.max(0, financeNumber(item.custoUnitario));
+    if (movementDirection(item) > 0) { quantity += qty; value += qty * cost; }
+    else { quantity -= qty; value -= qty * cost; }
+    if (quantity <= 0) { quantity = 0; value = 0; }
+  });
+  return quantity > 0 ? value / quantity : 0;
+};
+
+async function normalizeFinanceRecord(resource, record, session) {
+  const now = new Date().toISOString();
+  const next = { ...record, updatedAt: now, atualizadoPor: session?.username || session?.sub || session?.id || '' };
+  if (!next.createdAt) next.createdAt = now;
+  if (resource === 'financeiro_despesas') {
+    if (!next.retiroId) throw new Error('A despesa deve estar vinculada ao retiro em foco.');
+    if (!['pendente', 'paga', 'cancelada'].includes(next.status)) next.status = 'pendente';
+    if (!Array.isArray(next.itens) || !next.itens.length) throw new Error('Inclua ao menos um item na despesa.');
+    next.itens = next.itens.map((item) => {
+      const quantidade = financeNumber(item.quantidade);
+      const valorUnitario = financeNumber(item.valorUnitario);
+      if (quantidade <= 0 || valorUnitario < 0) throw new Error('Quantidade e valor dos itens devem ser validos.');
+      return { ...item, quantidade, valorUnitario, total: quantidade * valorUnitario };
+    });
+    next.total = next.itens.reduce((sum, item) => sum + item.total, 0) + Math.max(0, financeNumber(next.frete)) - Math.max(0, financeNumber(next.desconto));
+    if (next.total < 0) throw new Error('O desconto nao pode superar o total da despesa.');
+  }
+  if (resource === 'financeiro_cotacoes') {
+    if (!next.retiroId) throw new Error('A cotacao deve estar vinculada ao retiro em foco.');
+    if (!Array.isArray(next.itens) || !next.itens.length) throw new Error('Inclua ao menos um item na cotacao.');
+    if (!Array.isArray(next.ofertas)) next.ofertas = [];
+    next.status = next.status || 'aberta';
+  }
+  if (resource === 'financeiro_movimentos') {
+    if (!financeInputTypes.has(next.tipo) && !financeOutputTypes.has(next.tipo)) throw new Error('Tipo de movimento de estoque invalido.');
+    if (!next.produtoId || movementQuantity(next) <= 0) throw new Error('Informe produto e quantidade validos.');
+    const movements = await listRecords('financeiro_movimentos');
+    if (next.chaveOrigem && movements.some((item) => item.id !== next.id && item.chaveOrigem === next.chaveOrigem)) throw new Error('Esta entrada de estoque ja foi confirmada.');
+    const ledger = productLedger(movements, next.produtoId, next.id);
+    const balance = ledgerBalance(ledger);
+    const quantity = movementQuantity(next);
+    if (financeOutputTypes.has(next.tipo) && quantity > balance + 0.000001) throw new Error(`Estoque insuficiente. Saldo disponivel: ${balance}.`);
+    const origin = next.origemMovimentoId ? movements.find((item) => item.id === next.origemMovimentoId) : null;
+    const cost = financeInputTypes.has(next.tipo) && next.tipo !== 'devolucao'
+      ? Math.max(0, financeNumber(next.custoUnitario))
+      : Math.max(0, financeNumber(origin?.custoUnitario) || ledgerAverageCost(ledger));
+    next.quantidade = quantity;
+    next.custoUnitario = cost;
+    next.custoTotal = quantity * cost;
+    next.saldoAnterior = balance;
+    next.saldoPosterior = balance + movementDirection(next) * quantity;
+  }
+  return next;
+}
+
+async function auditFinanceDeletion(resource, record, reason, session) {
+  if (!String(reason || '').trim()) throw new Error('Informe o motivo da exclusao.');
+  await saveRecord('financeiro_auditoria', {
+    id: randomUUID(),
+    retiroId: record.retiroId || '',
+    acao: 'exclusao',
+    recurso: resource,
+    registroId: record.id,
+    motivo: String(reason).trim(),
+    responsavel: session?.username || session?.sub || session?.id || '',
+    realizadoEm: new Date().toISOString(),
+    dados: record,
+  });
 }
 
 function isRetreatConcludeUpdate(current = {}, next = {}) {
@@ -329,8 +422,10 @@ async function currentSession(req) {
 async function listAuthorizedRecords(resource, session) {
   const records = await listRecords(resource);
   if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? records.map((retreat) => tagRetreatAccess(session, retreat)) : records;
+  if (resource === 'financeiro_movimentos') return records;
   if (resource === 'retiros') return records.map((retreat) => tagRetreatAccess(session, retreat));
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return filterByAllowedRetreats(session, records);
+  if (scopedFinanceStores.has(resource)) return filterByAllowedRetreats(session, records);
   if (resource === 'pessoas') {
     const allowedPeople = await allowedPersonIdsForSession(session);
     return records.filter((person) => allowedPeople.has(person.id));
@@ -344,6 +439,7 @@ async function getAuthorizedRecord(resource, id, session) {
   if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? tagRetreatAccess(session, record) : record;
   if (resource === 'retiros') return canAccessRetreat(session, record.id) ? tagRetreatAccess(session, record) : null;
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return canAccessRetreat(session, recordRetreatId(record)) ? record : null;
+  if (scopedFinanceStores.has(resource)) return canAccessRetreat(session, recordRetreatId(record)) ? record : null;
   if (resource === 'pessoas') {
     const allowedPeople = await allowedPersonIdsForSession(session);
     return allowedPeople.has(record.id) ? record : null;
@@ -360,6 +456,12 @@ async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
     return true;
   }
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) {
+    const record = typeof recordOrId === 'string' ? await getRecord(resource, recordOrId) : recordOrId;
+    if (record && canAccessRetreat(session, recordRetreatId(record))) return false;
+    sendError(res, 403, noRetreatAccessMessage);
+    return true;
+  }
+  if (scopedFinanceStores.has(resource)) {
     const record = typeof recordOrId === 'string' ? await getRecord(resource, recordOrId) : recordOrId;
     if (record && canAccessRetreat(session, recordRetreatId(record))) return false;
     sendError(res, 403, noRetreatAccessMessage);
@@ -734,6 +836,15 @@ async function handleApi(req, res, pathname) {
       if (!retreat) return sendError(res, 404, 'Retiro nao encontrado.');
       if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: configuracoes de cracha disponiveis apenas para consulta.');
     }
+    if (financeStoreSet.has(resource)) {
+      if (resource === 'financeiro_auditoria') return sendError(res, 405, 'A auditoria financeira e somente leitura.');
+      if (scopedFinanceStores.has(resource)) {
+        const retreat = await getRecord('retiros', record.retiroId).catch(() => null);
+        if (!retreat) return sendError(res, 404, 'Retiro em foco nao encontrado.');
+        if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: Financeiro disponivel apenas para consulta.');
+      }
+      record = await normalizeFinanceRecord(resource, record, session);
+    }
     if (await denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest)) return;
     if (!publicRegistrationRequest && resource === 'retiros') {
       const current = await getRecord('retiros', record.id).catch(() => null);
@@ -754,6 +865,43 @@ async function handleApi(req, res, pathname) {
       await deleteStudentPhotoAliases('individual', student.retiroId, student.id, student.cpf);
       const deleted = await deleteRecordStrict('cursistas', student.id);
       if (!deleted) return sendError(res, 409, 'A foto foi processada, mas nao foi possivel confirmar a exclusao da ficha. Recarregue e tente novamente.');
+      return sendNoContent(res);
+    }
+    if (financeStoreSet.has(resource)) {
+      if (resource === 'financeiro_auditoria') return sendError(res, 405, 'A auditoria financeira nao pode ser excluida.');
+      const recordId = decodeURIComponent(id);
+      const current = await getRecord(resource, recordId);
+      if (!current) return sendError(res, 404, 'Registro financeiro nao encontrado.');
+      if (current.retiroId) {
+        const retreat = await getRecord('retiros', current.retiroId).catch(() => null);
+        if (retreat?.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: Financeiro disponivel apenas para consulta.');
+      }
+      const url = new URL(req.url || '/', 'https://familiaepcindaial.local');
+      const reason = url.searchParams.get('motivo') || '';
+      if (resource === 'financeiro_despesas' || resource === 'financeiro_movimentos') {
+        const movements = await listRecords('financeiro_movimentos');
+        const linked = resource === 'financeiro_despesas'
+          ? movements.filter((item) => item.despesaId === current.id && !item.reversaoDe)
+          : [current];
+        for (const movement of linked) {
+          const reverseType = financeOutputTypes.has(movement.tipo) ? 'ajuste_entrada' : 'ajuste_saida';
+          const reverse = await normalizeFinanceRecord('financeiro_movimentos', {
+            id: randomUUID(),
+            retiroId: movement.retiroId || current.retiroId || '',
+            produtoId: movement.produtoId,
+            tipo: reverseType,
+            quantidade: movement.quantidade,
+            custoUnitario: movement.custoUnitario,
+            setor: movement.setor || '',
+            observacao: `Reversao por exclusao: ${String(reason).trim()}`,
+            reversaoDe: movement.id,
+            despesaId: resource === 'financeiro_despesas' ? current.id : (movement.despesaId || ''),
+          }, session);
+          await saveRecord('financeiro_movimentos', reverse);
+        }
+      }
+      await auditFinanceDeletion(resource, current, reason, session);
+      await deleteRecord(resource, recordId);
       return sendNoContent(res);
     }
     await deleteRecord(resource, decodeURIComponent(id));

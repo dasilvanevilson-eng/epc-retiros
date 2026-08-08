@@ -1,6 +1,6 @@
 const DATABASE = 'familiaepcindaial';
-const VERSION = 6;
-const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
+const VERSION = 7;
+const stores = ['retiros', 'pessoas', 'adesoes', 'casais', 'cursistas', 'comunidades', 'crachas', 'configuracoes', 'usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros', 'financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos', 'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'];
 
 const randomBytes = (length) => {
   const bytes = new Uint8Array(length);
@@ -165,6 +165,11 @@ async function remove(storeName, id) {
     ? api(`/${storeName}/${encodeURIComponent(id)}`, { method: 'DELETE' })
     : legacyStore.delete(storeName, id);
 }
+async function removeWithReason(storeName, id, reason = '') {
+  return (await ensureBackend()) === 'file'
+    ? api(`/${storeName}/${encodeURIComponent(id)}?motivo=${encodeURIComponent(reason)}`, { method: 'DELETE' })
+    : legacyStore.delete(storeName, id);
+}
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
 const userSubmittedRegistrationField = '__userSubmittedRegistration';
@@ -307,6 +312,25 @@ export const dataService = {
   deleteCracha: (id) => remove('crachas', id),
   getConfiguracao: (id) => get('configuracoes', id),
   saveConfiguracao: (setting) => save('configuracoes', setting),
+  listFinanceCategories: () => list('financeiro_categorias'),
+  saveFinanceCategory: (record) => save('financeiro_categorias', record),
+  deleteFinanceCategory: (id, reason = '') => removeWithReason('financeiro_categorias', id, reason),
+  listFinanceSuppliers: () => list('financeiro_fornecedores'),
+  saveFinanceSupplier: (record) => save('financeiro_fornecedores', record),
+  deleteFinanceSupplier: (id, reason = '') => removeWithReason('financeiro_fornecedores', id, reason),
+  listFinanceProducts: () => list('financeiro_produtos'),
+  saveFinanceProduct: (record) => save('financeiro_produtos', record),
+  deleteFinanceProduct: (id, reason = '') => removeWithReason('financeiro_produtos', id, reason),
+  listFinanceExpenses: () => list('financeiro_despesas'),
+  saveFinanceExpense: (record) => save('financeiro_despesas', record),
+  deleteFinanceExpense: (id, reason = '') => removeWithReason('financeiro_despesas', id, reason),
+  listFinanceQuotes: () => list('financeiro_cotacoes'),
+  saveFinanceQuote: (record) => save('financeiro_cotacoes', record),
+  deleteFinanceQuote: (id, reason = '') => removeWithReason('financeiro_cotacoes', id, reason),
+  listFinanceMovements: () => list('financeiro_movimentos'),
+  saveFinanceMovement: (record) => save('financeiro_movimentos', record),
+  deleteFinanceMovement: (id, reason = '') => removeWithReason('financeiro_movimentos', id, reason),
+  listFinanceAudit: () => list('financeiro_auditoria'),
   findPessoa: async (nome, nascimento) => {
     const people = await list('pessoas');
     const normalized = nome.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');

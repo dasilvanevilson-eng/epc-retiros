@@ -41,6 +41,9 @@ const allPermissions = [
   ['recebedor.ver', 'Recebedor', 'Ver recebedor'],
   ['recebedor.editar', 'Recebedor', 'Editar pagamentos'],
   ['relatorios.ver', 'Relatorios', 'Acessar a Central de Relatorios'],
+  ['financeiro.ver', 'Financeiro', 'Visualizar compras, despesas e estoque'],
+  ['financeiro.editar', 'Financeiro', 'Cadastrar e editar dados financeiros'],
+  ['financeiro.excluir', 'Financeiro', 'Excluir lancamentos com auditoria'],
   ['usuarios.ver', 'Usuarios e permissoes', 'Ver usuarios e permissoes'],
   ['usuarios.criar', 'Usuarios e permissoes', 'Criar usuarios'],
   ['usuarios.editar', 'Usuarios e permissoes', 'Editar usuarios e permissoes'],
@@ -63,7 +66,7 @@ const defaultProfiles = [
     nome: 'Coordenador Geral',
     codigo: 'coordenador_geral',
     descricao: 'Acesso amplo, exceto exclusoes sensiveis de usuarios.',
-    permissions: permissionIds.filter((id) => id !== 'usuarios.excluir' && id !== 'relatorios.ver' && !id.startsWith('cursista-smp.') && !id.startsWith('cursista-epc.')),
+    permissions: permissionIds.filter((id) => id !== 'usuarios.excluir' && id !== 'relatorios.ver' && !id.startsWith('cursista-smp.') && !id.startsWith('cursista-epc.') && !id.startsWith('financeiro.')),
   },
   {
     id: 'coordenador_retiro',

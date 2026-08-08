@@ -4,9 +4,11 @@ const { stores } = require('./storeConfig');
 
 const BACKUP_FORMAT = 'familia-epc-backup';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 'supabase-relational-2026-08-v4';
-const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v2';
+const SCHEMA_VERSION = 'supabase-relational-2026-08-v5';
+const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v3';
 const LEGACY_SCHEMA_VERSIONS = new Set(['supabase-relational-2026-08-v3', 'local-logical-2026-08-v1']);
+const PRE_FINANCE_SCHEMA_VERSIONS = new Set(['supabase-relational-2026-08-v4', 'local-logical-2026-08-v2']);
+const FINANCE_TABLES = ['financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos', 'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'];
 const RETIRED_REPORT_MODELS_TABLE = 'relatorio_modelos';
 const RETIRED_REPORT_MODELS_WARNING = 'Este backup pertence à versão anterior. A tabela aposentada relatorio_modelos será ignorada; todas as demais tabelas serão restauradas normalmente.';
 const CHUNK_SIZE = 200;
@@ -41,6 +43,13 @@ const relationalTables = [
   ['perfil_permissoes', ['perfil_id', 'permissao_id']],
   ['usuario_permissoes', ['usuario_id', 'permissao_id']],
   ['usuario_retiros', ['usuario_id', 'retiro_id']],
+  ['financeiro_categorias', ['id']],
+  ['financeiro_fornecedores', ['id']],
+  ['financeiro_produtos', ['id']],
+  ['financeiro_despesas', ['id']],
+  ['financeiro_cotacoes', ['id']],
+  ['financeiro_movimentos', ['id']],
+  ['financeiro_auditoria', ['id']],
   ['epc_store', ['store', 'id']],
 ];
 
@@ -110,7 +119,8 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
   if (!['supabase-relational', 'local-logical'].includes(backup.storage)) throw new Error('Origem do backup nao suportada.');
   const expectedSchema = backup.storage === 'supabase-relational' ? SCHEMA_VERSION : LOCAL_SCHEMA_VERSION;
   const legacySchema = LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion);
-  if (backup.schemaVersion !== expectedSchema && !legacySchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
+  const preFinanceSchema = PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion);
+  if (backup.schemaVersion !== expectedSchema && !legacySchema && !preFinanceSchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
   if (!backup.createdAt || Number.isNaN(Date.parse(backup.createdAt))) throw new Error('Data de criacao do backup invalida.');
   if (!requireTables) return;
   if (!arraysOnly(backup.tables)) throw new Error('O backup nao contem tabelas validas.');
@@ -121,6 +131,7 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
     allowed.add(RETIRED_REPORT_MODELS_TABLE);
     required.add(RETIRED_REPORT_MODELS_TABLE);
   }
+  if (preFinanceSchema) FINANCE_TABLES.forEach((name) => required.delete(name));
   const unknown = names.filter((name) => !allowed.has(name));
   const missing = [...required].filter((name) => !names.includes(name));
   if (unknown.length) throw new Error(`O backup contem tabelas desconhecidas: ${unknown.join(', ')}.`);
@@ -142,12 +153,22 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
 }
 
 function normalizeRestorableBackup(backup) {
-  if (!LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion)) return { ...backup, warnings: [] };
+  if (!LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion) && !PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) return { ...backup, warnings: [] };
   const tables = { ...backup.tables };
   const counts = { ...backup.counts };
-  delete tables[RETIRED_REPORT_MODELS_TABLE];
-  delete counts[RETIRED_REPORT_MODELS_TABLE];
-  return { ...backup, tables, counts, warnings: [RETIRED_REPORT_MODELS_WARNING] };
+  const warnings = [];
+  if (LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion)) {
+    delete tables[RETIRED_REPORT_MODELS_TABLE];
+    delete counts[RETIRED_REPORT_MODELS_TABLE];
+    warnings.push(RETIRED_REPORT_MODELS_WARNING);
+  }
+  if (PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) {
+    if (backup.storage === 'local-logical') FINANCE_TABLES.forEach((name) => { tables[name] = []; counts[name] = 0; });
+    warnings.push(backup.storage === 'local-logical'
+      ? 'Este backup e anterior ao modulo Financeiro; as novas tabelas financeiras serao restauradas vazias.'
+      : 'Este backup e anterior ao modulo Financeiro; as tabelas financeiras atuais serao preservadas.');
+  }
+  return { ...backup, tables, counts, warnings };
 }
 
 async function createSnapshot(session) {

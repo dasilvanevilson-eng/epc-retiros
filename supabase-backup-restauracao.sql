@@ -70,7 +70,14 @@ as $$
     ('perfil_permissoes', 240, true),
     ('usuario_permissoes', 250, true),
     ('usuario_retiros', 260, true),
-    ('epc_store', 270, false);
+    ('financeiro_categorias', 270, false),
+    ('financeiro_fornecedores', 280, false),
+    ('financeiro_produtos', 290, false),
+    ('financeiro_despesas', 300, false),
+    ('financeiro_cotacoes', 310, false),
+    ('financeiro_movimentos', 320, false),
+    ('financeiro_auditoria', 330, false),
+    ('epc_store', 340, false);
 $$;
 
 create or replace function public.epc_backup_create_snapshot(p_actor text)

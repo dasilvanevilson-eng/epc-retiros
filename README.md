@@ -47,6 +47,17 @@ EPC_ADMIN_PASSWORD=troque-esta-senha
 
 Com essas variaveis presentes, a API passa a gravar no Supabase. Sem elas, usa o JSON local.
 
+### Modulo Financeiro
+
+Para habilitar compras, despesas, cotacoes e estoque em um banco Supabase ja existente:
+
+1. Gere e valide um backup pela tela administrativa.
+2. Registre as contagens de `retiros`, `adesoes`, `cursistas`, `pessoas`, `casais` e `comunidades`.
+3. Execute `supabase-financeiro-migration.sql` no SQL Editor.
+4. Confirme novamente as mesmas contagens antes de liberar o menu Financeiro.
+
+A migracao e somente aditiva e nao possui exclusao em cascata para as tabelas historicas.
+
 ## Vercel
 
 1. Suba este projeto para o GitHub.

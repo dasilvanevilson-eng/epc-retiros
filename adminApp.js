@@ -2,6 +2,7 @@ import { dataService, retreatDefaults } from './dataService.js';
 import { buildKidsCareSummary } from './kidsCareSummary.js';
 import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 import { attachStudentPhotoField, photoUrl as studentPhotoUrl } from './studentPhotoClient.js';
+import { renderFinanceiro } from './financeiro.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -48,6 +49,7 @@ const viewPermissions = {
   quadrante: 'quadrante.ver',
   recebedor: 'recebedor.ver',
   relatorios: 'relatorios.ver',
+  financeiro: 'financeiro.ver',
   'alterar-senha': null,
   usuarios: 'usuarios.ver',
   backup: 'backup.admin',
@@ -847,6 +849,7 @@ function layout(content, active = 'inicio') {
     ['quadrante', 'Quadrante'],
     ['recebedor', 'Recebedor'],
     ['relatorios', 'Relat&oacute;rios'],
+    ['financeiro', 'Financeiro'],
     ['alterar-senha', 'Alterar senha'],
     ['backup', 'Backup e restaura&ccedil;&atilde;o'],
     ['usuarios', 'Usuários'],
@@ -8738,6 +8741,7 @@ async function route() {
     if (target === 'usuarios') { await ensureRetreatFocusLoaded(); return renderUsuariosSeguranca(); }
     if (target === 'backup') { await ensureRetreatFocusLoaded(); return renderBackup(); }
     if (target === 'relatorios') { await ensureRetreatFocusLoaded(); if (!ensureViewPermission('relatorios')) return; return renderRelatorios(); }
+    if (target === 'financeiro') { await ensureRetreatFocusLoaded(); if (!ensureViewPermission('financeiro')) return; return renderFinanceiro({ retreat: selectedRetreat(), layout, dataService, canAccess, currentUser }); }
     const section = target.startsWith('configuracoes/') ? 'configuracoes' : target.startsWith('retiros/') ? 'retiros' : target.startsWith('pessoas/') ? 'pessoas' : target.startsWith('cursista/') ? 'cursista' : target;
     if (!ensureViewPermission(section)) return;
     if (target === 'cursista-epc') {

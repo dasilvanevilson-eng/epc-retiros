@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { stores } = require('./storeConfig');
+const { stores, financeStores } = require('./storeConfig');
 
 const root = __dirname;
 const databaseDir = path.join(root, 'database');
@@ -26,6 +26,7 @@ const tableByStore = {
   usuario_permissoes: 'usuario_permissoes',
   usuario_retiros: 'usuario_retiros',
 };
+financeStores.forEach((storeName) => { tableByStore[storeName] = storeName; });
 
 async function withLocalFallback(action) {
   if (!hasSupabase()) return action(false);
@@ -1363,8 +1364,21 @@ const simpleMappers = {
   usuario_permissoes: (row) => ({ id: `${row.usuario_id}:${row.permissao_id}`, usuarioId: row.usuario_id, permissaoId: row.permissao_id, permitido: row.permitido }),
   usuario_retiros: (row) => ({ id: `${row.usuario_id}:${row.retiro_id}`, usuarioId: row.usuario_id, retiroId: row.retiro_id, papel: row.papel || '' }),
 };
+financeStores.forEach((storeName) => {
+  simpleMappers[storeName] = (row) => ({ ...(row.dados || {}), id: row.id, retiroId: row.retiro_id || row.dados?.retiroId || '', createdAt: row.created_at, updatedAt: row.updated_at });
+});
 
 async function saveSimple(storeName, record) {
+  if (financeStores.includes(storeName)) {
+    const row = await upsert(storeName, {
+      id: record.id,
+      retiro_id: record.retiroId || null,
+      dados: extras(record, new Set(['id', 'retiroId', 'createdAt', 'updatedAt'])),
+      created_at: record.createdAt || undefined,
+      updated_at: record.updatedAt || undefined,
+    });
+    return simpleMappers[storeName](row);
+  }
   if (storeName === 'casais') {
     const row = await upsert('casais', { id: record.id, retiro_id: record.retiroId || null, nome: record.nome || '', extras: extras(record, new Set(['id', 'retiroId', 'nome', 'createdAt', 'updatedAt'])) });
     return simpleMappers.casais(row);

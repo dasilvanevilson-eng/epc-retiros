@@ -6,7 +6,7 @@
   ],
   "headers": [
     {
-      "source": "/(familiaepcindaial\\.html|adminApp\\.js|styles\\.css|index\\.html|divulgacao\\.js|divulgacao\\.css)",
+      "source": "/(familiaepcindaial\\.html|adminApp\\.js|financeiro\\.js|financeiroCore\\.js|styles\\.css|index\\.html|divulgacao\\.js|divulgacao\\.css)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
       ]
