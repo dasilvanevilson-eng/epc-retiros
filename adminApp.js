@@ -418,6 +418,10 @@ const entryParticipationGroup = (entry = {}) => {
   const previousRetreats = entryPreviousRetreats(entry);
   if (!previousRetreats.length) return '';
   const normalized = new Set(previousRetreats.map(normalizeText));
+  const mostRecentEpcSmp = String(entry.retiroMaisRecenteEpcSmp || '').trim();
+  if (normalized.has(normalizeText('EPC')) && normalized.has(normalizeText('SMP')) && ['epc', 'smp'].includes(normalizeText(mostRecentEpcSmp))) {
+    return mostRecentEpcSmp.toLocaleUpperCase('pt-BR');
+  }
   if (previousRetreats.length === 1) {
     return participationGroupOrder.find((group) => normalized.has(normalizeText(group))) || '';
   }
@@ -7272,6 +7276,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const selectedConfirmedDays = (name, source = form) => dayConfirmationInputs(name, source).filter((item) => item.value === 'Sim' || item.input?.value === 'Sim').map((item) => item.day);
   const allDaysAnswered = (name, source = form) => dayConfirmationInputs(name, source).every((item) => Boolean(item.value || item.input));
   const selectedRegistrationSectors = (source = form) => forcedSector ? [forcedSector] : sortSectors(checkedValues(source, 'setores'));
+  const isSpiritualDirectionRegistration = (source = form) => selectedRegistrationSectors(source).some((sector) => normalizeText(sector) === normalizeText('Direção Espiritual'));
   const firstUnansweredDay = (name, source = form) => {
     const index = dayConfirmationInputs(name, source).findIndex((item) => !item.value && !item.input);
     return index >= 0 ? source.querySelector(`[name="${dayConfirmationName(name, index)}"]`) : null;
@@ -7552,6 +7557,35 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     mount.append(overlay);
     overlay.querySelector('[data-spouse-registered-yes]').focus();
   });
+  const askMostRecentEpcSmp = (participantName = '', currentValue = '') => new Promise((resolve) => {
+    mount.querySelector('.recent-retreat-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.className = 'hidden-team-alert-overlay recent-retreat-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'recent-retreat-title');
+    overlay.innerHTML = `<div class="hidden-team-alert-dialog spouse-registered-dialog"><p class="eyebrow">Retiro mais recente</p><h2 id="recent-retreat-title">Qual retiro você fez mais recente?</h2>${participantName ? `<p>${escapeHtml(participantName)}</p>` : ''}<div class="spouse-registered-actions"><button type="button" data-recent-retreat="SMP" class="${normalizeText(currentValue) === 'smp' ? 'is-selected' : ''}">SMP</button><button type="button" data-recent-retreat="EPC" class="${normalizeText(currentValue) === 'epc' ? 'is-selected' : ''}">EPC</button></div><button type="button" class="hidden-team-alert-close">Cancelar</button></div>`;
+    const finish = (value) => {
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') finish('');
+    };
+    overlay.querySelectorAll('[data-recent-retreat]').forEach((button) => button.addEventListener('click', () => finish(button.dataset.recentRetreat)));
+    overlay.querySelector('.hidden-team-alert-close').addEventListener('click', () => finish(''));
+    document.addEventListener('keydown', onKeydown);
+    mount.append(overlay);
+    overlay.querySelector(`[data-recent-retreat="${normalizeText(currentValue) === 'epc' ? 'EPC' : 'SMP'}"]`)?.focus();
+  });
+  const selectedMostRecentEpcSmp = async (fieldName, participantName, currentValue = '') => {
+    if (isSpiritualDirectionRegistration(form)) return '';
+    const previousRetreats = checkedValues(form, fieldName);
+    const normalized = new Set(previousRetreats.map(normalizeText));
+    if (!normalized.has(normalizeText('EPC')) || !normalized.has(normalizeText('SMP'))) return '';
+    return askMostRecentEpcSmp(participantName, currentValue);
+  };
   const loadLinkedSpouse = async (person) => {
     if (!isCouple() || !person) return false;
     const linked = linkedSpouseForPerson(person.id);
@@ -8041,6 +8075,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       if (kid.intoleranciaAlimentar === 'Sim' && !kid.descricaoIntolerancia) return { control: source.elements[`kidDescricaoIntolerancia${index}`], message: `Descreva a intolerância alimentar da criança ${index}.` };
       return null;
     };
+    const spiritualDirectionRegistration = isSpiritualDirectionRegistration(source);
     const firstSpouseMissing = () => {
       const missingField = [
         ['spouseNome', () => !String(data.get('spouseNome') || '').trim()],
@@ -8048,7 +8083,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         ['spouseNascimento', () => !normalizeDateInput(data.get('spouseNascimento'))],
         ['spouseTelefone', () => !String(data.get('spouseTelefone') || '').trim()],
         ['genero', () => !spouseGenderValue()],
-        ['spouseRetiros', () => !checkedValues(source, 'spouseRetiros').length],
+        ['spouseRetiros', () => !spiritualDirectionRegistration && !checkedValues(source, 'spouseRetiros').length],
       ].find(([, missing]) => missing())?.[0];
       if (missingField) return missingField;
       if (!allDaysAnswered('spouseDias', source)) return firstUnansweredDay('spouseDias', source)?.name;
@@ -8065,7 +8100,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const daysComplete = allDaysAnswered('dias', source);
     const spouseDays = selectedConfirmedDays('spouseDias', source);
     const spouseDaysComplete = !isCouple() || allDaysAnswered('spouseDias', source);
-    const required = ['cpf', 'genero', 'retiros', 'quadrante', 'foto', 'contribuicao', ...(requireType ? ['tipoFicha'] : [])].filter((name) => source.elements[name]);
+    const required = ['cpf', 'genero', ...(spiritualDirectionRegistration ? [] : ['retiros']), 'quadrante', 'foto', 'contribuicao', ...(requireType ? ['tipoFicha'] : [])].filter((name) => source.elements[name]);
     const kidsNotNeeded = data.get('kidsNotNeeded') === 'on';
     const kids = kidsNotNeeded ? [] : Array.from({ length: 5 }, (_, index) => ({ index: index + 1, nome: String(data.get(`kidNome${index + 1}`) || '').trim(), nascimento: String(data.get(`kidNascimento${index + 1}`) || '').trim(), problemaSaude: String(data.get(`kidProblemaSaude${index + 1}`) || ''), descricaoSaude: String(data.get(`kidDescricaoSaude${index + 1}`) || '').trim(), intoleranciaAlimentar: String(data.get(`kidIntolerancia${index + 1}`) || ''), descricaoIntolerancia: String(data.get(`kidDescricaoIntolerancia${index + 1}`) || '').trim() })).filter((kid) => kid.nome || kid.nascimento || kid.problemaSaude || kid.descricaoSaude || kid.intoleranciaAlimentar || kid.descricaoIntolerancia);
     const hasKidsChoice = kidsNotNeeded || kids.length > 0;
@@ -8073,7 +8108,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const kidCareIssue = !kidsNotNeeded && !hasIncompleteKid ? kids.map((kid) => teamKidCareIssue(kid, kid.index)).find(Boolean) : null;
     const ageLimitViolation = !kidsNotNeeded ? kidAgeLimitViolation(source) : null;
     const blocksKidAgeLimit = ageLimitViolation && (!canUseInternalKidAgeLimitException || !internalKidAgeLimitExceptionAllowed);
-    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && checkedValues(source, 'spouseRetiros').length && spouseDaysComplete && spouseDays.length);
+    const spouseValid = !isCouple() || (String(data.get('spouseNome') || '').trim() && isValidCpf(data.get('spouseCpf')) && normalizeDateInput(data.get('spouseNascimento')) && String(data.get('spouseTelefone') || '').trim() && spouseGenderValue() && (spiritualDirectionRegistration || checkedValues(source, 'spouseRetiros').length) && spouseDaysComplete && spouseDays.length);
     const firstInvalid = source.querySelector(':invalid');
     const browserValid = source.checkValidity();
     const missingRequired = required.filter((name) => {
@@ -8120,7 +8155,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     return valid;
   };
-  const saveForm = async (source, casalId, papelNoCasal, existingEntry = null, prefix = '') => {
+  const saveForm = async (source, casalId, papelNoCasal, existingEntry = null, prefix = '', retiroMaisRecenteEpcSmp = '') => {
     const data = new FormData(source);
     const fieldName = (name) => prefix ? `${prefix}${name[0].toUpperCase()}${name.slice(1)}` : name;
     const nome = data.get(fieldName('nome')).trim();
@@ -8150,7 +8185,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const quadrante = checkedValue(source, 'quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = checkedValue(source, 'foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: checkedValues(source, fieldName('retiros')), quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) });
+    const dispensaRetirosAnteriores = isSpiritualDirectionRegistration(source);
+    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) });
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
@@ -8251,10 +8287,16 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       if (await blockDuplicateEnrolmentCpfBeforeSave()) {
         return;
       }
+      const firstName = String(new FormData(form).get('nome') || '').trim();
+      const firstRecentRetreat = await selectedMostRecentEpcSmp('retiros', firstName, editingEntry?.retiroMaisRecenteEpcSmp || '');
+      if (!isSpiritualDirectionRegistration(form) && checkedValues(form, 'retiros').map(normalizeText).includes('epc') && checkedValues(form, 'retiros').map(normalizeText).includes('smp') && !firstRecentRetreat) return;
+      const spouseName = String(new FormData(form).get('spouseNome') || '').trim();
+      const spouseRecentRetreat = isCouple() ? await selectedMostRecentEpcSmp('spouseRetiros', spouseName, editingSpouseEntry?.retiroMaisRecenteEpcSmp || '') : '';
+      if (isCouple() && !isSpiritualDirectionRegistration(form) && checkedValues(form, 'spouseRetiros').map(normalizeText).includes('epc') && checkedValues(form, 'spouseRetiros').map(normalizeText).includes('smp') && !spouseRecentRetreat) return;
       if (isCouple()) {
         const casalId = editingEntry?.casalId || createId();
-        const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry);
-        const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse');
+        const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry, '', firstRecentRetreat);
+        const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse', spouseRecentRetreat);
         await linkCouplePeople(first, second, casalId);
         await finishSave([
           { nome: first.nome, dias: selectedConfirmedDays('dias', form) },
@@ -8268,7 +8310,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
           await dataService.deleteAdesao(spouseEntry.id);
         }
       }
-      const person = await saveForm(form, null, null, editingEntry);
+      const person = await saveForm(form, null, null, editingEntry, '', firstRecentRetreat);
       await finishSave([{ nome: person.nome, dias: selectedConfirmedDays('dias', form) }]);
       return;
     } catch (error) {

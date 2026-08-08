@@ -113,7 +113,7 @@ async function protectRegistrationWrite(resource, record, req) {
   if (!protectedRegistrationStores.has(resource) || !record.id) return record;
   const current = await getRecord(resource, record.id).catch(() => null);
   if (current) {
-    const preserved = preservedRegistrationFields.filter((field) => !isEmptyProtectedValue(current[field]) && isEmptyProtectedValue(record[field]));
+    const preserved = preservedRegistrationFields.filter((field) => !(field === 'retirosAnteriores' && record.dispensaRetirosAnteriores === true) && !isEmptyProtectedValue(current[field]) && isEmptyProtectedValue(record[field]));
     if (preserved.length) {
       preserved.forEach((field) => { record[field] = current[field]; });
       console.warn(JSON.stringify({

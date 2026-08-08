@@ -7,6 +7,7 @@
     "test:backup": "node scripts/test-backup-service.js",
     "test:epc": "node scripts/test-cursista-epc-migration.js",
     "test:team-kids": "node scripts/test-team-kids-care.js",
+    "test:team-participation": "node scripts/test-team-participation-rules.js",
     "test:cursista-kids-age": "node scripts/test-cursista-kids-age-limit.js",
     "test:dates": "node scripts/test-date-inputs.js && node scripts/test-date-persistence.js",
     "test:home-kids-care": "node scripts/test-home-kids-care.js",

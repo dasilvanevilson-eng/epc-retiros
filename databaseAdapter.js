@@ -593,6 +593,7 @@ async function saveEnrolment(record) {
   const current = record.id ? await getEnrolment(record.id).catch(() => null) : null;
   const nextRecord = { ...record };
   ['dias', 'setores', 'retirosAnteriores'].forEach((field) => {
+    if (field === 'retirosAnteriores' && nextRecord.dispensaRetirosAnteriores === true) return;
     if (current && nonEmptyArray(current[field]) && !nonEmptyArray(nextRecord[field])) {
       nextRecord[field] = current[field];
     }

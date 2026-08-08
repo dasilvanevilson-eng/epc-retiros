@@ -190,6 +190,7 @@ const protectedDataLossFields = (current = {}, next = {}) => Object.keys(current
 const preserveExistingRegistrationFields = ['dias', 'setores', 'retirosAnteriores'];
 const preserveExistingRegistrationData = (current = {}, next = {}) => {
   preserveExistingRegistrationFields.forEach((field) => {
+    if (field === 'retirosAnteriores' && next.dispensaRetirosAnteriores === true) return;
     if (!isEmptyProtectedValue(current[field]) && isEmptyProtectedValue(next[field])) {
       next[field] = current[field];
     }
