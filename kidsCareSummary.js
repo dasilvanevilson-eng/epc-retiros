@@ -46,6 +46,7 @@ const coupleStudentKids = ({ coupleStudents = [], studentFormType = '', retreatI
 
 export function buildKidsCareSummary({ teamKids = [], coupleStudents = [], studentFormType = '', retreatId = '' } = {}) {
   const normalizedTeamKids = teamKids.map((kid) => ({
+    ...kid,
     nome: String(kid.nome || '').trim(),
     nascimento: String(kid.nascimento || '').trim(),
     problemaSaude: kid.problemaSaude || '',
@@ -59,6 +60,7 @@ export function buildKidsCareSummary({ teamKids = [], coupleStudents = [], stude
   }));
   const children = [...normalizedTeamKids, ...coupleStudentKids({ coupleStudents, studentFormType, retreatId })];
   return {
+    children: sortCareRows(children),
     intolerance: sortCareRows(children
       .filter((kid) => hasAffirmativeOrDetail(kid.intoleranciaAlimentar, kid.descricaoIntolerancia))
       .map((kid) => ({ ...kid, detail: kid.descricaoIntolerancia }))),

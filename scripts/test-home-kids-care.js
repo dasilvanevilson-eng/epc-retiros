@@ -47,6 +47,7 @@ const path = require('node:path');
   }];
 
   const smpSummary = buildKidsCareSummary({ teamKids, coupleStudents: smpStudents, studentFormType: 'cursista-smp', retreatId: 'retiro-foco' });
+  assert.equal(smpSummary.children.length, 2, 'O total deve reunir criancas da equipe e das fichas SMP do retiro em foco.');
   assert.equal(smpSummary.intolerance.length, 2, 'A mesma crianca deve contar uma vez por origem.');
   assert.equal(smpSummary.health.length, 2, 'Resposta Sim ou descricao deve incluir a crianca.');
   assert.deepEqual(smpSummary.intolerance.map((kid) => kid.origin).sort(), ['Cursista', 'Equipe de trabalho']);
@@ -76,6 +77,7 @@ const path = require('node:path');
     studentFormType: 'cursista-epc',
     retreatId: 'retiro-foco',
   });
+  assert.equal(epcSummary.children.length, 1, 'O total deve incluir criancas das fichas EPC do retiro em foco.');
   assert.equal(epcSummary.health[0].origin, 'Cursista');
   assert.equal(epcSummary.health[0].contextLabel, 'Comunidade');
   assert.equal(epcSummary.health[0].contextValue, 'Sem comunidade');
@@ -87,14 +89,15 @@ const path = require('node:path');
   assert.equal(individualSummary.intolerance.length, 1, 'Ficha individual deve considerar somente criancas da Equipe.');
 
   const emptySummary = buildKidsCareSummary();
-  assert.deepEqual(emptySummary, { intolerance: [], health: [] });
+  assert.deepEqual(emptySummary, { children: [], intolerance: [], health: [] });
 
   const adminSource = await fs.readFile(path.join(__dirname, '..', 'adminApp.js'), 'utf8');
   assert.match(adminSource, /sectors:\s*couple\.flatMap\(entrySectors\)/, 'Os setores dos dois responsáveis devem ser reunidos.');
   assert.match(adminSource, /sectors:\s*uniqueSectors\(options\.sectors/, 'Setores repetidos devem ser removidos.');
   const spaceKidsRenderer = adminSource.match(/const kidsRows = .*?;\r?\n/)?.[0] || '';
-  assert.match(spaceKidsRenderer, /Cadastrada por:/);
-  assert.match(spaceKidsRenderer, /Origem: Equipe de trabalho · Setor de trabalho:/, 'A lista geral do Espaço Kids deve informar origem e setor.');
+  assert.match(spaceKidsRenderer, /Responsável:/);
+  assert.match(spaceKidsRenderer, /kid\.origin/, 'A lista geral do Espaço Kids deve informar a origem de cada criança.');
+  assert.match(spaceKidsRenderer, /kid\.contextLabel/, 'A lista geral do Espaço Kids deve informar setor ou comunidade conforme a origem.');
   const careRenderer = adminSource.match(/const kidsCareRows = .*?;\r?\n/)?.[0] || '';
   assert.match(careRenderer, /Responsável:/);
   assert.match(careRenderer, /Origem:/);
@@ -106,7 +109,8 @@ const path = require('node:path');
   assert.match(adminSource, /aria-label="Participação"[\s\S]*?Presença por dia[\s\S]*?Cidades participantes/, 'A primeira caixa deve reunir presença e cidades.');
   assert.match(adminSource, /id="home-kids-group-title">Espaço Kids<[\s\S]*?Total de crianças[\s\S]*?Crianças com intolerância alimentar[\s\S]*?Crianças com problema de saúde/, 'A segunda caixa deve reunir os três indicadores do Espaço Kids.');
 
-  assert.equal((adminSource.match(/const dayCount = \(day\).*?\+ spaceKidsRows\.length;/g) || []).length, 2, 'A presenca por dia deve somar o mesmo total de criancas exibido no card do Espaco Kids.');
+  assert.match(adminSource, /const dayCount = \(day\).*?\+ kidsCareSummary\.children\.length;/, 'A presenca do painel Inicio deve somar o total consolidado de criancas.');
+  assert.match(adminSource, /homeHealthCard\('Total de crianças', kidsCareSummary\.children\.length, 'kids'\)/, 'O card Total de criancas deve usar a fonte consolidada.');
   assert.match(adminSource, /Equipe de trabalho \+ Cursistas \+ Crianças Kids/, 'O card de presenca deve informar que inclui as criancas do Espaco Kids.');
 
   console.log('Inicio: indicadores combinados de saude das criancas validados.');

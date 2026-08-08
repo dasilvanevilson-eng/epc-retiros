@@ -1458,7 +1458,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeStatEntries.flatMap(entrySectors)]))
     .map((sector) => [sector, activeStatEntries.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
-  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length + spaceKidsRows.length;
+  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length + kidsCareSummary.children.length;
   const shirtCounts = activeStudents.reduce((counts, student) => {
     const size = String(student.camiseta || '').trim();
     if (size) counts[size] = (counts[size] || 0) + 1;
@@ -1630,7 +1630,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(details || 'Medicamento não detalhado')}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista informado.</p>';
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
-  const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><div class="kids-care-comments"><small>Cadastrada por: ${escapeHtml(kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ' · Contato não informado'}</small><small>Origem: Equipe de trabalho · Setor de trabalho: ${escapeHtml(Array.isArray(kid.sectors) && kid.sectors.length ? kid.sectors.join(', ') : 'Não informado')}</small></div></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
+  const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><div class="kids-care-comments"><small>Responsável: ${escapeHtml(kid.responsible || kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ''}</small><small>Origem: ${escapeHtml(kid.origin || 'Equipe de trabalho')} · ${escapeHtml(kid.contextLabel || 'Setor de trabalho')}: ${escapeHtml(kid.contextValue || (Array.isArray(kid.sectors) && kid.sectors.length ? kid.sectors.join(', ') : 'Não informado'))}</small></div></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
   const kidsCareRows = (rows, fallback, emptyMessage) => rows.length ? `<div class="student-health-list kids-health-list kids-care-comment-list">${rows.map((kid) => `<div style="grid-template-columns:1fr;gap:6px"><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><div class="kids-care-comments" style="display:grid;gap:3px"><small>Responsável: ${escapeHtml(kid.responsible || 'Não informado')}</small><small>Origem: ${escapeHtml(kid.origin)} · ${escapeHtml(kid.contextLabel)}: ${escapeHtml(kid.contextValue)}</small><small class="kids-care-problem"><strong>Problema descrito: ${escapeHtml(kid.detail || fallback)}</strong></small></div></div>`).join('')}</div>` : `<p class="empty-state">${emptyMessage}</p>`;
   const birthdayRowsHtml = (students) => students.length ? `<div class="student-health-list">${students.map((student) => {
     const community = studentCommunityDetail(student, activeCommunityDetails);
@@ -1692,7 +1692,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
         <section class="home-misc-box" aria-labelledby="home-kids-group-title">
           <h3 id="home-kids-group-title">Espaço Kids</h3>
           <div class="home-column-list">
-            ${homeHealthCard('Total de crianças', spaceKidsRows.length, 'kids')}
+            ${homeHealthCard('Total de crianças', kidsCareSummary.children.length, 'kids')}
             ${homeHealthCard('Crianças com intolerância alimentar', kidsCareSummary.intolerance.length, 'kids-intolerance')}
             ${homeHealthCard('Crianças com problema de saúde', kidsCareSummary.health.length, 'kids-health')}
           </div>
@@ -1725,7 +1725,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     'smp-acolhimento': `<div class="panel-heading"><div><h2>Precisa de acolhimento</h2><p>Dados buscados na ficha ${escapeHtml(coupleStudentTitle)}, por casal.</p></div></div>${smpAcolhimentoRows(smpAcolhimentoCouples)}`,
     quadrante: `<div class="panel-heading"><div><h2>Quadrante(s) impresso</h2><p>Inscrições da equipe que responderam Sim. Casais aparecem juntos e contam como uma ficha.</p></div></div>${preferenceRows(quadranteRows, 'Nenhuma inscrição solicitou quadrante impresso.')}`,
     photo: `<div class="panel-heading"><div><h2>Fotos solicitadas</h2><p>Inscrições da equipe que pediram foto. Casais aparecem juntos e contam como uma foto.</p></div></div>${preferenceRows(photoRows, 'Nenhuma inscrição solicitou foto.')}`,
-    kids: `<div class="panel-heading"><div><h2>Crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(spaceKidsRows)}`,
+    kids: `<div class="panel-heading"><div><h2>Crianças no Espaço Kids</h2><p>Nome da criança, idade e responsável pelo cadastro.</p></div></div>${kidsRows(kidsCareSummary.children)}`,
     'kids-intolerance': `<div class="panel-heading"><div><h2>Crianças com intolerância alimentar</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.intolerance, 'Não detalhado', 'Nenhuma criança com intolerância alimentar informada.')}`,
     'kids-health': `<div class="panel-heading"><div><h2>Crianças com problema de saúde</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.health, 'Não detalhado', 'Nenhuma criança com problema de saúde informada.')}`,
     cities: `<div class="panel-heading"><div><h2>Cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
