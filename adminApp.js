@@ -1458,7 +1458,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const sectorCounts = active ? sortSectors(uniqueSectors([...(active.setores || []), ...activeStatEntries.flatMap(entrySectors)]))
     .map((sector) => [sector, activeStatEntries.filter((entry) => entryHasSector(entry, sector)).length])
     .filter(([sector, count]) => count > 0 || active?.setores?.includes(sector)) : [];
-  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length;
+  const dayCount = (day) => activeStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + activeStudents.length + spaceKidsRows.length;
   const shirtCounts = activeStudents.reduce((counts, student) => {
     const size = String(student.camiseta || '').trim();
     if (size) counts[size] = (counts[size] || 0) + 1;
@@ -1686,7 +1686,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
       </div></section>
       <section class="home-column"><h2>Diversos</h2><div class="home-column-list home-misc-groups">
         <section class="home-misc-box" aria-label="Participação">
-          ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
+          ${homePanel('Presença por dia', 'Equipe de trabalho + Cursistas + Crianças Kids', `<div class="stat-tile-grid presence-stat-grid">${dayRows}</div>`)}
           ${homeHealthCard('Cidades participantes', cityRows.length, 'cities', 'Visualizar detalhes')}
         </section>
         <section class="home-misc-box" aria-labelledby="home-kids-group-title">
@@ -1701,7 +1701,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     </section>
     <section class="dashboard-grid retreat-stats-grid home-detail-source" aria-hidden="true">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
-      <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
+      <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Equipe de trabalho + Cursistas + Crianças Kids.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
       <article class="panel dashboard-panel participation-group-stat-panel"><div class="panel-heading"><div><h2>Pessoas por grupo</h2><p>Equipe de trabalho classificada pelos retiros anteriores.</p></div></div><div class="sector-simple-list">${participationGroupRows}</div></article>
     </section>
@@ -2031,7 +2031,7 @@ async function renderRetreat(id, selectedSector = '') {
   const participantPeople = retreatEnrolments.map((entry) => people.find((person) => person.id === entry.pessoaId)).filter(Boolean);
   const ages = [...participantPeople, ...registeredStudents].map((person) => ageFromBirth(person.nascimento)).filter((age) => age !== null);
   const averageAge = ages.length ? `${(ages.reduce((sum, age) => sum + age, 0) / ages.length).toFixed(1).replace('.', ',')} anos` : 'Sem dados';
-  const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length;
+  const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + registeredStudents.length + spaceKidsRows.length;
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
   const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
@@ -2168,7 +2168,7 @@ async function renderRetreat(id, selectedSector = '') {
     </section>
     <section class="dashboard-grid retreat-stats-grid">
       <article class="panel dashboard-panel shirt-stat-panel"><div class="panel-heading"><div><h2>Camisetas dos cursistas</h2><p>Quantidade por tamanho informado na ficha do cursista.</p></div></div><div class="stat-tile-grid shirt-stat-grid">${shirtGrid}</div></article>
-      <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Cursistas + equipe de trabalho prevista em cada dia.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
+      <article class="panel dashboard-panel presence-stat-panel"><div class="panel-heading"><div><h2>Presença por dia</h2><p>Equipe de trabalho + Cursistas + Crianças Kids.</p></div></div><div class="stat-tile-grid presence-stat-grid">${dayRows}</div></article>
       <article class="panel dashboard-panel sector-stat-panel"><div class="panel-heading"><div><h2>Pessoas por setor</h2><p>Equipe de trabalho inscrita por setor.</p></div></div><div class="sector-simple-list">${sectorRows}</div></article>
     </section>`;
   const healthContent = {

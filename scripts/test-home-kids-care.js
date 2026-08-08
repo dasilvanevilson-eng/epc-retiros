@@ -106,6 +106,9 @@ const path = require('node:path');
   assert.match(adminSource, /aria-label="Participação"[\s\S]*?Presença por dia[\s\S]*?Cidades participantes/, 'A primeira caixa deve reunir presença e cidades.');
   assert.match(adminSource, /id="home-kids-group-title">Espaço Kids<[\s\S]*?Total de crianças[\s\S]*?Crianças com intolerância alimentar[\s\S]*?Crianças com problema de saúde/, 'A segunda caixa deve reunir os três indicadores do Espaço Kids.');
 
+  assert.equal((adminSource.match(/const dayCount = \(day\).*?\+ spaceKidsRows\.length;/g) || []).length, 2, 'A presenca por dia deve somar o mesmo total de criancas exibido no card do Espaco Kids.');
+  assert.match(adminSource, /Equipe de trabalho \+ Cursistas \+ Crianças Kids/, 'O card de presenca deve informar que inclui as criancas do Espaco Kids.');
+
   console.log('Inicio: indicadores combinados de saude das criancas validados.');
 })().catch((error) => {
   console.error(error);
