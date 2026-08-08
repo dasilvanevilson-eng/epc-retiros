@@ -10,6 +10,7 @@ assert.match(appSource, /id="badge-print-by-sector">Impress&atilde;o por setor<\
 assert.match(appSource, /id="badge-print-by-community">Impress&atilde;o por comunidade<\/button>/);
 assert.doesNotMatch(appSource, /id="badge-print-model-select"|Modelo padr&atilde;o do crach&aacute;/, 'A impressão não deve permitir escolher um modelo padrão.');
 assert.match(appSource, /Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor\/comunidade"/);
+assert.doesNotMatch(appSource, /printModelSelect|loadPrintProfile/, 'Nao podem restar referencias ao seletor de modelo removido.');
 assert.doesNotMatch(appSource, /id="badge-mode"|id="badge-sector"|id="badge-person"/, 'Os seletores antigos de impressão devem ser removidos.');
 assert.match(appSource, /openBadgeGroupPicker\('sector'\)/);
 assert.match(appSource, /openBadgeGroupPicker\('community'\)/);
@@ -37,6 +38,7 @@ assert.match(pickerSource, /profileId: profile\.id/);
 assert.match(pickerSource, /badgeSettings/);
 
 assert.match(appSource, /page\.map\(\(\{ entry, sector, badgeSettings, groupType \}\) => badgeCard\(entry, badgeSettings \|\| next, sector, badgeSectorNames, groupType !== 'community'\)\)/);
+assert.match(appSource, /activeBadgeView === 'print' \? \(first && selected\.length \? badgeCard\(first\.entry, firstSettings, first\.sector, badgeSectorNames, firstUsesConfiguredSectorName\) : ''\)/, 'A previa de impressao deve depender somente dos grupos e pessoas selecionados.');
 assert.match(styles, /\.badge-print-controls > button/);
 assert.match(styles, /\.badge-multi-print-dialog/);
 assert.match(styles, /\.badge-print-group-list label/);

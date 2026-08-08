@@ -5631,10 +5631,6 @@ async function renderCrachas() {
     if (profileMenu) profileMenu.innerHTML = profilePickerOptions();
     if (profileTrigger) profileTrigger.textContent = badgeProfiles.find((profile) => profile.id === selectedId)?.name || 'Selecione um modelo';
     profileMenu?.querySelectorAll('[data-badge-profile-choice]').forEach((option) => option.setAttribute('aria-selected', option.dataset.badgeProfileChoice === selectedId ? 'true' : 'false'));
-    if (printModelSelect) {
-      printModelSelect.innerHTML = profileOptions();
-      printModelSelect.value = selectedId;
-    }
     selectedProfileId = selectedId;
   };
   const setActiveProfile = (profile, openEditor = false) => {
@@ -5810,10 +5806,9 @@ async function renderCrachas() {
     const selected = selectedEntries();
     const first = selected[0] || entries.map((entry) => ({ entry, sector: '' }))[0];
     const firstSettings = first?.badgeSettings || next;
-    const printModelSelected = Boolean(printModelSelect?.value);
     const configModelSelected = Boolean(selectedProfileId || blankPreview);
     const firstUsesConfiguredSectorName = first?.groupType !== 'community';
-    preview.innerHTML = activeBadgeView === 'print' ? (first && selected.length ? badgeCard(first.entry, firstSettings, first.sector, badgeSectorNames, firstUsesConfiguredSectorName) : printModelSelected ? sampleBadgeCard(next) : '') : activeBadgeView === 'config' && !configModelSelected ? '' : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector, badgeSectorNames, firstUsesConfiguredSectorName);
+    preview.innerHTML = activeBadgeView === 'print' ? (first && selected.length ? badgeCard(first.entry, firstSettings, first.sector, badgeSectorNames, firstUsesConfiguredSectorName) : '') : activeBadgeView === 'config' && !configModelSelected ? '' : blankPreview || !first ? sampleBadgeCard(next) : badgeCard(first.entry, next, first.sector, badgeSectorNames, firstUsesConfiguredSectorName);
     badgePrintEntries = selected;
     const selectedGroupLabels = [...new Set(selected.map((item) => item.groupLabel).filter(Boolean))];
     const selectionLabel = selectedGroupLabels.length === 1 ? selectedGroupLabels[0] : activePrintMode === 'sector' ? 'Setores selecionados' : activePrintMode === 'community' ? 'Comunidades selecionadas' : retreat.nome;
@@ -5838,17 +5833,6 @@ async function renderCrachas() {
       return;
     }
     setActiveProfile(profile, true);
-  };
-  const loadPrintProfile = () => {
-    badgeManualSelection = null;
-    const profile = badgeProfiles.find((item) => item.id === printModelSelect.value);
-    if (!profile) {
-      selectedProfileId = '';
-      blankPreview = false;
-      renderBadges();
-      return;
-    }
-    setActiveProfile(profile);
   };
   const saveCurrentProfile = async (profileName) => {
     if (!canConfigureBadges) return;
@@ -6168,7 +6152,6 @@ async function renderCrachas() {
     if (!profilePicker.contains(event.relatedTarget)) setProfileMenuOpen(false);
   });
   configSelect?.addEventListener('change', loadSelectedProfile);
-  printModelSelect?.addEventListener('change', loadPrintProfile);
   app.querySelector('#badge-new-config')?.addEventListener('click', startNewProfile);
   app.querySelector('#badge-save-tab')?.addEventListener('click', openSaveBadgeDialog);
   app.querySelector('#badge-delete-tab')?.addEventListener('click', deleteCurrentProfile);

@@ -26,6 +26,21 @@ assert.doesNotMatch(source, /'casal bem-estar':|'recebedor\(es\)':|'sineteira\(s
 assert.match(styles, /\.badge-sector-name-heading,\.badge-sector-name-row/);
 assert.match(styles, /@media\(max-width:720px\)[^{]*\{[^}]*\.badge-sector-name-heading/);
 
+const displayHelperStart = source.indexOf('const badgeSectorDisplayName');
+const displayHelperEnd = source.indexOf('const badgeInlineStyle', displayHelperStart);
+assert(displayHelperStart >= 0 && displayHelperEnd > displayHelperStart, 'Regra de exibicao do setor nao encontrada.');
+const displayHelperSource = source.slice(displayHelperStart, displayHelperEnd);
+const displayContext = {
+  normalizeText: (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(),
+};
+vm.runInNewContext(`${displayHelperSource};globalThis.badgeSectorDisplayTests={badgeSectorDisplayName,badgeSectorText};`, displayContext);
+const displayHelpers = displayContext.badgeSectorDisplayTests;
+assert.equal(displayHelpers.badgeSectorDisplayName('Cozinha', { Cozinha: 'Cozinha central' }), 'Cozinha central');
+assert.equal(displayHelpers.badgeSectorDisplayName('Dire\u00e7\u00e3o Espiritual', { 'direcao espiritual': 'Dire\u00e7\u00e3o' }), 'Dire\u00e7\u00e3o');
+assert.equal(displayHelpers.badgeSectorDisplayName('Secretaria', { Cozinha: 'Cozinha central' }), 'Secretaria');
+assert.equal(displayHelpers.badgeSectorText({ setores: ['Cozinha'] }, 'Cozinha', { Cozinha: 'Cozinha central' }, true), 'Cozinha central');
+assert.equal(displayHelpers.badgeSectorText({ setores: ['Cozinha'] }, 'Tia de comunidade', { 'Tia de comunidade': 'Nome indevido' }, false), 'Tia de comunidade');
+
 const helperStart = source.indexOf('const normalizeBadgeSectorNames');
 const helperEnd = source.indexOf('const copyBadgeProfilesToRetreat', helperStart);
 assert(helperStart >= 0 && helperEnd > helperStart, 'Persistência dos nomes de setor não encontrada.');
