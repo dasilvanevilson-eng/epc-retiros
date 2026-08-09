@@ -26,6 +26,7 @@ const {
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 const financeStoreSet = new Set(financeStores);
 const scopedFinanceStores = new Set(['financeiro_planilhas', 'financeiro_planilha_auditoria']);
+const allowedRetreatTypes = new Set(['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI']);
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -864,6 +865,7 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === 'PUT' && id) {
     let record = { ...(requestBody || await readBody(req)), id: decodeURIComponent(id) };
+    if (resource === 'retiros' && record.tipoRetiro && !allowedRetreatTypes.has(record.tipoRetiro)) return sendError(res, 400, 'Tipo do retiro invalido.');
     if (!publicRegistrationRequest && resource !== 'pessoas' && await denyIfMissingRetreatAccess(res, session, resource, record)) return;
     if (!publicRegistrationRequest && resource === 'crachas') {
       const retreat = await getRecord('retiros', recordRetreatId(record)).catch(() => null);

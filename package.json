@@ -13,6 +13,7 @@
     "test:home-kids-care": "node scripts/test-home-kids-care.js",
     "test:retreat-focus": "node scripts/test-retreat-focus.js",
     "test:retreat-expected-files": "node scripts/test-retreat-expected-student-files.js",
+    "test:retreat-type": "node scripts/test-retreat-type.js",
     "test:public-student-links": "node scripts/test-public-student-links.js",
     "test:public-student-registration": "node scripts/test-public-student-registration.js",
     "test:user-security": "node scripts/test-user-security-screen.js",

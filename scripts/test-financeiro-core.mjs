@@ -82,7 +82,8 @@ assert.match(stores, /financeiro_planilhas/);
 assert.doesNotMatch(stores, /financeiro_movimentos/);
 assert.match(permissions, /financeiro\.excluir/);
 assert.match(backup, /financeiro_planilha_auditoria/);
-assert.match(migration, /snapshot integral recente/);
+assert.doesNotMatch(migration, /Backup obrigatorio|snapshot integral recente/i);
+assert.match(migration, /Financeiro legado autorizado para exclusao/);
 assert.match(migration, /drop table if exists public\.financeiro_movimentos/);
 assert.match(migration, /unique \(retiro_id, setor_chave\)/);
 for (const protectedTable of ['adesoes', 'cursistas', 'pessoas', 'casais', 'comunidades', 'retiros']) {

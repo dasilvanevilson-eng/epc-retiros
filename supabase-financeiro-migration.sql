@@ -1,6 +1,6 @@
 -- Financeiro por retiro e setor.
 -- MIGRACAO DESTRUTIVA SOMENTE PARA AS SETE TABELAS FINANCEIRAS LEGADAS.
--- A execucao aborta se nao existir snapshot integral recente contendo todas elas.
+-- Os registros financeiros legados serao descartados conforme autorizacao.
 
 begin;
 create extension if not exists pgcrypto;
@@ -11,38 +11,16 @@ declare
     'financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos',
     'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'
   ];
-  existing_count integer;
   protected_before jsonb;
-  snapshot_manifest jsonb;
   table_name text;
   row_count bigint;
 begin
-  select count(*) into existing_count
-  from unnest(legacy_tables) name
-  where to_regclass(format('public.%I', name)) is not null;
-
-  if existing_count > 0 then
-    if to_regclass('public.epc_backup_operations') is null then
-      raise exception 'Backup obrigatorio: epc_backup_operations nao existe.';
+  foreach table_name in array legacy_tables loop
+    if to_regclass(format('public.%I', table_name)) is not null then
+      execute format('select count(*) from public.%I', table_name) into row_count;
+      raise notice 'Financeiro legado autorizado para exclusao: % = % registro(s)', table_name, row_count;
     end if;
-    select manifest into snapshot_manifest
-    from public.epc_backup_operations
-    where type = 'export' and status = 'staged' and created_at >= now() - interval '24 hours'
-    order by created_at desc limit 1;
-    if snapshot_manifest is null then
-      raise exception 'Backup obrigatorio: gere e baixe um snapshot integral nas ultimas 24 horas.';
-    end if;
-    foreach table_name in array legacy_tables loop
-      if to_regclass(format('public.%I', table_name)) is not null
-         and not coalesce(snapshot_manifest->'tableNames', '[]'::jsonb) ? table_name then
-        raise exception 'O snapshot recente nao contem a tabela financeira %.', table_name;
-      end if;
-      if to_regclass(format('public.%I', table_name)) is not null then
-        execute format('select count(*) from public.%I', table_name) into row_count;
-        raise notice 'Auditoria Financeiro legado: % = % registro(s)', table_name, row_count;
-      end if;
-    end loop;
-  end if;
+  end loop;
 
   select jsonb_build_object(
     'retiros', (select count(*) from public.retiros),

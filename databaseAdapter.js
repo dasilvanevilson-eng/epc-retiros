@@ -309,6 +309,8 @@ async function referencedIds(table, column, ids = []) {
 }
 
 async function saveRetreat(record) {
+  const allowedRetreatTypes = new Set(['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI']);
+  if (record.tipoRetiro && !allowedRetreatTypes.has(record.tipoRetiro)) throw new Error('Tipo do retiro invalido.');
   const mappedKeys = new Set(['id', 'nome', 'dataInicio', 'dataTermino', 'local', 'coordenacaoGeral', 'coordenacaoRetiro', 'valorInscricaoCursista', 'valorInscricaoVoluntario', 'valorFoto', 'valorCamisetaOficial', 'descontoParentesco', 'idadeMaximaEspacoKids', 'recebedorToken', 'setores', 'setoresPublicos', 'setoresInscricoesEncerradas', 'ordemQuadrante', 'dias', 'contribuicoes', 'linksSetores', 'setorLinks', 'status', 'createdAt', 'updatedAt']);
   const closedSectorKeysForExtras = new Set(array(record.setoresInscricoesEncerradas).map(normalizeText));
   const retreatExtras = {
