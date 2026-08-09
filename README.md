@@ -49,14 +49,14 @@ Com essas variaveis presentes, a API passa a gravar no Supabase. Sem elas, usa o
 
 ### Modulo Financeiro
 
-Para habilitar compras, despesas, cotacoes e estoque em um banco Supabase ja existente:
+Para substituir o Financeiro legado pelas planilhas de despesas por retiro e setor em um banco Supabase existente:
 
 1. Gere e valide um backup pela tela administrativa.
 2. Registre as contagens de `retiros`, `adesoes`, `cursistas`, `pessoas`, `casais` e `comunidades`.
-3. Execute `supabase-financeiro-migration.sql` no SQL Editor.
+3. Verifique que o snapshot baixado contem as sete tabelas financeiras legadas e execute `supabase-financeiro-migration.sql` no SQL Editor.
 4. Confirme novamente as mesmas contagens antes de liberar o menu Financeiro.
 
-A migracao e somente aditiva e nao possui exclusao em cascata para as tabelas historicas.
+A migracao exclui somente as sete tabelas financeiras legadas, cria `financeiro_planilhas` e `financeiro_planilha_auditoria` e aborta sem um snapshot integral recente. Ela nao altera nem usa exclusao em cascata nas tabelas historicas de retiros, pessoas, adesoes ou cursistas.
 
 ## Vercel
 

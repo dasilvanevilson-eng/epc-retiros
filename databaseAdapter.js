@@ -1365,7 +1365,7 @@ const simpleMappers = {
   usuario_retiros: (row) => ({ id: `${row.usuario_id}:${row.retiro_id}`, usuarioId: row.usuario_id, retiroId: row.retiro_id, papel: row.papel || '' }),
 };
 financeStores.forEach((storeName) => {
-  simpleMappers[storeName] = (row) => ({ ...(row.dados || {}), id: row.id, retiroId: row.retiro_id || row.dados?.retiroId || '', createdAt: row.created_at, updatedAt: row.updated_at });
+  simpleMappers[storeName] = (row) => ({ ...(row.dados || {}), id: row.id, retiroId: row.retiro_id || row.dados?.retiroId || '', setorChave: row.setor_chave || row.dados?.setorChave || '', createdAt: row.created_at, updatedAt: row.updated_at });
 });
 
 async function saveSimple(storeName, record) {
@@ -1373,7 +1373,8 @@ async function saveSimple(storeName, record) {
     const row = await upsert(storeName, {
       id: record.id,
       retiro_id: record.retiroId || null,
-      dados: extras(record, new Set(['id', 'retiroId', 'createdAt', 'updatedAt'])),
+      setor_chave: storeName === 'financeiro_planilhas' ? record.setorChave || null : undefined,
+      dados: extras(record, new Set(['id', 'retiroId', ...(storeName === 'financeiro_planilhas' ? ['setorChave'] : []), 'createdAt', 'updatedAt'])),
       created_at: record.createdAt || undefined,
       updated_at: record.updatedAt || undefined,
     });

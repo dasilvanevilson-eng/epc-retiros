@@ -4,11 +4,13 @@ const { stores } = require('./storeConfig');
 
 const BACKUP_FORMAT = 'familia-epc-backup';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 'supabase-relational-2026-08-v5';
-const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v3';
+const SCHEMA_VERSION = 'supabase-relational-2026-08-v6';
+const LOCAL_SCHEMA_VERSION = 'local-logical-2026-08-v4';
 const LEGACY_SCHEMA_VERSIONS = new Set(['supabase-relational-2026-08-v3', 'local-logical-2026-08-v1']);
 const PRE_FINANCE_SCHEMA_VERSIONS = new Set(['supabase-relational-2026-08-v4', 'local-logical-2026-08-v2']);
-const FINANCE_TABLES = ['financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos', 'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'];
+const RETIRED_FINANCE_SCHEMA_VERSIONS = new Set(['local-logical-2026-08-v3']);
+const RETIRED_FINANCE_TABLES = ['financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos', 'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'];
+const FINANCE_TABLES = ['financeiro_planilhas', 'financeiro_planilha_auditoria'];
 const RETIRED_REPORT_MODELS_TABLE = 'relatorio_modelos';
 const RETIRED_REPORT_MODELS_WARNING = 'Este backup pertence à versão anterior. A tabela aposentada relatorio_modelos será ignorada; todas as demais tabelas serão restauradas normalmente.';
 const CHUNK_SIZE = 200;
@@ -43,17 +45,13 @@ const relationalTables = [
   ['perfil_permissoes', ['perfil_id', 'permissao_id']],
   ['usuario_permissoes', ['usuario_id', 'permissao_id']],
   ['usuario_retiros', ['usuario_id', 'retiro_id']],
-  ['financeiro_categorias', ['id']],
-  ['financeiro_fornecedores', ['id']],
-  ['financeiro_produtos', ['id']],
-  ['financeiro_despesas', ['id']],
-  ['financeiro_cotacoes', ['id']],
-  ['financeiro_movimentos', ['id']],
-  ['financeiro_auditoria', ['id']],
+  ['financeiro_planilhas', ['id']],
+  ['financeiro_planilha_auditoria', ['id']],
   ['epc_store', ['store', 'id']],
 ];
 
 const tablePrimaryKeys = Object.fromEntries(relationalTables);
+RETIRED_FINANCE_TABLES.forEach((name) => { tablePrimaryKeys[name] = ['id']; });
 const allowedRelationalTables = new Set(relationalTables.map(([name]) => name));
 const requiredRelationalTables = new Set(relationalTables
   .map(([name]) => name)
@@ -120,7 +118,8 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
   const expectedSchema = backup.storage === 'supabase-relational' ? SCHEMA_VERSION : LOCAL_SCHEMA_VERSION;
   const legacySchema = LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion);
   const preFinanceSchema = PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion);
-  if (backup.schemaVersion !== expectedSchema && !legacySchema && !preFinanceSchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
+  const retiredFinanceSchema = RETIRED_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion);
+  if (backup.schemaVersion !== expectedSchema && !legacySchema && !preFinanceSchema && !retiredFinanceSchema) throw new Error('O backup nao e compativel com a versao atual do banco.');
   if (!backup.createdAt || Number.isNaN(Date.parse(backup.createdAt))) throw new Error('Data de criacao do backup invalida.');
   if (!requireTables) return;
   if (!arraysOnly(backup.tables)) throw new Error('O backup nao contem tabelas validas.');
@@ -131,7 +130,8 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
     allowed.add(RETIRED_REPORT_MODELS_TABLE);
     required.add(RETIRED_REPORT_MODELS_TABLE);
   }
-  if (preFinanceSchema) FINANCE_TABLES.forEach((name) => required.delete(name));
+  if (preFinanceSchema || retiredFinanceSchema) FINANCE_TABLES.forEach((name) => required.delete(name));
+  if (retiredFinanceSchema) RETIRED_FINANCE_TABLES.forEach((name) => allowed.add(name));
   const unknown = names.filter((name) => !allowed.has(name));
   const missing = [...required].filter((name) => !names.includes(name));
   if (unknown.length) throw new Error(`O backup contem tabelas desconhecidas: ${unknown.join(', ')}.`);
@@ -153,7 +153,7 @@ function validateBackupEnvelope(backup, { requireTables = true } = {}) {
 }
 
 function normalizeRestorableBackup(backup) {
-  if (!LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion) && !PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) return { ...backup, warnings: [] };
+  if (!LEGACY_SCHEMA_VERSIONS.has(backup.schemaVersion) && !PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion) && !RETIRED_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) return { ...backup, warnings: [] };
   const tables = { ...backup.tables };
   const counts = { ...backup.counts };
   const warnings = [];
@@ -163,10 +163,15 @@ function normalizeRestorableBackup(backup) {
     warnings.push(RETIRED_REPORT_MODELS_WARNING);
   }
   if (PRE_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) {
-    if (backup.storage === 'local-logical') FINANCE_TABLES.forEach((name) => { tables[name] = []; counts[name] = 0; });
+    FINANCE_TABLES.forEach((name) => { tables[name] = []; counts[name] = 0; });
     warnings.push(backup.storage === 'local-logical'
       ? 'Este backup e anterior ao modulo Financeiro; as novas tabelas financeiras serao restauradas vazias.'
       : 'Este backup e anterior ao modulo Financeiro; as tabelas financeiras atuais serao preservadas.');
+  }
+  if (RETIRED_FINANCE_SCHEMA_VERSIONS.has(backup.schemaVersion)) {
+    RETIRED_FINANCE_TABLES.forEach((name) => { delete tables[name]; delete counts[name]; });
+    FINANCE_TABLES.forEach((name) => { tables[name] = []; counts[name] = 0; });
+    warnings.push('Este backup usa o Financeiro aposentado; os registros legados nao serao restaurados no novo modelo por setor.');
   }
   return { ...backup, tables, counts, warnings };
 }
@@ -241,6 +246,7 @@ async function uploadRestoreChunk(session, operationId, chunk) {
   if (!plainObject(chunk) || !Array.isArray(chunk.rows) || !Number.isInteger(chunk.chunkIndex) || chunk.chunkIndex < 0) throw new Error('Bloco de restauracao invalido.');
   const allowed = new Set(hasSupabase() ? allowedRelationalTables : stores);
   allowed.add(RETIRED_REPORT_MODELS_TABLE);
+  RETIRED_FINANCE_TABLES.forEach((name) => allowed.add(name));
   if (!allowed.has(chunk.tableName)) throw new Error(`Tabela nao permitida no backup: ${chunk.tableName}.`);
   if (chunk.rows.length > CHUNK_SIZE || chunk.rows.some((row) => !plainObject(row))) throw new Error('Bloco de restauracao excede o limite ou contem registros invalidos.');
   if (hasSupabase()) {

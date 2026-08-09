@@ -70,13 +70,8 @@ as $$
     ('perfil_permissoes', 240, true),
     ('usuario_permissoes', 250, true),
     ('usuario_retiros', 260, true),
-    ('financeiro_categorias', 270, false),
-    ('financeiro_fornecedores', 280, false),
-    ('financeiro_produtos', 290, false),
-    ('financeiro_despesas', 300, false),
-    ('financeiro_cotacoes', 310, false),
-    ('financeiro_movimentos', 320, false),
-    ('financeiro_auditoria', 330, false),
+    ('financeiro_planilhas', 270, false),
+    ('financeiro_planilha_auditoria', 280, false),
     ('epc_store', 340, false);
 $$;
 
@@ -166,7 +161,7 @@ begin
     'operationId', v_operation_id,
     'format', 'familia-epc-backup',
     'version', 1,
-    'schemaVersion', 'supabase-relational-2026-08-v4',
+    'schemaVersion', 'supabase-relational-2026-08-v6',
     'storage', 'supabase-relational',
     'createdAt', to_char(v_created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'counts', v_counts,
@@ -192,7 +187,7 @@ begin
   if jsonb_typeof(p_manifest) is distinct from 'object'
     or p_manifest->>'format' is distinct from 'familia-epc-backup'
     or p_manifest->>'version' is distinct from '1'
-    or p_manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
+    or p_manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v6', 'supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
     or p_manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(p_manifest->'counts') is distinct from 'object'
     or jsonb_typeof(p_manifest->'tableNames') is distinct from 'array'
@@ -239,7 +234,7 @@ begin
   if jsonb_typeof(v_operation.manifest) is distinct from 'object'
     or v_operation.manifest->>'format' is distinct from 'familia-epc-backup'
     or v_operation.manifest->>'version' is distinct from '1'
-    or v_operation.manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
+    or v_operation.manifest->>'schemaVersion' not in ('supabase-relational-2026-08-v6', 'supabase-relational-2026-08-v4', 'supabase-relational-2026-08-v3')
     or v_operation.manifest->>'storage' is distinct from 'supabase-relational'
     or jsonb_typeof(v_operation.manifest->'counts') is distinct from 'object'
     or jsonb_typeof(v_operation.manifest->'tableNames') is distinct from 'array'

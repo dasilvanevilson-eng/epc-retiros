@@ -7,88 +7,108 @@ export const financeNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 
+export const nonNegativeFinanceNumber = (value) => Math.max(0, financeNumber(value));
 export const financeMoney = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financeNumber(value));
+export const financeQuantity = (value) => nonNegativeFinanceNumber(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+export const normalizeSectorKey = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-export function expenseTotal(expense = {}) {
-  const items = Array.isArray(expense.itens) ? expense.itens : [];
-  return Math.max(0, items.reduce((sum, item) => sum + financeNumber(item.quantidade) * financeNumber(item.valorUnitario), 0)
-    + financeNumber(expense.frete) - financeNumber(expense.desconto));
+const retreatOrderValue = (retreat = {}) => {
+  const start = String(retreat.dataInicio || '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return `${start}T12:00:00.000Z`;
+  const created = String(retreat.createdAt || '');
+  return Number.isNaN(Date.parse(created)) ? '' : new Date(created).toISOString();
+};
+
+export function findPreviousRetreat(retreat = {}, retreats = []) {
+  const currentOrder = retreatOrderValue(retreat);
+  if (!currentOrder) return null;
+  return retreats
+    .filter((candidate) => candidate?.id && candidate.id !== retreat.id && retreatOrderValue(candidate) < currentOrder)
+    .sort((first, second) => retreatOrderValue(second).localeCompare(retreatOrderValue(first)) || String(second.createdAt || '').localeCompare(String(first.createdAt || '')))[0] || null;
 }
 
-const movementSign = (type) => ['retirada', 'perda', 'ajuste_saida'].includes(type) ? -1 : 1;
-
-export function inventorySummary(products = [], movements = []) {
-  const summaries = new Map(products.map((product) => [product.id, { product, balance: 0, value: 0, averageCost: 0 }]));
-  [...movements].sort((a, b) => String(a.createdAt || a.data || '').localeCompare(String(b.createdAt || b.data || ''))).forEach((movement) => {
-    if (!summaries.has(movement.produtoId)) summaries.set(movement.produtoId, { product: { id: movement.produtoId, nome: 'Produto removido' }, balance: 0, value: 0, averageCost: 0 });
-    const summary = summaries.get(movement.produtoId);
-    const quantity = Math.max(0, financeNumber(movement.quantidade));
-    const cost = Math.max(0, financeNumber(movement.custoUnitario));
-    if (movementSign(movement.tipo) > 0) {
-      summary.balance += quantity;
-      summary.value += quantity * cost;
-    } else {
-      summary.balance -= quantity;
-      summary.value -= quantity * cost;
-    }
-    if (summary.balance <= 0.000001) { summary.balance = 0; summary.value = 0; }
-    summary.averageCost = summary.balance > 0 ? summary.value / summary.balance : 0;
-  });
-  return [...summaries.values()];
-}
-
-export function quoteComparison(quote = {}) {
-  const items = Array.isArray(quote.itens) ? quote.itens : [];
-  const offers = Array.isArray(quote.ofertas) ? quote.ofertas : [];
-  const suppliers = new Map();
-  offers.filter((offer) => offer.disponivel !== false).forEach((offer) => {
-    const supplier = suppliers.get(offer.fornecedorId) || { supplierId: offer.fornecedorId, freight: financeNumber(offer.frete), discount: financeNumber(offer.desconto), prices: new Map() };
-    supplier.freight = Math.max(supplier.freight, financeNumber(offer.frete));
-    supplier.discount = Math.max(supplier.discount, financeNumber(offer.desconto));
-    supplier.prices.set(offer.itemId, financeNumber(offer.valorUnitario));
-    suppliers.set(offer.fornecedorId, supplier);
-  });
-  const candidates = [...suppliers.values()].map((supplier) => {
-    const priced = items.filter((item) => supplier.prices.has(item.id));
-    const subtotal = priced.reduce((sum, item) => sum + financeNumber(item.quantidade) * supplier.prices.get(item.id), 0);
-    const adjustment = subtotal ? (supplier.freight - supplier.discount) / subtotal : 0;
-    const itemCosts = new Map(priced.map((item) => {
-      const base = financeNumber(item.quantidade) * supplier.prices.get(item.id);
-      return [item.id, Math.max(0, base + base * adjustment)];
-    }));
-    return { ...supplier, complete: priced.length === items.length, subtotal, total: Math.max(0, subtotal + supplier.freight - supplier.discount), itemCosts };
-  });
-  const complete = candidates.filter((candidate) => candidate.complete).sort((a, b) => a.total - b.total);
-  const bestSingle = complete[0] || null;
-  const bestByItem = items.map((item) => {
-    const options = candidates.filter((candidate) => candidate.itemCosts.has(item.id)).sort((a, b) => candidateCost(a, item.id) - candidateCost(b, item.id));
-    const best = options[0];
-    return best ? { itemId: item.id, supplierId: best.supplierId, total: best.itemCosts.get(item.id), unitPrice: best.prices.get(item.id) } : { itemId: item.id, supplierId: '', total: Infinity, unitPrice: 0 };
-  });
+export function calculateRecurringItem(item = {}) {
+  const position = nonNegativeFinanceNumber(item.posicaoAnterior);
+  let input = nonNegativeFinanceNumber(item.entrada);
+  let output = nonNegativeFinanceNumber(item.saida);
+  let balance;
+  const mode = item.modo === 'saldo' ? 'saldo' : 'movimento';
+  if (mode === 'saldo') {
+    balance = nonNegativeFinanceNumber(item.saldo);
+    const delta = balance - position;
+    input = delta > 0 ? delta : 0;
+    output = delta < 0 ? Math.abs(delta) : 0;
+  } else {
+    balance = position + input - output;
+    if (balance < -0.000001) throw new Error('A saída não pode gerar saldo negativo.');
+    balance = Math.max(0, balance);
+  }
+  const unitPrice = nonNegativeFinanceNumber(item.precoUnitario);
   return {
-    candidates,
-    bestSingle,
-    bestByItem,
-    bestCombinationTotal: bestByItem.every((item) => Number.isFinite(item.total)) ? bestByItem.reduce((sum, item) => sum + item.total, 0) : null,
+    ...item,
+    modo: mode,
+    posicaoAnterior: position,
+    entrada: input,
+    saida: output,
+    saldo: balance,
+    precoUnitario: unitPrice,
+    valorPosicaoAnterior: position * unitPrice,
+    valorEntrada: input * unitPrice,
+    valorSaida: output * unitPrice,
+    valorSaldo: balance * unitPrice,
   };
 }
 
-const candidateCost = (candidate, itemId) => candidate.itemCosts.get(itemId) ?? Infinity;
+export function inheritSectorSheet({ retreat, sector, previousRetreat, previousSheet, id = '' } = {}) {
+  const key = normalizeSectorKey(sector);
+  return {
+    id,
+    retiroId: retreat?.id || '',
+    setor: String(sector || '').trim(),
+    setorChave: key,
+    retiroOrigemId: previousSheet ? previousRetreat?.id || previousSheet.retiroId || '' : '',
+    inicializada: true,
+    itensRecorrentes: (previousSheet?.itensRecorrentes || []).map((item, index) => calculateRecurringItem({
+      id: '',
+      chaveRecorrencia: item.chaveRecorrencia || item.id || '',
+      itemOrigemId: item.id || '',
+      descricao: item.descricao || '',
+      unidade: item.unidade || 'un',
+      modo: 'movimento',
+      posicaoAnterior: item.saldo,
+      entrada: 0,
+      saida: 0,
+      saldo: item.saldo,
+      precoUnitario: item.precoUnitario,
+      ordem: index + 1,
+    })),
+    despesasEventuais: [],
+  };
+}
 
-export function retreatCost(expenses = [], movements = []) {
-  const activeExpenses = expenses.filter((expense) => expense.status !== 'cancelada');
-  const direct = activeExpenses.reduce((sum, expense) => {
-    const items = expense.itens || [];
-    const subtotal = items.reduce((total, item) => total + financeNumber(item.quantidade) * financeNumber(item.valorUnitario), 0);
-    const directSubtotal = items.filter((item) => !item.controlaEstoque).reduce((total, item) => total + financeNumber(item.quantidade) * financeNumber(item.valorUnitario), 0);
-    const adjustment = subtotal > 0 ? directSubtotal / subtotal * (financeNumber(expense.frete) - financeNumber(expense.desconto)) : 0;
-    return sum + Math.max(0, directSubtotal + adjustment);
-  }, 0);
-  const consumed = movements.reduce((sum, movement) => {
-    const value = financeNumber(movement.custoTotal) || financeNumber(movement.quantidade) * financeNumber(movement.custoUnitario);
-    if (['retirada', 'perda'].includes(movement.tipo)) return sum + value;
-    if (movement.tipo === 'devolucao') return sum - value;
-    return sum;
-  }, 0);
-  return { direct, consumed: Math.max(0, consumed), total: Math.max(0, direct + consumed) };
+export function sectorSheetTotals(sheet = {}) {
+  const recurring = (sheet.itensRecorrentes || []).map(calculateRecurringItem);
+  const eventual = (sheet.despesasEventuais || []).reduce((total, item) => total + nonNegativeFinanceNumber(item.valor), 0);
+  const sum = (field) => recurring.reduce((total, item) => total + item[field], 0);
+  const previous = sum('valorPosicaoAnterior');
+  const input = sum('valorEntrada');
+  const output = sum('valorSaida');
+  const balance = sum('valorSaldo');
+  return {
+    previous,
+    input,
+    output,
+    balance,
+    eventual,
+    acquired: input + eventual,
+    consumed: output + eventual,
+  };
+}
+
+export function retreatBalance(sheets = []) {
+  return sheets.reduce((totals, sheet) => {
+    const current = sectorSheetTotals(sheet);
+    Object.keys(totals).forEach((key) => { totals[key] += current[key]; });
+    return totals;
+  }, { previous: 0, input: 0, output: 0, balance: 0, eventual: 0, acquired: 0, consumed: 0 });
 }

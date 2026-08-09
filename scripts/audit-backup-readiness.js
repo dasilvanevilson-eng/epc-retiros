@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { relationalTableNames } = require('../backupService');
+const legacyFinanceTables = ['financeiro_categorias', 'financeiro_fornecedores', 'financeiro_produtos', 'financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria'];
+const newFinanceTables = ['financeiro_planilhas', 'financeiro_planilha_auditoria'];
 
 const root = path.join(__dirname, '..');
 const envPath = path.join(root, '.env');
@@ -41,10 +43,14 @@ async function countTable(table) {
 
 (async () => {
   const results = [];
-  for (const table of relationalTableNames) results.push(await countTable(table));
+  for (const table of [...relationalTableNames, ...legacyFinanceTables]) results.push(await countTable(table));
   console.table(results);
+  const legacyPresent = results.some((item) => legacyFinanceTables.includes(item.table) && item.status === 'ok');
+  const expectedFinanceTables = legacyPresent ? legacyFinanceTables : newFinanceTables;
+  console.log(`Fase do Financeiro: ${legacyPresent ? 'legado aguardando snapshot e migracao' : 'planilhas por setor'}`);
   console.log(`Administrador de emergencia configurado: ${Boolean(process.env.EPC_ADMIN_USER && process.env.EPC_ADMIN_PASSWORD) ? 'sim' : 'nao'}`);
-  if (results.some((item) => item.status !== 'ok' && item.table !== 'epc_store')) process.exitCode = 2;
+  if (results.some((item) => item.status !== 'ok' && item.table !== 'epc_store' && !legacyFinanceTables.includes(item.table) && !newFinanceTables.includes(item.table))) process.exitCode = 2;
+  if (expectedFinanceTables.some((table) => results.find((item) => item.table === table)?.status !== 'ok')) process.exitCode = 2;
 })().catch((error) => {
   console.error(error.message);
   process.exitCode = 1;

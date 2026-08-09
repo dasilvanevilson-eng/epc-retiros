@@ -25,7 +25,7 @@ const {
 
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 const financeStoreSet = new Set(financeStores);
-const scopedFinanceStores = new Set(['financeiro_despesas', 'financeiro_cotacoes', 'financeiro_movimentos', 'financeiro_auditoria']);
+const scopedFinanceStores = new Set(['financeiro_planilhas', 'financeiro_planilha_auditoria']);
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -223,7 +223,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
 
 function permissionForRequest(resource, id, req) {
   if (financeStoreSet.has(resource)) {
-    if (resource === 'financeiro_auditoria') return req.method === 'GET' ? 'financeiro.ver' : 'financeiro.excluir';
+    if (resource === 'financeiro_planilha_auditoria') return req.method === 'GET' ? 'financeiro.ver' : 'financeiro.excluir';
     if (req.method === 'GET') return 'financeiro.ver';
     if (req.method === 'PUT') return 'financeiro.editar';
     if (req.method === 'DELETE') return 'financeiro.excluir';
@@ -272,88 +272,123 @@ function permissionForRequest(resource, id, req) {
   return null;
 }
 
-const financeOutputTypes = new Set(['retirada', 'perda', 'ajuste_saida']);
-const financeInputTypes = new Set(['entrada', 'devolucao', 'ajuste_entrada']);
 const financeNumber = (value) => {
   const raw = String(value ?? '').trim().replace(/[^\d,.-]/g, '');
   const number = typeof value === 'number' ? value : Number(raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw);
   return Number.isFinite(number) ? number : 0;
 };
-const movementDirection = (movement) => financeOutputTypes.has(movement.tipo) ? -1 : 1;
-const movementQuantity = (movement) => Math.max(0, financeNumber(movement.quantidade));
-const productLedger = (movements, productId, excludeId = '') => movements.filter((item) => item.produtoId === productId && item.id !== excludeId);
-const ledgerBalance = (ledger) => ledger.reduce((total, item) => total + movementDirection(item) * movementQuantity(item), 0);
-const ledgerAverageCost = (ledger) => {
-  let quantity = 0;
-  let value = 0;
-  ledger.forEach((item) => {
-    const qty = movementQuantity(item);
-    const cost = Math.max(0, financeNumber(item.custoUnitario));
-    if (movementDirection(item) > 0) { quantity += qty; value += qty * cost; }
-    else { quantity -= qty; value -= qty * cost; }
-    if (quantity <= 0) { quantity = 0; value = 0; }
-  });
-  return quantity > 0 ? value / quantity : 0;
+const nonNegativeFinanceNumber = (value) => Math.max(0, financeNumber(value));
+const financeSectorKey = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+const retreatFinanceOrder = (retreat = {}) => {
+  const start = String(retreat.dataInicio || '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return `${start}T12:00:00.000Z`;
+  const created = String(retreat.createdAt || '');
+  return Number.isNaN(Date.parse(created)) ? '' : new Date(created).toISOString();
 };
+const previousFinanceRetreat = (retreat, retreats) => {
+  const order = retreatFinanceOrder(retreat);
+  return retreats.filter((item) => item.id !== retreat.id && retreatFinanceOrder(item) < order)
+    .sort((first, second) => retreatFinanceOrder(second).localeCompare(retreatFinanceOrder(first)) || String(second.createdAt || '').localeCompare(String(first.createdAt || '')))[0] || null;
+};
+const normalizeFinanceLine = (line, position, existing = null, previous = null, index = 0) => {
+  const mode = line.modo === 'saldo' ? 'saldo' : 'movimento';
+  const initial = nonNegativeFinanceNumber(position);
+  let input = nonNegativeFinanceNumber(line.entrada);
+  let output = nonNegativeFinanceNumber(line.saida);
+  let balance;
+  if (mode === 'saldo') {
+    balance = nonNegativeFinanceNumber(line.saldo);
+    const delta = balance - initial;
+    input = delta > 0 ? delta : 0;
+    output = delta < 0 ? Math.abs(delta) : 0;
+  } else {
+    balance = initial + input - output;
+    if (balance < -0.000001) throw new Error(`A saida de ${line.descricao || 'um item'} nao pode gerar saldo negativo.`);
+    balance = Math.max(0, balance);
+  }
+  const description = String(line.descricao || '').trim();
+  if (!description) throw new Error('Toda despesa recorrente precisa de descricao.');
+  return {
+    id: existing?.id || String(line.id || '').trim() || randomUUID(),
+    chaveRecorrencia: existing?.chaveRecorrencia || previous?.chaveRecorrencia || String(line.chaveRecorrencia || '').trim() || randomUUID(),
+    itemOrigemId: existing?.itemOrigemId || previous?.id || String(line.itemOrigemId || '').trim(),
+    descricao: description,
+    unidade: String(line.unidade || 'un').trim() || 'un',
+    modo: mode,
+    posicaoAnterior: initial,
+    entrada: input,
+    saida: output,
+    saldo: balance,
+    precoUnitario: nonNegativeFinanceNumber(line.precoUnitario),
+    ordem: index + 1,
+  };
+};
+
+async function saveFinanceAudit({ sheet, action, reason, data, session }) {
+  await saveRecord('financeiro_planilha_auditoria', {
+    id: randomUUID(), retiroId: sheet.retiroId, setor: sheet.setor, setorChave: sheet.setorChave,
+    planilhaId: sheet.id, acao: action, motivo: String(reason || '').trim(), dados: data,
+    responsavel: session?.username || session?.sub || session?.id || '', realizadoEm: new Date().toISOString(),
+  });
+}
 
 async function normalizeFinanceRecord(resource, record, session) {
   const now = new Date().toISOString();
   const next = { ...record, updatedAt: now, atualizadoPor: session?.username || session?.sub || session?.id || '' };
   if (!next.createdAt) next.createdAt = now;
-  if (resource === 'financeiro_despesas') {
-    if (!next.retiroId) throw new Error('A despesa deve estar vinculada ao retiro em foco.');
-    if (!['pendente', 'paga', 'cancelada'].includes(next.status)) next.status = 'pendente';
-    if (!Array.isArray(next.itens) || !next.itens.length) throw new Error('Inclua ao menos um item na despesa.');
-    next.itens = next.itens.map((item) => {
-      const quantidade = financeNumber(item.quantidade);
-      const valorUnitario = financeNumber(item.valorUnitario);
-      if (quantidade <= 0 || valorUnitario < 0) throw new Error('Quantidade e valor dos itens devem ser validos.');
-      return { ...item, quantidade, valorUnitario, total: quantidade * valorUnitario };
-    });
-    next.total = next.itens.reduce((sum, item) => sum + item.total, 0) + Math.max(0, financeNumber(next.frete)) - Math.max(0, financeNumber(next.desconto));
-    if (next.total < 0) throw new Error('O desconto nao pode superar o total da despesa.');
-  }
-  if (resource === 'financeiro_cotacoes') {
-    if (!next.retiroId) throw new Error('A cotacao deve estar vinculada ao retiro em foco.');
-    if (!Array.isArray(next.itens) || !next.itens.length) throw new Error('Inclua ao menos um item na cotacao.');
-    if (!Array.isArray(next.ofertas)) next.ofertas = [];
-    next.status = next.status || 'aberta';
-  }
-  if (resource === 'financeiro_movimentos') {
-    if (!financeInputTypes.has(next.tipo) && !financeOutputTypes.has(next.tipo)) throw new Error('Tipo de movimento de estoque invalido.');
-    if (!next.produtoId || movementQuantity(next) <= 0) throw new Error('Informe produto e quantidade validos.');
-    const movements = await listRecords('financeiro_movimentos');
-    if (next.chaveOrigem && movements.some((item) => item.id !== next.id && item.chaveOrigem === next.chaveOrigem)) throw new Error('Esta entrada de estoque ja foi confirmada.');
-    const ledger = productLedger(movements, next.produtoId, next.id);
-    const balance = ledgerBalance(ledger);
-    const quantity = movementQuantity(next);
-    if (financeOutputTypes.has(next.tipo) && quantity > balance + 0.000001) throw new Error(`Estoque insuficiente. Saldo disponivel: ${balance}.`);
-    const origin = next.origemMovimentoId ? movements.find((item) => item.id === next.origemMovimentoId) : null;
-    const cost = financeInputTypes.has(next.tipo) && next.tipo !== 'devolucao'
-      ? Math.max(0, financeNumber(next.custoUnitario))
-      : Math.max(0, financeNumber(origin?.custoUnitario) || ledgerAverageCost(ledger));
-    next.quantidade = quantity;
-    next.custoUnitario = cost;
-    next.custoTotal = quantity * cost;
-    next.saldoAnterior = balance;
-    next.saldoPosterior = balance + movementDirection(next) * quantity;
-  }
-  return next;
-}
-
-async function auditFinanceDeletion(resource, record, reason, session) {
-  if (!String(reason || '').trim()) throw new Error('Informe o motivo da exclusao.');
-  await saveRecord('financeiro_auditoria', {
-    id: randomUUID(),
-    retiroId: record.retiroId || '',
-    acao: 'exclusao',
-    recurso: resource,
-    registroId: record.id,
-    motivo: String(reason).trim(),
-    responsavel: session?.username || session?.sub || session?.id || '',
-    realizadoEm: new Date().toISOString(),
-    dados: record,
+  if (resource !== 'financeiro_planilhas') return next;
+  if (!next.retiroId) throw new Error('A planilha deve estar vinculada ao retiro em foco.');
+  const retreat = await getRecord('retiros', next.retiroId);
+  if (!retreat) throw new Error('Retiro em foco nao encontrado.');
+  const sectorKey = financeSectorKey(next.setorChave || next.setor);
+  const configuredSector = (retreat.setores || []).find((sector) => financeSectorKey(sector) === sectorKey);
+  const sheets = await listRecords('financeiro_planilhas');
+  const current = sheets.find((sheet) => sheet.id === next.id) || null;
+  if (!configuredSector && !current) throw new Error('O setor nao faz parte da configuracao do retiro em foco.');
+  if (sheets.some((sheet) => sheet.id !== next.id && sheet.retiroId === next.retiroId && sheet.setorChave === sectorKey)) throw new Error('A planilha deste setor ja foi inicializada. Recarregue a pagina.');
+  const retreats = await listRecords('retiros');
+  const previousRetreat = previousFinanceRetreat(retreat, retreats);
+  const previousSheet = previousRetreat ? sheets.find((sheet) => sheet.retiroId === previousRetreat.id && sheet.setorChave === sectorKey) : null;
+  const currentLines = current?.itensRecorrentes || [];
+  const previousLines = previousSheet?.itensRecorrentes || [];
+  const requestedLines = Array.isArray(next.itensRecorrentes) ? next.itensRecorrentes : [];
+  const inheritedLines = !current && previousSheet ? previousLines.map((previous) => requestedLines.find((line) => line.chaveRecorrencia === previous.chaveRecorrencia || line.itemOrigemId === previous.id) || {
+    id: '', chaveRecorrencia: previous.chaveRecorrencia || previous.id, itemOrigemId: previous.id,
+    descricao: previous.descricao, unidade: previous.unidade, modo: 'movimento', entrada: 0, saida: 0,
+    saldo: previous.saldo, precoUnitario: previous.precoUnitario,
+  }) : [];
+  const inheritedKeys = new Set(inheritedLines.map((line) => line.chaveRecorrencia || line.itemOrigemId));
+  const incomingLines = current ? requestedLines : [...inheritedLines, ...requestedLines.filter((line) => !inheritedKeys.has(line.chaveRecorrencia || line.itemOrigemId))];
+  if (incomingLines.length > 500) throw new Error('A planilha excede o limite de 500 despesas recorrentes.');
+  next.itensRecorrentes = incomingLines.map((line, index) => {
+    const existing = currentLines.find((item) => item.id === line.id || (line.chaveRecorrencia && item.chaveRecorrencia === line.chaveRecorrencia)) || null;
+    const previous = previousLines.find((item) => item.chaveRecorrencia === line.chaveRecorrencia || item.id === line.itemOrigemId) || null;
+    const position = existing ? existing.posicaoAnterior : previous ? previous.saldo : 0;
+    return normalizeFinanceLine(line, position, existing, previous, index);
   });
+  const incomingEventual = Array.isArray(next.despesasEventuais) ? next.despesasEventuais : [];
+  if (incomingEventual.length > 500) throw new Error('A planilha excede o limite de 500 despesas eventuais.');
+  next.despesasEventuais = incomingEventual.map((item, index) => {
+    const description = String(item.descricao || '').trim();
+    if (!description) throw new Error('Toda despesa eventual precisa de descricao.');
+    return { id: String(item.id || '').trim() || randomUUID(), descricao: description, valor: nonNegativeFinanceNumber(item.valor), ordem: index + 1 };
+  });
+  const removed = current ? [
+    ...currentLines.filter((item) => !next.itensRecorrentes.some((incoming) => incoming.id === item.id)).map((item) => ({ tipo: 'recorrente', item })),
+    ...(current.despesasEventuais || []).filter((item) => !next.despesasEventuais.some((incoming) => incoming.id === item.id)).map((item) => ({ tipo: 'eventual', item })),
+  ] : [];
+  if (removed.length) {
+    const reason = String(next.motivoExclusao || '').trim();
+    if (!can(session, 'financeiro.excluir')) throw Object.assign(new Error('Sem permissao para excluir itens financeiros.'), { statusCode: 403 });
+    if (!reason) throw new Error('Informe o motivo da exclusao dos itens financeiros.');
+    for (const removedItem of removed) await saveFinanceAudit({ sheet: current, action: 'exclusao_item', reason, data: removedItem, session });
+  }
+  delete next.motivoExclusao;
+  next.setor = current?.setor || configuredSector || String(next.setor || '').trim();
+  next.setorChave = current?.setorChave || sectorKey;
+  next.retiroOrigemId = current?.retiroOrigemId || previousSheet?.retiroId || '';
+  next.inicializada = true;
+  return next;
 }
 
 function isRetreatConcludeUpdate(current = {}, next = {}) {
@@ -422,7 +457,6 @@ async function currentSession(req) {
 async function listAuthorizedRecords(resource, session) {
   const records = await listRecords(resource);
   if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? records.map((retreat) => tagRetreatAccess(session, retreat)) : records;
-  if (resource === 'financeiro_movimentos') return records;
   if (resource === 'retiros') return records.map((retreat) => tagRetreatAccess(session, retreat));
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return filterByAllowedRetreats(session, records);
   if (scopedFinanceStores.has(resource)) return filterByAllowedRetreats(session, records);
@@ -837,7 +871,7 @@ async function handleApi(req, res, pathname) {
       if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: configuracoes de cracha disponiveis apenas para consulta.');
     }
     if (financeStoreSet.has(resource)) {
-      if (resource === 'financeiro_auditoria') return sendError(res, 405, 'A auditoria financeira e somente leitura.');
+      if (resource === 'financeiro_planilha_auditoria') return sendError(res, 405, 'A auditoria financeira e somente leitura.');
       if (scopedFinanceStores.has(resource)) {
         const retreat = await getRecord('retiros', record.retiroId).catch(() => null);
         if (!retreat) return sendError(res, 404, 'Retiro em foco nao encontrado.');
@@ -868,7 +902,7 @@ async function handleApi(req, res, pathname) {
       return sendNoContent(res);
     }
     if (financeStoreSet.has(resource)) {
-      if (resource === 'financeiro_auditoria') return sendError(res, 405, 'A auditoria financeira nao pode ser excluida.');
+      if (resource === 'financeiro_planilha_auditoria') return sendError(res, 405, 'A auditoria financeira nao pode ser excluida.');
       const recordId = decodeURIComponent(id);
       const current = await getRecord(resource, recordId);
       if (!current) return sendError(res, 404, 'Registro financeiro nao encontrado.');
@@ -878,29 +912,8 @@ async function handleApi(req, res, pathname) {
       }
       const url = new URL(req.url || '/', 'https://familiaepcindaial.local');
       const reason = url.searchParams.get('motivo') || '';
-      if (resource === 'financeiro_despesas' || resource === 'financeiro_movimentos') {
-        const movements = await listRecords('financeiro_movimentos');
-        const linked = resource === 'financeiro_despesas'
-          ? movements.filter((item) => item.despesaId === current.id && !item.reversaoDe)
-          : [current];
-        for (const movement of linked) {
-          const reverseType = financeOutputTypes.has(movement.tipo) ? 'ajuste_entrada' : 'ajuste_saida';
-          const reverse = await normalizeFinanceRecord('financeiro_movimentos', {
-            id: randomUUID(),
-            retiroId: movement.retiroId || current.retiroId || '',
-            produtoId: movement.produtoId,
-            tipo: reverseType,
-            quantidade: movement.quantidade,
-            custoUnitario: movement.custoUnitario,
-            setor: movement.setor || '',
-            observacao: `Reversao por exclusao: ${String(reason).trim()}`,
-            reversaoDe: movement.id,
-            despesaId: resource === 'financeiro_despesas' ? current.id : (movement.despesaId || ''),
-          }, session);
-          await saveRecord('financeiro_movimentos', reverse);
-        }
-      }
-      await auditFinanceDeletion(resource, current, reason, session);
+      if (!String(reason || '').trim()) return sendError(res, 400, 'Informe o motivo da exclusao.');
+      await saveFinanceAudit({ sheet: current, action: 'exclusao_planilha', reason, data: current, session });
       await deleteRecord(resource, recordId);
       return sendNoContent(res);
     }
