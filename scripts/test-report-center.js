@@ -23,6 +23,7 @@ for (const title of [
   'Crachás por comunidade', 'Crachás por setor', 'Alergias a medicamentos', 'Aniversariantes dos cursistas',
   'Camisetas por casal', 'Camisetas por tamanho', 'Intolerâncias alimentares', 'Medicação contínua',
   'Medicação sugerida pelos pais', 'Necessidade de acolhimento', 'Problemas de saúde', 'Imprimir fichas completas',
+  'Declaração de Participação',
   'Aniversariantes da equipe', 'Fotos solicitadas', 'Pessoas por grupo', 'Pessoas por setor',
   'Solicitações de quadrante impresso', 'Crianças cadastradas', 'Crianças com intolerância alimentar',
   'Crianças com problema de saúde',

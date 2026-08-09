@@ -32,7 +32,7 @@
     "test:student-registration-print": "node scripts/test-student-registration-print.js",
     "test:student-search-scroll": "node scripts/test-student-search-scroll.js",
     "test:student-photos": "node scripts/test-student-photos.js && node scripts/test-student-photo-deletion.js && node scripts/test-student-photo-api-deletion.js",
-    "test:reports": "node scripts/test-report-center.js",
+    "test:reports": "node scripts/test-report-center.js && node scripts/test-participation-declaration.js",
     "test:financeiro": "node scripts/test-financeiro-core.mjs",
     "test:sector-intolerances": "node scripts/test-public-sector-intolerances.js",
     "audit:backup": "node scripts/audit-backup-readiness.js",

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" role="img" aria-labelledby="title desc">
+  <title id="title">Paróquia Santa Inês</title>
+  <desc id="desc">Marca da Paróquia Santa Inês de Indaial</desc>
+  <g fill="none" stroke="#55aeba" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M205 174L270 54l65 120M365 174L450 85l85 89M565 174L630 54l65 120"/>
+    <path d="M270 54V18m-18 0h36M450 85V35m-18 0h36M630 54V18m-18 0h36"/>
+  </g>
+  <path fill="#55aeba" d="M432 174v-62c0-14 8-25 18-25s18 11 18 25v62z"/>
+  <text x="450" y="158" fill="#55aeba" font-family="Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="8" text-anchor="middle">PARÓQUIA</text>
+  <text x="450" y="272" fill="#f06d71" font-family="Georgia, 'Times New Roman', serif" font-size="105" text-anchor="middle">SANTA INÊS</text>
+  <path d="M113 292h674" stroke="#f06d71" stroke-width="9"/>
+</svg>
