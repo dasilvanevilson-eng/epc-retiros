@@ -7370,6 +7370,11 @@ body:has(.login-shell) {
 .finance-report-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:20px; }
 .finance-sheet-form { display:grid; gap:18px; }
 .finance-sheet-panel { margin:0; overflow:hidden; }
+.finance-recurring-heading { flex:1; min-width:0; }
+.finance-recurring-search { display:grid; width:min(100%,360px); gap:5px; margin-top:12px; color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.035em; }
+.finance-recurring-search input { width:100%; min-height:40px; padding:9px 11px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font:500 13px 'DM Sans',sans-serif; text-transform:none; letter-spacing:normal; }
+.finance-recurring-search input:focus { border-color:var(--leaf); outline:2px solid rgba(49,93,57,.14); outline-offset:1px; }
+.finance-sheet-table tr[hidden] { display:none; }
 .finance-sheet-scroll { width:100%; overflow-x:auto; }
 .finance-sheet-table { width:100%; min-width:1580px; border-collapse:collapse; }
 .finance-eventual-table { width:100%; min-width:800px; border-collapse:collapse; }

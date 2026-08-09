@@ -21,6 +21,7 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character)
 const createId = () => globalThis.crypto?.randomUUID?.() || `finance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const inputValue = (value) => Number.isFinite(Number(value)) ? String(Number(value)) : '0';
 const supplierListId = 'finance-supplier-options';
+const normalizeFinanceSearch = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
 
 const supplierOptionsHtml = (sheets = []) => {
   const suppliers = new Map();
@@ -92,9 +93,10 @@ function sectorSheetHtml(sheet, state, permissions, initializationError = '') {
   return `<section class="finance-section-heading"><div><p class="eyebrow">Movimentação por setor</p><h2>${escapeHtml(sheet.setor)}</h2><p>${inherited ? `Posição e preços herdados de ${escapeHtml(state.previousRetreat.nome)}.` : 'Sem posição anterior disponível; itens novos iniciam zerados.'}</p></div></section>
   <form id="finance-sector-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
-    <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas recorrentes</h2><p>Controle resumido de entrada, saída e saldo, sem lançamento de notas.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-recurring>Adicionar despesa</button>' : ''}</div>
+    <section class="panel finance-sheet-panel"><div class="panel-heading"><div class="finance-recurring-heading"><h2>Despesas recorrentes</h2><p>Controle resumido de entrada, saída e saldo, sem lançamento de notas.</p><label class="finance-recurring-search"><span>Buscar despesa</span><input type="search" data-recurring-search placeholder="Digite a descrição" autocomplete="off"></label></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-recurring>Adicionar despesa</button>' : ''}</div>
       <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>Ordem</th><th>Despesa</th><th>Unidade</th><th>Fornecedor</th><th>Posição anterior</th><th>Lançamento</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valores</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.itensRecorrentes?.length ? '' : '<p class="empty-state" data-recurring-empty>Nenhuma despesa recorrente neste setor.</p>'}
+      <p class="empty-state" data-recurring-no-results hidden>Nenhuma despesa encontrada para esta busca.</p>
     </section>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
       <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Ordem</th><th>Descrição</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
@@ -271,10 +273,28 @@ function moveRow(button) {
   if (button.dataset.move === 'down' && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
 }
 
+function filterRecurringRows(root) {
+  const query = normalizeFinanceSearch(root.querySelector('[data-recurring-search]')?.value);
+  const rows = [...root.querySelectorAll('[data-finance-recurring-row]')];
+  let visibleRows = 0;
+  rows.forEach((row) => {
+    const description = normalizeFinanceSearch(row.querySelector('[data-field="descricao"]')?.value);
+    row.hidden = Boolean(query) && !description.includes(query);
+    if (!row.hidden) visibleRows += 1;
+  });
+  const noResults = root.querySelector('[data-recurring-no-results]');
+  if (noResults) noResults.hidden = !query || visibleRows > 0 || rows.length === 0;
+}
+
 function wireSheet(root, sheet, state, context, permissions) {
   root.addEventListener('input', (event) => {
+    if (event.target.matches('[data-recurring-search]')) {
+      filterRecurringRows(root);
+      return;
+    }
     const row = event.target.closest('[data-finance-recurring-row]');
     if (row && ['entrada', 'saida', 'saldo', 'precoUnitario'].includes(event.target.dataset.field)) refreshRow(row, event.target.dataset.field);
+    if (row && event.target.dataset.field === 'descricao') filterRecurringRows(root);
     refreshSectorTotals(root);
   });
   root.addEventListener('change', (event) => {
@@ -290,6 +310,7 @@ function wireSheet(root, sheet, state, context, permissions) {
     if (addRecurring) {
       root.querySelector('[data-recurring-body]').insertAdjacentHTML('beforeend', recurringRowHtml({ id: '', chaveRecorrencia: createId(), unidade: 'un', modo: 'movimento' }, permissions));
       root.querySelector('[data-recurring-empty]')?.remove();
+      filterRecurringRows(root);
     }
     if (addEventual) {
       root.querySelector('[data-eventual-body]').insertAdjacentHTML('beforeend', eventualRowHtml({}, permissions));
@@ -304,6 +325,7 @@ function wireSheet(root, sheet, state, context, permissions) {
         pendingDeletionReason = pendingDeletionReason ? `${pendingDeletionReason}; ${reason}` : reason;
       }
       row.remove();
+      filterRecurringRows(root);
       refreshSectorTotals(root);
     }
   });
