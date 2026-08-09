@@ -6478,10 +6478,29 @@ async function listParticipationDeclarationParticipants(retreat) {
   return records.flatMap((record, index) => ['Dele', 'Dela'].map((side) => participationDeclarationParticipant({ record, side, studentFormType, index })));
 }
 
+function listTeamParticipationDeclarationParticipants(retreat) {
+  return enrolments
+    .filter((entry) => entry.retiroId === retreat.id)
+    .map((entry, index) => {
+      const entryCpf = normalizeCpf(entry.pessoaId);
+      const person = people.find((item) => item.id === entry.pessoaId || normalizeCpf(item.cpf || item.id) === entryCpf) || {};
+      const historical = entry.dadosPessoais || {};
+      const cpf = normalizeCpf(historical.cpf || person.cpf || entry.pessoaId || person.id);
+      const sectors = Array.isArray(entry.setores) ? entry.setores.filter(Boolean) : [];
+      return {
+        key: `team:${entry.id || entry.pessoaId || index}`,
+        name: String(entry.nome || historical.nome || person.nome || '').trim(),
+        cpf,
+        fileNumber: '',
+        sourceLabel: `Equipe de trabalho${sectors.length ? ` · ${sectors.join(', ')}` : ' · Setor não informado'}${entry.casalId ? ' · Cadastro de casal' : ''}`,
+      };
+    });
+}
+
 const participationDeclarationSearchMatches = (participant, query) => {
   const normalizedQuery = normalizeText(query);
   const cpfQuery = normalizeCpf(query);
-  const searchable = normalizeText([participant.name, participant.cpf, participant.cpf && formatCpf(participant.cpf), participant.fileNumber].filter(Boolean).join(' '));
+  const searchable = normalizeText([participant.name, participant.cpf, participant.cpf && formatCpf(participant.cpf), participant.fileNumber, participant.sourceLabel].filter(Boolean).join(' '));
   return !normalizedQuery || searchable.includes(normalizedQuery) || Boolean(cpfQuery && participant.cpf.includes(cpfQuery));
 };
 
@@ -6503,15 +6522,16 @@ const participationDeclarationPeriod = (startValue, endValue) => {
   return `no período de ${participationDeclarationLongDate(start)} a ${participationDeclarationLongDate(end)}`;
 };
 
-function girassolParticipationDeclarationDocument({ retreat, participant }) {
+function girassolParticipationDeclarationDocument({ retreat, participant, audience = 'students' }) {
   const period = participationDeclarationPeriod(retreat.dataInicio, retreat.dataTermino);
   const issueDate = participationDeclarationLongDate(retreat.dataInicio);
   const girassolLogo = new URL('assets/girassol.png', document.baseURI).href;
   const epcLogo = new URL('assets/epc.png', document.baseURI).href;
   const parishLogo = new URL('assets/paroquia-santa-ines.svg', document.baseURI).href;
+  const participationRole = audience === 'team' ? 'voluntário(a)' : 'cursista';
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Declaração de Participação - ${escapeHtml(participant.name)}</title><style>
     @page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000;font-family:"Times New Roman",serif}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.declaration-page{display:flex;flex-direction:column;width:210mm;height:297mm;padding:26mm 25mm 17mm}.organization{margin:0;text-align:center;font-size:15pt;font-weight:700;line-height:1.2}.declaration-title{margin:19mm 0 18mm;text-align:center;font-size:18pt;line-height:1.2}.declaration-body{margin:0;font-size:12pt;line-height:1.85;text-align:justify;text-indent:12mm}.declaration-body+.declaration-body{margin-top:4mm}.declaration-value{font-weight:700}.declaration-place{margin:8mm 0 0;font-size:12pt;line-height:1.55}.declaration-contact{margin:9mm 0 0;font-size:12pt;line-height:1.55;text-align:justify}.declaration-date{margin:9mm 0 0;font-size:12pt}.signature{width:92mm;margin:13mm auto 0;text-align:center;font-size:11pt;line-height:1.25}.signature-line{border-top:.35mm solid #000;padding-top:2mm}.signature strong,.signature span{display:block}.association{margin-top:6mm;text-align:center;font:700 11pt Arial,sans-serif;line-height:1.35}.association span{display:block}.declaration-logos{display:grid;grid-template-columns:2.2fr .95fr 1.2fr;align-items:center;gap:8mm;margin-top:auto}.declaration-logos img{display:block;width:100%;height:31mm;object-fit:contain}.declaration-logos img:first-child{height:27mm}@media screen{body{display:grid;place-items:start center;min-height:100vh;padding:10mm;background:#e8ece7}.declaration-page{background:#fff;box-shadow:0 10px 30px #1f2c2830}}@media print{body{background:#fff}.declaration-page{box-shadow:none}}
-  </style></head><body><main class="declaration-page"><p class="organization">FAMÍLIA EPC - PARÓQUIA SANTA INÊS - INDAIAL - SC</p><h1 class="declaration-title">DECLARAÇÃO DE PARTICIPAÇÃO</h1><p class="declaration-body">Declaro para os devidos fins que <span class="declaration-value">${escapeHtml(participant.name)}</span>, documento <span class="declaration-value">${escapeHtml(formatCpf(participant.cpf))}</span>, participou do curso/retiro denominado <strong>GIRASSOL</strong>, ${escapeHtml(period)}, onde participou como cursista na seguinte atividade: <strong>EVANGELIZAÇÃO DE CRIANÇAS DE 07 A 10 ANOS</strong>, (Das 8h às 18:30h).</p><p class="declaration-place"><strong>Local:</strong> Paróquia Santa Inês - R. Mal. Floriano Peixoto, 362 - Centro, Indaial - SC.</p><p class="declaration-contact">Dúvidas ou esclarecimentos podem ser obtidas com a Coordenação Geral pelos contatos a seguir listados.</p><p class="declaration-date">Indaial, ${escapeHtml(issueDate)}.</p><section class="signature"><div class="signature-line"><strong>EVANDRO BIEGER/ LUCIANA A. N. BIEGER</strong><span>COORDENAÇÃO GERAL</span><span>FAMÍLIA EPC</span><span>47 - 988328012</span></div></section><p class="association"><span>Associação dos Amigos do Encontro de Pais com Cristo de Indaial</span><span>CNPJ 52.109.946/0001-94</span></p><footer class="declaration-logos"><img src="${escapeHtml(parishLogo)}" alt="Paróquia Santa Inês"><img src="${escapeHtml(epcLogo)}" alt="Encontro de Pais com Cristo"><img src="${escapeHtml(girassolLogo)}" alt="Girassol - Ama pra valer"></footer></main></body></html>`;
+  </style></head><body><main class="declaration-page"><p class="organization">FAMÍLIA EPC - PARÓQUIA SANTA INÊS - INDAIAL - SC</p><h1 class="declaration-title">DECLARAÇÃO DE PARTICIPAÇÃO</h1><p class="declaration-body">Declaro para os devidos fins que <span class="declaration-value">${escapeHtml(participant.name)}</span>, documento <span class="declaration-value">${escapeHtml(formatCpf(participant.cpf))}</span>, participou do curso/retiro denominado <strong>GIRASSOL</strong>, ${escapeHtml(period)}, onde participou como ${participationRole} na seguinte atividade: <strong>EVANGELIZAÇÃO DE CRIANÇAS DE 07 A 10 ANOS</strong>, (Das 8h às 18:30h).</p><p class="declaration-place"><strong>Local:</strong> Paróquia Santa Inês - R. Mal. Floriano Peixoto, 362 - Centro, Indaial - SC.</p><p class="declaration-contact">Dúvidas ou esclarecimentos podem ser obtidas com a Coordenação Geral pelos contatos a seguir listados.</p><p class="declaration-date">Indaial, ${escapeHtml(issueDate)}.</p><section class="signature"><div class="signature-line"><strong>EVANDRO BIEGER/ LUCIANA A. N. BIEGER</strong><span>COORDENAÇÃO GERAL</span><span>FAMÍLIA EPC</span><span>47 - 988328012</span></div></section><p class="association"><span>Associação dos Amigos do Encontro de Pais com Cristo de Indaial</span><span>CNPJ 52.109.946/0001-94</span></p><footer class="declaration-logos"><img src="${escapeHtml(parishLogo)}" alt="Paróquia Santa Inês"><img src="${escapeHtml(epcLogo)}" alt="Encontro de Pais com Cristo"><img src="${escapeHtml(girassolLogo)}" alt="Girassol - Ama pra valer"></footer></main></body></html>`;
 }
 
 function openParticipationDeclarationPrint(documentHtml) {
@@ -6532,15 +6552,18 @@ function openParticipationDeclarationPrint(documentHtml) {
   return true;
 }
 
-async function openParticipationDeclarationReport() {
+async function openParticipationDeclarationReport({ audience = 'students' } = {}) {
   const retreat = selectedRetreat();
   if (!retreat) throw new Error('Selecione um retiro em foco antes de gerar a declaração.');
-  const participants = (await listParticipationDeclarationParticipants(retreat))
+  const isTeam = audience === 'team';
+  const audienceLabel = isTeam ? 'Equipe de trabalho' : 'Cursistas';
+  const personLabel = isTeam ? 'integrante da equipe' : 'cursista';
+  const participants = (isTeam ? listTeamParticipationDeclarationParticipants(retreat) : await listParticipationDeclarationParticipants(retreat))
     .sort((first, second) => operationalReportCollator.compare(first.name || 'Sem nome', second.name || 'Sem nome'));
   const suggestedType = participationDeclarationTypes.some((item) => item.type === retreat.tipoRetiro) ? retreat.tipoRetiro : '';
   const overlay = document.createElement('div');
   overlay.className = 'receiver-sector-overlay participation-declaration-overlay';
-  overlay.innerHTML = `<section class="receiver-sector-dialog participation-declaration-dialog" role="dialog" aria-modal="true" aria-labelledby="participation-declaration-title"><div class="panel-heading"><div><p class="eyebrow">Cursistas · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="participation-declaration-title">Declaração de Participação</h2><p>Selecione o modelo e carregue os dados de uma pessoa cadastrada neste retiro.</p></div></div><form class="participation-declaration-form"><label class="field"><span>Tipo da declaração</span><select name="declarationType"><option value="" disabled ${suggestedType ? '' : 'selected'}>Selecione o tipo do retiro</option>${participationDeclarationTypes.map((item) => `<option value="${escapeHtml(item.type)}" ${item.type === suggestedType ? 'selected' : ''}>${escapeHtml(item.label)}${item.available ? '' : ' - modelo ainda não definido'}</option>`).join('')}</select></label><p class="participation-declaration-model-status" data-declaration-model-status role="status"></p><label class="field participation-declaration-search"><span>Buscar cursista</span><input name="studentSearch" type="search" autocomplete="off" placeholder="Digite nome, CPF ou número da ficha" ${participants.length ? '' : 'disabled'}></label><div class="participation-declaration-results" data-declaration-results hidden></div><section class="participation-declaration-selected" data-declaration-selected hidden></section><p class="form-message" data-declaration-message aria-live="polite">${participants.length ? 'Busque e selecione o cursista.' : 'Não há cursistas cadastrados neste retiro.'}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-declaration-close>Cancelar</button><button type="submit" class="primary-button" disabled>Visualizar e imprimir</button></div></form></section>`;
+  overlay.innerHTML = `<section class="receiver-sector-dialog participation-declaration-dialog" role="dialog" aria-modal="true" aria-labelledby="participation-declaration-title"><div class="panel-heading"><div><p class="eyebrow">${audienceLabel} · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="participation-declaration-title">Declaração de Participação</h2><p>Selecione o modelo e carregue os dados de uma pessoa cadastrada neste retiro.</p></div></div><form class="participation-declaration-form"><label class="field"><span>Tipo da declaração</span><select name="declarationType"><option value="" disabled ${suggestedType ? '' : 'selected'}>Selecione o tipo do retiro</option>${participationDeclarationTypes.map((item) => `<option value="${escapeHtml(item.type)}" ${item.type === suggestedType ? 'selected' : ''}>${escapeHtml(item.label)}${item.available ? '' : ' - modelo ainda não definido'}</option>`).join('')}</select></label><p class="participation-declaration-model-status" data-declaration-model-status role="status"></p><label class="field participation-declaration-search"><span>${isTeam ? 'Buscar equipe de trabalho' : 'Buscar cursista'}</span><input name="studentSearch" type="search" autocomplete="off" placeholder="${isTeam ? 'Digite nome, CPF ou setor' : 'Digite nome, CPF ou número da ficha'}" ${participants.length ? '' : 'disabled'}></label><div class="participation-declaration-results" data-declaration-results hidden></div><section class="participation-declaration-selected" data-declaration-selected hidden></section><p class="form-message" data-declaration-message aria-live="polite">${participants.length ? `Busque e selecione o ${personLabel}.` : `Não há ${isTeam ? 'integrantes da equipe de trabalho' : 'cursistas'} cadastrados neste retiro.`}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-declaration-close>Cancelar</button><button type="submit" class="primary-button" disabled>Visualizar e imprimir</button></div></form></section>`;
   app.append(overlay);
   const form = overlay.querySelector('form');
   const typeSelect = form.elements.declarationType;
@@ -6554,8 +6577,8 @@ async function openParticipationDeclarationReport() {
   const close = () => overlay.remove();
   const selectedModel = () => participationDeclarationModels[typeSelect.value];
   const missingData = () => {
-    if (!selectedParticipant?.name) return 'O cursista selecionado não possui nome cadastrado.';
-    if (!selectedParticipant?.cpf) return 'O cursista selecionado não possui CPF cadastrado.';
+    if (!selectedParticipant?.name) return `O ${personLabel} selecionado não possui nome cadastrado.`;
+    if (!selectedParticipant?.cpf) return `O ${personLabel} selecionado não possui CPF cadastrado.`;
     if (!normalizeDateInput(retreat.dataInicio) || !normalizeDateInput(retreat.dataTermino)) return 'As datas inicial e final do retiro precisam estar preenchidas nas Configurações.';
     if (normalizeDateInput(retreat.dataTermino) < normalizeDateInput(retreat.dataInicio)) return 'A data final do retiro não pode ser anterior à data inicial.';
     return '';
@@ -6572,7 +6595,7 @@ async function openParticipationDeclarationReport() {
   const selectParticipant = (participant) => {
     selectedParticipant = participant;
     selectedSummary.hidden = false;
-    selectedSummary.innerHTML = `<span>Cursista selecionado</span><strong>${escapeHtml(participant.name || 'Nome não informado')}</strong><small>${participant.cpf ? formatCpf(participant.cpf) : 'CPF não informado'}${participant.fileNumber ? ` · Ficha ${escapeHtml(participant.fileNumber)}` : ''} · ${escapeHtml(participant.sourceLabel)}</small>`;
+    selectedSummary.innerHTML = `<span>${isTeam ? 'Integrante selecionado' : 'Cursista selecionado'}</span><strong>${escapeHtml(participant.name || 'Nome não informado')}</strong><small>${participant.cpf ? formatCpf(participant.cpf) : 'CPF não informado'}${participant.fileNumber ? ` · Ficha ${escapeHtml(participant.fileNumber)}` : ''} · ${escapeHtml(participant.sourceLabel)}</small>`;
     results.hidden = true;
     searchInput.value = participant.name;
     updateAvailability();
@@ -6586,17 +6609,17 @@ async function openParticipationDeclarationReport() {
     if (!query) {
       results.hidden = true;
       results.innerHTML = '';
-      message.textContent = participants.length ? 'Busque e selecione o cursista.' : 'Não há cursistas cadastrados neste retiro.';
+      message.textContent = participants.length ? `Busque e selecione o ${personLabel}.` : `Não há ${isTeam ? 'integrantes da equipe de trabalho' : 'cursistas'} cadastrados neste retiro.`;
       return;
     }
     const matches = participants.filter((participant) => participationDeclarationSearchMatches(participant, query)).slice(0, 30);
     results.hidden = false;
-    results.innerHTML = matches.length ? matches.map((participant) => `<button type="button" data-declaration-participant="${escapeHtml(participant.key)}"><strong>${escapeHtml(participant.name || 'Nome não informado')}</strong><span>${participant.cpf ? formatCpf(participant.cpf) : 'CPF não informado'}${participant.fileNumber ? ` · Ficha ${escapeHtml(participant.fileNumber)}` : ''}</span><small>${escapeHtml(participant.sourceLabel)}</small></button>`).join('') : '<p>Nenhum cursista encontrado neste retiro.</p>';
+    results.innerHTML = matches.length ? matches.map((participant) => `<button type="button" data-declaration-participant="${escapeHtml(participant.key)}"><strong>${escapeHtml(participant.name || 'Nome não informado')}</strong><span>${participant.cpf ? formatCpf(participant.cpf) : 'CPF não informado'}${participant.fileNumber ? ` · Ficha ${escapeHtml(participant.fileNumber)}` : ''}</span><small>${escapeHtml(participant.sourceLabel)}</small></button>`).join('') : `<p>Nenhum ${personLabel} encontrado neste retiro.</p>`;
     results.querySelectorAll('[data-declaration-participant]').forEach((button) => button.addEventListener('click', () => {
       const participant = participants.find((item) => item.key === button.dataset.declarationParticipant);
       if (participant) selectParticipant(participant);
     }));
-    message.textContent = matches.length ? `${matches.length} resultado(s) encontrado(s).` : 'Nenhum cursista encontrado neste retiro.';
+    message.textContent = matches.length ? `${matches.length} resultado(s) encontrado(s).` : `Nenhum ${personLabel} encontrado neste retiro.`;
   };
   overlay.querySelector('[data-declaration-close]').addEventListener('click', close);
   overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
@@ -6608,9 +6631,9 @@ async function openParticipationDeclarationReport() {
     const model = selectedModel();
     const validationMessage = missingData();
     if (!model?.available) { message.textContent = 'O modelo selecionado ainda não foi definido.'; return; }
-    if (!selectedParticipant) { message.textContent = 'Busque e selecione um cursista.'; return; }
+    if (!selectedParticipant) { message.textContent = `Busque e selecione o ${personLabel}.`; return; }
     if (validationMessage) { message.textContent = validationMessage; return; }
-    const opened = openParticipationDeclarationPrint(model.buildDocument({ retreat, participant: selectedParticipant }));
+    const opened = openParticipationDeclarationPrint(model.buildDocument({ retreat, participant: selectedParticipant, audience }));
     if (opened) close();
     else message.textContent = 'A janela de impressão foi bloqueada. Permita pop-ups e tente novamente.';
   });
@@ -6635,6 +6658,7 @@ const operationalReports = [
   { id: 'student-health-couple', topic: 'Cursistas', title: 'Problemas de saúde', description: 'Relaciona as pessoas das fichas SMP ou EPC com problemas de saúde informados.', permission: 'inicio.ver', formTypes: ['cursista-smp', 'cursista-epc'], source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="smp-health"]'] },
   { id: 'student-participation-declaration', topic: 'Cursistas', title: 'Declaração de Participação', description: 'Busca um cursista do retiro em foco e gera sua declaração individual de participação.', permissionsByFormType: { 'cursista-individual': 'cursista.ver', 'cursista-smp': 'cursista-smp.ver', 'cursista-epc': 'cursista-epc.ver' }, source: 'relatorios', formats: ['Visualização', 'Impressão'], actionLabel: 'Selecionar cursista', direct: true, steps: [] },
   { id: 'student-complete-sheets', topic: 'Cursistas', title: 'Imprimir fichas completas', description: 'Imprime as fichas completas dos cursistas do retiro em foco por intervalo ou todas de uma vez.', permissionsByFormType: { 'cursista-individual': 'cursista.ver', 'cursista-smp': 'cursista-smp.ver', 'cursista-epc': 'cursista-epc.ver' }, source: 'relatorios', formats: ['Impressão'], actionLabel: 'Selecionar fichas', direct: true, steps: [] },
+  { id: 'team-participation-declaration', topic: 'Equipe de trabalho', title: 'Declaração de Participação', description: 'Busca uma pessoa da equipe do retiro em foco e gera sua declaração individual de participação.', permission: 'pessoas.ver', source: 'relatorios', formats: ['Visualização', 'Impressão'], actionLabel: 'Selecionar integrante', direct: true, steps: [] },
   { id: 'team-birthdays', topic: 'Equipe de trabalho', title: 'Aniversariantes da equipe', description: 'Apresenta aniversariantes da equipe com setor e data de nascimento.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="team-birthdays"]'] },
   { id: 'team-photos', topic: 'Equipe de trabalho', title: 'Fotos solicitadas', description: 'Lista as fichas da equipe que solicitaram a foto oficial do retiro.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-health="photo"]'] },
   { id: 'team-groups', topic: 'Equipe de trabalho', title: 'Pessoas por grupo', description: 'Resume a equipe por grupo de participação e permite detalhar um grupo.', permission: 'inicio.ver', source: 'inicio', formats: ['Visualização', 'Impressão'], steps: ['[data-home-stat="groups"]'] },
@@ -6652,6 +6676,7 @@ const operationalReports = [
 async function runOperationalReportGenerator(report) {
   if (report.id === 'student-complete-sheets') return openCompleteStudentSheetsReport();
   if (report.id === 'student-participation-declaration') return openParticipationDeclarationReport();
+  if (report.id === 'team-participation-declaration') return openParticipationDeclarationReport({ audience: 'team' });
   for (const selector of report.steps) {
     await new Promise((resolve) => setTimeout(resolve, 80));
     const control = app.querySelector(selector);

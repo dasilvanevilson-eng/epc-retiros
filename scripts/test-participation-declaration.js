@@ -13,6 +13,8 @@ assert(reportSource, 'As rotinas da Declaração de Participação devem existir
 assert.match(catalogSource, /id: 'student-participation-declaration'[\s\S]*topic: 'Cursistas'[\s\S]*title: 'Declaração de Participação'/);
 assert.match(catalogSource, /id: 'student-participation-declaration'[\s\S]*permissionsByFormType:[\s\S]*'cursista-individual': 'cursista\.ver'[\s\S]*'cursista-smp': 'cursista-smp\.ver'[\s\S]*'cursista-epc': 'cursista-epc\.ver'[\s\S]*direct: true/);
 assert.match(app, /report\.id === 'student-participation-declaration'\) return openParticipationDeclarationReport\(\)/);
+assert.match(catalogSource, /id: 'team-participation-declaration'[\s\S]*topic: 'Equipe de trabalho'[\s\S]*title: 'Declaração de Participação'[\s\S]*permission: 'pessoas\.ver'[\s\S]*direct: true/);
+assert.match(app, /report\.id === 'team-participation-declaration'\) return openParticipationDeclarationReport\(\{ audience: 'team' \}\)/);
 
 for (const type of ['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI']) {
   assert(reportSource.includes(type), `Tipo de declaração ausente: ${type}`);
@@ -29,7 +31,14 @@ assert.match(reportSource, /modelo ainda não definido/, 'Modelos futuros devem 
 assert.match(reportSource, /dataService\.listCursistas\(\)[\s\S]*record\.retiroId === retreat\.id/, 'Cursistas individuais devem ser isolados pelo retiro em foco.');
 assert.match(reportSource, /coupleStudentSource\(studentFormType\)\.list\(retreat\.id\)/, 'Fichas de casal devem ser consultadas apenas no retiro em foco.');
 assert.match(reportSource, /\['Dele', 'Dela'\]/, 'Cada integrante da ficha de casal deve virar uma opção individual.');
+assert.match(reportSource, /enrolments[\s\S]*entry\.retiroId === retreat\.id/, 'A equipe deve ser isolada pelo retiro em foco.');
+assert.match(reportSource, /entry\.dadosPessoais \|\| \{\}/, 'A declaração da equipe deve respeitar os dados históricos da adesão.');
+assert.match(reportSource, /entry\.nome \|\| historical\.nome \|\| person\.nome/, 'Nome histórico da adesão deve ter prioridade.');
+assert.match(reportSource, /historical\.cpf \|\| person\.cpf \|\| entry\.pessoaId/, 'CPF histórico da adesão deve ter prioridade.');
+assert.doesNotMatch(reportSource, /usedCouples|groups\.push/, 'Integrantes de casal não podem ser agrupados na busca da declaração.');
 assert.match(reportSource, /Digite nome, CPF ou número da ficha/);
+assert.match(reportSource, /Digite nome, CPF ou setor/);
+assert.match(reportSource, /Buscar equipe de trabalho/);
 assert.match(reportSource, /normalizeText\(query\)/, 'A busca deve ignorar diferenças de acentuação e caixa.');
 assert.match(reportSource, /normalizeCpf\(query\)/, 'A busca deve aceitar CPF formatado ou somente números.');
 assert.match(reportSource, /participant\.fileNumber/, 'A busca e o resumo devem incluir o número da ficha.');
@@ -42,7 +51,6 @@ assert.match(reportSource, /A janela de impressão foi bloqueada/);
 
 for (const text of [
   'DECLARAÇÃO DE PARTICIPAÇÃO',
-  'onde participou como cursista na seguinte atividade:',
   'EVANGELIZAÇÃO DE CRIANÇAS DE 07 A 10 ANOS',
   'Das 8h às 18:30h',
   'R. Mal. Floriano Peixoto, 362 - Centro, Indaial - SC',
@@ -50,6 +58,8 @@ for (const text of [
   '47 - 988328012',
   '52.109.946/0001-94',
 ]) assert(reportSource.includes(text), `Texto obrigatório ausente no modelo: ${text}`);
+assert.match(reportSource, /const participationRole = audience === 'team' \? 'voluntário\(a\)' : 'cursista'/);
+assert.match(reportSource, /onde participou como \$\{participationRole\} na seguinte atividade:/);
 for (const asset of ['assets/girassol.png', 'assets/epc.png', 'assets/paroquia-santa-ines.svg']) {
   assert(reportSource.includes(asset), `Marca ausente no documento: ${asset}`);
 }
@@ -79,4 +89,4 @@ for (const forbidden of ['saveCursista', 'deleteCursista', 'saveAdesao', 'delete
   assert(!reportSource.includes(forbidden), `O relatório não pode executar ${forbidden}.`);
 }
 
-console.log('Declaração de Participação: modelos, busca, isolamento, impressão A4 e proteção dos dados validados.');
+console.log('Declarações de Participação: cursistas, equipe, casais individuais, impressão A4 e proteção dos dados validados.');
