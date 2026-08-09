@@ -74,6 +74,7 @@ export function inheritSectorSheet({ retreat, sector, previousRetreat, previousS
       itemOrigemId: item.id || '',
       descricao: item.descricao || '',
       unidade: item.unidade || 'un',
+      fornecedor: item.fornecedor || '',
       modo: 'movimento',
       posicaoAnterior: item.saldo,
       entrada: 0,

@@ -20,6 +20,18 @@ let purchaseBaseRetreatId = '';
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const createId = () => globalThis.crypto?.randomUUID?.() || `finance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const inputValue = (value) => Number.isFinite(Number(value)) ? String(Number(value)) : '0';
+const supplierListId = 'finance-supplier-options';
+
+const supplierOptionsHtml = (sheets = []) => {
+  const suppliers = new Map();
+  sheets.flatMap((sheet) => [...(sheet.itensRecorrentes || []), ...(sheet.despesasEventuais || [])]).forEach((item) => {
+    const supplier = String(item.fornecedor || '').trim();
+    const key = supplier.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+    if (supplier && !suppliers.has(key)) suppliers.set(key, supplier);
+  });
+  return [...suppliers.values()].sort((first, second) => first.localeCompare(second, 'pt-BR', { sensitivity: 'base' }))
+    .map((supplier) => `<option value="${escapeHtml(supplier)}"></option>`).join('');
+};
 
 const sheetForSector = (state, sector) => {
   const key = normalizeSectorKey(sector);
@@ -50,6 +62,7 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
     <td class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></td>
     <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição" ${disabled}></td>
     <td><input data-field="unidade" value="${escapeHtml(item.unidade || 'un')}" placeholder="un" ${disabled}></td>
+    <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="posicaoAnterior" value="${inputValue(calculated.posicaoAnterior)}" readonly tabindex="-1"></td>
     <td><select data-field="modo" ${disabled}><option value="movimento" ${movement ? 'selected' : ''}>Entrada/Saída</option><option value="saldo" ${!movement ? 'selected' : ''}>Somente saldo</option></select></td>
     <td><input data-field="entrada" inputmode="decimal" value="${inputValue(calculated.entrada)}" ${disabled} ${movement ? '' : 'readonly'}></td>
@@ -66,6 +79,7 @@ const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   return `<tr data-finance-eventual-row data-id="${escapeHtml(item.id || '')}">
     <td class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></td>
     <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição da despesa" ${disabled}></td>
+    <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="valor" inputmode="decimal" value="${inputValue(item.valor)}" ${disabled}></td>
     <td>${canEdit && canDelete ? '<button type="button" class="finance-remove-row" data-remove-row aria-label="Remover despesa eventual">×</button>' : ''}</td>
   </tr>`;
@@ -74,14 +88,16 @@ const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
 function sectorSheetHtml(sheet, state, permissions, initializationError = '') {
   const totals = sectorSheetTotals(sheet);
   const inherited = sheet.retiroOrigemId && state.previousRetreat;
+  const supplierOptions = supplierOptionsHtml(state.allSheets);
   return `<section class="finance-section-heading"><div><p class="eyebrow">Movimentação por setor</p><h2>${escapeHtml(sheet.setor)}</h2><p>${inherited ? `Posição e preços herdados de ${escapeHtml(state.previousRetreat.nome)}.` : 'Sem posição anterior disponível; itens novos iniciam zerados.'}</p></div></section>
   <form id="finance-sector-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
+    <datalist id="${supplierListId}">${supplierOptions}</datalist>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas recorrentes</h2><p>Controle resumido de entrada, saída e saldo, sem lançamento de notas.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-recurring>Adicionar despesa</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>Ordem</th><th>Despesa</th><th>Unidade</th><th>Posição anterior</th><th>Lançamento</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valores</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>Ordem</th><th>Despesa</th><th>Unidade</th><th>Fornecedor</th><th>Posição anterior</th><th>Lançamento</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valores</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.itensRecorrentes?.length ? '' : '<p class="empty-state" data-recurring-empty>Nenhuma despesa recorrente neste setor.</p>'}
     </section>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Ordem</th><th>Descrição</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Ordem</th><th>Descrição</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.despesasEventuais?.length ? '' : '<p class="empty-state" data-eventual-empty>Nenhuma despesa eventual neste setor.</p>'}
     </section>
     <section class="panel finance-sector-summary"><div><span>Entradas recorrentes</span><strong data-sector-input>${financeMoney(totals.input)}</strong></div><div><span>Saídas recorrentes</span><strong data-sector-output>${financeMoney(totals.output)}</strong></div><div><span>Eventuais</span><strong data-sector-eventual>${financeMoney(totals.eventual)}</strong></div><div><span>Saldo valorizado</span><strong data-sector-balance>${financeMoney(totals.balance)}</strong></div></section>
@@ -199,6 +215,7 @@ function collectSheet(root, sheet, retreat) {
     id: row.dataset.id, chaveRecorrencia: row.dataset.key, itemOrigemId: row.dataset.origin,
     descricao: row.querySelector('[data-field="descricao"]').value,
     unidade: row.querySelector('[data-field="unidade"]').value,
+    fornecedor: row.querySelector('[data-field="fornecedor"]').value,
     posicaoAnterior: financeNumber(row.querySelector('[data-field="posicaoAnterior"]').value),
     modo: row.querySelector('[data-field="modo"]').value,
     entrada: financeNumber(row.querySelector('[data-field="entrada"]').value),
@@ -208,6 +225,7 @@ function collectSheet(root, sheet, retreat) {
   }));
   const eventual = [...root.querySelectorAll('[data-finance-eventual-row]')].map((row, index) => ({
     id: row.dataset.id, descricao: row.querySelector('[data-field="descricao"]').value,
+    fornecedor: row.querySelector('[data-field="fornecedor"]').value,
     valor: financeNumber(row.querySelector('[data-field="valor"]').value), ordem: index + 1,
   }));
   return { ...sheet, id: sheet.id || createId(), retiroId: retreat.id, itensRecorrentes: recurring, despesasEventuais: eventual, motivoExclusao: pendingDeletionReason };

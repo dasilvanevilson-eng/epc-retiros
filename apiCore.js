@@ -315,6 +315,7 @@ const normalizeFinanceLine = (line, position, existing = null, previous = null, 
     itemOrigemId: existing?.itemOrigemId || previous?.id || String(line.itemOrigemId || '').trim(),
     descricao: description,
     unidade: String(line.unidade || 'un').trim() || 'un',
+    fornecedor: Object.hasOwn(line, 'fornecedor') ? String(line.fornecedor || '').trim() : String(existing?.fornecedor || previous?.fornecedor || '').trim(),
     modo: mode,
     posicaoAnterior: initial,
     entrada: input,
@@ -355,7 +356,7 @@ async function normalizeFinanceRecord(resource, record, session) {
   const requestedLines = Array.isArray(next.itensRecorrentes) ? next.itensRecorrentes : [];
   const inheritedLines = !current && previousSheet ? previousLines.map((previous) => requestedLines.find((line) => line.chaveRecorrencia === previous.chaveRecorrencia || line.itemOrigemId === previous.id) || {
     id: '', chaveRecorrencia: previous.chaveRecorrencia || previous.id, itemOrigemId: previous.id,
-    descricao: previous.descricao, unidade: previous.unidade, modo: 'movimento', entrada: 0, saida: 0,
+    descricao: previous.descricao, unidade: previous.unidade, fornecedor: previous.fornecedor || '', modo: 'movimento', entrada: 0, saida: 0,
     saldo: previous.saldo, precoUnitario: previous.precoUnitario,
   }) : [];
   const inheritedKeys = new Set(inheritedLines.map((line) => line.chaveRecorrencia || line.itemOrigemId));
@@ -372,7 +373,9 @@ async function normalizeFinanceRecord(resource, record, session) {
   next.despesasEventuais = incomingEventual.map((item, index) => {
     const description = String(item.descricao || '').trim();
     if (!description) throw new Error('Toda despesa eventual precisa de descricao.');
-    return { id: String(item.id || '').trim() || randomUUID(), descricao: description, valor: nonNegativeFinanceNumber(item.valor), ordem: index + 1 };
+    const existing = (current?.despesasEventuais || []).find((candidate) => candidate.id === item.id) || null;
+    const supplier = Object.hasOwn(item, 'fornecedor') ? String(item.fornecedor || '').trim() : String(existing?.fornecedor || '').trim();
+    return { id: String(item.id || '').trim() || randomUUID(), descricao: description, fornecedor: supplier, valor: nonNegativeFinanceNumber(item.valor), ordem: index + 1 };
   });
   const removed = current ? [
     ...currentLines.filter((item) => !next.itensRecorrentes.some((incoming) => incoming.id === item.id)).map((item) => ({ tipo: 'recorrente', item })),

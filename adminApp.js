@@ -2,7 +2,7 @@ import { dataService, retreatDefaults } from './dataService.js';
 import { buildKidsCareSummary } from './kidsCareSummary.js';
 import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 import { attachStudentPhotoField, photoUrl as studentPhotoUrl } from './studentPhotoClient.js';
-import { renderFinanceiro } from './financeiro.js?v=20260809-balanco-valor-saida';
+import { renderFinanceiro } from './financeiro.js?v=20260809-fornecedores';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];

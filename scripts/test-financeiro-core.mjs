@@ -46,12 +46,13 @@ assert.equal(findPreviousRetreat(retreats[0], retreats), null);
 
 const previousSheet = {
   retiroId: 'previous', setor: 'Cozinha', setorChave: 'cozinha',
-  itensRecorrentes: [{ id: 'rice-prev', chaveRecorrencia: 'rice', descricao: 'Arroz', unidade: 'kg', saldo: 8, precoUnitario: 7 }],
+  itensRecorrentes: [{ id: 'rice-prev', chaveRecorrencia: 'rice', descricao: 'Arroz', unidade: 'kg', fornecedor: 'Atacado EPC', saldo: 8, precoUnitario: 7 }],
 };
 const inherited = inheritSectorSheet({ retreat: retreats[2], sector: 'COZINHA', previousRetreat: retreats[1], previousSheet });
 assert.equal(inherited.retiroOrigemId, 'previous');
 assert.equal(inherited.itensRecorrentes[0].posicaoAnterior, 8);
 assert.equal(inherited.itensRecorrentes[0].precoUnitario, 7);
+assert.equal(inherited.itensRecorrentes[0].fornecedor, 'Atacado EPC');
 assert.equal(inherited.itensRecorrentes[0].chaveRecorrencia, 'rice');
 
 const totals = sectorSheetTotals({
@@ -98,6 +99,11 @@ assert.match(ui, /Visualizar \/ imprimir/);
 assert.match(ui, /Valor da saída/);
 assert.match(ui, /finance-balance-output-value/);
 assert.match(ui, /financeMoney\(item\.valorSaida\)/);
+assert.match(ui, /data-field="fornecedor"/);
+assert.match(ui, /finance-supplier-options/);
+assert.match(ui, /supplierOptionsHtml\(state\.allSheets\)/);
+assert.match(ui, /<th>Despesa<\/th><th>Unidade<\/th><th>Fornecedor<\/th><th>Posição anterior<\/th>/);
+assert.match(ui, /<th>Descrição<\/th><th>Fornecedor<\/th><th>Valor<\/th>/);
 assert.match(ui, /Sugestão de compra/);
 assert.match(ui, /Consumo efetivo na base/);
 assert.match(ui, /Participações da base/);
@@ -105,6 +111,8 @@ assert.match(ui, /Saldo do retiro anterior/);
 assert.match(ui, /listAdesoes\(\)/);
 assert.match(ui, /setor histórico/);
 assert.match(api, /financeiro_planilhas/);
+assert.match(api, /Object\.hasOwn\(line, 'fornecedor'\)/);
+assert.match(api, /existing\?\.fornecedor \|\| previous\?\.fornecedor/);
 assert.match(api, /A saida de .* nao pode gerar saldo negativo/);
 assert.match(api, /exclusao_item/);
 assert.match(api, /Retiro encerrado: Financeiro disponivel apenas para consulta/);
