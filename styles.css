@@ -7398,6 +7398,18 @@ body:has(.login-shell) {
 .finance-balance-sector { margin:0; }
 .finance-balance-sector h2 small { color:var(--muted); font:500 13px 'DM Sans',sans-serif; }
 .finance-balance-sector table { width:100%; border-collapse:collapse; }
+.finance-balance-recurring { min-width:920px; table-layout:fixed; }
+.finance-balance-description { width:24%; }
+.finance-balance-unit { width:8%; }
+.finance-balance-previous { width:13%; }
+.finance-balance-input { width:11%; }
+.finance-balance-output { width:8%; }
+.finance-balance-output-value { width:13%; }
+.finance-balance-stock { width:11%; }
+.finance-balance-price { width:12%; }
+.finance-balance-sector .finance-balance-recurring th { white-space:normal; }
+.finance-balance-recurring td:first-child { overflow-wrap:anywhere; }
+.finance-balance-recurring td:not(:first-child) { white-space:nowrap; }
 .finance-balance-sector td small { display:block; margin-top:3px; color:var(--muted); }
 .finance-balance-sector h3 { margin:20px 0 7px; }
 .finance-balance-eventual { max-width:650px; }
