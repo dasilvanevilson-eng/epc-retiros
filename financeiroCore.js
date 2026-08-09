@@ -112,3 +112,41 @@ export function retreatBalance(sheets = []) {
     return totals;
   }, { previous: 0, input: 0, output: 0, balance: 0, eventual: 0, acquired: 0, consumed: 0 });
 }
+
+export function dailyParticipationTotal({ retreat = {}, enrolments = [], studentCount = 0, kidCount = 0 } = {}) {
+  const normalize = normalizeSectorKey;
+  const days = Array.isArray(retreat.dias) ? retreat.dias.map((day) => String(day || '').trim()).filter(Boolean) : [];
+  return days.reduce((total, day) => total + enrolments.filter((entry) => {
+    const entryDays = Array.isArray(entry.dias) ? entry.dias : [entry.dias];
+    return entryDays.some((entryDay) => normalize(entryDay) === normalize(day));
+  }).length + nonNegativeFinanceNumber(studentCount) + nonNegativeFinanceNumber(kidCount), 0);
+}
+
+export function purchaseSuggestionRows({ currentSheets = [], baseSheets = [], baseParticipations = 0, focusParticipations = 0 } = {}) {
+  const baseTotal = nonNegativeFinanceNumber(baseParticipations);
+  if (baseTotal <= 0) throw new Error('O retiro-base não possui participações diárias para calcular a sugestão.');
+  const focusTotal = nonNegativeFinanceNumber(focusParticipations);
+  const baseItems = baseSheets.flatMap((sheet) => (sheet.itensRecorrentes || []).map((item) => ({ ...calculateRecurringItem(item), setorChave: sheet.setorChave })));
+  return currentSheets.flatMap((sheet) => (sheet.itensRecorrentes || []).map((raw) => {
+    const item = calculateRecurringItem(raw);
+    const baseItem = baseItems.find((candidate) => item.chaveRecorrencia && candidate.chaveRecorrencia === item.chaveRecorrencia)
+      || baseItems.find((candidate) => candidate.setorChave === sheet.setorChave && normalizeSectorKey(candidate.descricao) === normalizeSectorKey(item.descricao));
+    const baseConsumption = nonNegativeFinanceNumber(baseItem?.saida);
+    const consumptionPerParticipation = baseConsumption / baseTotal;
+    const projectedNeed = consumptionPerParticipation * focusTotal;
+    const previousBalance = nonNegativeFinanceNumber(item.posicaoAnterior);
+    return {
+      setor: sheet.setor,
+      setorChave: sheet.setorChave,
+      descricao: item.descricao,
+      unidade: item.unidade || 'un',
+      consumoBase: baseConsumption,
+      participacoesBase: baseTotal,
+      consumoPorParticipacao: consumptionPerParticipation,
+      participacoesFoco: focusTotal,
+      necessidadeProjetada: projectedNeed,
+      saldoAnterior: previousBalance,
+      sugestaoCompra: Math.max(0, projectedNeed - previousBalance),
+    };
+  }));
+}

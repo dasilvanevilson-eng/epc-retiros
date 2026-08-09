@@ -1,18 +1,21 @@
 import {
   calculateRecurringItem,
+  dailyParticipationTotal,
   financeMoney,
   financeNumber,
   financeQuantity,
   findPreviousRetreat,
   inheritSectorSheet,
   normalizeSectorKey,
+  purchaseSuggestionRows,
   retreatBalance,
   sectorSheetTotals,
-} from './financeiroCore.js?v=20260809-planilhas-financeiras';
+} from './financeiroCore.js?v=20260809-sugestao-compra';
 
 let activeSectorKey = '';
 let activeView = 'setor';
 let pendingDeletionReason = '';
+let purchaseBaseRetreatId = '';
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const createId = () => globalThis.crypto?.randomUUID?.() || `finance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -113,6 +116,82 @@ function balanceHtml(state) {
   return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Balanço de ${escapeHtml(state.retreat.nome)}</h2><p>Valores adquiridos e consumidos apresentados separadamente.</p></div><button type="button" data-finance-print>Visualizar / imprimir</button></section>
     <section class="finance-metrics finance-balance-metrics">${metricHtml('Posição anterior', totals.previous)}${metricHtml('Entradas recorrentes', totals.input)}${metricHtml('Saídas / consumo', totals.output)}${metricHtml('Despesas eventuais', totals.eventual)}${metricHtml('Saldo final valorizado', totals.balance)}${metricHtml('Total adquirido / desembolsado', totals.acquired)}${metricHtml('Total consumido', totals.consumed)}</section>
     <div class="finance-balance-sectors">${sheets.map(balanceSectorHtml).join('') || '<section class="panel"><p class="empty-state">Nenhum setor configurado para este retiro.</p></section>'}</div>`;
+}
+
+const suggestionQuantity = (value) => financeNumber(value).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+
+const teamKidsCount = (enrolments = []) => {
+  const identities = new Set();
+  enrolments.forEach((entry) => (entry.espacoKids || []).forEach((kid) => {
+    const owner = entry.casalId ? `casal:${entry.casalId}` : `ficha:${entry.id || entry.pessoaId || ''}`;
+    const identity = `${owner}:${normalizeSectorKey(kid.nome)}:${String(kid.nascimento || '')}`;
+    if (kid.nome || kid.nascimento) identities.add(identity);
+  }));
+  return identities.size;
+};
+
+const coupleStudentKidsCount = (records = []) => records.reduce((total, record) => {
+  if (record.smpKidsNotNeeded) return total;
+  return total + Array.from({ length: 5 }, (_, index) => index + 1)
+    .filter((number) => String(record[`smpKidNome${number}`] || record[`smpKidNascimento${number}`] || '').trim()).length;
+}, 0);
+
+async function participationTotalForRetreat(retreat, dataService, allEnrolments, individualStudents) {
+  const enrolments = allEnrolments.filter((entry) => entry.retiroId === retreat.id);
+  const studentType = retreat.tipoFichaCursista || 'cursista-individual';
+  let coupleStudents = [];
+  if (studentType === 'cursista-smp') coupleStudents = await dataService.listCursistasSmp(retreat.id);
+  if (studentType === 'cursista-epc') coupleStudents = await dataService.listCursistasEpc(retreat.id);
+  const studentCount = ['cursista-smp', 'cursista-epc'].includes(studentType)
+    ? coupleStudents.length * 2
+    : new Set(individualStudents.filter((student) => student.retiroId === retreat.id).map((student) => student.id || student.cpf)).size;
+  const kidCount = teamKidsCount(enrolments) + coupleStudentKidsCount(coupleStudents);
+  return dailyParticipationTotal({ retreat, enrolments, studentCount, kidCount });
+}
+
+function purchaseSuggestionHtml(state) {
+  const baseRetreats = state.retreats
+    .filter((candidate) => candidate.id !== state.retreat.id && candidate.acessoPermitido !== false && state.allSheets.some((sheet) => sheet.retiroId === candidate.id))
+    .sort((first, second) => String(second.dataInicio || second.createdAt || '').localeCompare(String(first.dataInicio || first.createdAt || '')));
+  if (!baseRetreats.some((retreat) => retreat.id === purchaseBaseRetreatId)) purchaseBaseRetreatId = '';
+  return `<section class="finance-section-heading"><div><p class="eyebrow">Planejamento do retiro em foco</p><h2>Sugestão de compra</h2><p>Projete todas as despesas recorrentes pelo consumo por participação diária de outro retiro.</p></div></section>
+    <form class="panel finance-purchase-form" data-purchase-form><label><span>Retiro usado como base <b>*</b></span><select name="baseRetreatId" required><option value="" ${purchaseBaseRetreatId ? '' : 'selected'} disabled>Selecione o retiro-base</option>${baseRetreats.map((retreat) => `<option value="${escapeHtml(retreat.id)}" ${retreat.id === purchaseBaseRetreatId ? 'selected' : ''}>${escapeHtml(retreat.nome)}</option>`).join('')}</select></label><button type="submit">Calcular sugestão</button></form>
+    ${baseRetreats.length ? '' : '<section class="panel"><p class="empty-state">Nenhum outro retiro com planilha financeira está disponível como base.</p></section>'}
+    <div data-purchase-result></div>`;
+}
+
+function purchaseSuggestionResultHtml({ rows, baseRetreat, state, baseParticipations, focusParticipations }) {
+  const total = rows.reduce((sum, row) => sum + row.sugestaoCompra, 0);
+  return `<section class="panel finance-purchase-summary"><div><span>Retiro-base</span><strong>${escapeHtml(baseRetreat.nome)}</strong></div><div><span>Participações diárias da base</span><strong>${suggestionQuantity(baseParticipations)}</strong></div><div><span>Participações diárias do foco</span><strong>${suggestionQuantity(focusParticipations)}</strong></div><div><span>Soma das quantidades sugeridas</span><strong>${suggestionQuantity(total)}</strong></div></section>
+    ${focusParticipations > 0 ? '' : '<p class="finance-purchase-warning">O retiro em foco ainda não possui participações diárias; as necessidades projetadas ficaram zeradas.</p>'}
+    <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Memória de cálculo</h2><p>Retiro em foco: ${escapeHtml(state.retreat.nome)}. Nenhum valor desta tabela é lançado automaticamente.</p></div></div><div class="finance-sheet-scroll"><table class="finance-purchase-table"><thead><tr><th>Setor</th><th>Despesa</th><th>Unidade</th><th>Consumo efetivo na base</th><th>Participações da base</th><th>Consumo por participação</th><th>Participações do foco</th><th>Necessidade projetada</th><th>Saldo do retiro anterior</th><th>Sugestão de compra</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.setor)}</td><td>${escapeHtml(row.descricao)}</td><td>${escapeHtml(row.unidade)}</td><td>${suggestionQuantity(row.consumoBase)}</td><td>${suggestionQuantity(row.participacoesBase)}</td><td>${suggestionQuantity(row.consumoPorParticipacao)}</td><td>${suggestionQuantity(row.participacoesFoco)}</td><td>${suggestionQuantity(row.necessidadeProjetada)}</td><td>${suggestionQuantity(row.saldoAnterior)}</td><td><strong>${suggestionQuantity(row.sugestaoCompra)}</strong></td></tr>`).join('')}</tbody></table></div>${rows.length ? '' : '<p class="empty-state">Nenhuma despesa recorrente cadastrada no retiro em foco.</p>'}</section>`;
+}
+
+function wirePurchaseSuggestion(root, state, context) {
+  root.querySelector('[data-purchase-form]')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const result = root.querySelector('[data-purchase-result]');
+    const button = form.querySelector('button[type="submit"]');
+    purchaseBaseRetreatId = new FormData(form).get('baseRetreatId') || '';
+    const baseRetreat = state.retreats.find((retreat) => retreat.id === purchaseBaseRetreatId);
+    if (!baseRetreat) return;
+    try {
+      button.disabled = true;
+      result.innerHTML = '<section class="panel"><p class="empty-state">Calculando participações e consumo...</p></section>';
+      const [allEnrolments, individualStudents] = await Promise.all([context.dataService.listAdesoes(), context.dataService.listCursistas()]);
+      const [baseParticipations, focusParticipations] = await Promise.all([
+        participationTotalForRetreat(baseRetreat, context.dataService, allEnrolments, individualStudents),
+        participationTotalForRetreat(state.retreat, context.dataService, allEnrolments, individualStudents),
+      ]);
+      const currentSheets = state.sectors.map((sector) => sheetForSector(state, sector));
+      const baseSheets = state.allSheets.filter((sheet) => sheet.retiroId === baseRetreat.id);
+      const rows = purchaseSuggestionRows({ currentSheets, baseSheets, baseParticipations, focusParticipations });
+      result.innerHTML = purchaseSuggestionResultHtml({ rows, baseRetreat, state, baseParticipations, focusParticipations });
+    } catch (error) {
+      result.innerHTML = `<p class="form-message finance-purchase-error">${escapeHtml(error.message)}</p>`;
+    } finally { button.disabled = false; }
+  });
 }
 
 function collectSheet(root, sheet, retreat) {
@@ -265,12 +344,14 @@ export async function renderFinanceiro(context) {
   const activeSector = state.sectors.find((sector) => normalizeSectorKey(sector) === activeSectorKey);
   const sheet = activeSector ? sheetForSector(state, activeSector) : null;
   const permissions = { canEdit, canDelete };
-  const navigation = `<nav class="finance-sector-tabs" aria-label="Setores do Financeiro">${state.sectors.map((sector) => `<button type="button" data-finance-sector="${escapeHtml(normalizeSectorKey(sector))}" class="${activeView === 'setor' && normalizeSectorKey(sector) === activeSectorKey ? 'is-active' : ''}">${escapeHtml(sector)}</button>`).join('')}<button type="button" data-finance-balance class="finance-balance-tab ${activeView === 'balanco' ? 'is-active' : ''}">Balanço</button></nav>`;
-  const content = activeView === 'balanco' ? balanceHtml(state) : sheet ? sectorSheetHtml(sheet, state, permissions, initializationError) : '<section class="panel"><p class="empty-state">Nenhum setor configurado neste retiro.</p></section>';
+  const navigation = `<nav class="finance-sector-tabs" aria-label="Setores do Financeiro">${state.sectors.map((sector) => `<button type="button" data-finance-sector="${escapeHtml(normalizeSectorKey(sector))}" class="${activeView === 'setor' && normalizeSectorKey(sector) === activeSectorKey ? 'is-active' : ''}">${escapeHtml(sector)}</button>`).join('')}<button type="button" data-finance-purchase class="finance-purchase-tab ${activeView === 'compra' ? 'is-active' : ''}">Sugestão de compra</button><button type="button" data-finance-balance class="finance-balance-tab ${activeView === 'balanco' ? 'is-active' : ''}">Balanço</button></nav>`;
+  const content = activeView === 'balanco' ? balanceHtml(state) : activeView === 'compra' ? purchaseSuggestionHtml(state) : sheet ? sectorSheetHtml(sheet, state, permissions, initializationError) : '<section class="panel"><p class="empty-state">Nenhum setor configurado neste retiro.</p></section>';
   layout(`<section class="page-heading finance-page-heading"><div><p class="eyebrow">Módulo independente · retiro em foco</p><h1>Financeiro</h1><p><strong>${escapeHtml(retreat.nome)}</strong> · controle simplificado de despesas por setor.</p>${readOnly ? '<p class="finance-readonly">Retiro concluído: módulo disponível somente para consulta.</p>' : ''}</div></section>${navigation}<div class="finance-content">${content}</div>`, 'financeiro');
   document.querySelectorAll('[data-finance-sector]').forEach((button) => button.addEventListener('click', () => { activeView = 'setor'; activeSectorKey = button.dataset.financeSector; pendingDeletionReason = ''; renderFinanceiro(context); }));
   document.querySelector('[data-finance-balance]')?.addEventListener('click', () => { activeView = 'balanco'; pendingDeletionReason = ''; renderFinanceiro(context); });
+  document.querySelector('[data-finance-purchase]')?.addEventListener('click', () => { activeView = 'compra'; pendingDeletionReason = ''; renderFinanceiro(context); });
   const root = document.querySelector('.finance-content');
   if (activeView === 'setor' && sheet && root) wireSheet(root, sheet, state, context, permissions);
+  if (activeView === 'compra' && root) wirePurchaseSuggestion(root, state, context);
   root?.querySelector('[data-finance-print]')?.addEventListener('click', () => printBalance(state, currentUser));
 }

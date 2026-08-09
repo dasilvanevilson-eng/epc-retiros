@@ -4,9 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   calculateRecurringItem,
+  dailyParticipationTotal,
   findPreviousRetreat,
   inheritSectorSheet,
   normalizeSectorKey,
+  purchaseSuggestionRows,
   retreatBalance,
   sectorSheetTotals,
 } from '../financeiroCore.js';
@@ -59,6 +61,26 @@ const totals = sectorSheetTotals({
 assert.deepEqual(totals, { previous: 20, input: 10, output: 8, balance: 22, eventual: 30, acquired: 40, consumed: 38 });
 assert.deepEqual(retreatBalance([{ itensRecorrentes: [], despesasEventuais: [{ valor: 10 }] }, { itensRecorrentes: [], despesasEventuais: [{ valor: 5 }] }]).eventual, 15);
 
+assert.equal(dailyParticipationTotal({
+  retreat: { dias: ['Sexta-feira', 'Sábado'] },
+  enrolments: [{ dias: ['Sexta-feira', 'Sábado'] }, { dias: ['Sábado'] }],
+  studentCount: 2,
+  kidCount: 1,
+}), 9, 'A participação diária deve somar equipe escalada, cursistas e crianças em cada dia.');
+
+const suggestions = purchaseSuggestionRows({
+  currentSheets: [{ setor: 'Cozinha', setorChave: 'cozinha', itensRecorrentes: [{ chaveRecorrencia: 'arroz', descricao: 'Arroz', unidade: 'kg', posicaoAnterior: 2, entrada: 0, saida: 0, precoUnitario: 5 }] }],
+  baseSheets: [{ setor: 'Cozinha', setorChave: 'cozinha', itensRecorrentes: [{ chaveRecorrencia: 'arroz', descricao: 'Arroz', unidade: 'kg', posicaoAnterior: 20, entrada: 0, saida: 10, precoUnitario: 4 }] }],
+  baseParticipations: 20,
+  focusParticipations: 30,
+});
+assert.equal(suggestions[0].consumoBase, 10);
+assert.equal(suggestions[0].consumoPorParticipacao, 0.5);
+assert.equal(suggestions[0].necessidadeProjetada, 15);
+assert.equal(suggestions[0].saldoAnterior, 2);
+assert.equal(suggestions[0].sugestaoCompra, 13);
+assert.throws(() => purchaseSuggestionRows({ baseParticipations: 0 }), /não possui participações diárias/);
+
 const app = read('adminApp.js');
 const ui = read('financeiro.js');
 const api = read('apiCore.js');
@@ -73,6 +95,11 @@ assert.match(ui, /Posição anterior/);
 assert.match(ui, /Somente saldo/);
 assert.match(ui, /Despesas eventuais/);
 assert.match(ui, /Visualizar \/ imprimir/);
+assert.match(ui, /Sugestão de compra/);
+assert.match(ui, /Consumo efetivo na base/);
+assert.match(ui, /Participações da base/);
+assert.match(ui, /Saldo do retiro anterior/);
+assert.match(ui, /listAdesoes\(\)/);
 assert.match(ui, /setor histórico/);
 assert.match(api, /financeiro_planilhas/);
 assert.match(api, /A saida de .* nao pode gerar saldo negativo/);
