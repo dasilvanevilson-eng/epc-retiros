@@ -42,6 +42,7 @@ assert.match(reportSource, /A janela de impressão foi bloqueada/);
 
 for (const text of [
   'DECLARAÇÃO DE PARTICIPAÇÃO',
+  'onde participou como cursista na seguinte atividade:',
   'EVANGELIZAÇÃO DE CRIANÇAS DE 07 A 10 ANOS',
   'Das 8h às 18:30h',
   'R. Mal. Floriano Peixoto, 362 - Centro, Indaial - SC',
