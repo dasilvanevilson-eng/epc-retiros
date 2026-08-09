@@ -1486,7 +1486,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     if (size) counts[size] = (counts[size] || 0) + 1;
     return counts;
   }, {});
-  const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
+  const shirtOrder = ['8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRowsFor = (counts) => Object.entries(counts).sort(([first], [second]) => {
     const firstIndex = shirtOrder.indexOf(first);
     const secondIndex = shirtOrder.indexOf(second);
@@ -2060,7 +2060,7 @@ async function renderRetreat(id, selectedSector = '') {
   const averageAge = ages.length ? `${(ages.reduce((sum, age) => sum + age, 0) / ages.length).toFixed(1).replace('.', ',')} anos` : 'Sem dados';
   const dayCount = (day) => retreatStatEntries.filter((entry) => entryDays(entry).some((item) => normalizeText(item) === normalizeText(day))).length + retreatStudentPresenceCount + retreatKidsSummary.children.length;
   const shirtCounts = registeredStudents.reduce((counts, student) => { const size = String(student.camiseta || '').trim(); if (size) counts[size] = (counts[size] || 0) + 1; return counts; }, {});
-  const shirtOrder = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
+  const shirtOrder = ['8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', 'G4'];
   const shirtRows = Object.entries(shirtCounts).sort(([first], [second]) => { const firstIndex = shirtOrder.indexOf(first); const secondIndex = shirtOrder.indexOf(second); if (firstIndex !== -1 || secondIndex !== -1) return (firstIndex === -1 ? 99 : firstIndex) - (secondIndex === -1 ? 99 : secondIndex); return first.localeCompare(second, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
   const activeEntries = retreatEntries;
   const pendingValidationGroups = enrolmentValidationGroups(activeEntries).filter((group) => !isEnrolmentGroupValidated(group));
@@ -7193,7 +7193,7 @@ async function renderQuadrante() {
   app.querySelector('#print-secret-friend')?.addEventListener('click', printSecretFriendReport);
 }
 
-function choices(name, options, multiple = true) { const visibleOptions = options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }
+function choices(name, options, multiple = true) { const visibleOptions = name === 'camiseta' && !options.includes('16') ? options.flatMap((option) => option === 'PP' ? ['16', option] : [option]) : options; return `<div class="inline-choices ${name === 'camiseta' ? 'compact-choices' : ''}">${visibleOptions.map((option) => `<label class="choice"><input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeHtml(option)}"><span>${escapeHtml(option)}</span></label>`).join('')}</div>`; }
 function syncChoiceStates(root = document) {
   root.querySelectorAll('.choice').forEach((choice) => {
     const input = choice.querySelector('input');
