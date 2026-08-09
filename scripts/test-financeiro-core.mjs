@@ -97,6 +97,7 @@ assert.match(ui, /Somente saldo/);
 assert.match(ui, /Despesas eventuais/);
 assert.match(ui, /Visualizar \/ imprimir/);
 assert.match(ui, /Valor da saída/);
+assert.match(ui, /<th>Saída<\/th><th>Saldo<\/th><th>Preço unitário<\/th><th>Valor da saída<\/th>/);
 assert.match(ui, /finance-balance-output-value/);
 assert.match(ui, /financeMoney\(item\.valorSaida\)/);
 assert.match(ui, /data-field="fornecedor"/);
