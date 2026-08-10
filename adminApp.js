@@ -5911,19 +5911,12 @@ async function renderCrachas() {
     const assignmentRows = (items, kind) => items.map((item) => {
       const key = kind === 'communities' ? item.id : item;
       const label = kind === 'communities' ? communityName(item) : item;
-      return `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(label)}</strong><div><input type="search" data-badge-sector-model-search placeholder="Buscar modelo de crach&aacute;" autocomplete="off"><select data-badge-sector-model-select data-assignment-kind="${kind}" data-assignment-key="${escapeHtml(key)}">${profileSelectOptions(currentAssignment(kind, key))}</select></div></div>`;
+      return `<div class="badge-sector-model-row" data-badge-sector-model-row><strong>${escapeHtml(label)}</strong><div><select data-badge-sector-model-select data-assignment-kind="${kind}" data-assignment-key="${escapeHtml(key)}">${profileSelectOptions(currentAssignment(kind, key))}</select></div></div>`;
     }).join('');
     const hasAssignmentTargets = sectors.length || badgeCommunities.length;
-    assignmentPanel.innerHTML = `<form class="badge-sector-model-dialog badge-sector-model-page" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute;s por setor/comunidade</h2><p>Associe os setores e as comunidades do retiro em foco aos modelos de crach&aacute; salvos.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div><section class="badge-assignment-group"><h3>Setores</h3><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(sectors, 'sectors') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div></section><section class="badge-assignment-group"><h3>Comunidades</h3><div class="badge-sector-model-heading"><strong>Comunidade</strong><strong>Buscar e selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(badgeCommunities, 'communities') || '<p class="empty-state">Nenhuma comunidade cadastrada neste retiro.</p>'}</div></section><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="submit" class="is-couple-continue" ${hasAssignmentTargets ? '' : 'disabled'}>Salvar</button></div></form>`;
+    assignmentPanel.innerHTML = `<form class="badge-sector-model-dialog badge-sector-model-page" id="badge-sector-model-form"><div class="panel-heading"><div><p class="eyebrow">Configura&ccedil;&atilde;o de crach&aacute;s</p><h2>Definir crach&aacute;s por setor/comunidade</h2><p>Associe os setores e as comunidades do retiro em foco aos modelos de crach&aacute; salvos.</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div><section class="badge-assignment-group"><h3>Setores</h3><div class="badge-sector-model-heading"><strong>Setor</strong><strong>Selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(sectors, 'sectors') || '<p class="empty-state">Nenhum setor configurado neste retiro.</p>'}</div></section><section class="badge-assignment-group"><h3>Comunidades</h3><div class="badge-sector-model-heading"><strong>Comunidade</strong><strong>Selecionar modelo</strong></div><div class="badge-sector-model-list">${assignmentRows(badgeCommunities, 'communities') || '<p class="empty-state">Nenhuma comunidade cadastrada neste retiro.</p>'}</div></section><p class="form-message" id="badge-sector-model-message">${badgeProfiles.length ? '' : 'Cadastre ao menos um modelo de crachá para realizar as associações.'}</p><div class="form-actions"><button type="submit" class="is-couple-continue" ${hasAssignmentTargets ? '' : 'disabled'}>Salvar</button></div></form>`;
     const formElement = assignmentPanel.querySelector('#badge-sector-model-form');
     const message = assignmentPanel.querySelector('#badge-sector-model-message');
-    formElement.querySelectorAll('[data-badge-sector-model-search]').forEach((search) => search.addEventListener('input', () => {
-      const select = search.closest('.badge-sector-model-row').querySelector('[data-badge-sector-model-select]');
-      const query = normalizeText(search.value);
-      [...select.options].forEach((option) => {
-        option.hidden = Boolean(option.value) && Boolean(query) && !normalizeText(option.textContent).includes(query);
-      });
-    }));
     formElement.addEventListener('submit', async (event) => {
       event.preventDefault();
       const saveButton = formElement.querySelector('button[type="submit"]');
@@ -5945,7 +5938,6 @@ async function renderCrachas() {
       }
     });
     assignmentPanel.querySelector('[data-badge-home]').addEventListener('click', () => showBadgeView(''));
-    formElement.querySelector('[data-badge-sector-model-search]')?.focus();
   };
   const renderBadgeSectorNamesPanel = () => {
     if (!canViewBadgeSectorNames) return;
