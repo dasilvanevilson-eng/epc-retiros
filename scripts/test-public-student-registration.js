@@ -47,6 +47,7 @@ const individualPayload = {
   recebedorTaxaPaga: true,
   cpf: '529.982.247-25',
   nome: 'Cursista Público',
+  nomeCracha: 'Campo privado forjado',
   nascimento: '01/02/2008',
   telefone: '47999999999',
   cep: '89000000',
@@ -83,6 +84,7 @@ const individualPayload = {
   assert.equal(savedIndividual.valorPago, 0);
   assert.equal(savedIndividual.saldoPagar, 250);
   assert.equal(savedIndividual.recebedorTaxaPaga, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(savedIndividual, 'nomeCracha'), false, 'O link público não pode gravar o campo exclusivo do acesso autenticado.');
   const individualStatus = (await studentRegistrationLinkStatus(retreat))[0];
   assert.equal(individualStatus.status, 'cadastrada');
   assert.equal(individualStatus.enviadoPara, 'Família convidada');

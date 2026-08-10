@@ -35,11 +35,12 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
       }
       const name = text(student.nome);
       if (!sourceId || !name) return null;
+      const badgeName = text(student.nomeCracha) || firstName(name);
       return {
         entry: {
           id: `student-${sourceId}`,
           nome: name,
-          badgeName: firstName(name),
+          badgeName,
           setores: [label],
           badgeParticipantType: 'student',
         },

@@ -28,6 +28,14 @@ const path = require('node:path');
     sector: 'Comunidade Azul',
   }]);
 
+  const individualWithBadgeName = buildCommunityStudentBadgeEntries({
+    community: { nome: 'Comunidade Azul', membroIds: ['i3'] },
+    students: [{ id: 'i3', retiroId: 'r1', nome: 'Maria de Souza', nomeCracha: '  Maria da Acolhida  ' }],
+    studentFormType: 'cursista-individual',
+    retreatId: 'r1',
+  });
+  assert.equal(individualWithBadgeName[0].entry.badgeName, 'Maria da Acolhida', 'O nome personalizado completo deve substituir o primeiro nome no crachá.');
+
   const smp = buildCommunityStudentBadgeEntries({
     community: { nome: 'Comunidade Verde', membroSmpIds: ['12'] },
     students: [{ id: '12', retiroId: 'r2', nomeDele: 'Carlos Alberto', nomeDela: 'Maria Helena' }],
@@ -49,6 +57,8 @@ const path = require('node:path');
   assert.equal(epc[0].sector, 'Comunidade Dourada');
 
   const adminSource = await fs.readFile(path.join(__dirname, '..', 'adminApp.js'), 'utf8');
+  assert.match(adminSource, /const badgeNameField = publicContext \? '' : '<label class="field full"><span>Nome para crach&aacute;<\/span><input name="nomeCracha" autocomplete="off"><\/label>';/, 'O campo opcional deve existir somente no formulário autenticado.');
+  assert.match(adminSource, /name="nome" required><\/label>\$\{badgeNameField\}<label class="field"><span>Data de nascimento/, 'O nome para crachá deve ficar imediatamente abaixo do nome completo.');
   assert.match(adminSource, /buildCommunityStudentBadgeEntries\(\{/);
   assert.match(adminSource, /const preparedName = String\(entry\.badgeName/);
   assert.match(adminSource, /badgeUsesCoupleStudentForm \? badgeCoupleStudentSource\.list\(retreat\.id\)/);
