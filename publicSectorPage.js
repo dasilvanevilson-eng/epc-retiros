@@ -29,6 +29,7 @@ const intoleranceSectors = new Set(['animacao/jovem de sala', 'cozinha']);
 const supportsIntoleranceView = (sector = '') => intoleranceSectors.has(normalizeText(sector));
 const kidsIntoleranceSectors = new Set(['cozinha', 'espaco kids']);
 const supportsKidsIntoleranceView = (sector = '') => kidsIntoleranceSectors.has(normalizeText(sector));
+const supportsKidsRegisteredView = (sector = '') => normalizeText(sector) === 'espaco kids';
 const kidsIntoleranceViewTitle = (sector = '') => normalizeText(sector) === 'espaco kids'
   ? 'Crianças com intolerância alimentar'
   : 'Crianças espaço kids com intolerância alimentar';
@@ -164,6 +165,105 @@ const sortKidsCareRows = (rows = []) => [...rows].sort((first, second) => {
   return first.name.localeCompare(second.name, 'pt-BR', { sensitivity: 'base' });
 });
 
+const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.updatedAt || record.enviadoEm || record.criadoEm || record.createdAt || '') || 0;
+const participantIdentity = (record = {}) => {
+  const identity = record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id || record.nome || '';
+  const digits = String(identity).replace(/\D/g, '').slice(0, 11);
+  return digits || normalizeText(identity);
+};
+const mergeKidsEnrolmentsByParticipant = (entries = []) => {
+  const grouped = new Map();
+  entries.forEach((entry) => {
+    const key = participantIdentity(entry);
+    if (!key) return;
+    const group = grouped.get(key) || [];
+    group.push(entry);
+    grouped.set(key, group);
+  });
+  return [...grouped.values()].map((group) => {
+    const latest = [...group].sort((first, second) => recordTime(second) - recordTime(first))[0] || group[0];
+    const kidsByIdentity = new Map();
+    group.flatMap((entry) => entry.espacoKids || []).forEach((kid) => {
+      const key = normalizeText(`${kid.nome || ''}:${kid.nascimento || ''}`);
+      if (key) kidsByIdentity.set(key, kid);
+    });
+    return {
+      ...latest,
+      setores: uniqueValues(group.flatMap(entrySectors)).sort((first, second) => first.localeCompare(second, 'pt-BR', { sensitivity: 'base' })),
+      espacoKids: [...kidsByIdentity.values()],
+    };
+  });
+};
+
+function buildKidsRegisteredRows({ retreat, entries = [], people = [], smpStudents = [], epcStudents = [], communities = [] }) {
+  const retreatEntries = mergeKidsEnrolmentsByParticipant(entries.filter((entry) => entry.retiroId === retreat.id));
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const responsibleName = (entry = {}) => String(entry.nome || peopleById.get(entry.pessoaId)?.nome || entry.dadosPessoais?.nome || '').trim();
+  const usedCouples = new Set();
+  const teamKids = [];
+  const addTeamKids = (kids, responsibleEntry, responsible, sectors) => {
+    const person = peopleById.get(responsibleEntry.pessoaId) || responsibleEntry.dadosPessoais || {};
+    kids.forEach((kid) => teamKids.push({
+      name: String(kid.nome || '').trim(),
+      birth: String(kid.nascimento || '').trim(),
+      responsible: responsible || responsibleName(responsibleEntry) || 'N\u00e3o informado',
+      contact: String(person.telefone || responsibleEntry.dadosPessoais?.telefone || '').trim(),
+      origin: 'Equipe de trabalho',
+      contextLabel: 'Setor de trabalho',
+      contextValue: uniqueValues(sectors).join(', ') || 'N\u00e3o informado',
+    }));
+  };
+  retreatEntries.forEach((entry) => {
+    if (!entry.casalId) {
+      addTeamKids(entry.espacoKids || [], entry, '', entrySectors(entry));
+      return;
+    }
+    const coupleKey = `${entry.retiroId || ''}:${entry.casalId}`;
+    if (usedCouples.has(coupleKey)) return;
+    usedCouples.add(coupleKey);
+    const couple = retreatEntries.filter((item) => item.casalId === entry.casalId && item.retiroId === entry.retiroId);
+    const responsibleEntry = [...couple].sort((first, second) => {
+      const roleResult = (normalizeText(first.papelNoCasal) === 'primeira pessoa' ? 0 : 1) - (normalizeText(second.papelNoCasal) === 'primeira pessoa' ? 0 : 1);
+      return roleResult || recordTime(first) - recordTime(second);
+    })[0] || entry;
+    const kidsByIdentity = new Map();
+    [responsibleEntry, ...couple.filter((item) => item !== responsibleEntry)].flatMap((item) => item.espacoKids || []).forEach((kid) => {
+      const key = normalizeText(`${kid.nome || ''}:${kid.nascimento || ''}`);
+      if (key && !kidsByIdentity.has(key)) kidsByIdentity.set(key, kid);
+    });
+    addTeamKids(
+      [...kidsByIdentity.values()],
+      responsibleEntry,
+      couple.map(responsibleName).filter(Boolean).join(' e '),
+      couple.flatMap(entrySectors),
+    );
+  });
+
+  const formType = retreat.tipoFichaCursista || 'cursista-individual';
+  if (!['cursista-smp', 'cursista-epc'].includes(formType)) return sortKidsCareRows(teamKids);
+  const isEpc = formType === 'cursista-epc';
+  const memberField = isEpc ? 'membroEpcIds' : 'membroSmpIds';
+  const retreatCommunities = communities.filter((community) => community.retiroId === retreat.id);
+  const studentKids = (isEpc ? epcStudents : smpStudents)
+    .filter((record) => (!record.retiroId || record.retiroId === retreat.id) && !record.smpKidsNotNeeded)
+    .flatMap((record) => Array.from({ length: 5 }, (_, index) => {
+      const kidNumber = index + 1;
+      const name = String(record[`smpKidNome${kidNumber}`] || '').trim();
+      const birth = String(record[`smpKidNascimento${kidNumber}`] || '').trim();
+      if (!name && !birth) return null;
+      return {
+        name,
+        birth,
+        responsible: uniqueValues([record.nomeDele, record.nomeDela]).join(' e ') || (record.numeroFichaSmp || record.id ? `Ficha ${record.numeroFichaSmp || record.id}` : 'Casal n\u00e3o informado'),
+        contact: '',
+        origin: 'Cursista',
+        contextLabel: 'Comunidade',
+        contextValue: memberCommunity(retreatCommunities, memberField, [record.id, record.numeroFichaSmp]),
+      };
+    }).filter(Boolean));
+  return sortKidsCareRows([...teamKids, ...studentKids]);
+}
+
 function sectorPrintPageHtml({ title, retreat, sector, people, daySummary }) {
   return `<!doctype html>
 <html lang="pt-BR">
@@ -218,7 +318,28 @@ function kidsIntolerancePrintPageHtml({ retreat, sector, kidsIntolerances, kidsI
   return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#203c26;background:#fff;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:24px}p{margin:0 0 16px;color:#5f685f;font-size:13px}.eyebrow{margin:0 0 5px;color:#2b76b7;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.kids-intolerance-list{margin:16px 0;padding:0;list-style:none;border-top:1px solid #e1d6c5}.kids-intolerance-list li{padding:10px 0;border-bottom:1px solid #e1d6c5;break-inside:avoid}.kids-intolerance-list strong,.kids-intolerance-list small{display:block}.kids-intolerance-list strong>small{display:inline;color:#5f685f;font-weight:400}.kids-intolerance-list div{display:grid;gap:3px;margin-top:5px;color:#5f685f;font-size:12px}.kids-intolerance-list .kids-intolerance-problem{color:#203c26}.sector-public-empty{padding:18px 0;color:#5f685f}</style></head><body><p class="eyebrow">Acompanhamento do setor ${escapeHtml(sector)}</p><h1>${escapeHtml(viewTitle)}</h1>${kidsIntoleranceLoadError ? `<div class="sector-public-empty">${escapeHtml(kidsIntoleranceLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${kidsIntolerances.length} crian&ccedil;a(s) com intoler&acirc;ncia informada.</p>${kidsIntoleranceListHtml(kidsIntolerances, 'kids-intolerance-list')}`}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150),{once:true});</script></body></html>`;
 }
 
-function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleranceLoadError = '', kidsIntolerances = [], kidsIntoleranceLoadError = '', showIntoleranceView = supportsIntoleranceView(sector), showKidsIntoleranceView = supportsKidsIntoleranceView(sector) }) {
+const registeredKidAge = (dateOfBirth) => {
+  if (!dateOfBirth) return 'Data n\u00e3o informada';
+  const birth = new Date(`${dateOfBirth}T12:00:00`);
+  const today = new Date();
+  let months = (today.getFullYear() - birth.getFullYear()) * 12 + today.getMonth() - birth.getMonth();
+  if (today.getDate() < birth.getDate()) months -= 1;
+  if (months < 0) return 'Data inv\u00e1lida';
+  const years = Math.floor(months / 12);
+  const remainder = months % 12;
+  return `${years} ano${years === 1 ? '' : 's'} e ${remainder} ${remainder === 1 ? 'm\u00eas' : 'meses'}`;
+};
+
+const kidsRegisteredListHtml = (rows = [], className = 'kids-intolerance-public-list') => rows.length
+  ? `<ul class="${className}">${rows.map((kid) => `<li><strong>${escapeHtml(kid.name || 'Sem nome')} <small>${escapeHtml(registeredKidAge(kid.birth))}</small></strong><div><small>Respons&aacute;vel: ${escapeHtml(kid.responsible || 'N\u00e3o informado')}${kid.contact ? ` &middot; Contato: ${escapeHtml(kid.contact)}` : ''}</small><small>Origem: ${escapeHtml(kid.origin || 'Equipe de trabalho')} &middot; ${escapeHtml(kid.contextLabel || 'Setor de trabalho')}: ${escapeHtml(kid.contextValue || 'N\u00e3o informado')}</small></div></li>`).join('')}</ul>`
+  : '<div class="sector-public-empty">Nenhuma crian&ccedil;a cadastrada no Espa&ccedil;o Kids.</div>';
+
+function kidsRegisteredPrintPageHtml({ retreat, sector, kidsRegistered, kidsRegisteredLoadError = '' }) {
+  const title = `Crian\u00e7as inscritas no espa\u00e7o kids - ${retreat.nome}`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#203c26;background:#fff;font-family:Arial,sans-serif}h1{margin:0 0 6px;font-size:24px}p{margin:0 0 16px;color:#5f685f;font-size:13px}.eyebrow{margin:0 0 5px;color:#2b76b7;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.kids-registered-list{margin:16px 0;padding:0;list-style:none;border-top:1px solid #e1d6c5}.kids-registered-list li{padding:10px 0;border-bottom:1px solid #e1d6c5;break-inside:avoid}.kids-registered-list strong,.kids-registered-list small{display:block}.kids-registered-list strong>small{display:inline;color:#5f685f;font-weight:400}.kids-registered-list div{display:grid;gap:3px;margin-top:5px;color:#5f685f;font-size:12px}.sector-public-empty{padding:18px 0;color:#5f685f}</style></head><body><p class="eyebrow">Acompanhamento do setor ${escapeHtml(sector)}</p><h1>Crian&ccedil;as inscritas no espa&ccedil;o kids</h1>${kidsRegisteredLoadError ? `<div class="sector-public-empty">${escapeHtml(kidsRegisteredLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${kidsRegistered.length} crian&ccedil;a(s) cadastrada(s).</p>${kidsRegisteredListHtml(kidsRegistered, 'kids-registered-list')}`}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150),{once:true});</script></body></html>`;
+}
+
+function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleranceLoadError = '', kidsIntolerances = [], kidsIntoleranceLoadError = '', kidsRegistered = [], kidsRegisteredLoadError = '', showIntoleranceView = supportsIntoleranceView(sector), showKidsIntoleranceView = supportsKidsIntoleranceView(sector), showKidsRegisteredView = supportsKidsRegisteredView(sector) }) {
   const title = `Inscritos do setor ${sector} - ${retreat.nome}`;
   const people = entries
     .map((entry) => ({ name: String(entry.nome || '').trim(), days: entryDays(entry), retreatsDone: entryRetreatsDone(entry) }))
@@ -233,7 +354,9 @@ function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleran
   const printableReport = sectorPrintPageHtml({ title, retreat, sector, people, daySummary });
   const printableIntolerances = intolerancePrintPageHtml({ retreat, sector, intolerances, intoleranceLoadError });
   const printableKidsIntolerances = kidsIntolerancePrintPageHtml({ retreat, sector, kidsIntolerances, kidsIntoleranceLoadError });
+  const printableKidsRegistered = kidsRegisteredPrintPageHtml({ retreat, sector, kidsRegistered, kidsRegisteredLoadError });
   const kidsIntoleranceTitle = kidsIntoleranceViewTitle(sector);
+  const hasAdditionalViews = showIntoleranceView || showKidsIntoleranceView || showKidsRegisteredView;
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -296,20 +419,21 @@ function sectorPageHtml({ retreat, sector, entries, intolerances = [], intoleran
     <section class="sector-public-modal" role="dialog" aria-modal="true" aria-labelledby="sector-title">
       <p class="eyebrow">Acompanhamento do setor</p>
       <h1 id="sector-title">${escapeHtml(sector)}</h1>
-      ${(showIntoleranceView || showKidsIntoleranceView) ? `<div class="sector-public-tabs" role="tablist" aria-label="Visualiza&ccedil;&atilde;o do acompanhamento"><button type="button" id="sector-tab-entries" role="tab" aria-selected="true" aria-controls="sector-view-entries">Ades&otilde;es deste setor</button>${showIntoleranceView ? '<button type="button" id="sector-tab-intolerances" role="tab" aria-selected="false" aria-controls="sector-view-intolerances" tabindex="-1">Cursistas com intoler&acirc;ncia alimentar</button>' : ''}${showKidsIntoleranceView ? `<button type="button" id="sector-tab-kids-intolerances" role="tab" aria-selected="false" aria-controls="sector-view-kids-intolerances" tabindex="-1">${escapeHtml(kidsIntoleranceTitle)}</button>` : ''}</div>` : ''}
-      <div class="sector-public-view" id="sector-view-entries" ${(showIntoleranceView || showKidsIntoleranceView) ? 'role="tabpanel" aria-labelledby="sector-tab-entries"' : ''}>
+      ${hasAdditionalViews ? `<div class="sector-public-tabs" role="tablist" aria-label="Visualiza&ccedil;&atilde;o do acompanhamento"><button type="button" id="sector-tab-entries" role="tab" aria-selected="true" aria-controls="sector-view-entries">Ades&otilde;es deste setor</button>${showIntoleranceView ? '<button type="button" id="sector-tab-intolerances" role="tab" aria-selected="false" aria-controls="sector-view-intolerances" tabindex="-1">Cursistas com intoler&acirc;ncia alimentar</button>' : ''}${showKidsIntoleranceView ? `<button type="button" id="sector-tab-kids-intolerances" role="tab" aria-selected="false" aria-controls="sector-view-kids-intolerances" tabindex="-1">${escapeHtml(kidsIntoleranceTitle)}</button>` : ''}${showKidsRegisteredView ? '<button type="button" id="sector-tab-kids-registered" role="tab" aria-selected="false" aria-controls="sector-view-kids-registered" tabindex="-1">Crian&ccedil;as inscritas no espa&ccedil;o kids</button>' : ''}</div>` : ''}
+      <div class="sector-public-view" id="sector-view-entries" ${hasAdditionalViews ? 'role="tabpanel" aria-labelledby="sector-tab-entries"' : ''}>
         <p>${escapeHtml(retreat.nome)} - ${people.length} pessoa(s) inscrita(s) neste setor.</p>
         ${people.length ? `<ul class="sector-public-list">${people.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>Retiros que fez: ${escapeHtml(personRetreatsDoneText(person))}</span><span>Dias de trabalho: ${escapeHtml(person.days.length ? person.days.join(', ') : 'dias nao informados')}</span></li>`).join('')}</ul><section class="sector-public-summary"><h2>Somatorio por dia de trabalho</h2>${daySummary.map((item) => `<div><span>${escapeHtml(item.day)}</span><strong>${item.count} pessoa(s)</strong></div>`).join('')}</section>` : '<div class="sector-public-empty">Nenhuma pessoa inscrita neste setor ate o momento.</div>'}
       </div>
       ${showIntoleranceView ? `<div class="sector-public-view" id="sector-view-intolerances" role="tabpanel" aria-labelledby="sector-tab-intolerances" hidden>${intoleranceLoadError ? `<div class="sector-public-empty">${escapeHtml(intoleranceLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${intolerances.length} cursista(s) com intoler&acirc;ncia informada.</p>${intolerances.length ? `<ul class="intolerance-public-list">${intolerances.map((person) => `<li><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(person.intolerance)}</span><small>Comunidade: ${escapeHtml(person.community)}</small></li>`).join('')}</ul>` : '<div class="sector-public-empty">Nenhum cursista com intoler&acirc;ncia alimentar informada neste retiro.</div>'}`}</div>` : ''}
       ${showKidsIntoleranceView ? `<div class="sector-public-view" id="sector-view-kids-intolerances" role="tabpanel" aria-labelledby="sector-tab-kids-intolerances" hidden>${kidsIntoleranceLoadError ? `<div class="sector-public-empty">${escapeHtml(kidsIntoleranceLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${kidsIntolerances.length} crian&ccedil;a(s) com intoler&acirc;ncia informada.</p>${kidsIntoleranceListHtml(kidsIntolerances)}`}</div>` : ''}
+      ${showKidsRegisteredView ? `<div class="sector-public-view" id="sector-view-kids-registered" role="tabpanel" aria-labelledby="sector-tab-kids-registered" hidden>${kidsRegisteredLoadError ? `<div class="sector-public-empty">${escapeHtml(kidsRegisteredLoadError)}</div>` : `<p>${escapeHtml(retreat.nome)} - ${kidsRegistered.length} crian&ccedil;a(s) cadastrada(s).</p>${kidsRegisteredListHtml(kidsRegistered)}`}</div>` : ''}
       <div class="sector-public-actions">
         <button type="button" class="sector-public-print" id="print-sector-view">Imprimir</button>
         <button type="button" class="sector-public-close" id="close-sector-view">Fechar visualização</button>
       </div>
     </section>
     <script>
-      const printableReports = { entries: ${scriptJson(printableReport)}, intolerances: ${scriptJson(printableIntolerances)}, 'kids-intolerances': ${scriptJson(printableKidsIntolerances)} };
+      const printableReports = { entries: ${scriptJson(printableReport)}, intolerances: ${scriptJson(printableIntolerances)}, 'kids-intolerances': ${scriptJson(printableKidsIntolerances)}, 'kids-registered': ${scriptJson(printableKidsRegistered)} };
       let activeSectorView = 'entries';
       const tabs = [...document.querySelectorAll('[role="tab"]')];
       const activateView = (view) => {
@@ -362,12 +486,15 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
   }
   const showIntoleranceView = supportsIntoleranceView(result.sector);
   const showKidsIntoleranceView = supportsKidsIntoleranceView(result.sector);
+  const showKidsRegisteredView = supportsKidsRegisteredView(result.sector);
   const allEntries = await listRecords('adesoes');
   let intolerances = [];
   let intoleranceLoadError = '';
   let kidsIntolerances = [];
   let kidsIntoleranceLoadError = '';
-  if (showIntoleranceView || showKidsIntoleranceView) {
+  let kidsRegistered = [];
+  let kidsRegisteredLoadError = '';
+  if (showIntoleranceView || showKidsIntoleranceView || showKidsRegisteredView) {
     try {
       const communitiesPromise = listRecords('comunidades');
       let individualStudents = [];
@@ -379,9 +506,18 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
       const communities = await communitiesPromise;
       if (showIntoleranceView) intolerances = buildIntoleranceRows({ retreat: result.retreat, individualStudents, smpStudents, epcStudents, communities });
       if (showKidsIntoleranceView) kidsIntolerances = buildKidsIntoleranceRows({ retreat: result.retreat, entries: allEntries, smpStudents, epcStudents, communities });
+      if (showKidsRegisteredView) {
+        try {
+          const people = await listRecords('pessoas');
+          kidsRegistered = buildKidsRegisteredRows({ retreat: result.retreat, entries: allEntries, people, smpStudents, epcStudents, communities });
+        } catch {
+          kidsRegisteredLoadError = 'N\u00e3o foi poss\u00edvel carregar as crian\u00e7as inscritas neste momento. As demais visualiza\u00e7\u00f5es continuam dispon\u00edveis.';
+        }
+      }
     } catch {
       if (showIntoleranceView) intoleranceLoadError = 'N\u00e3o foi poss\u00edvel carregar as intoler\u00e2ncias neste momento. A visualiza\u00e7\u00e3o das ades\u00f5es continua dispon\u00edvel.';
       if (showKidsIntoleranceView) kidsIntoleranceLoadError = 'N\u00e3o foi poss\u00edvel carregar as intoler\u00e2ncias das crian\u00e7as neste momento. As demais visualiza\u00e7\u00f5es continuam dispon\u00edveis.';
+      if (showKidsRegisteredView) kidsRegisteredLoadError = 'N\u00e3o foi poss\u00edvel carregar as crian\u00e7as inscritas neste momento. As demais visualiza\u00e7\u00f5es continuam dispon\u00edveis.';
     }
   }
   const entries = allEntries.filter((entry) => entry.retiroId === result.retreatId && entryHasSector(entry, result.sector));
@@ -389,7 +525,7 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
   });
-  res.end(sectorPageHtml({ retreat: result.retreat, sector: result.sector, entries, intolerances, intoleranceLoadError, kidsIntolerances, kidsIntoleranceLoadError, showIntoleranceView, showKidsIntoleranceView }));
+  res.end(sectorPageHtml({ retreat: result.retreat, sector: result.sector, entries, intolerances, intoleranceLoadError, kidsIntolerances, kidsIntoleranceLoadError, kidsRegistered, kidsRegisteredLoadError, showIntoleranceView, showKidsIntoleranceView, showKidsRegisteredView }));
 }
 
-module.exports = { buildIntoleranceRows, buildKidsIntoleranceRows, sectorPageHtml, sendPublicSectorPage, supportsIntoleranceView, supportsKidsIntoleranceView };
+module.exports = { buildIntoleranceRows, buildKidsIntoleranceRows, buildKidsRegisteredRows, sectorPageHtml, sendPublicSectorPage, supportsIntoleranceView, supportsKidsIntoleranceView, supportsKidsRegisteredView };
