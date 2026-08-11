@@ -2491,6 +2491,34 @@ async function renderRetreat(id, selectedSector = '') {
     const empty = app.querySelector('.sector-link-empty');
     const selectedLinks = app.querySelector('#sector-link-selected');
     const canToggleSectorRegistration = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
+    const openSectorFollowupPreview = (url, sector, trigger) => {
+      app.querySelector('.sector-link-preview-overlay')?.remove();
+      const overlay = document.createElement('section');
+      overlay.className = 'receiver-sector-overlay sector-link-preview-overlay';
+      overlay.innerHTML = `<div class="receiver-sector-dialog sector-link-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="sector-link-preview-title"><div class="sector-link-preview-heading"><div><p class="eyebrow">Acompanhamento do líder</p><h2 id="sector-link-preview-title">${escapeHtml(sector || 'Setor')}</h2><p>Visualização do link público deste setor.</p></div><button type="button" class="sector-link-preview-close" aria-label="Fechar visualização">Fechar</button></div><iframe class="sector-link-preview-frame" src="${escapeHtml(url)}" title="Acompanhamento do líder do setor ${escapeHtml(sector || '')}"></iframe></div>`;
+      const closeButton = overlay.querySelector('.sector-link-preview-close');
+      const previewFrame = overlay.querySelector('.sector-link-preview-frame');
+      const close = () => {
+        overlay.remove();
+        trigger?.focus();
+      };
+      function closeFromKeyboard(event) {
+        if (event.key === 'Escape') close();
+      }
+      closeButton?.addEventListener('click', close);
+      overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+      overlay.addEventListener('keydown', closeFromKeyboard);
+      previewFrame?.addEventListener('load', () => {
+        previewFrame.contentDocument?.addEventListener('keydown', closeFromKeyboard);
+      });
+      app.append(overlay);
+      closeButton?.focus();
+    };
+    selectedLinks.addEventListener('click', (event) => {
+      const previewButton = event.target.closest('[data-view-sector-link]');
+      if (!previewButton) return;
+      openSectorFollowupPreview(previewButton.dataset.viewSectorLink || '', previewButton.dataset.viewSectorName || '', previewButton);
+    });
     const openSectorLinkStatusWindow = () => {
       app.querySelector('.sector-link-status-overlay')?.remove();
       const overlay = document.createElement('section');
@@ -2529,7 +2557,7 @@ async function renderRetreat(id, selectedSector = '') {
     app.querySelectorAll('[data-sector-link-select]').forEach((button) => button.addEventListener('click', () => {
       const sector = button.dataset.sectorLinkSelect || '';
       sectorLinkSearch.value = sector;
-      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><strong>${escapeHtml(sector)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button></label></div></article>`;
+      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><strong>${escapeHtml(sector)}</strong><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field sector-link-followup-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button><button type="button" class="sector-link-preview-button" data-view-sector-link="${escapeHtml(button.dataset.followupUrl || '')}" data-view-sector-name="${escapeHtml(sector)}">Visualizar</button></label></div></article>`;
       selectedLinks.querySelectorAll('[data-copy-sector-link]').forEach((copyButton) => copyButton.addEventListener('click', async () => {
         await navigator.clipboard.writeText(copyButton.dataset.copySectorLink);
         copyButton.textContent = 'Copiado!';
@@ -2541,7 +2569,7 @@ async function renderRetreat(id, selectedSector = '') {
       const sector = button.dataset.sectorLinkSelect || '';
       const registrationClosed = button.dataset.registrationClosed === 'true';
       sectorLinkSearch.value = sector;
-      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><div class="sector-link-selected-heading"><strong>${escapeHtml(sector)}</strong><label class="sector-link-closed-option"><input type="checkbox" data-sector-registration-closed="${escapeHtml(sector)}" ${registrationClosed ? 'checked' : ''} ${canToggleSectorRegistration ? '' : 'disabled'}><span>Inscrições encerradas</span></label></div><p class="sector-link-save-message" data-sector-closed-message>${canToggleSectorRegistration ? '' : 'Somente consulta.'}</p><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button></label></div></article>`;
+      selectedLinks.innerHTML = `<article class="sector-link-selected-card"><div class="sector-link-selected-heading"><strong>${escapeHtml(sector)}</strong><label class="sector-link-closed-option"><input type="checkbox" data-sector-registration-closed="${escapeHtml(sector)}" ${registrationClosed ? 'checked' : ''} ${canToggleSectorRegistration ? '' : 'disabled'}><span>Inscrições encerradas</span></label></div><p class="sector-link-save-message" data-sector-closed-message>${canToggleSectorRegistration ? '' : 'Somente consulta.'}</p><div class="sector-link-actions"><label class="copy-field"><span>Cadastro</span><input readonly value="${escapeHtml(button.dataset.registrationUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.registrationUrl || '')}">Copiar</button></label><label class="copy-field sector-link-followup-field"><span>Acompanhamento do líder</span><input readonly value="${escapeHtml(button.dataset.followupUrl || '')}"><button type="button" data-copy-sector-link="${escapeHtml(button.dataset.followupUrl || '')}">Copiar</button><button type="button" class="sector-link-preview-button" data-view-sector-link="${escapeHtml(button.dataset.followupUrl || '')}" data-view-sector-name="${escapeHtml(sector)}">Visualizar</button></label></div></article>`;
       selectedLinks.querySelectorAll('[data-copy-sector-link]').forEach((copyButton) => copyButton.addEventListener('click', async () => {
         await navigator.clipboard.writeText(copyButton.dataset.copySectorLink);
         copyButton.textContent = 'Copiado!';
