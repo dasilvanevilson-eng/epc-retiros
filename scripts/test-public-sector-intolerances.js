@@ -172,6 +172,8 @@ assert.match(eligibleHtml, /Comunidade Verde/);
 assert.match(eligibleHtml, /Lactose/);
 assert.doesNotMatch(eligibleHtml, /11111111111|47999999999|Rua secreta/);
 assert.match(eligibleHtml, /printableReports\[activeSectorView\]/);
+assert.match(eligibleHtml, /id="close-sector-view"/);
+assert.match(eligibleHtml, /if \(history\.length > 1\)[\s\S]*history\.back\(\)/, 'Fechar o acompanhamento deve retornar à rota administrativa preparada no histórico.');
 assert.match(eligibleHtml, /'kids-intolerances':/);
 assert.match(eligibleHtml, /\.intolerance-public-list li\{display:grid;grid-template-columns:/);
 assert.match(eligibleHtml, /\.intolerance-list li\{display:grid;grid-template-columns:/);
