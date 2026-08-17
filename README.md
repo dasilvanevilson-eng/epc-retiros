@@ -57,6 +57,17 @@ Para substituir o Financeiro legado pelas planilhas de despesas por retiro e set
 
 A migracao exclui somente as sete tabelas financeiras legadas e cria `financeiro_planilhas` e `financeiro_planilha_auditoria`. O backup do Financeiro antigo e opcional, pois esses registros foram autorizados para descarte. A migracao nao altera nem usa exclusao em cascata nas tabelas historicas de retiros, pessoas, adesoes ou cursistas.
 
+### Salvamento atomico da ficha de casal
+
+Antes de publicar o codigo que usa a rota unica de casal em um Supabase existente:
+
+1. Gere um snapshot e registre as contagens de `pessoas`, `adesoes`, `casais` e `casal_membros`.
+2. Execute `supabase-adesao-casal-atomica.sql` no SQL Editor do Supabase.
+3. Confirme que as contagens permaneceram iguais. Esse SQL cria somente a funcao transacional e nao percorre nem altera fichas existentes.
+4. Teste uma nova ficha de casal em um retiro de preparacao usado para testes antes de publicar a interface.
+
+A funcao fica acessivel somente ao `service_role` do servidor. Em cada envio, os dois integrantes, suas adesoes, dias, setores, criancas e vinculos sao confirmados na mesma transacao; qualquer erro desfaz a operacao inteira.
+
 ## Vercel
 
 1. Suba este projeto para o GitHub.

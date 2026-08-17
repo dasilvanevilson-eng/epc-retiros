@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const { stores, financeStores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveTeamCoupleAtomic, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 const {
@@ -138,6 +138,7 @@ async function protectRegistrationWrite(resource, record, req) {
 }
 
 function isPublicRegistrationRequest(resource, id, req) {
+  if (req.method === 'POST' && resource === 'adesoes-casal' && !id) return true;
   if (req.method === 'GET' && resource === 'retiros' && id) return true;
   if (req.method === 'PUT' && ['pessoas', 'adesoes'].includes(resource) && id) return true;
   if (req.method === 'GET' && ['pessoas', 'adesoes'].includes(resource)) return true;
@@ -610,6 +611,41 @@ async function handleApi(req, res, pathname) {
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');
+
+  if (resource === 'adesoes-casal') {
+    if (req.method !== 'POST' || id) return sendError(res, 405, 'Metodo nao permitido.');
+    try {
+      const incoming = await readBody(req);
+      const pessoas = Array.isArray(incoming.pessoas) ? incoming.pessoas : [];
+      const adesoes = Array.isArray(incoming.adesoes) ? incoming.adesoes : [];
+      const casalId = String(incoming.casalId || '').trim();
+      if (pessoas.length !== 2 || adesoes.length !== 2 || !casalId) return sendError(res, 400, 'A ficha de casal deve conter exatamente dois integrantes.');
+      const retreatIds = new Set(adesoes.map((record) => String(record?.retiroId || '').trim()).filter(Boolean));
+      if (retreatIds.size !== 1) return sendError(res, 400, 'Os dois integrantes devem pertencer ao mesmo retiro.');
+      const retreatId = [...retreatIds][0];
+      const cpfs = pessoas.map((person) => String(person?.cpf || person?.id || '').replace(/\D/g, ''));
+      const enrolmentCpfs = adesoes.map((record) => String(record?.pessoaId || '').replace(/\D/g, ''));
+      if (cpfs.some((cpf) => cpf.length !== 11) || new Set(cpfs).size !== 2 || cpfs.some((cpf, index) => cpf !== enrolmentCpfs[index])) {
+        return sendError(res, 400, 'Os integrantes e seus vinculos de CPF estao inconsistentes.');
+      }
+      if (adesoes.some((record) => record.casalId !== casalId)) return sendError(res, 400, 'O vinculo do casal esta inconsistente.');
+      if (session) {
+        if (denyIfMissingPermission(res, session, 'pessoas.editar')) return;
+        if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+      }
+      const protectedEnrolments = [];
+      for (const incomingRecord of adesoes) {
+        const record = { ...incomingRecord };
+        if (publicRegistrationRequest) record[userSubmittedRegistrationField] = true;
+        if (await denyIfTeamRegistrationClosed(res, 'adesoes', record, publicRegistrationRequest)) return;
+        protectedEnrolments.push(await protectRegistrationWrite('adesoes', record, req));
+      }
+      return sendJson(res, 200, await saveTeamCoupleAtomic({ casalId, pessoas, adesoes: protectedEnrolments }));
+    } catch (error) {
+      console.error(error);
+      return sendError(res, 400, error.message || 'Nao foi possivel salvar a ficha de casal.');
+    }
+  }
 
   if (resource === 'cursista-foto' && id && action && fourth) {
     try {

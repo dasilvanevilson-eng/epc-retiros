@@ -7699,12 +7699,6 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     return null;
   };
-  const linkCouplePeople = async (first, second, casalId) => {
-    const firstPerson = { ...first, casalId, conjugeId: second.id, updatedAt: new Date().toISOString() };
-    const secondPerson = { ...second, casalId, conjugeId: first.id, updatedAt: new Date().toISOString() };
-    await Promise.all([dataService.savePessoa(firstPerson), dataService.savePessoa(secondPerson)]);
-    people = people.map((person) => person.id === first.id ? firstPerson : person.id === second.id ? secondPerson : person);
-  };
   const spouseRegisteredMessage = (spouse, spouseEntry) => `Seu conjuge ${spouse?.nome || 'informado'} já fez inscrição no setor ${(spouseEntry?.setores || []).join(', ') || 'não informado'}`;
   const clearSpouseFields = () => {
     ['spouseCpf', 'spouseNome', 'spouseNascimento', 'spouseTelefone'].forEach((name) => {
@@ -8361,7 +8355,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     return valid;
   };
-  const saveForm = async (source, casalId, papelNoCasal, existingEntry = null, prefix = '', retiroMaisRecenteEpcSmp = '') => {
+  const buildFormRecords = (source, casalId, papelNoCasal, existingEntry = null, prefix = '', retiroMaisRecenteEpcSmp = '') => {
     const data = new FormData(source);
     const fieldName = (name) => prefix ? `${prefix}${name[0].toUpperCase()}${name.slice(1)}` : name;
     const nome = data.get(fieldName('nome')).trim();
@@ -8383,20 +8377,25 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const allowInternalKidsChange = embedded && canAccess('pessoas.editar') && canModifyRetreat(retreat) && existingEntry && Boolean(existingEntry.espacoKidsNaoNecessito) !== kidsNotNeeded;
     let person = people.find((item) => item.id === cpf || normalizeCpf(item.cpf) === cpf);
     if (!person && existingEntry) person = people.find((item) => item.id === existingEntry.pessoaId);
-    if (!person) person = { createdAt: new Date().toISOString() };
+    person = person ? { ...person } : { createdAt: new Date().toISOString() };
     const previousPersonId = existingEntry?.pessoaId && existingEntry.pessoaId !== cpf ? existingEntry.pessoaId : null;
     Object.assign(person, { id: cpf, cpf, nome, nomeNormalizado: nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, ' '), nascimento: normalizeDateInput(data.get(fieldName('nascimento'))), genero: prefix === 'spouse' ? spouseGenderValue() : checkedValue(source, fieldName('genero')), telefone: data.get(fieldName('telefone')), endereco: data.get('endereco'), numero: data.get('numero'), bairro: data.get('bairro'), cep: data.get('cep'), cidade: data.get('cidade'), estado: String(data.get('estado') || '').toUpperCase(), updatedAt: new Date().toISOString() });
-    await dataService.savePessoa(person);
     const coordenacaoSetor = embedded ? data.get('coordenacaoSetor') === 'sim' : Boolean(existingEntry?.coordenacaoSetor);
     const quadrante = checkedValue(source, 'quadrante') === 'Sim' ? 'Sim' : 'Não';
     const foto = checkedValue(source, 'foto') === 'Sim' ? 'Sim' : 'Não';
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
     const dispensaRetirosAnteriores = isSpiritualDirectionRegistration(source);
     const internalBadgeName = embedded ? { badgeName: String(data.get(fieldName('badgeName')) || '').trim() } : {};
-    await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), ...internalBadgeName, __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) });
+    const enrolment = { ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), ...internalBadgeName, __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) };
+    return { person, enrolment, previousPersonId };
+  };
+  const saveForm = async (...args) => {
+    const { person, enrolment, previousPersonId } = buildFormRecords(...args);
+    await dataService.savePessoa(person);
+    await dataService.saveAdesao(enrolment);
     if (previousPersonId) {
       const entriesToMigrate = (await dataService.listAdesoes(id)).filter((item) => item.pessoaId === previousPersonId);
-      await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
+      await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: person.id, nome: entry.nome || person.nome })));
       await dataService.deletePessoa(previousPersonId);
     }
     return person;
@@ -8502,9 +8501,17 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       if (isCouple() && !isSpiritualDirectionRegistration(form) && checkedValues(form, 'spouseRetiros').map(normalizeText).includes('epc') && checkedValues(form, 'spouseRetiros').map(normalizeText).includes('smp') && !spouseRecentRetreat) return;
       if (isCouple()) {
         const casalId = editingEntry?.casalId || createId();
-        const first = await saveForm(form, casalId, 'Primeira pessoa', editingEntry, '', firstRecentRetreat);
-        const second = await saveForm(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse', spouseRecentRetreat);
-        await linkCouplePeople(first, second, casalId);
+        const firstPrepared = buildFormRecords(form, casalId, 'Primeira pessoa', editingEntry, '', firstRecentRetreat);
+        const secondPrepared = buildFormRecords(form, casalId, 'Segunda pessoa', editingSpouseEntry, 'spouse', spouseRecentRetreat);
+        const linkedAt = new Date().toISOString();
+        firstPrepared.person = { ...firstPrepared.person, casalId, conjugeId: secondPrepared.person.id, updatedAt: linkedAt };
+        secondPrepared.person = { ...secondPrepared.person, casalId, conjugeId: firstPrepared.person.id, updatedAt: linkedAt };
+        const savedCouple = await dataService.saveTeamCouple({
+          casalId,
+          pessoas: [firstPrepared.person, secondPrepared.person],
+          adesoes: [firstPrepared.enrolment, secondPrepared.enrolment],
+        });
+        const [first, second] = savedCouple.pessoas;
         await finishSave([
           { nome: first.nome, dias: selectedConfirmedDays('dias', form) },
           { nome: second.nome, dias: selectedConfirmedDays('spouseDias', form) },

@@ -631,6 +631,109 @@ async function saveEnrolment(record) {
   return getEnrolment(record.id);
 }
 
+function atomicPersonPayload(record = {}) {
+  const mappedKeys = new Set(['id', 'cpf', 'nome', 'nomeNormalizado', 'nascimento', 'genero', 'telefone', 'cep', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'createdAt', 'updatedAt']);
+  const cpf = record.cpf || (!isUuid(record.id) ? record.id : '');
+  return compact({
+    cpf: textOrNull(cpf),
+    nome: record.nome || 'Sem nome',
+    nome_normalizado: record.nomeNormalizado || normalizeText(record.nome || ''),
+    nascimento: dateOnlyOrNull(record.nascimento),
+    genero: record.genero || '',
+    telefone: record.telefone || '',
+    cep: record.cep || '',
+    endereco: record.endereco || '',
+    numero: record.numero || '',
+    bairro: record.bairro || '',
+    cidade: record.cidade || '',
+    estado: record.estado || '',
+    created_at: record.createdAt || null,
+    updated_at: record.updatedAt || null,
+    extras: extras(record, mappedKeys),
+  });
+}
+
+function atomicEnrolmentPayload(record = {}) {
+  const mappedKeys = new Set(['id', 'retiroId', 'pessoaId', 'nome', 'dias', 'setores', 'retirosAnteriores', 'quadrante', 'foto', 'contribuicao', 'coordenacao', 'coordenacaoSetor', 'espacoKids', 'espacoKidsNaoNecessito', 'observacao', 'termoVoluntariadoAceito', 'termoVoluntariadoAceitoEm', 'tipoFicha', 'casalId', 'papelNoCasal', 'tipoFinanceiro', 'taxaPaga', 'valorPago', 'formaPagamento', 'recebedorObservacao', 'status', 'validada', 'validadoEm', 'enviadoEm', 'atualizadoEm', 'dadosPessoais', 'createdAt', 'updatedAt']);
+  return compact({
+    id: record.id,
+    retiro_id: record.retiroId,
+    nome: record.nome || '',
+    tipo_ficha: record.tipoFicha || 'Individual',
+    papel_no_casal: record.papelNoCasal || '',
+    quadrante: boolOrFalse(record.quadrante),
+    foto: boolOrFalse(record.foto),
+    contribuicao: record.contribuicao || '',
+    coordenacao: record.coordenacao || '',
+    coordenacao_setor: record.coordenacaoSetor || '',
+    espaco_kids_nao_necessito: Boolean(record.espacoKidsNaoNecessito),
+    observacao: record.observacao || '',
+    termo_voluntariado_aceito: Boolean(record.termoVoluntariadoAceito),
+    termo_voluntariado_aceito_em: dateOrNull(record.termoVoluntariadoAceitoEm),
+    tipo_financeiro: record.tipoFinanceiro || '',
+    taxa_paga: Boolean(record.taxaPaga),
+    valor_pago: numberOrZero(record.valorPago),
+    forma_pagamento: record.formaPagamento || '',
+    recebedor_observacao: record.recebedorObservacao || '',
+    status: record.status || 'pendente_validacao',
+    validada: Boolean(record.validada),
+    validado_em: dateOrNull(record.validadoEm),
+    enviado_em: record.enviadoEm || null,
+    atualizado_em: record.atualizadoEm || null,
+    created_at: record.createdAt || null,
+    updated_at: record.updatedAt || null,
+    dados_pessoais: record.dadosPessoais || {},
+    extras: extras(record, mappedKeys),
+    dias: array(record.dias).filter(Boolean),
+    setores: array(record.setores).filter(Boolean),
+    retiros_anteriores: array(record.retirosAnteriores).filter(Boolean),
+    espaco_kids: array(record.espacoKids).map((kid, index) => ({
+      nome: kid.nome || '',
+      nascimento: dateOnlyOrNull(kid.nascimento),
+      problema_saude: boolOrNull(kid.problemaSaude),
+      descricao_saude: textOrNull(kid.descricaoSaude),
+      intolerancia_alimentar: boolOrNull(kid.intoleranciaAlimentar),
+      descricao_intolerancia: textOrNull(kid.descricaoIntolerancia),
+      ordem: index + 1,
+    })),
+  });
+}
+
+async function saveTeamCoupleAtomic(payload = {}) {
+  if (!hasSupabase()) throw supabaseRequiredError();
+  const people = array(payload.pessoas);
+  const enrolments = array(payload.adesoes);
+  const coupleId = String(payload.casalId || '').trim();
+  if (!isUuid(coupleId) || people.length !== 2 || enrolments.length !== 2) throw new Error('A ficha de casal deve conter exatamente duas pessoas e duas adesoes validas.');
+  const retreatIds = new Set(enrolments.map((record) => String(record.retiroId || '').trim()).filter(Boolean));
+  const cpfs = people.map((person) => String(person.cpf || person.id || '').replace(/\D/g, ''));
+  if (retreatIds.size !== 1 || cpfs.some((cpf) => cpf.length !== 11) || new Set(cpfs).size !== 2) throw new Error('Os dois integrantes devem pertencer ao mesmo retiro e possuir CPFs diferentes.');
+  enrolments.forEach((record) => {
+    if (!isUuid(record.id) || record.casalId !== coupleId) throw new Error('Os vinculos da ficha de casal estao inconsistentes.');
+  });
+  const participants = people.map((person, index) => ({
+    person: atomicPersonPayload(person),
+    enrolment: atomicEnrolmentPayload(enrolments[index]),
+  }));
+  try {
+    await supabaseRequest('rpc/epc_save_team_couple_atomic', {
+      method: 'POST',
+      body: JSON.stringify({ p_payload: { couple_id: coupleId, retreat_id: [...retreatIds][0], participants } }),
+    });
+  } catch (error) {
+    if (/PGRST202|epc_save_team_couple_atomic/i.test(String(error?.message || ''))) {
+      throw new Error('O salvamento seguro de casal ainda nao foi ativado no Supabase. A ficha nao foi gravada; aplique supabase-adesao-casal-atomica.sql antes de tentar novamente.');
+    }
+    throw error;
+  }
+  const [savedPeople, savedEnrolments] = await Promise.all([
+    Promise.all(cpfs.map(getPerson)),
+    Promise.all(enrolments.map((record) => getEnrolment(record.id))),
+  ]);
+  if (savedPeople.some((person) => !person) || savedEnrolments.some((record) => !record)) throw new Error('O casal foi gravado, mas nao foi possivel confirmar imediatamente os dois integrantes. Atualize a tela antes de tentar novamente.');
+  return { pessoas: savedPeople, adesoes: savedEnrolments };
+}
+
 function mapStudent(row) {
   return {
     ...(row.extras || {}),
@@ -1565,6 +1668,7 @@ module.exports = {
   getRecord,
   getRecordStrict,
   saveRecord,
+  saveTeamCoupleAtomic,
   saveRetreatStudentRegistrationLinks,
   saveRetreatClosedRegistrationSectors,
   deleteRecord,

@@ -274,6 +274,7 @@ export const dataService = {
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: (retiroId = '') => list('adesoes', { retiroId }),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),
+  saveTeamCouple: (payload) => api('/adesoes-casal', { method: 'POST', body: JSON.stringify(payload), timeoutMs: 120000 }),
   deleteAdesao: (id) => remove('adesoes', id),
   listPessoas: (retiroId = '') => list('pessoas', { retiroId }),
   getPessoa: (id) => get('pessoas', id),
