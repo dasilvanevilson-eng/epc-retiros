@@ -4,6 +4,8 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const adminSource = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
+assert.match(adminSource, /<span>02<\/span><div><h2>Quais retiros fez como CURSISTA na Família EPC\?<\/h2><\/div>/, 'O tópico 2 deve identificar que os retiros foram realizados como cursista.');
+assert.doesNotMatch(adminSource, /Conte-nos quais retiros você já fez na família EPC\./, 'O tópico 2 não deve manter o comentário anterior.');
 const serviceSource = fs.readFileSync(path.join(root, 'dataService.js'), 'utf8');
 const apiSource = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
 const adapterSource = fs.readFileSync(path.join(root, 'databaseAdapter.js'), 'utf8');
