@@ -424,6 +424,14 @@ async function denyIfTeamRegistrationClosed(res, resource, record, publicRegistr
   return true;
 }
 
+function denyIfMissingPublicVolunteerTerm(res, resource, records, publicRegistrationRequest) {
+  if (!publicRegistrationRequest || resource !== 'adesoes') return false;
+  const enrolments = Array.isArray(records) ? records : [records];
+  if (enrolments.length && enrolments.every((record) => record?.termoVoluntariadoAceito === true)) return false;
+  sendError(res, 400, 'Aceite o Termo de adesao de voluntariado para concluir a inscricao.');
+  return true;
+}
+
 function denyIfMissingPermission(res, session, permission) {
   if (!permission || can(session, permission)) return false;
   sendError(res, 403, 'Voce nao tem permissao para esta acao.');
@@ -629,6 +637,7 @@ async function handleApi(req, res, pathname) {
         return sendError(res, 400, 'Os integrantes e seus vinculos de CPF estao inconsistentes.');
       }
       if (adesoes.some((record) => record.casalId !== casalId)) return sendError(res, 400, 'O vinculo do casal esta inconsistente.');
+      if (denyIfMissingPublicVolunteerTerm(res, 'adesoes', adesoes, publicRegistrationRequest)) return;
       if (session) {
         if (denyIfMissingPermission(res, session, 'pessoas.editar')) return;
         if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
@@ -929,6 +938,7 @@ async function handleApi(req, res, pathname) {
       }
       record = await normalizeFinanceRecord(resource, record, session);
     }
+    if (denyIfMissingPublicVolunteerTerm(res, resource, record, publicRegistrationRequest)) return;
     if (await denyIfTeamRegistrationClosed(res, resource, record, publicRegistrationRequest)) return;
     if (!publicRegistrationRequest && resource === 'retiros') {
       const current = await getRecord('retiros', record.id).catch(() => null);

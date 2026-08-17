@@ -7300,6 +7300,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     return null;
   };
   const canEditEmbeddedRegistration = !embedded || canModifyRetreat(retreat);
+  const volunteerTermRequired = !embedded;
   const adminSearchPanel = embedded ? `<section class="admin-registration-tools student-registration-tools panel"><div class="panel-heading"><div><h2>Cadastro da equipe de trabalho</h2><p>Busque por nome, CPF ou setor para editar ou consultar a ficha do retiro em foco.</p></div><div class="student-registration-actions">${canEditEmbeddedRegistration ? '<button type="button" id="new-registration">Incluir novo</button>' : '<span class="status concluido">Somente consulta</span>'}</div></div><label class="field registration-search-field"><span>Busca</span><input id="registration-search" autocomplete="off" placeholder="Digite nome, CPF ou setor"></label><div id="registration-search-results" class="registration-search-results" hidden></div></section>` : '';
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate autocomplete="${embedded ? 'on' : 'off'}">${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
@@ -7310,7 +7311,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     ${sectorRegistrationSection}
     <section class="form-section compact-section"><div class="section-heading"><span>06</span><div><h2>Itens e contribuição</h2><p>Escolhas necessárias para sua inscrição.</p></div></div><div class="fields choice-cards"><div class="choice-block quadrante-print-option"><h3>Quer quadrante impresso? <b>*</b></h3>${binaryChoices('quadrante', ['Sim', 'Não'])}<p class="hint">O quadrante (relação de todas a pessoas que serviram no retiro com os seus contatos) é disponibilizado em PDF após o retiro, mas se você quiser levar impresso no dia do retiro, selecione Sim.</p></div><div class="field choice-block contribution-field"><span data-contribution-label>Valor da inscrição</span><h3>Quer a foto oficial do retiro? <b>*</b></h3>${binaryChoices('foto', ['Sim', 'Não'])}<p class="hint">Valor da foto: ${currency(retreat.valorFoto ?? 10)}.</p><input name="contribuicao" value="${currency(retreat.valorInscricaoVoluntario)}" readonly><p class="hint payment-instructions"><strong><u>Fazer pix CNPJ 52.109.946/0001-94</u></strong> e encaminhar o comprovante no privado para o coordenador do setor que você vai servir.</p></div></div></section>
     <section class="form-section"><div class="section-heading"><span>07</span><div><h2>Espaço Kids <b>*</b></h2><p>Informe suas crianças ou marque que não necessita deste espaço.</p></div></div><div class="choice-block"><div class="kids-heading"><h3>Espaço Kids</h3><label><input type="checkbox" name="kidsNotNeeded"> Não necessito do Espaço Kids</label></div><p class="hint kids-hint">Informe o nome de suas crianças que utilizarão o Espaço Kids ou marque que não necessita. Deixe em branco as linhas não utilizadas.${kidsAgeLimitHint}</p><div class="kids-list">${kidsFields}</div></div></section>
-    <section class="form-section"><div class="section-heading"><span>08</span><div><h2>Termo de adesão de voluntariado <b>*</b></h2><p>Leia e aceite o termo para concluir sua inscrição.</p></div></div><div class="volunteer-term-topic"><div><h3>Termo de adesão de voluntariado</h3></div><button type="button" id="read-volunteer-term">Ler termo</button></div></section>
+    <section class="form-section"><div class="section-heading"><span>08</span><div><h2>Termo de adesão de voluntariado${volunteerTermRequired ? ' <b>*</b>' : ''}</h2><p>${volunteerTermRequired ? 'Leia e aceite o termo para concluir sua inscrição.' : 'No cadastro interno, a leitura e o aceite são opcionais.'}</p></div></div><div class="volunteer-term-topic"><div><h3>Termo de adesão de voluntariado</h3></div><button type="button" id="read-volunteer-term">Ler termo</button></div></section>
     <p id="form-message" class="form-message"></p><div class="form-actions"><p><b>*</b> Campos obrigatórios</p><button type="submit">${includeSubmitText} <span>→</span></button></div></form></main>`;
   mount.querySelector('.hero h1').textContent = publicHeading;
   mount.querySelector('.hero-copy').textContent = publicLead;
@@ -8333,7 +8334,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       if (['genero', 'retiros', 'quadrante', 'foto', 'tipoFicha'].includes(name)) return !checkedValues(source, name).length;
       return !data.get(name);
     });
-    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !kidCareIssue && !blocksKidAgeLimit && spouseValid && volunteerTermAccepted;
+    const valid = browserValid && (!requireSector || sectors.length) && daysComplete && days.length && !missingRequired.length && hasKidsChoice && !hasIncompleteKid && !kidCareIssue && !blocksKidAgeLimit && spouseValid && (!volunteerTermRequired || volunteerTermAccepted);
     if (!valid) {
       const labels = { genero: 'gênero', retiros: 'retiro(s) que fez', quadrante: 'quadrante impresso', foto: 'foto oficial do retiro', contribuicao: 'valor da inscrição', tipoFicha: 'Individual ou Casal' };
       const missing = [
@@ -8341,7 +8342,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         ...(requireSector && !sectors.length ? ['setor de trabalho'] : []),
         ...(!daysComplete ? ['Sim ou Não em todos os dias'] : []),
         ...(daysComplete && !days.length ? ['pelo menos um dia confirmado para trabalhar'] : []),
-        ...(!volunteerTermAccepted ? ['termo de adesão de voluntariado'] : []),
+        ...(volunteerTermRequired && !volunteerTermAccepted ? ['termo de adesão de voluntariado'] : []),
         ...missingRequired.map((name) => labels[name] || name),
       ];
       let message = missing.length ? `Revise: ${[...new Set(missing)].join(', ')}.` : 'Revise os campos obrigatórios.';
@@ -8352,7 +8353,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       else if (blocksKidAgeLimit) message = embedded ? internalKidsAgeLimitMessage : kidsAgeLimitMessage;
       else if (kidCareIssue) message = kidCareIssue.message;
       else if (isCouple() && !spouseValid) message = 'Em cadastro de casal, preencha também os dados, retiros e dias do segundo cônjuge.';
-      else if (!volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
+      else if (volunteerTermRequired && !volunteerTermAccepted) message = 'Leia o Termo de adesão de voluntariado e clique em "Lí e concordo" antes de enviar.';
       source.querySelector('#form-message')?.replaceChildren(message);
       const candidateControls = [
         firstInvalid,
@@ -8364,7 +8365,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
         hasIncompleteKid ? firstIncompleteKid() : null,
         kidCareIssue?.control,
         blocksKidAgeLimit ? ageLimitViolation.control : null,
-        !volunteerTermAccepted ? source.querySelector('#read-volunteer-term') : null,
+        volunteerTermRequired && !volunteerTermAccepted ? source.querySelector('#read-volunteer-term') : null,
         isCouple() && !spouseValid ? firstByName(firstSpouseMissing()) : null,
       ].filter(Boolean);
       const nextControl = candidateControls.sort((first, second) => first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1)[0];
@@ -8404,7 +8405,9 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const contribuicao = currency(volunteerContributionAmount(retreat, { casalId, foto }));
     const dispensaRetirosAnteriores = isSpiritualDirectionRegistration(source);
     const internalBadgeName = embedded ? { badgeName: String(data.get(fieldName('badgeName')) || '').trim() } : {};
-    const enrolment = { ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), ...internalBadgeName, __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) };
+    const termAccepted = existingEntry?.termoVoluntariadoAceito === true || volunteerTermAccepted;
+    const termAcceptedAt = existingEntry?.termoVoluntariadoAceitoEm || (termAccepted ? new Date().toISOString() : null);
+    const enrolment = { ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: termAccepted, termoVoluntariadoAceitoEm: termAcceptedAt, tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), ...internalBadgeName, __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) };
     return { person, enrolment, previousPersonId };
   };
   const saveForm = async (...args) => {
