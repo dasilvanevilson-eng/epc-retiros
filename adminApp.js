@@ -3705,8 +3705,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <section class="cursista-smp-section">
       <div class="section-heading"><span>3.</span><div><h2>Vivência religiosa</h2></div></div>
       <div class="fields two-columns">
-        <fieldset><legend>Crisma do ele</legend>${yesNo('crismaDele')}</fieldset>
-        <fieldset><legend>Crisma da ela</legend>${yesNo('crismaDela')}</fieldset>
+        <fieldset><legend>Crisma dele</legend>${yesNo('crismaDele')}</fieldset>
+        <fieldset><legend>Crisma dela</legend>${yesNo('crismaDela')}</fieldset>
         <label class="field"><span>Religião dele</span><input name="religiaoDele" placeholder="Digite a religião"></label>
         <label class="field"><span>Religião dela</span><input name="religiaoDela" placeholder="Digite a religião"></label>
         <label class="field"><span>Participa das missas? Ele</span><input name="missaDele" placeholder="Informe a participação"></label>
