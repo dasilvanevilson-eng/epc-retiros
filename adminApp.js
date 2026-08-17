@@ -5068,16 +5068,11 @@ async function renderComunidades() {
     if (!studentId || !targetCommunityId) return;
     select.disabled = true;
     try {
-      const latestCommunities = sortCommunitiesByPosition(await dataService.listComunidades(retreat.id));
-      for (const community of latestCommunities.filter((item) => item.id !== targetCommunityId)) {
-        await dataService.saveComunidadeMembros(community, membershipType, memberIdsFor(community).filter((id) => String(id) !== studentId));
-      }
-      const targetCommunity = latestCommunities.find((community) => community.id === targetCommunityId);
-      await dataService.saveComunidadeMembros(targetCommunity, membershipType, [...memberIdsFor(targetCommunity), studentId]);
-      renderComunidades();
+      await dataService.moveComunidadeMembro({ retreatId: retreat.id, targetCommunityId, membershipType, studentId });
+      await renderComunidades();
     } catch (error) {
       alert(error.message || 'Não foi possível mover o cursista.');
-      renderComunidades();
+      await renderComunidades();
     }
   }));
   app.querySelectorAll('[data-remove-member]').forEach((button) => button.addEventListener('click', async () => {

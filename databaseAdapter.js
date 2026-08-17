@@ -734,6 +734,33 @@ async function saveTeamCoupleAtomic(payload = {}) {
   return { pessoas: savedPeople, adesoes: savedEnrolments };
 }
 
+async function moveCommunityMemberAtomic({ retreatId, targetCommunityId, membershipType, studentId } = {}) {
+  if (!hasSupabase()) throw supabaseRequiredError();
+  const cleanRetreatId = String(retreatId || '').trim();
+  const cleanTargetCommunityId = String(targetCommunityId || '').trim();
+  const cleanMembershipType = String(membershipType || '').trim().toLowerCase();
+  const cleanStudentId = String(studentId || '').trim();
+  if (!isUuid(cleanRetreatId) || !isUuid(cleanTargetCommunityId) || !cleanStudentId) throw new Error('Retiro, comunidade de destino e integrante devem ser informados corretamente.');
+  if (!['individual', 'smp', 'epc'].includes(cleanMembershipType)) throw new Error('Tipo de ficha de cursista invalido.');
+  if (cleanMembershipType === 'individual' && !isUuid(cleanStudentId)) throw new Error('Identificador do cursista individual invalido.');
+  try {
+    return await supabaseRequest('rpc/epc_move_community_member_atomic', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_retiro_id: cleanRetreatId,
+        p_comunidade_destino_id: cleanTargetCommunityId,
+        p_tipo: cleanMembershipType,
+        p_cursista_id: cleanStudentId,
+      }),
+    });
+  } catch (error) {
+    if (/PGRST202|epc_move_community_member_atomic/i.test(String(error?.message || ''))) {
+      throw new Error('A movimentacao segura entre comunidades ainda nao foi ativada no Supabase. Nenhum vinculo foi alterado; aplique supabase-comunidade-mover-membro-atomico.sql antes de tentar novamente.');
+    }
+    throw error;
+  }
+}
+
 function mapStudent(row) {
   return {
     ...(row.extras || {}),
@@ -1669,6 +1696,7 @@ module.exports = {
   getRecordStrict,
   saveRecord,
   saveTeamCoupleAtomic,
+  moveCommunityMemberAtomic,
   saveRetreatStudentRegistrationLinks,
   saveRetreatClosedRegistrationSectors,
   deleteRecord,

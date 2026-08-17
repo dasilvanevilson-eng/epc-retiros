@@ -310,6 +310,10 @@ export const dataService = {
       body: JSON.stringify({ ...nextCommunity, __membershipType: membershipType }),
     });
   },
+  moveComunidadeMembro: ({ retreatId, targetCommunityId, membershipType, studentId }) => api('/comunidades-mover-membro', {
+    method: 'POST',
+    body: JSON.stringify({ retreatId, targetCommunityId, membershipType, studentId }),
+  }),
   deleteComunidade: (id) => remove('comunidades', id),
   listCrachas: (retiroId = '') => list('crachas', { retiroId }),
   saveCracha: (badgeProfile) => save('crachas', badgeProfile),

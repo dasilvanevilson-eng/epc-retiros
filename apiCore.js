@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const { stores, financeStores } = require('./storeConfig');
 const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
-const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveTeamCoupleAtomic, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
+const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, moveCommunityMemberAtomic, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveTeamCoupleAtomic, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
 const {
@@ -653,6 +653,24 @@ async function handleApi(req, res, pathname) {
     } catch (error) {
       console.error(error);
       return sendError(res, 400, error.message || 'Nao foi possivel salvar a ficha de casal.');
+    }
+  }
+
+  if (resource === 'comunidades-mover-membro') {
+    if (req.method !== 'POST' || id) return sendError(res, 405, 'Metodo nao permitido.');
+    if (denyIfMissingPermission(res, session, 'comunidades.editar')) return;
+    try {
+      const body = await readBody(req);
+      const retreatId = String(body.retiroId || '').trim();
+      const targetCommunityId = String(body.targetCommunityId || '').trim();
+      const membershipType = String(body.membershipType || '').trim().toLowerCase();
+      const studentId = String(body.studentId || '').trim();
+      if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
+      const result = await moveCommunityMemberAtomic({ retreatId, targetCommunityId, membershipType, studentId });
+      return sendJson(res, 200, result);
+    } catch (error) {
+      console.error(error);
+      return sendError(res, 400, error.message || 'Nao foi possivel mover o integrante entre comunidades.');
     }
   }
 
