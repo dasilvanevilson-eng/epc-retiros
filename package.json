@@ -11,6 +11,7 @@
     "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:team-participation": "node scripts/test-team-participation-rules.js",
     "test:team-couple-atomic": "node scripts/test-team-couple-atomic-save.js",
+    "test:team-sector-links": "node scripts/test-team-sector-links.js",
     "test:cursista-kids-age": "node scripts/test-cursista-kids-age-limit.js",
     "test:cursista-shirt-size": "node scripts/test-cursista-shirt-size.js",
     "test:dates": "node scripts/test-date-inputs.js && node scripts/test-date-persistence.js",

@@ -67,11 +67,20 @@ loadLocalEnv().then(async () => {
         await sendPublicRegistrationPage(req, res, pathname.replace(/^\/adesao\/?/, ''));
       }
       else if (pathname.startsWith('/setor/')) {
-        const { sendPublicSectorPage } = require('./publicSectorPage');
-        const parts = pathname.match(/^\/setor\/([^/]+)(?:\/([^/]+))?/) || [];
-        const retreatId = parts[2] ? parts[1] : '';
-        const token = parts[2] || parts[1];
-        await sendPublicSectorPage(req, res, retreatId, token);
+        const identifiedLink = pathname.match(/^\/setor\/[^/]+\/(cadastro|acompanhamento)\/([^/]+)\/?$/);
+        if (identifiedLink?.[1] === 'cadastro') {
+          const { sendPublicSectorInvitePage } = require('./publicSectorInvitePage');
+          await sendPublicSectorInvitePage(req, res, '', identifiedLink[2]);
+        } else if (identifiedLink?.[1] === 'acompanhamento') {
+          const { sendPublicSectorPage } = require('./publicSectorPage');
+          await sendPublicSectorPage(req, res, '', identifiedLink[2]);
+        } else {
+          const { sendPublicSectorPage } = require('./publicSectorPage');
+          const parts = pathname.match(/^\/setor\/([^/]+)(?:\/([^/]+))?/) || [];
+          const retreatId = parts[2] ? parts[1] : '';
+          const token = parts[2] || parts[1];
+          await sendPublicSectorPage(req, res, retreatId, token);
+        }
       }
       else if (pathname.startsWith('/convite-setor/')) {
         const { sendPublicSectorInvitePage } = require('./publicSectorInvitePage');

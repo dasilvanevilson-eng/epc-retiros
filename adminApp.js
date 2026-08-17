@@ -354,6 +354,25 @@ const sortSectors = (sectors = []) => [...sectors].sort((first, second) => first
 const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaço kids', 'espiritual', 'externo', 'pegue e pague', 'refeitório', 'secretaria', 'zeladoria']);
 const sectorArea = (sector) => hiddenTeamSectors.has(String(sector).toLocaleLowerCase('pt-BR')) ? 'escondida' : 'sala';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+const teamSectorLinkFormatVersion = 2;
+const teamSectorLinkSlug = (sector = '') => normalizeText(sector)
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || 'setor';
+const teamSectorPublicUrls = (retreat = {}, link = {}, origin = '') => {
+  const registrationToken = encodeURIComponent(link.cadastroToken || link.token || '');
+  const followupToken = encodeURIComponent(link.acompanhamentoToken || link.token || '');
+  if (Number(retreat.versaoFormatoLinksEquipe || 0) < teamSectorLinkFormatVersion) {
+    return {
+      registrationUrl: `${origin}/convite-setor/${registrationToken}`,
+      followupUrl: `${origin}/setor/${followupToken}`,
+    };
+  }
+  const sectorSlug = teamSectorLinkSlug(link.setor);
+  return {
+    registrationUrl: `${origin}/setor/${sectorSlug}/cadastro/${registrationToken}`,
+    followupUrl: `${origin}/setor/${sectorSlug}/acompanhamento/${followupToken}`,
+  };
+};
 const uniqueSectors = (sectors = []) => {
   const seen = new Set();
   return sectors.filter((sector) => {
@@ -2014,7 +2033,7 @@ async function renderNewRetreat(returnHash = '#configuracoes') {
       const sortedSectors = sortSectors(selectedSectors);
       const closedKeys = new Set(values.getAll('setoresInscricoesEncerradas').map(normalizeText));
       const setoresInscricoesEncerradas = sortedSectors.filter((sector) => closedKeys.has(normalizeText(sector)));
-      const retreat = { id: createId(), nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: values.get('local').trim(), tipoFichaCursista: values.get('tipoFichaCursista') || defaultStudentFormType, valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: values.get('local').trim(), tipoFichaCursista: values.get('tipoFichaCursista') || defaultStudentFormType, valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), versaoFormatoLinksEquipe: teamSectorLinkFormatVersion, status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
       await loadData();
@@ -2250,8 +2269,7 @@ async function renderRetreat(id, selectedSector = '') {
     sectorLinksPanel.className = 'panel sector-links-panel';
     sectorLinksPanel.id = 'retreat-links';
     sectorLinksPanel.innerHTML = `<div class="sector-link-panel-heading"><div class="sector-links-heading"><div class="sector-links-title"><h2>Links de cadastro da equipe de trabalho por setor</h2><div class="sector-links-help"><button type="button" class="sector-links-info" id="sector-links-info" aria-label="Informações sobre os links de cadastro da equipe por setor" aria-expanded="false" aria-controls="sector-links-explanation"><img src="/assets/info-icon.png?v=20260806-legivel" alt="" aria-hidden="true"></button><div class="sector-links-explanation" id="sector-links-explanation" role="note" hidden><ul><li>O link “Cadastro” abre somente a ficha limitada ao setor. Esse link deve ser encaminhado ao coordenador do setor para cadastro da sua equipe.</li><li>O link “Acompanhamento do líder” mostra ao coordenador do setor a relação de voluntários, os dias de trabalho e o somatório por dia.</li><li>O link “Acompanhamento do líder” do setor Animação/Jovem de sala visualiza também cursistas com intolerância alimentar. O link “Acompanhamento do líder” do setor Cozinha visualiza também cursistas e crianças do Espaço Kids com intolerância alimentar.</li><li>O link “Acompanhamento do líder” do setor Espaço Kids visualiza também crianças com intolerância alimentar e problema de saúde.</li></ul></div></div></div></div><button type="button" class="secondary-button sector-link-view-status" id="view-sector-link-status">Visualizar</button></div><div class="field sector-link-search"><span>Buscar setor ativo</span><input id="sector-link-search" type="search" autocomplete="off" aria-controls="sector-link-menu" aria-expanded="false" placeholder="Digite o nome do setor"><div class="sector-link-menu" id="sector-link-menu" hidden>${activeSectorLinks.map((link) => {
-      const registrationUrl = `${location.origin}/convite-setor/${encodeURIComponent(link.cadastroToken || link.token)}`;
-      const followupUrl = `${location.origin}/setor/${encodeURIComponent(link.acompanhamentoToken || link.token)}`;
+      const { registrationUrl, followupUrl } = teamSectorPublicUrls(retreat, link, location.origin);
       return `<article class="sector-link-menu-item" data-sector-link-row="${escapeHtml(link.setor)}"><button type="button" class="sector-link-choice" data-sector-link-select="${escapeHtml(link.setor)}" data-registration-url="${escapeHtml(registrationUrl)}" data-followup-url="${escapeHtml(followupUrl)}" data-registration-closed="${sectorRegistrationClosed(retreat, link.setor) ? 'true' : 'false'}"><strong>${escapeHtml(link.setor)}</strong><span>Selecionar</span></button></article>`;
     }).join('')}<p class="sector-link-empty" hidden>Nenhum setor ativo encontrado.</p></div></div><p class="sector-link-feedback student-registration-link-search-feedback" id="sector-link-feedback" role="status">Selecione um setor para visualizar os links.</p><div class="sector-link-selected" id="sector-link-selected"></div>`;
     app.querySelector('.detail-grid')?.append(sectorLinksPanel);
