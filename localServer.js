@@ -58,7 +58,6 @@ async function handleStatic(req, res, pathname) {
 loadLocalEnv().then(async () => {
   const port = Number(process.env.PORT) || 5173;
   const { handleApi, sendError } = require('./apiCore');
-  const { ensureFileDatabase } = require('./databaseAdapter');
   const server = http.createServer(async (req, res) => {
     try {
       const { pathname } = new URL(req.url, `http://${req.headers.host}`);
@@ -99,6 +98,5 @@ loadLocalEnv().then(async () => {
       sendError(res, 500, error.message || 'Erro interno.');
     }
   });
-  await ensureFileDatabase();
   server.listen(port, () => console.log(`EPC Retiros em http://localhost:${port}`));
 });

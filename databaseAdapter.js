@@ -1,14 +1,12 @@
-const fs = require('fs/promises');
-const path = require('path');
 const { stores, financeStores } = require('./storeConfig');
-
-const root = __dirname;
-const databaseDir = path.join(root, 'database');
-const databaseFile = path.join(databaseDir, 'db.json');
 
 const emptyDatabase = () => Object.fromEntries(stores.map((store) => [store, []]));
 const hasSupabase = () => Boolean(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY));
-const canFallbackToFile = () => !process.env.VERCEL && process.env.NODE_ENV !== 'production';
+const supabaseRequiredError = () => {
+  const error = new Error('Supabase nao configurado. A operacao foi cancelada; nenhum dado foi lido ou salvo no banco local.');
+  error.code = 'SUPABASE_REQUIRED';
+  return error;
+};
 
 const tableByStore = {
   retiros: 'retiros',
@@ -27,75 +25,6 @@ const tableByStore = {
   usuario_retiros: 'usuario_retiros',
 };
 financeStores.forEach((storeName) => { tableByStore[storeName] = storeName; });
-
-async function withLocalFallback(action) {
-  if (!hasSupabase()) return action(false);
-  try {
-    return await action(true);
-  } catch (error) {
-    if (!canFallbackToFile()) throw error;
-    console.warn(`Supabase indisponivel; usando banco local. ${error.message || error}`);
-    return action(false);
-  }
-}
-
-function firstJsonObjectEnd(content) {
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let index = 0; index < content.length; index += 1) {
-    const character = content[index];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (character === '\\') escaped = true;
-      else if (character === '"') inString = false;
-      continue;
-    }
-    if (character === '"') inString = true;
-    else if (character === '{') depth += 1;
-    else if (character === '}') {
-      depth -= 1;
-      if (depth === 0) return index + 1;
-    }
-  }
-  return -1;
-}
-
-async function parseDatabaseContent(content) {
-  try {
-    return JSON.parse(content || '{}');
-  } catch (error) {
-    const end = firstJsonObjectEnd(content || '');
-    if (end <= 0) throw error;
-    const parsed = JSON.parse(content.slice(0, end));
-    await writeFileDatabase(parsed);
-    return parsed;
-  }
-}
-
-async function ensureFileDatabase() {
-  await fs.mkdir(databaseDir, { recursive: true });
-  try {
-    await fs.access(databaseFile);
-  } catch {
-    await writeFileDatabase(emptyDatabase());
-  }
-}
-
-async function readFileDatabase() {
-  await ensureFileDatabase();
-  const content = await fs.readFile(databaseFile, 'utf8');
-  const parsed = await parseDatabaseContent(content);
-  return { ...emptyDatabase(), ...parsed };
-}
-
-async function writeFileDatabase(database) {
-  await fs.mkdir(databaseDir, { recursive: true });
-  const normalized = { ...emptyDatabase(), ...database };
-  const tempFile = `${databaseFile}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
-  await fs.writeFile(tempFile, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
-  await fs.rename(tempFile, databaseFile);
-}
 
 async function supabaseRequest(pathname, options = {}) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -1479,20 +1408,13 @@ async function deleteRelational(storeName, id) {
 }
 
 async function readDatabase() {
-  return withLocalFallback(async (useSupabase) => {
-    if (!useSupabase) return readFileDatabase();
-    const entries = await Promise.all(stores.map(async (storeName) => [storeName, await listRelational(storeName)]));
-    return Object.fromEntries(entries);
-  });
+  if (!hasSupabase()) throw supabaseRequiredError();
+  const entries = await Promise.all(stores.map(async (storeName) => [storeName, await listRelational(storeName)]));
+  return Object.fromEntries(entries);
 }
 
 async function importDatabase(incoming) {
-  if (!hasSupabase()) {
-    const current = await readFileDatabase();
-    const imported = Object.fromEntries(stores.map((store) => [store, Array.isArray(incoming[store]) ? incoming[store] : current[store]]));
-    await writeFileDatabase({ ...current, ...imported });
-    return;
-  }
+  if (!hasSupabase()) throw supabaseRequiredError();
   for (const storeName of stores) {
     for (const record of array(incoming[storeName])) {
       if (!record?.id) continue;
@@ -1508,167 +1430,82 @@ async function importDatabase(incoming) {
 }
 
 async function replaceDatabase(incoming) {
-  if (hasSupabase()) throw new Error('A substituicao do Supabase deve usar a restauracao transacional de backup.');
-  const replacement = Object.fromEntries(stores.map((store) => [store, Array.isArray(incoming?.[store]) ? incoming[store] : []]));
-  await writeFileDatabase(replacement);
+  if (!hasSupabase()) throw supabaseRequiredError();
+  throw new Error('A substituicao do Supabase deve usar a restauracao transacional de backup.');
 }
 
 async function listRecords(storeName) {
-  return withLocalFallback(async (useSupabase) => (useSupabase ? listRelational(storeName) : (await readFileDatabase())[storeName]));
+  if (!hasSupabase()) throw supabaseRequiredError();
+  return listRelational(storeName);
 }
 
 async function getRecord(storeName, id) {
-  return withLocalFallback(async (useSupabase) => (useSupabase ? getRelational(storeName, id) : (await readFileDatabase())[storeName].find((item) => item.id === id) || null));
+  if (!hasSupabase()) throw supabaseRequiredError();
+  return getRelational(storeName, id);
 }
 
-// Exclusoes de fichas com arquivos privados nao podem cair silenciosamente no
-// banco local quando o Supabase esta configurado. Estes helpers mantem o modo
-// arquivo quando ele e a configuracao real, mas propagam qualquer falha remota.
+// Operacoes estritas nunca podem cair silenciosamente em armazenamento local.
 async function getRecordStrict(storeName, id) {
-  if (hasSupabase()) return getRelational(storeName, id);
-  return (await readFileDatabase())[storeName].find((item) => item.id === id) || null;
+  if (!hasSupabase()) throw supabaseRequiredError();
+  return getRelational(storeName, id);
 }
 
 async function saveRecord(storeName, record) {
-  return withLocalFallback(async (useSupabase) => {
-    if (useSupabase) return saveRelational(storeName, record);
-    if (storeName === 'comunidades' && Object.prototype.hasOwnProperty.call(record, '__membershipType')) {
-      record = { ...record };
-      delete record.__membershipType;
-    }
-    const database = await readFileDatabase();
-    const collection = database[storeName];
-    if (storeName === 'adesoes' && record?.retiroId && record?.pessoaId) {
-      const conflict = collection.find((item) => item.id !== record.id && item.retiroId === record.retiroId && item.pessoaId === record.pessoaId);
-      if (conflict) {
-        const error = new Error(duplicateEnrolmentCpfMessage);
-        error.code = 'DUPLICATE_RETREAT_ENROLMENT_CPF';
-        error.conflictId = conflict.id;
-        throw error;
-      }
-    }
-    if (storeName === 'cursistas' && record?.retiroId) {
-      const normalizedCpf = String(record.cpf || '').replace(/\D/g, '');
-      const fileNumber = Number(record.numeroFichaIndividual);
-      const duplicateCpf = normalizedCpf && collection.find((item) => item.id !== record.id
-        && item.retiroId === record.retiroId
-        && String(item.cpf || '').replace(/\D/g, '') === normalizedCpf);
-      if (duplicateCpf) {
-        const error = new Error(duplicateStudentCpfMessage);
-        error.code = 'DUPLICATE_RETREAT_STUDENT_CPF';
-        throw error;
-      }
-      const duplicateFileNumber = Number.isInteger(fileNumber) && fileNumber > 0 && collection.find((item) => item.id !== record.id
-        && item.retiroId === record.retiroId
-        && Number(item.numeroFichaIndividual) === fileNumber);
-      if (duplicateFileNumber) {
-        const error = new Error(duplicateStudentFileNumberMessage);
-        error.code = 'DUPLICATE_RETREAT_STUDENT_FILE_NUMBER';
-        throw error;
-      }
-    }
-    const index = collection.findIndex((item) => item.id === record.id);
-    if (index >= 0) collection[index] = record;
-    else collection.push(record);
-    await writeFileDatabase(database);
-    return record;
-  });
+  if (!hasSupabase()) throw supabaseRequiredError();
+  return saveRelational(storeName, record);
 }
 
 async function saveRetreatStudentRegistrationLinks(retreatId, linksCadastroCursistas = []) {
-  return withLocalFallback(async (useSupabase) => {
-    if (useSupabase) {
-      const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
-      if (!row) return null;
-      await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          extras: {
-            ...(row.extras || {}),
-            linksCadastroCursistas,
-          },
-        }),
-      });
-      return getRetreat(retreatId);
-    }
-    const database = await readFileDatabase();
-    const index = database.retiros.findIndex((retreat) => retreat.id === retreatId);
-    if (index < 0) return null;
-    database.retiros[index] = { ...database.retiros[index], linksCadastroCursistas };
-    await writeFileDatabase(database);
-    return database.retiros[index];
+  if (!hasSupabase()) throw supabaseRequiredError();
+  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+  if (!row) return null;
+  await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      extras: {
+        ...(row.extras || {}),
+        linksCadastroCursistas,
+      },
+    }),
   });
+  return getRetreat(retreatId);
 }
 
 async function saveRetreatClosedRegistrationSectors(retreatId, setoresInscricoesEncerradas = []) {
-  return withLocalFallback(async (useSupabase) => {
-    if (useSupabase) {
-      const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
-      if (!row) return null;
-      await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          extras: {
-            ...(row.extras || {}),
-            setoresInscricoesEncerradas,
-          },
-        }),
-      });
-      return getRetreat(retreatId);
-    }
-    const database = await readFileDatabase();
-    const index = database.retiros.findIndex((retreat) => retreat.id === retreatId);
-    if (index < 0) return null;
-    database.retiros[index] = { ...database.retiros[index], setoresInscricoesEncerradas };
-    await writeFileDatabase(database);
-    return database.retiros[index];
+  if (!hasSupabase()) throw supabaseRequiredError();
+  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+  if (!row) return null;
+  await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      extras: {
+        ...(row.extras || {}),
+        setoresInscricoesEncerradas,
+      },
+    }),
   });
+  return getRetreat(retreatId);
 }
 
 async function deleteRecord(storeName, id) {
-  return withLocalFallback(async (useSupabase) => {
-    if (useSupabase) return deleteRelational(storeName, id);
-    const database = await readFileDatabase();
-    database[storeName] = database[storeName].filter((item) => item.id !== id);
-    await writeFileDatabase(database);
-  });
+  if (!hasSupabase()) throw supabaseRequiredError();
+  return deleteRelational(storeName, id);
 }
 
 async function deleteRecordStrict(storeName, id) {
-  if (hasSupabase()) {
-    if (storeName !== 'cursistas') return deleteRelational(storeName, id);
-    const row = await findStudentRow(id);
-    if (!row) return null;
-    const deleted = await supabaseRequest(`cursistas?id=eq.${enc(row.id)}`, {
-      method: 'DELETE',
-      headers: { Prefer: 'return=representation' },
-    });
-    return Array.isArray(deleted) && deleted.length ? mapStudent(deleted[0]) : null;
-  }
-
-  const database = await readFileDatabase();
-  const collection = database[storeName];
-  const index = collection.findIndex((item) => item.id === id);
-  if (index < 0) return null;
-  const [deleted] = collection.splice(index, 1);
-  if (storeName === 'cursistas') {
-    const identifiers = new Set([String(deleted.id || ''), String(deleted.cpf || '').replace(/\D/g, '')].filter(Boolean));
-    database.comunidades = database.comunidades.map((community) => {
-      const currentMemberIds = Array.isArray(community.membroIds) ? community.membroIds : [];
-      const membroIds = currentMemberIds.filter((memberId) => {
-        const rawMemberId = String(memberId || '');
-        const normalizedMemberId = rawMemberId.replace(/\D/g, '');
-        return !identifiers.has(rawMemberId) && !identifiers.has(normalizedMemberId);
-      });
-      return membroIds.length === currentMemberIds.length ? community : { ...community, membroIds };
-    });
-  }
-  await writeFileDatabase(database);
-  return deleted;
+  if (!hasSupabase()) throw supabaseRequiredError();
+  if (storeName !== 'cursistas') return deleteRelational(storeName, id);
+  const row = await findStudentRow(id);
+  if (!row) return null;
+  const deleted = await supabaseRequest(`cursistas?id=eq.${enc(row.id)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=representation' },
+  });
+  return Array.isArray(deleted) && deleted.length ? mapStudent(deleted[0]) : null;
 }
 
 async function checkDatabaseConnection() {
-  if (!hasSupabase()) return { database: 'file', ok: true };
+  if (!hasSupabase()) throw supabaseRequiredError();
   await supabaseRequest('retiros?select=id&limit=1');
   return { database: 'supabase-relational', ok: true };
 }
@@ -1695,5 +1532,4 @@ module.exports = {
   saveRetreatClosedRegistrationSectors,
   deleteRecord,
   deleteRecordStrict,
-  ensureFileDatabase,
 };

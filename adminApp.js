@@ -28,6 +28,8 @@ let badgePrintEntries = [];
 let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
+let authenticationBackendError = '';
+let legacyLocalDataWarningShown = false;
 let closeAdminMenuOnOutsidePointer = null;
 let closeHomeRetreatSelectorOnOutsidePointer = null;
 let lastBackupGeneratedAt = '';
@@ -8892,8 +8894,18 @@ async function ensureAuthenticated() {
   try {
     const session = await dataService.getSession();
     currentUser = session.authenticated ? session.user : null;
-  } catch {
+    authenticationBackendError = '';
+    if (!legacyLocalDataWarningShown) {
+      const legacyStatus = await dataService.inspectLegacyLocalData().catch(() => ({ total: 0, counts: {} }));
+      if (legacyStatus.total) {
+        legacyLocalDataWarningShown = true;
+        const summary = Object.entries(legacyStatus.counts).map(([storeName, count]) => `${storeName}: ${count}`).join(', ');
+        alert(`Atencao: este navegador possui ${legacyStatus.total} registro(s) legado(s) que nao estao no Supabase (${summary}). Eles foram preservados, nao serao usados nem enviados automaticamente. Procure o administrador antes de limpar os dados deste navegador.`);
+      }
+    }
+  } catch (error) {
     currentUser = null;
+    authenticationBackendError = error.message || 'Nao foi possivel conectar ao Supabase.';
   }
   authChecked = true;
   return Boolean(currentUser);
@@ -8949,7 +8961,7 @@ async function route() {
       await loadData();
       return renderRecebedor();
     }
-    if (!(await ensureAuthenticated())) return renderLogin(location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.');
+    if (!(await ensureAuthenticated())) return renderLogin(authenticationBackendError || (location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.'));
     const rawTarget = location.hash.slice(1) || firstAllowedSection();
     const [target, targetQuery = ''] = rawTarget.split('?');
     const targetParams = new URLSearchParams(targetQuery);

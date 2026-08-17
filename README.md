@@ -10,7 +10,7 @@ npm run dev
 
 Abra `http://localhost:5173` no navegador.
 
-Sem variaveis do Supabase, a aplicacao usa `database/db.json` como banco local de desenvolvimento.
+A aplicacao exige conexao com o Supabase inclusive no desenvolvimento local. Sem as variaveis do Supabase, leituras e gravacoes sao bloqueadas; `database/db.json` nao e usado pela aplicacao.
 
 ## Area restrita
 
@@ -45,7 +45,7 @@ EPC_ADMIN_USER=admin
 EPC_ADMIN_PASSWORD=troque-esta-senha
 ```
 
-Com essas variaveis presentes, a API passa a gravar no Supabase. Sem elas, usa o JSON local.
+Essas variaveis sao obrigatorias. A API grava exclusivamente no Supabase e nao possui fallback para JSON local ou IndexedDB. Se a conexao falhar, a operacao e cancelada e o usuario recebe uma mensagem de erro.
 
 ### Modulo Financeiro
 

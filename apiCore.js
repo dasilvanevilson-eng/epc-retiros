@@ -579,7 +579,7 @@ async function handleApi(req, res, pathname) {
       const connection = await checkDatabaseConnection();
       return sendJson(res, 200, { ok: connection.ok, database: connection.database, auth: authStatus(req).configured });
     } catch (error) {
-      return sendJson(res, 200, { ok: false, database: process.env.SUPABASE_URL ? 'supabase' : 'file', auth: authStatus(req).configured, error: error.message || 'Falha ao verificar banco.' });
+      return sendJson(res, 200, { ok: false, database: 'supabase-required', auth: authStatus(req).configured, error: error.message || 'Falha ao verificar banco.' });
     }
   }
   if (resource === 'auth' && id === 'session' && req.method === 'GET') {

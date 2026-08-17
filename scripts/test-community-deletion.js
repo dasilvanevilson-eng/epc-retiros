@@ -25,7 +25,8 @@ assert.match(deletion, /await renderComunidades\(\)/, 'A tela deve recalcular cu
 assert.match(communities, /const assignedStudentIds = new Set\(communities\.flatMap\(memberIdsFor\)/, 'Cursistas sem comunidade devem ser recalculados somente a partir dos agrupamentos restantes.');
 assert.match(communities, /const assignedLeaderIds = new Set\(communities\.map/, 'Tios disponíveis devem ser recalculados somente a partir dos agrupamentos restantes.');
 
-assert.match(adapter, /if \(useSupabase\) return deleteRelational\(storeName, id\)[\s\S]*database\[storeName\] = database\[storeName\]\.filter\(\(item\) => item\.id !== id\)/, 'A exclusão local deve remover somente o item da coleção solicitada.');
+assert.match(adapter, /async function deleteRecord\(storeName, id\) \{[\s\S]*if \(!hasSupabase\(\)\) throw supabaseRequiredError\(\);[\s\S]*return deleteRelational\(storeName, id\);[\s\S]*\}/, 'A exclusão deve ocorrer exclusivamente no Supabase.');
+assert.doesNotMatch(adapter, /writeFileDatabase|readFileDatabase/, 'A exclusão não pode possuir fallback para database\/db.json.');
 assert.match(schema, /comunidade_id uuid not null references public\.comunidades\(id\) on delete cascade[\s\S]*cursista_id uuid not null references public\.cursistas\(id\) on delete cascade/i, 'A exclusão da comunidade deve remover somente o vínculo com cursistas individuais.');
 assert.match(schema, /lider_casal_id uuid references public\.casais\(id\) on delete set null[\s\S]*monitor_casal_id uuid references public\.casais\(id\) on delete set null/i, 'Tios e monitores devem permanecer cadastrados independentemente da comunidade.');
 assert.match(smpMigration, /foreign key \(comunidade_id, retiro_id\)[\s\S]*references public\.comunidades\(id, retiro_id\)[\s\S]*on delete cascade/i, 'O vínculo SMP deve ser removido junto do agrupamento, preservando a ficha SMP.');

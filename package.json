@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node localServer.js",
     "test:backup": "node scripts/test-backup-service.js",
+    "test:storage": "node scripts/test-supabase-only-storage.js",
     "test:epc": "node scripts/test-cursista-epc-migration.js",
     "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:team-participation": "node scripts/test-team-participation-rules.js",

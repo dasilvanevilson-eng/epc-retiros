@@ -44,13 +44,13 @@ async function indexedRequest(storeName, mode, action) {
 
 const legacyStore = {
   list: (storeName) => indexedRequest(storeName, 'readonly', (store) => store.getAll()),
-  get: (storeName, id) => indexedRequest(storeName, 'readonly', (store) => store.get(id)),
-  save: (storeName, record) => indexedRequest(storeName, 'readwrite', (store) => store.put(record)),
-  delete: (storeName, id) => indexedRequest(storeName, 'readwrite', (store) => store.delete(id)),
 };
 
 let backend = null;
-let migrationPromise = null;
+let backendPromise = null;
+let legacyLocalDataStatusPromise = null;
+
+const supabaseRequiredMessage = 'Nao foi possivel conectar ao Supabase. A operacao foi cancelada e nenhum dado foi salvo localmente.';
 
 async function api(path, options = {}) {
   const timeoutMs = options.timeoutMs || 10000;
@@ -106,69 +106,82 @@ async function apiBlob(path, options = {}) {
 
 async function ensureBackend() {
   if (backend) return backend;
-  try {
-    const health = await api('/health', { timeoutMs: 5000 });
-    if (!health.ok) throw new Error(health.error || 'Backend indisponivel.');
-    backend = 'file';
-    await migrateIndexedDbToFile().catch(() => null);
-  } catch {
-    backend = 'indexeddb';
+  if (!backendPromise) {
+    backendPromise = (async () => {
+      try {
+        const health = await api('/health', { timeoutMs: 10000 });
+        if (!health.ok || health.database !== 'supabase-relational') {
+          throw new Error(health.error || `Banco inesperado: ${health.database || 'nao informado'}.`);
+        }
+        backend = 'supabase';
+        inspectLegacyLocalData().then((status) => {
+          if (!status.total) return;
+          console.warn('Foram encontrados registros legados apenas neste navegador. Eles foram preservados e nao serao usados nem enviados automaticamente.', status.counts);
+          globalThis.dispatchEvent?.(new CustomEvent('epc-legacy-local-data-detected', { detail: status }));
+        }).catch(() => null);
+        return backend;
+      } catch (error) {
+        throw new Error(`${supabaseRequiredMessage} ${error.message || ''}`.trim());
+      }
+    })();
   }
-  return backend;
+  try {
+    return await backendPromise;
+  } finally {
+    if (!backend) backendPromise = null;
+  }
 }
 
-async function migrateIndexedDbToFile() {
-  if (migrationPromise) return migrationPromise;
-  migrationPromise = (async () => {
-    const database = await api('/database');
-    const fileHasData = stores.some((storeName) => database[storeName]?.length);
-    if (fileHasData || localStorage.getItem('epc-file-db-migrated') === '1') return;
-
-    const legacyData = Object.fromEntries(await Promise.all(stores.map(async (storeName) => [storeName, await legacyStore.list(storeName)])));
-    const legacyHasData = stores.some((storeName) => legacyData[storeName]?.length);
-    if (!legacyHasData) return;
-
-    await api('/database/import', { method: 'POST', body: JSON.stringify(legacyData) });
-    localStorage.setItem('epc-file-db-migrated', '1');
+async function inspectLegacyLocalData() {
+  if (legacyLocalDataStatusPromise) return legacyLocalDataStatusPromise;
+  legacyLocalDataStatusPromise = (async () => {
+    if (!globalThis.indexedDB || typeof globalThis.indexedDB.databases !== 'function') {
+      return { checked: false, total: 0, counts: {} };
+    }
+    const databases = await globalThis.indexedDB.databases();
+    if (!databases.some((database) => database.name === DATABASE)) return { checked: true, total: 0, counts: {} };
+    const entries = await Promise.all(stores.map(async (storeName) => {
+      const rows = await legacyStore.list(storeName).catch(() => []);
+      return [storeName, Array.isArray(rows) ? rows.length : 0];
+    }));
+    const counts = Object.fromEntries(entries.filter(([, count]) => count > 0));
+    return { checked: true, total: Object.values(counts).reduce((sum, count) => sum + count, 0), counts };
   })();
-  return migrationPromise;
+  return legacyLocalDataStatusPromise;
 }
 
 async function list(storeName) {
-  return (await ensureBackend()) === 'file' ? api(`/${storeName}`) : legacyStore.list(storeName);
+  await ensureBackend();
+  return api(`/${storeName}`);
 }
 
 async function get(storeName, id) {
-  return (await ensureBackend()) === 'file' ? api(`/${storeName}/${encodeURIComponent(id)}`) : legacyStore.get(storeName, id);
+  await ensureBackend();
+  return api(`/${storeName}/${encodeURIComponent(id)}`);
 }
 
 async function save(storeName, record) {
   const nextRecord = { ...record, id: record.id || createId() };
-  return (await ensureBackend()) === 'file'
-    ? api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, { method: 'PUT', body: JSON.stringify(nextRecord) })
-    : legacyStore.save(storeName, nextRecord);
+  await ensureBackend();
+  return api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, { method: 'PUT', body: JSON.stringify(nextRecord) });
 }
 
 async function saveWithTransientControl(storeName, record, control = {}) {
   const nextRecord = { ...record, id: record.id || createId() };
-  if ((await ensureBackend()) === 'file') {
-    return api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, {
-      method: 'PUT',
-      body: JSON.stringify({ ...nextRecord, ...control }),
-    });
-  }
-  return legacyStore.save(storeName, nextRecord);
+  await ensureBackend();
+  return api(`/${storeName}/${encodeURIComponent(nextRecord.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...nextRecord, ...control }),
+  });
 }
 
 async function remove(storeName, id) {
-  return (await ensureBackend()) === 'file'
-    ? api(`/${storeName}/${encodeURIComponent(id)}`, { method: 'DELETE' })
-    : legacyStore.delete(storeName, id);
+  await ensureBackend();
+  return api(`/${storeName}/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 async function removeWithReason(storeName, id, reason = '') {
-  return (await ensureBackend()) === 'file'
-    ? api(`/${storeName}/${encodeURIComponent(id)}?motivo=${encodeURIComponent(reason)}`, { method: 'DELETE' })
-    : legacyStore.delete(storeName, id);
+  await ensureBackend();
+  return api(`/${storeName}/${encodeURIComponent(id)}?motivo=${encodeURIComponent(reason)}`, { method: 'DELETE' });
 }
 
 const dataLossBypassField = '__allowRegistrationDataLoss';
@@ -223,19 +236,6 @@ async function saveProtectedRegistration(storeName, record) {
 
 async function saveStudentRegistration(record) {
   const nextRecord = { ...record, id: record.id || createId() };
-  if ((await ensureBackend()) === 'indexeddb') {
-    const students = await legacyStore.list('cursistas');
-    const cpf = String(nextRecord.cpf || '').replace(/\D/g, '');
-    const fileNumber = Number(nextRecord.numeroFichaIndividual);
-    const duplicateCpf = cpf && students.find((student) => student.id !== nextRecord.id
-      && student.retiroId === nextRecord.retiroId
-      && String(student.cpf || '').replace(/\D/g, '') === cpf);
-    if (duplicateCpf) throw new Error('Este CPF ja possui cadastro de cursista neste retiro.');
-    const duplicateFileNumber = Number.isInteger(fileNumber) && fileNumber > 0 && students.find((student) => student.id !== nextRecord.id
-      && student.retiroId === nextRecord.retiroId
-      && Number(student.numeroFichaIndividual) === fileNumber);
-    if (duplicateFileNumber) throw new Error('Este numero de ficha ja possui cadastro de cursista neste retiro.');
-  }
   return saveProtectedRegistration('cursistas', nextRecord);
 }
 
@@ -246,8 +246,9 @@ export const retreatDefaults = {
 };
 
 export const dataService = {
-  getSession: () => api('/auth/session'),
-  login: (username, password) => api('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  inspectLegacyLocalData,
+  getSession: async () => { await ensureBackend(); return api('/auth/session'); },
+  login: async (username, password) => { await ensureBackend(); return api('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }); },
   changePassword: (currentPassword, newPassword) => api('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   logout: () => api('/auth/logout', { method: 'POST' }),
   getAccessData: () => api('/access'),
@@ -276,8 +277,7 @@ export const dataService = {
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: () => list('cursistas'),
   saveCursista: (student) => saveStudentRegistration(student),
-  // A exclusao precisa passar pelo servidor para remover a foto privada antes
-  // da ficha; nunca use o fallback IndexedDB nesta operacao.
+  // A exclusao passa pelo servidor para remover a foto privada antes da ficha.
   deleteCursista: (id) => api(`/cursistas/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 120000 }),
   listCursistasSmp: (retiroId = '') => api(`/cursista-smp${retiroId ? `?retiroId=${encodeURIComponent(retiroId)}` : ''}`),
   saveCursistaSmp: (student) => {
@@ -298,13 +298,11 @@ export const dataService = {
   saveComunidadeMembros: async (community, membershipType, memberIds = []) => {
     const memberField = membershipType === 'smp' ? 'membroSmpIds' : (membershipType === 'epc' ? 'membroEpcIds' : 'membroIds');
     const nextCommunity = { ...community, [memberField]: [...new Set(memberIds)] };
-    if ((await ensureBackend()) === 'file') {
-      return api(`/comunidades/${encodeURIComponent(nextCommunity.id)}`, {
-        method: 'PUT',
-        body: JSON.stringify({ ...nextCommunity, __membershipType: membershipType }),
-      });
-    }
-    return legacyStore.save('comunidades', nextCommunity);
+    await ensureBackend();
+    return api(`/comunidades/${encodeURIComponent(nextCommunity.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...nextCommunity, __membershipType: membershipType }),
+    });
   },
   deleteComunidade: (id) => remove('comunidades', id),
   listCrachas: () => list('crachas'),
