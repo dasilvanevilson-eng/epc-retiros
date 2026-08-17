@@ -150,9 +150,12 @@ async function inspectLegacyLocalData() {
   return legacyLocalDataStatusPromise;
 }
 
-async function list(storeName) {
+async function list(storeName, options = {}) {
   await ensureBackend();
-  return api(`/${storeName}`);
+  const params = new URLSearchParams();
+  if (options.retiroId) params.set('retiroId', options.retiroId);
+  const query = params.toString();
+  return api(`/${storeName}${query ? `?${query}` : ''}`);
 }
 
 async function get(storeName, id) {
@@ -269,13 +272,15 @@ export const dataService = {
   setStudentRegistrationLinkClosed: (retreatId, numeroFicha, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/inscricao`, { method: 'POST', body: JSON.stringify({ numeroFicha, inscricaoEncerrada }) }),
   setSectorRegistrationLinkClosed: (retreatId, setor, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/setor`, { method: 'POST', body: JSON.stringify({ setor, inscricaoEncerrada }) }),
   deleteRetiro: (id) => remove('retiros', id),
-  listAdesoes: () => list('adesoes'),
+  listAdesoes: (retiroId = '') => list('adesoes', { retiroId }),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),
   deleteAdesao: (id) => remove('adesoes', id),
-  listPessoas: () => list('pessoas'),
+  listPessoas: (retiroId = '') => list('pessoas', { retiroId }),
+  getPessoa: (id) => get('pessoas', id),
   savePessoa: (person) => save('pessoas', person),
   deletePessoa: (id) => remove('pessoas', id),
-  listCursistas: () => list('cursistas'),
+  listCursistas: (retiroId = '') => list('cursistas', { retiroId }),
+  getCursista: (id) => get('cursistas', id),
   saveCursista: (student) => saveStudentRegistration(student),
   // A exclusao passa pelo servidor para remover a foto privada antes da ficha.
   deleteCursista: (id) => api(`/cursistas/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 120000 }),
@@ -293,7 +298,7 @@ export const dataService = {
     return api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'PUT', body: JSON.stringify(student) });
   },
   deleteCursistaEpc: (retiroId, numeroFicha) => api(`/cursista-epc/${encodeURIComponent(retiroId)}/${encodeURIComponent(numeroFicha)}`, { method: 'DELETE', timeoutMs: 120000 }),
-  listComunidades: () => list('comunidades'),
+  listComunidades: (retiroId = '') => list('comunidades', { retiroId }),
   saveComunidade: (community) => save('comunidades', community),
   saveComunidadeMembros: async (community, membershipType, memberIds = []) => {
     const memberField = membershipType === 'smp' ? 'membroSmpIds' : (membershipType === 'epc' ? 'membroEpcIds' : 'membroIds');
@@ -305,12 +310,12 @@ export const dataService = {
     });
   },
   deleteComunidade: (id) => remove('comunidades', id),
-  listCrachas: () => list('crachas'),
+  listCrachas: (retiroId = '') => list('crachas', { retiroId }),
   saveCracha: (badgeProfile) => save('crachas', badgeProfile),
   deleteCracha: (id) => remove('crachas', id),
   getConfiguracao: (id) => get('configuracoes', id),
   saveConfiguracao: (setting) => save('configuracoes', setting),
-  listFinanceSheets: () => list('financeiro_planilhas'),
+  listFinanceSheets: (retiroId = '') => list('financeiro_planilhas', { retiroId }),
   saveFinanceSheet: (record) => save('financeiro_planilhas', record),
   deleteFinanceSheet: (id, reason = '') => removeWithReason('financeiro_planilhas', id, reason),
   listFinanceAudit: () => list('financeiro_planilha_auditoria'),

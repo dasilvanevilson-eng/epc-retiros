@@ -197,10 +197,15 @@ function wirePurchaseSuggestion(root, state, context) {
     try {
       button.disabled = true;
       result.innerHTML = '<section class="panel"><p class="empty-state">Calculando participações e consumo...</p></section>';
-      const [allEnrolments, individualStudents] = await Promise.all([context.dataService.listAdesoes(), context.dataService.listCursistas()]);
+      const [baseEnrolments, focusEnrolments, baseStudents, focusStudents] = await Promise.all([
+        context.dataService.listAdesoes(baseRetreat.id),
+        context.dataService.listAdesoes(state.retreat.id),
+        context.dataService.listCursistas(baseRetreat.id),
+        context.dataService.listCursistas(state.retreat.id),
+      ]);
       const [baseParticipations, focusParticipations] = await Promise.all([
-        participationTotalForRetreat(baseRetreat, context.dataService, allEnrolments, individualStudents),
-        participationTotalForRetreat(state.retreat, context.dataService, allEnrolments, individualStudents),
+        participationTotalForRetreat(baseRetreat, context.dataService, baseEnrolments, baseStudents),
+        participationTotalForRetreat(state.retreat, context.dataService, focusEnrolments, focusStudents),
       ]);
       const currentSheets = state.sectors.map((sector) => sheetForSector(state, sector));
       const baseSheets = state.allSheets.filter((sheet) => sheet.retiroId === baseRetreat.id);

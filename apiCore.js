@@ -167,12 +167,12 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
   if (req.method === 'GET' && resource === 'retiros' && !id) return sendJson(res, 200, [retreat]), true;
 
   if (req.method === 'GET' && resource === 'adesoes' && !id) {
-    const records = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
+    const records = await listRecords('adesoes', { retiroId: retreatId });
     return sendJson(res, 200, records), true;
   }
   if (req.method === 'GET' && resource === 'cursistas' && !id) {
     if (usesCoupleStudentForm) return sendError(res, 403, 'Link do recebedor nao autorizado para esta ficha de cursista.'), true;
-    const records = (await listRecords('cursistas')).filter((entry) => entry.retiroId === retreatId);
+    const records = await listRecords('cursistas', { retiroId: retreatId });
     return sendJson(res, 200, records), true;
   }
   if (req.method === 'GET' && ['cursista-smp', 'cursista-epc'].includes(resource) && !id) {
@@ -183,9 +183,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
     return sendJson(res, 200, resource === 'cursista-epc' ? await listCursistasEpc(retreatId) : await listCursistasSmp(retreatId)), true;
   }
   if (req.method === 'GET' && resource === 'pessoas' && !id) {
-    const entries = (await listRecords('adesoes')).filter((entry) => entry.retiroId === retreatId);
-    const peopleIds = new Set(entries.map((entry) => entry.pessoaId).filter(Boolean));
-    const records = (await listRecords('pessoas')).filter((person) => peopleIds.has(person.id));
+    const records = await listRecords('pessoas', { retiroId: retreatId });
     return sendJson(res, 200, records), true;
   }
   if (req.method === 'PUT' && ['adesoes', 'cursistas'].includes(resource) && id) {
@@ -344,13 +342,14 @@ async function normalizeFinanceRecord(resource, record, session) {
   if (!retreat) throw new Error('Retiro em foco nao encontrado.');
   const sectorKey = financeSectorKey(next.setorChave || next.setor);
   const configuredSector = (retreat.setores || []).find((sector) => financeSectorKey(sector) === sectorKey);
-  const sheets = await listRecords('financeiro_planilhas');
-  const current = sheets.find((sheet) => sheet.id === next.id) || null;
+  const currentSheets = await listRecords('financeiro_planilhas', { retiroId: next.retiroId });
+  const current = currentSheets.find((sheet) => sheet.id === next.id) || null;
   if (!configuredSector && !current) throw new Error('O setor nao faz parte da configuracao do retiro em foco.');
-  if (sheets.some((sheet) => sheet.id !== next.id && sheet.retiroId === next.retiroId && sheet.setorChave === sectorKey)) throw new Error('A planilha deste setor ja foi inicializada. Recarregue a pagina.');
+  if (currentSheets.some((sheet) => sheet.id !== next.id && sheet.setorChave === sectorKey)) throw new Error('A planilha deste setor ja foi inicializada. Recarregue a pagina.');
   const retreats = await listRecords('retiros');
   const previousRetreat = previousFinanceRetreat(retreat, retreats);
-  const previousSheet = previousRetreat ? sheets.find((sheet) => sheet.retiroId === previousRetreat.id && sheet.setorChave === sectorKey) : null;
+  const previousSheets = previousRetreat ? await listRecords('financeiro_planilhas', { retiroId: previousRetreat.id }) : [];
+  const previousSheet = previousSheets.find((sheet) => sheet.setorChave === sectorKey) || null;
   const currentLines = current?.itensRecorrentes || [];
   const previousLines = previousSheet?.itensRecorrentes || [];
   const requestedLines = Array.isArray(next.itensRecorrentes) ? next.itensRecorrentes : [];
@@ -447,7 +446,7 @@ const tagRetreatAccess = (session = {}, retreat = {}) => ({
 async function allowedPersonIdsForSession(session = {}) {
   if (hasGlobalRetreatAccess(session)) return null;
   const allowed = allowedRetreatIds(session);
-  const entries = (await listRecords('adesoes')).filter((entry) => allowed.has(entry.retiroId));
+  const entries = (await Promise.all([...allowed].map((retiroId) => listRecords('adesoes', { retiroId })))).flat();
   return new Set(entries.map((entry) => entry.pessoaId).filter(Boolean));
 }
 
@@ -458,13 +457,16 @@ async function currentSession(req) {
   return user ? hydrateUser(user) : null;
 }
 
-async function listAuthorizedRecords(resource, session) {
-  const records = await listRecords(resource);
+async function listAuthorizedRecords(resource, session, options = {}) {
+  const requestedRetreatId = String(options.retiroId || '').trim();
+  if (requestedRetreatId && !canAccessRetreat(session, requestedRetreatId)) return [];
+  const records = await listRecords(resource, requestedRetreatId ? { retiroId: requestedRetreatId } : {});
   if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? records.map((retreat) => tagRetreatAccess(session, retreat)) : records;
   if (resource === 'retiros') return records.map((retreat) => tagRetreatAccess(session, retreat));
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return filterByAllowedRetreats(session, records);
   if (scopedFinanceStores.has(resource)) return filterByAllowedRetreats(session, records);
   if (resource === 'pessoas') {
+    if (requestedRetreatId) return records;
     const allowedPeople = await allowedPersonIdsForSession(session);
     return records.filter((person) => allowedPeople.has(person.id));
   }
@@ -518,6 +520,8 @@ async function denyIfMissingRetreatAccess(res, session, resource, recordOrId) {
 async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action, fourth] = parts;
+  const requestUrl = new URL(req.url || pathname || '/', 'https://familiaepcindaial.local');
+  const listRetreatId = String(requestUrl.searchParams.get('retiroId') || '').trim();
 
   if (resource === 'cadastro-cursista' && id) {
     try {
@@ -859,7 +863,12 @@ async function handleApi(req, res, pathname) {
   }
   if (!publicRegistrationRequest && denyIfMissingPermission(res, session, requestPermission)) return;
   if (!publicRegistrationRequest && !hasGlobalRetreatAccess(session) && resource === 'retiros' && req.method === 'PUT' && !id) return sendError(res, 403, noRetreatAccessMessage);
-  if (req.method === 'GET' && !id) return sendJson(res, 200, publicRegistrationRequest ? await listRecords(resource) : await listAuthorizedRecords(resource, session));
+  if (req.method === 'GET' && !id) {
+    if (publicRegistrationRequest && ['pessoas', 'adesoes'].includes(resource) && !listRetreatId) return sendError(res, 400, 'Informe o retiro para esta consulta.');
+    return sendJson(res, 200, publicRegistrationRequest
+      ? await listRecords(resource, listRetreatId ? { retiroId: listRetreatId } : {})
+      : await listAuthorizedRecords(resource, session, listRetreatId ? { retiroId: listRetreatId } : {}));
+  }
   if (req.method === 'GET' && id) {
     const record = publicRegistrationRequest ? await getRecord(resource, decodeURIComponent(id)) : await getAuthorizedRecord(resource, decodeURIComponent(id), session);
     if (!record && !publicRegistrationRequest && ['retiros', 'adesoes', 'cursistas', 'casais', 'comunidades', 'crachas', 'pessoas'].includes(resource)) return sendError(res, 403, noRetreatAccessMessage);

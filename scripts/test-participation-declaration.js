@@ -28,7 +28,7 @@ assert.match(reportSource, /'EIS-ME AQUI': \{ available: false \}/);
 assert.match(reportSource, /retreat\.tipoRetiro[\s\S]*suggestedType/, 'O tipo do retiro em foco deve ser sugerido no seletor.');
 assert.match(reportSource, /modelo ainda não definido/, 'Modelos futuros devem permanecer visíveis com aviso.');
 
-assert.match(reportSource, /dataService\.listCursistas\(\)[\s\S]*record\.retiroId === retreat\.id/, 'Cursistas individuais devem ser isolados pelo retiro em foco.');
+assert.match(reportSource, /dataService\.listCursistas\(retreat\.id\)/, 'Cursistas individuais devem ser filtrados no banco pelo retiro em foco.');
 assert.match(reportSource, /coupleStudentSource\(studentFormType\)\.list\(retreat\.id\)/, 'Fichas de casal devem ser consultadas apenas no retiro em foco.');
 assert.match(reportSource, /\['Dele', 'Dela'\]/, 'Cada integrante da ficha de casal deve virar uma opção individual.');
 assert.match(reportSource, /enrolments[\s\S]*entry\.retiroId === retreat\.id/, 'A equipe deve ser isolada pelo retiro em foco.');

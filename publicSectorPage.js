@@ -487,7 +487,7 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
   const showIntoleranceView = supportsIntoleranceView(result.sector);
   const showKidsIntoleranceView = supportsKidsIntoleranceView(result.sector);
   const showKidsRegisteredView = supportsKidsRegisteredView(result.sector);
-  const allEntries = await listRecords('adesoes');
+  const allEntries = await listRecords('adesoes', { retiroId: result.retreatId });
   let intolerances = [];
   let intoleranceLoadError = '';
   let kidsIntolerances = [];
@@ -496,11 +496,11 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
   let kidsRegisteredLoadError = '';
   if (showIntoleranceView || showKidsIntoleranceView || showKidsRegisteredView) {
     try {
-      const communitiesPromise = listRecords('comunidades');
+      const communitiesPromise = listRecords('comunidades', { retiroId: result.retreatId });
       let individualStudents = [];
       let smpStudents = [];
       let epcStudents = [];
-      if ((result.retreat.tipoFichaCursista || 'cursista-individual') === 'cursista-individual') individualStudents = await listRecords('cursistas');
+      if ((result.retreat.tipoFichaCursista || 'cursista-individual') === 'cursista-individual') individualStudents = await listRecords('cursistas', { retiroId: result.retreatId });
       else if (result.retreat.tipoFichaCursista === 'cursista-smp') smpStudents = await listCursistasSmp(result.retreatId);
       else if (result.retreat.tipoFichaCursista === 'cursista-epc') epcStudents = await listCursistasEpc(result.retreatId);
       const communities = await communitiesPromise;
@@ -508,7 +508,7 @@ async function sendPublicSectorPage(req, res, retreatId, token) {
       if (showKidsIntoleranceView) kidsIntolerances = buildKidsIntoleranceRows({ retreat: result.retreat, entries: allEntries, smpStudents, epcStudents, communities });
       if (showKidsRegisteredView) {
         try {
-          const people = await listRecords('pessoas');
+          const people = await listRecords('pessoas', { retiroId: result.retreatId });
           kidsRegistered = buildKidsRegisteredRows({ retreat: result.retreat, entries: allEntries, people, smpStudents, epcStudents, communities });
         } catch {
           kidsRegisteredLoadError = 'N\u00e3o foi poss\u00edvel carregar as crian\u00e7as inscritas neste momento. As demais visualiza\u00e7\u00f5es continuam dispon\u00edveis.';

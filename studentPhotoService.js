@@ -155,7 +155,7 @@ async function findStudentByFile(type, retreatId, fileNumber) {
   type = normalizeType(type);
   const target = String(Number(fileNumber) || fileNumber || '').trim();
   if (type === 'individual') {
-    return (await listRecords('cursistas')).find((item) => item.retiroId === retreatId && String(Number(item.numeroFichaIndividual) || item.numeroFichaIndividual) === target) || null;
+    return (await listRecords('cursistas', { retiroId: retreatId })).find((item) => String(Number(item.numeroFichaIndividual) || item.numeroFichaIndividual) === target) || null;
   }
   const records = type === 'epc' ? await listCursistasEpc(retreatId) : await listCursistasSmp(retreatId);
   return records.find((item) => String(Number(item.numeroFichaSmp || item.id) || item.numeroFichaSmp || item.id) === target) || null;

@@ -571,7 +571,8 @@ const removeStudentFromCommunities = async (studentOrId) => {
   const studentCpf = typeof studentOrId === 'string' ? '' : normalizeCpf(studentOrId?.cpf);
   const identifiers = new Set([studentId, studentCpf].filter(Boolean));
   if (!identifiers.size) return;
-  const communities = await dataService.listComunidades();
+  const retreatId = typeof studentOrId === 'string' ? selectedRetreat()?.id : studentOrId?.retiroId;
+  const communities = await dataService.listComunidades(retreatId || '');
   await Promise.all(communities.map((community) => {
     const currentMemberIds = community.membroIds || [];
     const membroIds = currentMemberIds.filter((memberId) => !identifiers.has(memberId) && !identifiers.has(normalizeCpf(memberId)));
@@ -735,9 +736,13 @@ function wireTypedBirthDates(root) {
 }
 
 async function loadData() {
-  [retreats, enrolments, people] = await Promise.all([dataService.listRetiros(), dataService.listAdesoes(), dataService.listPessoas()]);
+  retreats = await dataService.listRetiros();
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   normalizeRetreatSectorsForDisplay();
+  const focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
+  [enrolments, people] = focusRetreatId
+    ? await Promise.all([dataService.listAdesoes(focusRetreatId), dataService.listPessoas(focusRetreatId)])
+    : [[], []];
 }
 
 async function ensureRetreatFocusLoaded() {
@@ -1420,8 +1425,8 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const activeStudentFormType = active?.tipoFichaCursista || defaultStudentFormType;
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
   const [allStudents, allCommunities, coupleStudents] = await Promise.all([
-    dataService.listCursistas(),
-    dataService.listComunidades(),
+    dataService.listCursistas(active?.id || ''),
+    dataService.listComunidades(active?.id || ''),
     active?.id && usesCoupleStudentForm ? coupleStudentSource(activeStudentFormType).list(active.id).catch((error) => {
       console.error(error);
       return [];
@@ -2034,8 +2039,8 @@ async function renderRetreat(id, selectedSector = '') {
   const retreatStudentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(retreatStudentFormType);
   const [allStudents, allCommunities, studentLinkData, coupleStudents] = await Promise.all([
-    dataService.listCursistas(),
-    dataService.listComunidades(),
+    dataService.listCursistas(id),
+    dataService.listComunidades(id),
     dataService.syncStudentRegistrationLinks(id).catch((error) => ({ error: error.message || 'Não foi possível carregar os links.' })),
     usesCoupleStudentForm ? coupleStudentSource(retreatStudentFormType).list(id).catch((error) => {
       console.error(error);
@@ -2642,7 +2647,7 @@ async function renderConfiguracoes({ message = '' } = {}) {
   app.querySelector('#delete-retreat')?.addEventListener('click', async () => {
     if (!canAccess('retiros.excluir') || isRetreatConcluded(retreat)) return;
     const button = app.querySelector('#delete-retreat');
-    const [allCommunities, allBadges] = await Promise.all([dataService.listComunidades(), dataService.listCrachas()]);
+    const [allCommunities, allBadges] = await Promise.all([dataService.listComunidades(retreat.id), dataService.listCrachas(retreat.id)]);
     const retreatEnrolments = enrolments.filter((entry) => entry.retiroId === retreat.id);
     const retreatCommunities = allCommunities.filter((community) => community.retiroId === retreat.id);
     const retreatBadges = allBadges.filter((badge) => badge.retiroId === retreat.id);
@@ -2968,7 +2973,7 @@ async function renderRecebedor() {
   const activeCoupleStudentSource = usesCoupleStudentForm ? coupleStudentSource(studentFormType) : null;
   const students = usesCoupleStudentForm
     ? (await activeCoupleStudentSource.list(retreat.id)).map(mapSmpReceiverStudent)
-    : uniqueByParticipant((await dataService.listCursistas()).filter((student) => student.retiroId === retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' }));
+    : uniqueByParticipant(await dataService.listCursistas(retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' }));
   const isStudentFinanceEntry = (entry = {}) => ['cursista', 'cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const isCoupleStudentFinanceEntry = (entry = {}) => ['cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const entries = [
@@ -4671,7 +4676,7 @@ async function renderCursista({ publicContext = null } = {}) {
     emptyMessage: 'Nenhum cursista encontrado.',
     filenameFallback: 'resumo-financeiro-cursistas',
     loadRows: async () => {
-      const students = await dataService.listCursistas();
+      const students = await dataService.listCursistas(focusStudentRetreat?.id || '');
       return students
         .filter((student) => !focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
         .sort((first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }))
@@ -4692,8 +4697,8 @@ async function renderCursista({ publicContext = null } = {}) {
     },
   });
   const findPersonFromArchive = async (cpf) => {
-    const currentPeople = people.length ? people : await dataService.listPessoas();
-    return currentPeople.find((person) => normalizeCpf(person.cpf || person.id) === cpf || person.id === cpf);
+    const currentPerson = people.find((person) => normalizeCpf(person.cpf || person.id) === cpf || person.id === cpf);
+    return currentPerson || await dataService.getPessoa(cpf);
   };
   const fillStudentFromArchive = (person) => {
     if (!person) return;
@@ -4722,7 +4727,7 @@ async function renderCursista({ publicContext = null } = {}) {
     const person = await findPersonFromArchive(cpf);
     if (person) fillStudentFromArchive(person);
     const personIds = new Set([cpf, person?.id, person?.cpf && normalizeCpf(person.cpf)].filter(Boolean));
-    const currentEnrolments = enrolments.length ? enrolments : await dataService.listAdesoes();
+    const currentEnrolments = enrolments.length ? enrolments : await dataService.listAdesoes(focusStudentRetreat.id);
     const conflict = currentEnrolments.some((entry) => {
       const entryCpf = normalizeCpf(entry.pessoaId);
       return entry.retiroId === focusStudentRetreat.id && (personIds.has(entry.pessoaId) || personIds.has(entryCpf));
@@ -4742,7 +4747,7 @@ async function renderCursista({ publicContext = null } = {}) {
     if (app.querySelector('#student-message').textContent === duplicateStudentCpfMessage) app.querySelector('#student-message').textContent = '';
     if (cpf.length !== 11 || !isValidCpf(cpf)) return false;
     const previousId = form.elements.id?.value || '';
-    const students = await dataService.listCursistas();
+    const students = await dataService.listCursistas(focusStudentRetreat?.id || '');
     const duplicated = students.find((student) => student.retiroId === focusStudentRetreat?.id && normalizeCpf(student.cpf) === cpf && student.id !== previousId);
     if (!duplicated) return false;
     form.elements.cpf.setCustomValidity(duplicateStudentCpfMessage);
@@ -4834,7 +4839,7 @@ async function renderCursista({ publicContext = null } = {}) {
     }
     if (await checkStudentCpf(true)) return;
     const previousId = values.get('id');
-    const currentStudents = await dataService.listCursistas();
+    const currentStudents = await dataService.listCursistas(focusStudentRetreat?.id || '');
     const currentStudent = previousId && currentStudents.find((student) => student.id === previousId);
     const duplicatedFileNumber = currentStudents.find((student) => (
       (!focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
@@ -4895,8 +4900,7 @@ async function renderCursista({ publicContext = null } = {}) {
   });
 }
 async function renderCursistaDetalhe(id) {
-  const [students, allRetreats] = await Promise.all([dataService.listCursistas(), dataService.listRetiros()]);
-  const student = students.find((item) => item.id === id);
+  const [student, allRetreats] = await Promise.all([dataService.getCursista(id), dataService.listRetiros()]);
   if (!student) { location.hash = '#cursista'; return; }
   const retreat = allRetreats.find((item) => item.id === student.retiroId);
   const canDeleteStudentDetail = canModifyRetreat(retreat);
@@ -4934,8 +4938,8 @@ async function renderComunidades() {
   const usesCoupleStudents = usesSmpStudents || usesEpcStudents;
   const activeCoupleStudentSource = usesCoupleStudents ? coupleStudentSource(studentFormType) : null;
   const [sourceStudents, allCommunities] = await Promise.all([
-    usesCoupleStudents ? activeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(),
-    dataService.listComunidades(),
+    usesCoupleStudents ? activeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(retreat.id),
+    dataService.listComunidades(retreat.id),
   ]);
   const communities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id));
@@ -5028,7 +5032,7 @@ async function renderComunidades() {
   if (!canAccess('comunidades.excluir') || !canEditCommunities) app.querySelectorAll('[data-delete-community]').forEach((button) => button.remove());
   app.querySelector('#add-community')?.addEventListener('click', async () => {
     if (!ensureRetreatCanBeChanged(retreat, 'incluir comunidades')) return;
-    const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
+    const latestCommunities = sortCommunitiesByPosition(await dataService.listComunidades(retreat.id));
     const nextOrder = Math.max(0, ...latestCommunities.map((community) => Number(community.ordem) || 0)) + 1;
     await dataService.saveComunidade({ id: createId(), retiroId: retreat.id, nome: `Comunidade ${nextOrder}`, liderCasalId: '', monitorCasalId: '', monitorIds: [], membroIds: [], membroSmpIds: [], membroEpcIds: [], ordem: nextOrder, criadoEm: new Date().toISOString() });
     renderComunidades();
@@ -5046,7 +5050,7 @@ async function renderComunidades() {
     if (!studentId || !targetCommunityId) return;
     select.disabled = true;
     try {
-      const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
+      const latestCommunities = sortCommunitiesByPosition(await dataService.listComunidades(retreat.id));
       for (const community of latestCommunities.filter((item) => item.id !== targetCommunityId)) {
         await dataService.saveComunidadeMembros(community, membershipType, memberIdsFor(community).filter((id) => String(id) !== studentId));
       }
@@ -5109,7 +5113,7 @@ async function renderComunidades() {
       exportButton.disabled = true;
       message.textContent = 'Exportando cursistas...';
       try {
-        const latestCommunities = sortCommunitiesByPosition((await dataService.listComunidades()).filter((community) => community.retiroId === retreat.id));
+        const latestCommunities = sortCommunitiesByPosition(await dataService.listComunidades(retreat.id));
         const selectedByCommunity = new Map(latestCommunities.map((community) => [community.id, []]));
         selections.forEach((selection) => {
           if (selectedByCommunity.has(selection.communityId)) selectedByCommunity.get(selection.communityId).push(selection.studentId);
@@ -5220,7 +5224,7 @@ const migrateLegacyBadgeProfiles = async (retreatId = '') => {
     localStorage.setItem(`${badgeProfilesMigratedKey}-${retreatId}`, '1');
     return;
   }
-  const storedProfiles = await dataService.listCrachas();
+  const storedProfiles = await dataService.listCrachas(retreatId);
   const storedIds = new Set(storedProfiles.map((profile) => profile.id));
   const profilesToMigrate = legacyProfiles
     .filter((profile) => !profile.retiroId || profile.retiroId === retreatId)
@@ -5231,7 +5235,7 @@ const migrateLegacyBadgeProfiles = async (retreatId = '') => {
 };
 const loadBadgeProfiles = async (retreatId = '') => {
   await migrateLegacyBadgeProfiles(retreatId);
-  const profiles = await dataService.listCrachas();
+  const profiles = await dataService.listCrachas(retreatId);
   return profiles
     .filter((profile) => profile.tipo !== badgeSectorAssignmentsType && !badgeTechnicalRecordTypes.has(profile.tipo))
     .map((profile) => normalizeBadgeProfile(profile, retreatId))
@@ -5250,7 +5254,7 @@ const normalizeBadgeSectorAssignments = (assignments = {}) => {
   };
 };
 const loadBadgeSectorAssignments = async (retreatId = '') => {
-  const records = (await dataService.listCrachas())
+  const records = (await dataService.listCrachas(retreatId))
     .filter((item) => item.retiroId === retreatId && item.tipo === badgeSectorAssignmentsType)
     .sort((first, second) => {
       const uuidDifference = Number(badgeAssignmentUuidPattern.test(second.id || '')) - Number(badgeAssignmentUuidPattern.test(first.id || ''));
@@ -5274,7 +5278,7 @@ const normalizeBadgeSectorNames = (names = {}) => Object.fromEntries(Object.entr
   .map(([sector, displayName]) => [String(sector || '').trim(), String(displayName || '').trim()])
   .filter(([sector, displayName]) => sector && displayName));
 const loadBadgeSectorNames = async (retreatId = '') => {
-  const records = (await dataService.listCrachas())
+  const records = (await dataService.listCrachas(retreatId))
     .filter((item) => item.retiroId === retreatId && item.tipo === badgeSectorNamesType)
     .sort((first, second) => {
       const uuidDifference = Number(badgeAssignmentUuidPattern.test(second.id || '')) - Number(badgeAssignmentUuidPattern.test(first.id || ''));
@@ -5297,7 +5301,7 @@ const saveBadgeSectorNames = (retreatId, names = {}, recordId = '') => dataServi
 const copyBadgeProfilesToRetreat = async (sourceRetreatId, targetRetreatId) => {
   if (!sourceRetreatId || !targetRetreatId) return;
   await migrateLegacyBadgeProfiles(sourceRetreatId);
-  const profiles = (await dataService.listCrachas())
+  const profiles = (await dataService.listCrachas(sourceRetreatId))
     .filter((profile) => profile.tipo !== badgeSectorAssignmentsType && !badgeTechnicalRecordTypes.has(profile.tipo))
     .map((profile) => normalizeBadgeProfile(profile, sourceRetreatId))
     .filter((profile) => profile.retiroId === sourceRetreatId);
@@ -5457,8 +5461,8 @@ async function renderCrachas() {
   const badgeUsesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(badgeStudentFormType);
   const badgeCoupleStudentSource = badgeUsesCoupleStudentForm ? coupleStudentSource(badgeStudentFormType) : null;
   const [allCommunities, allStudents] = await Promise.all([
-    dataService.listComunidades(),
-    badgeUsesCoupleStudentForm ? badgeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(),
+    dataService.listComunidades(retreat.id),
+    badgeUsesCoupleStudentForm ? badgeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(retreat.id),
   ]);
   const badgeCommunities = sortCommunitiesByPosition(allCommunities.filter((community) => community.retiroId === retreat.id));
   const badgeStudents = badgeUsesCoupleStudentForm
@@ -6371,7 +6375,7 @@ async function openCompleteStudentSheetsReport() {
   const configuredType = retreat.tipoFichaCursista || defaultStudentFormType;
   const printType = configuredType === 'cursista-individual' ? 'cursista' : configuredType;
   const loadedRecords = configuredType === 'cursista-individual'
-    ? (await dataService.listCursistas()).filter((record) => record.retiroId === retreat.id)
+    ? await dataService.listCursistas(retreat.id)
     : await coupleStudentSource(configuredType).list(retreat.id);
   const records = [...loadedRecords].sort((first, second) => {
     const firstNumber = studentRegistrationReportFileNumber(first, configuredType);
@@ -6471,8 +6475,7 @@ const participationDeclarationParticipant = ({ record, side = '', studentFormTyp
 async function listParticipationDeclarationParticipants(retreat) {
   const studentFormType = retreat?.tipoFichaCursista || defaultStudentFormType;
   if (studentFormType === 'cursista-individual') {
-    return (await dataService.listCursistas())
-      .filter((record) => record.retiroId === retreat.id)
+    return (await dataService.listCursistas(retreat.id))
       .map((record, index) => participationDeclarationParticipant({ record, studentFormType, index }));
   }
   const records = await coupleStudentSource(studentFormType).list(retreat.id);
@@ -6984,7 +6987,7 @@ async function renderBackup() {
 async function renderQuadrante() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
-  const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(), dataService.listCursistas(), loadQuadranteOrderSetting()]);
+  const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(retreat.id), dataService.listCursistas(retreat.id), loadQuadranteOrderSetting()]);
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
   const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
   const retreatStudents = uniqueByParticipant(retreatStudentRecords);
@@ -7210,7 +7213,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   const mount = embedded ? app.querySelector('#registration-root') : app;
   if (!retreat) { mount.innerHTML = '<main class="public-shell"><h1>Retiro não encontrado</h1><p>Confira o link que foi enviado pela equipe.</p></main>'; return; }
   if (!embedded && (!people.length || !enrolments.length)) {
-    [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+    [enrolments, people] = await Promise.all([dataService.listAdesoes(id), dataService.listPessoas(id)]);
   }
   if (retreat.status === 'preparacao') {
     const message = teamRegistrationClosedMessage(retreat);
@@ -7925,7 +7928,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       searchResults.hidden = false;
       searchResults.innerHTML = '<p>Carregando cadastros...</p>';
       try {
-        [enrolments, people] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+        [enrolments, people] = await Promise.all([dataService.listAdesoes(id), dataService.listPessoas(id)]);
       } catch (error) {
         searchResults.innerHTML = '<p>Não foi possível carregar os cadastros. Atualize a página e tente novamente.</p>';
         return;
@@ -7973,7 +7976,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       };
       renderRows();
       try {
-        const [latestEnrolments, latestPeople] = await Promise.all([dataService.listAdesoes(), dataService.listPessoas()]);
+        const [latestEnrolments, latestPeople] = await Promise.all([dataService.listAdesoes(id), dataService.listPessoas(id)]);
         if (currentRequest !== registrationSearchRequest) return;
         enrolments = latestEnrolments;
         people = latestPeople;
@@ -8058,7 +8061,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   };
   const listStudentsForCpfCheck = async () => {
     try {
-      return await dataService.listCursistas();
+      return await dataService.listCursistas(id);
     } catch {
       return [];
     }
@@ -8092,7 +8095,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   ]);
   const entryMatchesCpf = (entry, cpf) => personIdsForCpf(cpf).has(entry.pessoaId) || normalizeCpf(entry.pessoaId) === cpf;
   const findFocusedRetreatEntryByCpf = async (cpf, excludeEntryId = '') => {
-    const latestEnrolments = await dataService.listAdesoes().catch(() => enrolments);
+    const latestEnrolments = await dataService.listAdesoes(id).catch(() => enrolments);
     if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
     return enrolments.find((entry) => entry.retiroId === id && entry.id !== excludeEntryId && entryMatchesCpf(entry, cpf));
   };
@@ -8392,7 +8395,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     const internalBadgeName = embedded ? { badgeName: String(data.get(fieldName('badgeName')) || '').trim() } : {};
     await dataService.saveAdesao({ ...(existingEntry || {}), id: existingEntry?.id || createId(), retiroId: id, pessoaId: person.id, nome: person.nome, dadosPessoais: personalDataSnapshot(person), dias: selectedConfirmedDays(fieldName('dias'), source), setores: selectedRegistrationSectors(source), retirosAnteriores: dispensaRetirosAnteriores ? [] : checkedValues(source, fieldName('retiros')), dispensaRetirosAnteriores, retiroMaisRecenteEpcSmp: dispensaRetirosAnteriores ? '' : retiroMaisRecenteEpcSmp, quadrante, foto, contribuicao, coordenacao: form.elements.coordenacao ? data.get('coordenacao') : (existingEntry?.coordenacao || ''), coordenacaoSetor, espacoKids: kids, espacoKidsNaoNecessito: kidsNotNeeded, termoVoluntariadoAceito: true, termoVoluntariadoAceitoEm: existingEntry?.termoVoluntariadoAceitoEm || new Date().toISOString(), tipoFicha: 'Individual', casalId, papelNoCasal, status: existingEntry?.status || 'pendente_validacao', enviadoEm: existingEntry?.enviadoEm || new Date().toISOString(), atualizadoEm: new Date().toISOString(), ...internalBadgeName, __userSubmittedRegistration: true, ...(allowInternalKidsChange ? { __allowRegistrationDataLoss: true } : {}) });
     if (previousPersonId) {
-      const entriesToMigrate = (await dataService.listAdesoes()).filter((item) => item.pessoaId === previousPersonId);
+      const entriesToMigrate = (await dataService.listAdesoes(id)).filter((item) => item.pessoaId === previousPersonId);
       await Promise.all(entriesToMigrate.map((entry) => dataService.saveAdesao({ ...entry, pessoaId: cpf, nome: entry.nome || nome })));
       await dataService.deletePessoa(previousPersonId);
     }
@@ -8432,7 +8435,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       ...(isCouple() ? [{ cpf: normalizeCpf(data.get('spouseCpf')), control: form.elements.spouseCpf, excludeEntryId: editingSpouseEntry?.id || '' }] : []),
     ].filter((item) => isValidCpf(item.cpf));
     if (!checks.length) return false;
-    const latestEnrolments = await dataService.listAdesoes().catch(() => enrolments);
+    const latestEnrolments = await dataService.listAdesoes(id).catch(() => enrolments);
     if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
     for (const item of checks) {
       const duplicateEntry = enrolments.find((entry) => entry.retiroId === id && entry.id !== item.excludeEntryId && entryMatchesCpf(entry, item.cpf));
@@ -9088,7 +9091,7 @@ async function route() {
     const deleteStudentRecord = async (id) => {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return;
       if (!id || !confirm('Excluir este cursista?')) return;
-      const students = await dataService.listCursistas();
+      const students = await dataService.listCursistas(activeRetreat?.id || '');
       const student = students.find((item) => item.id === id) || id;
       form.querySelector('#student-message').textContent = 'Excluindo cursista e foto...';
       try {
@@ -9130,7 +9133,7 @@ async function route() {
       studentSearchOpen = true;
       const currentRequest = ++studentSearchRequest;
       const term = normalizeText(studentSearchInput.value);
-      const students = (await dataService.listCursistas())
+      const students = (await dataService.listCursistas(activeRetreat?.id || ''))
         .filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id))
         .filter((student) => {
           const cpf = normalizeCpf(student.cpf);
@@ -9184,7 +9187,7 @@ async function route() {
         return;
       }
       try {
-        const students = await dataService.listCursistas();
+        const students = await dataService.listCursistas(activeRetreat?.id || '');
         if (currentRequest !== studentFileLookupRequest) return;
         const student = students.find((item) => (
           item.retiroId === activeRetreat?.id
@@ -9225,7 +9228,7 @@ async function route() {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) return;
       cancelStudentFileLookup();
       clearStudentForm({ focus: false });
-      const students = await dataService.listCursistas();
+      const students = await dataService.listCursistas(activeRetreat?.id || '');
       if (!studentFileNumberInput) return;
       studentFileNumberInput.value = nextAvailableStudentFileNumber(students, activeRetreat?.id || '');
       studentFileNumberInput.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -9260,7 +9263,7 @@ async function route() {
     document.addEventListener('focusin', closeStudentSearch, true);
     form.querySelector('.delete-student')?.addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
     if (requestedStudentFileNumber && studentFileNumberInput) {
-      const students = await dataService.listCursistas();
+      const students = await dataService.listCursistas(activeRetreat?.id || '');
       const requestedStudent = students.find((student) => student.retiroId === activeRetreat?.id && Number(student.numeroFichaIndividual) === requestedStudentFileNumber);
       if (requestedStudent) {
         loadStudent(requestedStudent);

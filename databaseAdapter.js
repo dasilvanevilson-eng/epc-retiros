@@ -162,6 +162,24 @@ async function rowsWhere(table, filter, order = '') {
   return pagedRows(`${table}?${filter}&select=*${orderQuery}`);
 }
 
+async function rowsWhereIn(table, column, values = [], order = '') {
+  const uniqueValues = [...new Set(array(values).map((value) => String(value || '').trim()).filter(Boolean))];
+  if (!uniqueValues.length) return [];
+  const chunks = [];
+  for (let index = 0; index < uniqueValues.length; index += 100) chunks.push(uniqueValues.slice(index, index + 100));
+  const pages = await Promise.all(chunks.map((chunk) => rowsWhere(table, `${column}=in.(${chunk.map(enc).join(',')})`, order)));
+  return pages.flat();
+}
+
+async function optionalRowsWhereIn(table, column, values = [], order = '') {
+  try {
+    return await rowsWhereIn(table, column, values, order);
+  } catch (error) {
+    if (isMissingRelationError(error, table)) return [];
+    throw error;
+  }
+}
+
 async function oneWhere(table, filter) {
   const rows = await supabaseRequest(`${table}?${filter}&select=*&limit=1`);
   return rows[0] || null;
@@ -378,8 +396,11 @@ async function savePerson(record) {
   return mapPerson(row);
 }
 
-async function listPeople() {
-  return (await allRows('pessoas')).map(mapPerson);
+async function listPeople(retiroId = '') {
+  if (!retiroId) return (await allRows('pessoas')).map(mapPerson);
+  const enrolments = await rowsWhere('adesoes', `retiro_id=eq.${enc(retiroId)}`, '');
+  const people = await rowsWhereIn('pessoas', 'id', enrolments.map((entry) => entry.pessoa_id));
+  return people.map(mapPerson);
 }
 
 async function getPerson(id) {
@@ -467,15 +488,19 @@ function mapEnrolment(row, lookups = {}) {
 }
 
 async function enrolmentLookups(rows) {
-  const ids = new Set(rows.map((row) => row.id));
-  const [people, linksDias, dias, linksSetores, setores, retiros, kids] = await Promise.all([
-    allRows('pessoas'),
-    allRows('adesao_dias', ''),
-    allRows('retiro_dias', ''),
-    allRows('adesao_setores', ''),
-    allRows('retiro_setores', ''),
-    allRows('adesao_retiros_anteriores', 'ordem.asc'),
-    allRows('adesao_espaco_kids', 'ordem.asc'),
+  const ids = new Set(rows.map((row) => row.id).filter(Boolean));
+  if (!ids.size) return { personByDbId: new Map(), diasByAdesao: new Map(), setoresByAdesao: new Map(), retirosByAdesao: new Map(), kidsByAdesao: new Map() };
+  const enrolmentIds = [...ids];
+  const [people, linksDias, linksSetores, retiros, kids] = await Promise.all([
+    rowsWhereIn('pessoas', 'id', rows.map((row) => row.pessoa_id)),
+    rowsWhereIn('adesao_dias', 'adesao_id', enrolmentIds),
+    rowsWhereIn('adesao_setores', 'adesao_id', enrolmentIds),
+    rowsWhereIn('adesao_retiros_anteriores', 'adesao_id', enrolmentIds, 'ordem.asc'),
+    rowsWhereIn('adesao_espaco_kids', 'adesao_id', enrolmentIds, 'ordem.asc'),
+  ]);
+  const [dias, setores] = await Promise.all([
+    rowsWhereIn('retiro_dias', 'id', linksDias.map((item) => item.dia_id)),
+    rowsWhereIn('retiro_setores', 'id', linksSetores.map((item) => item.setor_id)),
   ]);
   const personByDbId = new Map(people.map((person) => [person.id, person]));
   const dayById = new Map(dias.map((dia) => [dia.id, dia]));
@@ -496,8 +521,10 @@ async function enrolmentLookups(rows) {
   return { personByDbId, diasByAdesao, setoresByAdesao, retirosByAdesao: groupByAdesao(retiros), kidsByAdesao: groupByAdesao(kids) };
 }
 
-async function listEnrolments() {
-  const rows = await allRows('adesoes');
+async function listEnrolments(retiroId = '') {
+  const rows = retiroId
+    ? await rowsWhere('adesoes', `retiro_id=eq.${enc(retiroId)}`, 'updated_at.desc')
+    : await allRows('adesoes');
   const lookups = await enrolmentLookups(rows);
   return rows.map((row) => mapEnrolment(row, lookups));
 }
@@ -1153,13 +1180,17 @@ function mapCommunity(row, lookups = {}) {
 
 async function communityLookups(rows) {
   const ids = new Set(rows.map((row) => row.id));
-  const [linksMonitors, people, linksStudents, students, linksSmpStudents, linksEpcStudents] = await Promise.all([
-    allRows('comunidade_monitores', ''),
-    allRows('pessoas'),
-    allRows('comunidade_cursistas', ''),
-    allRows('cursistas'),
-    optionalAllRows('comunidade_cursistas_smp', ''),
-    optionalAllRows('comunidade_cursistas_epc', ''),
+  if (!ids.size) return { monitorsByCommunity: new Map(), studentsByCommunity: new Map(), smpStudentsByCommunity: new Map(), epcStudentsByCommunity: new Map() };
+  const communityIds = [...ids];
+  const [linksMonitors, linksStudents, linksSmpStudents, linksEpcStudents] = await Promise.all([
+    rowsWhereIn('comunidade_monitores', 'comunidade_id', communityIds),
+    rowsWhereIn('comunidade_cursistas', 'comunidade_id', communityIds),
+    optionalRowsWhereIn('comunidade_cursistas_smp', 'comunidade_id', communityIds),
+    optionalRowsWhereIn('comunidade_cursistas_epc', 'comunidade_id', communityIds),
+  ]);
+  const [people, students] = await Promise.all([
+    rowsWhereIn('pessoas', 'id', linksMonitors.map((item) => item.pessoa_id)),
+    rowsWhereIn('cursistas', 'id', linksStudents.map((item) => item.cursista_id)),
   ]);
   const personById = new Map(people.map((item) => [item.id, item]));
   const studentById = new Map(students.map((item) => [item.id, item]));
@@ -1271,8 +1302,10 @@ async function saveCommunity(record) {
   return getRecord('comunidades', record.id);
 }
 
-async function listCommunities() {
-  const rows = await allRows('comunidades', 'ordem.asc');
+async function listCommunities(retiroId = '') {
+  const rows = retiroId
+    ? await rowsWhere('comunidades', `retiro_id=eq.${enc(retiroId)}`, 'ordem.asc')
+    : await allRows('comunidades', 'ordem.asc');
   const lookups = await communityLookups(rows);
   return rows.map((row) => mapCommunity(row, lookups));
 }
@@ -1350,15 +1383,19 @@ async function saveSimple(storeName, record) {
   throw new Error(`Store sem mapeamento de gravacao: ${storeName}`);
 }
 
-async function listRelational(storeName) {
+const retreatScopedSimpleStores = new Set(['casais', 'crachas', 'financeiro_planilhas', 'financeiro_planilha_auditoria']);
+
+async function listRelational(storeName, options = {}) {
+  const retreatId = typeof options === 'string' ? options : String(options.retiroId || '').trim();
   if (storeName === 'retiros') return listRetreats();
-  if (storeName === 'pessoas') return listPeople();
-  if (storeName === 'adesoes') return listEnrolments();
-  if (storeName === 'cursistas') return (await allRows('cursistas')).map(mapStudent);
-  if (storeName === 'comunidades') return listCommunities();
+  if (storeName === 'pessoas') return listPeople(retreatId);
+  if (storeName === 'adesoes') return listEnrolments(retreatId);
+  if (storeName === 'cursistas') return (retreatId ? await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}`, 'updated_at.desc') : await allRows('cursistas')).map(mapStudent);
+  if (storeName === 'comunidades') return listCommunities(retreatId);
   const table = tableByStore[storeName];
   const mapper = simpleMappers[storeName];
   if (!table || !mapper) throw new Error(`Store nao mapeada: ${storeName}`);
+  if (retreatId && retreatScopedSimpleStores.has(storeName)) return (await rowsWhere(table, `retiro_id=eq.${enc(retreatId)}`, 'updated_at.desc')).map(mapper);
   return (await allRows(table, table.includes('permissoes') || table.includes('retiros') ? '' : 'updated_at.desc')).map(mapper);
 }
 
@@ -1434,9 +1471,9 @@ async function replaceDatabase(incoming) {
   throw new Error('A substituicao do Supabase deve usar a restauracao transacional de backup.');
 }
 
-async function listRecords(storeName) {
+async function listRecords(storeName, options = {}) {
   if (!hasSupabase()) throw supabaseRequiredError();
-  return listRelational(storeName);
+  return listRelational(storeName, options);
 }
 
 async function getRecord(storeName, id) {

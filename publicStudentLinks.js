@@ -134,7 +134,7 @@ async function studentRecordsForRetreat(retreatId) {
     }
   };
   const [individual, smp, epc] = await Promise.all([
-    listRecords('cursistas'),
+    listRecords('cursistas', { retiroId: retreatId }),
     optionalCoupleList(listCursistasSmp),
     optionalCoupleList(listCursistasEpc),
   ]);
@@ -350,8 +350,8 @@ async function validateCpfAvailability(retreatId, record, type) {
   if (submitted.filter(Boolean).some((cpf) => existing.includes(cpf))) {
     throw publicStudentError('CPF ja cadastrado para este retiro.', 409, 'DUPLICATE_RETREAT_STUDENT_CPF');
   }
-  const people = await listRecords('pessoas');
-  const enrolments = await listRecords('adesoes');
+  const people = await listRecords('pessoas', { retiroId: retreatId });
+  const enrolments = await listRecords('adesoes', { retiroId: retreatId });
   const personIds = new Set(people.filter((person) => submitted.includes(normalizeCpf(person.cpf || person.id))).flatMap((person) => [person.id, normalizeCpf(person.cpf)]));
   if (enrolments.some((entry) => entry.retiroId === retreatId && (personIds.has(entry.pessoaId) || submitted.includes(normalizeCpf(entry.pessoaId))))) {
     throw publicStudentError('Este CPF ja esta cadastrado na equipe de trabalho deste retiro.', 409, 'STUDENT_TEAM_CONFLICT');
