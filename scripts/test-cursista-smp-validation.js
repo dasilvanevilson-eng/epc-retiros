@@ -88,11 +88,28 @@ async function main() {
   assert.equal(calls.filter(({ method }) => method === 'POST').length, 1, 'Rotinas que apenas atualizam o recebimento devem preservar a ficha historica.');
 
   calls = mockSupabase();
-  const individualizedUnions = await saveCursistaSmp(baseRecord({ outrasUnioes: 'Sim', outrasUnioesDele: 'Não', outrasUnioesDela: 'Sim', porqueQueremFazerRetiro: 'Fortalecer a família' }));
+  const individualizedUnions = await saveCursistaSmp(baseRecord({
+    outrasUnioes: 'Sim',
+    outrasUnioesDele: 'Não',
+    outrasUnioesDela: 'Sim',
+    porqueQueremFazerRetiro: 'Fortalecer a família',
+    comoSouberamRetiro: 'Por amigos',
+    nomeApresentante: 'Apresentante histórico',
+    foneApresentante: '(47) 99999-9999',
+    cursoApresentante: 'Curso histórico',
+    cidadeApresentante: 'Indaial',
+    paroquiaApresentante: 'Paróquia histórica',
+  }));
   assert.equal(individualizedUnions.outrasUnioesDele, 'Não');
   assert.equal(individualizedUnions.outrasUnioesDela, 'Sim');
   assert.equal(individualizedUnions.outrasUnioes, 'Sim', 'A resposta historica em comum deve continuar preservada.');
   assert.equal(individualizedUnions.porqueQueremFazerRetiro, 'Fortalecer a família');
+  assert.equal(individualizedUnions.comoSouberamRetiro, 'Por amigos');
+  assert.equal(individualizedUnions.nomeApresentante, 'Apresentante histórico');
+  assert.equal(individualizedUnions.foneApresentante, '(47) 99999-9999');
+  assert.equal(individualizedUnions.cursoApresentante, 'Curso histórico');
+  assert.equal(individualizedUnions.cidadeApresentante, 'Indaial');
+  assert.equal(individualizedUnions.paroquiaApresentante, 'Paróquia histórica');
 
   calls = mockSupabase({
     smp: [{ id: '1', retiro_id: retreatId, ele_cpf: hisCpf, ela_cpf: herCpf, extras: {} }],
@@ -114,7 +131,11 @@ async function main() {
   assert.match(admin, /'casamentoDele', 'filhosDele', 'outrasUnioesDele'/);
   assert.match(admin, /'casamentoDela', 'filhosDela', 'outrasUnioesDela'/);
   assert.doesNotMatch(admin, /commonFields = fieldsBlock\([^\n]*'outrasUnioes'/);
-  assert.match(admin, /'precisaAcolhimento', 'porqueQueremFazerRetiro', 'nomeApresentante'/);
+  const smpCommonFieldsSource = admin.match(/const commonFields = fieldsBlock\('fields two-columns cursista-smp-common-fields', \[[^\n]+/)?.[0] || '';
+  assert.match(smpCommonFieldsSource, /'precisaAcolhimento', 'porqueQueremFazerRetiro', 'comoSouberamRetiro', 'familiarAmigo'/);
+  ['nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante'].forEach((field) => {
+    assert.doesNotMatch(smpCommonFieldsSource, new RegExp(`'${field}'`), `${field} nao deve aparecer no formulario SMP.`);
+  });
   assert.match(styles, /fieldset:has\(\[name="precisaAcolhimento"\]\) \{ grid-column:1 \/ span 6; \}/);
   assert.match(styles, /\.field:has\(\[name="porqueQueremFazerRetiro"\]\) \{ grid-column:7 \/ span 6; \}/);
   assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);

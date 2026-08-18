@@ -5850,7 +5850,7 @@ body:has(.login-shell) {
 .cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) { grid-column:1 / -1; }
 .cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]) { grid-column:1 / span 6; }
 .cursista-smp-common-fields > .field:has([name="porqueQueremFazerRetiro"]) { grid-column:7 / span 6; }
-.cursista-smp-common-fields > .field:has([name="nomeApresentante"]) { grid-column:1 / span 6; }
+.cursista-smp-common-fields > .field:has([name="comoSouberamRetiro"]) { grid-column:1 / span 6; }
 .cursista-smp-common-fields > .field:has([name="foneApresentante"]) { grid-column:7 / span 3; }
 .cursista-smp-common-fields > .field:has([name="cursoApresentante"]) { grid-column:10 / span 3; }
 .cursista-smp-common-fields > .field:has([name="cidadeApresentante"]) { grid-column:1 / span 4; }
@@ -6398,7 +6398,7 @@ body:has(.login-shell) {
   }
 
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="endereco"]),
-  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="nomeApresentante"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="comoSouberamRetiro"]),
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="paroquiaApresentante"]),
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="familiarAmigo"]),
   .cursista-smp-form .cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) {
