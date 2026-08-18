@@ -1685,7 +1685,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     const totals = rows.reduce((sum, row) => ({ students: sum.students + row.students, team: sum.team + row.team }), { students: 0, team: 0 });
     return `<div class="student-health-list city-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.city)}</strong><span><b>${row.students}</b><small>Cursistas</small></span><span><b>${row.team}</b><small>Equipe de trabalho</small></span></div>`).join('')}<div class="city-health-total"><strong>Total geral</strong><span><b>${totals.students}</b><small>Cursistas</small></span><span><b>${totals.team}</b><small>Equipe de trabalho</small></span><span><b>${totals.students + totals.team}</b><small>Participantes</small></span></div></div>`;
   };
-  const homeHealthCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-health="${key}">${action}</button></article>`;
+  const homeHealthCard = (label, count, key, action = 'Visualizar', countLabel = '') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>${countLabel ? `<small>${countLabel}</small>` : ''}`}</div><button type="button" data-home-health="${key}">${action}</button></article>`;
   const homeStatCard = (label, count, key, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><button type="button" data-home-stat="${key}">${action}</button></article>`;
   const homeLinkCard = (label, count, href, action = 'Visualizar') => `<article class="student-health-card home-column-card"><div><span>${label}</span>${count === null ? '' : `<strong>${count}</strong>`}</div><a href="${href}">${action}</a></article>`;
   const homePanel = (label, description, content) => `<article class="panel dashboard-panel home-column-panel"><div class="panel-heading"><div><h2>${label}</h2>${description ? `<p>${description}</p>` : ''}</div></div><div>${content}</div></article>`;
@@ -1693,7 +1693,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     ? `<section class="home-column"><div class="home-column-heading"><h2>${escapeHtml(coupleStudentTitle)}</h2><div class="home-column-total"><strong>${coupleStudents.length}</strong><small>Casal(is)</small></div></div><div class="home-column-list">
         ${homeHealthCard('Possui intolerância alimentar', smpIntolerancePeople.length, 'smp-intolerance')}
         ${homeHealthCard('Possui problema de saúde', smpHealthPeople.length, 'smp-health')}
-        ${homeHealthCard('Precisa de acolhimento', smpAcolhimentoCouples.length, 'smp-acolhimento')}
+        ${homeHealthCard('Precisa de acolhimento', smpAcolhimentoCouples.length, 'smp-acolhimento', 'Visualizar', 'Casal(is)')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>`
     : `<section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div class="home-column-total"><strong>${activeStudents.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
