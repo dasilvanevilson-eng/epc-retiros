@@ -1005,7 +1005,7 @@ function coupleStudentRegistrationPrintContent(record, studentFormType) {
     ['Crismado(a)?', 'crismaDele', 'crismaDela'],
     ['Participa de movimento?', 'movimentoIgrejaDele', 'movimentoIgrejaDela'],
     ['Qual movimento?', 'qualMovimentoDele', 'qualMovimentoDela', '', 'movimentoIgrejaDele', 'movimentoIgrejaDela'],
-    ['Problema de saúde?', 'saudeDele', 'saudeDela'],
+    ['Possui algum problema de saúde/necessidade especial?', 'saudeDele', 'saudeDela'],
     ['Qual problema de saúde?', 'qualSaudeDele', 'qualSaudeDela', '', 'saudeDele', 'saudeDela'],
     ['Intolerância alimentar?', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'],
     ['Qual intolerância?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela', '', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'],

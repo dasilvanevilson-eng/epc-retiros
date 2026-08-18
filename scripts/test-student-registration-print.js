@@ -34,6 +34,7 @@ for (const dependency of ['estuda', 'fezRetiro', 'paisMovimento', 'intoleranciaA
   assert.match(printSource, new RegExp(`'${dependency}'`), `A impressão deve respeitar a resposta de ${dependency}.`);
 }
 assert.match(printSource, /<th>Informação<\/th><th>Ele<\/th><th>Ela<\/th>/, 'SMP e EPC devem usar o quadro comparativo Ele e Ela.');
+assert.match(printSource, /\['Possui algum problema de saúde\/necessidade especial\?', 'saudeDele', 'saudeDela'\]/);
 assert.match(printSource, /\['Qual movimento\?', 'qualMovimentoDele', 'qualMovimentoDela', '', 'movimentoIgrejaDele', 'movimentoIgrejaDela'\]/);
 assert.match(printSource, /\['Qual problema de saúde\?', 'qualSaudeDele', 'qualSaudeDela', '', 'saudeDele', 'saudeDela'\]/);
 assert.match(printSource, /\['Qual intolerância\?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela', '', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'\]/);
