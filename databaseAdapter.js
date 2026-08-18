@@ -97,7 +97,19 @@ const choiceFromBool = (value) => value === null || value === undefined ? '' : (
 const duplicateEnrolmentCpfMessage = 'Este CPF ja possui adesao neste retiro.';
 const duplicateStudentCpfMessage = 'Este CPF ja possui cadastro de cursista neste retiro.';
 const duplicateStudentFileNumberMessage = 'Este numero de ficha ja possui cadastro de cursista neste retiro.';
+const studentTeamCpfConflictMessage = 'Este CPF ja esta cadastrado na equipe de trabalho deste retiro.';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+const normalizeCpfDigits = (value = '') => String(value || '').replace(/\D/g, '').slice(0, 11);
+const isValidCpfNumber = (value = '') => {
+  const cpf = normalizeCpfDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const digit = (length) => {
+    const total = cpf.slice(0, length).split('').reduce((sum, number, index) => sum + Number(number) * (length + 1 - index), 0);
+    const remainder = (total * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+  return digit(9) === Number(cpf[9]) && digit(10) === Number(cpf[10]);
+};
 const isUuid = (value = '') => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
 const rowId = (row) => row?.cpf || row?.legacy_id || row?.id;
 const requireSupabaseForCursistaSmp = () => {
@@ -160,6 +172,15 @@ async function optionalAllRows(table, order = '') {
 async function rowsWhere(table, filter, order = '') {
   const orderQuery = order ? `&order=${order}` : '';
   return pagedRows(`${table}?${filter}&select=*${orderQuery}`);
+}
+
+async function optionalRowsWhere(table, filter, order = '') {
+  try {
+    return await rowsWhere(table, filter, order);
+  } catch (error) {
+    if (isMissingRelationError(error, table)) return [];
+    throw error;
+  }
 }
 
 async function rowsWhereIn(table, column, values = [], order = '') {
@@ -1040,10 +1061,56 @@ async function listCursistasSmp(retiroId) {
   return rows.map(mapCursistaSmp);
 }
 
+async function assertCursistaSmpCpfAvailability(record, currentId = '') {
+  const retreatId = String(record.retiroId || '').trim();
+  const cpfs = [record.cpfDele, record.cpfDela].map(normalizeCpfDigits);
+  if (!retreatId) throw new Error('Informe o retiro antes de salvar a ficha Cursista SMP.');
+
+  const filter = `retiro_id=eq.${enc(retreatId)}`;
+  const currentRow = currentId
+    ? (await rowsWhere('cursista_smp', `${filter}&id=eq.${enc(currentId)}`))[0]
+    : null;
+  const currentCpfs = currentRow ? [normalizeCpfDigits(currentRow.ele_cpf), normalizeCpfDigits(currentRow.ela_cpf)] : [];
+  const cpfsToCheck = currentRow && record.validateCpfAvailability !== true
+    ? cpfs.filter((cpf, index) => cpf !== currentCpfs[index])
+    : cpfs;
+  if (!cpfsToCheck.length) return;
+  if (cpfs.some((cpf) => !isValidCpfNumber(cpf))) throw new Error('Informe um CPF valido para cada integrante do casal.');
+  if (cpfs[0] === cpfs[1]) throw new Error('Informe um CPF diferente para cada integrante do casal.');
+
+  const [individualStudents, smpStudents, epcStudents, enrolmentRows] = await Promise.all([
+    rowsWhere('cursistas', filter),
+    rowsWhere('cursista_smp', filter),
+    optionalRowsWhere('cursista_epc', filter),
+    rowsWhere('adesoes', filter),
+  ]);
+  const studentCpfSet = new Set([
+    ...individualStudents.map((row) => normalizeCpfDigits(row.cpf)),
+    ...smpStudents
+      .filter((row) => String(row.id || '') !== String(currentId || ''))
+      .flatMap((row) => [normalizeCpfDigits(row.ele_cpf), normalizeCpfDigits(row.ela_cpf)]),
+    ...epcStudents.flatMap((row) => [normalizeCpfDigits(row.ele_cpf), normalizeCpfDigits(row.ela_cpf)]),
+  ].filter(Boolean));
+  if (cpfsToCheck.some((cpf) => studentCpfSet.has(cpf))) {
+    const error = new Error(duplicateStudentCpfMessage);
+    error.code = 'DUPLICATE_RETREAT_STUDENT_CPF';
+    throw error;
+  }
+
+  const peopleRows = await rowsWhereIn('pessoas', 'id', enrolmentRows.map((row) => row.pessoa_id));
+  const teamCpfSet = new Set(peopleRows.map((row) => normalizeCpfDigits(row.cpf || row.extras?.cpf)).filter(Boolean));
+  if (cpfsToCheck.some((cpf) => teamCpfSet.has(cpf))) {
+    const error = new Error(studentTeamCpfConflictMessage);
+    error.code = 'STUDENT_TEAM_CONFLICT';
+    throw error;
+  }
+}
+
 async function saveCursistaSmp(record) {
   requireSupabaseForCursistaSmp();
   const id = String(record.id || record.numeroFichaSmp || '').trim();
-  const mappedKeys = new Set(['retiroId', 'id', 'numeroFichaSmp', 'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp', 'criadoEm', 'createdAt', 'updatedAt']);
+  await assertCursistaSmpCpfAvailability(record, record.previousId || id);
+  const mappedKeys = new Set(['retiroId', 'id', 'numeroFichaSmp', 'previousId', 'validateCpfAvailability', 'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'outrasUnioes', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp', 'criadoEm', 'createdAt', 'updatedAt']);
   cursistaSmpKidCareRecordKeys.forEach((key) => mappedKeys.add(key));
   const row = await upsert('cursista_smp', compact({
     retiro_id: record.retiroId,

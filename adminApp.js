@@ -3705,8 +3705,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <section class="cursista-smp-section">
       <div class="section-heading"><span>3.</span><div><h2>Vivência religiosa</h2></div></div>
       <div class="fields two-columns">
-        <fieldset><legend>Crisma dele</legend>${yesNo('crismaDele')}</fieldset>
-        <fieldset><legend>Crisma dela</legend>${yesNo('crismaDela')}</fieldset>
+        <fieldset><legend>Crismado?</legend>${yesNo('crismaDele')}</fieldset>
+        <fieldset><legend>Crismada?</legend>${yesNo('crismaDela')}</fieldset>
         <label class="field"><span>Religião dele</span><input name="religiaoDele" placeholder="Digite a religião"></label>
         <label class="field"><span>Religião dela</span><input name="religiaoDela" placeholder="Digite a religião"></label>
         <label class="field"><span>Participa das missas? Ele</span><input name="missaDele" placeholder="Informe a participação"></label>
@@ -3986,6 +3986,62 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const listCoupleStudents = activeCoupleStudentSource.list;
   const saveCoupleStudent = activeCoupleStudentSource.save;
   const deleteCoupleStudent = activeCoupleStudentSource.delete;
+  const smpConditionalRequiredFields = [
+    ['movimentoIgrejaDele', 'qualMovimentoDele'],
+    ['movimentoIgrejaDela', 'qualMovimentoDela'],
+    ['saudeDele', 'qualSaudeDele'],
+    ['saudeDela', 'qualSaudeDela'],
+    ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
+    ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
+  ];
+  const smpRequiredTextFields = [
+    'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
+    'casamentoDele', 'filhosDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela',
+    'religiaoDela', 'missaDela', 'casamentoDela', 'filhosDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro',
+    'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'nomeApresentante', 'foneApresentante',
+    'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar',
+    'valorInscricaoSmp',
+  ];
+  const smpRequiredChoiceFields = [
+    'crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioes',
+    'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela',
+    'precisaAcolhimento', 'manequimDele', 'manequimDela',
+  ];
+  const setSmpRequiredMarker = (control, required) => {
+    if (!control) return;
+    const container = control.closest('.field, fieldset, .smp-shirt-choice-line');
+    const label = container?.querySelector(':scope > span, :scope > legend');
+    if (!label) return;
+    let marker = label.querySelector(':scope > b[data-required-marker]');
+    if (required && !marker) {
+      marker = document.createElement('b');
+      marker.dataset.requiredMarker = 'true';
+      marker.textContent = '*';
+      label.append(document.createTextNode(' '), marker);
+    } else if (!required) marker?.remove();
+  };
+  const syncSmpRequiredRules = () => {
+    if (expectedType !== 'cursista-smp') return;
+    smpRequiredTextFields.forEach((name) => {
+      const control = form.elements[name];
+      if (!control) return;
+      control.required = true;
+      setSmpRequiredMarker(control, true);
+    });
+    smpRequiredChoiceFields.forEach((name) => {
+      const controls = [...form.querySelectorAll(`[name="${name}"]`)];
+      controls.forEach((control) => { control.required = true; });
+      setSmpRequiredMarker(controls[0], true);
+    });
+    const values = new FormData(form);
+    smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
+      const detail = form.elements[detailName];
+      if (!detail) return;
+      const required = values.get(choiceName) === 'Sim';
+      detail.required = required;
+      setSmpRequiredMarker(detail, required);
+    });
+  };
   if (typedDateFields.length) wireTypedDates(form, namedFieldSelector(typedDateFields));
   let records = [];
   let selectedId = '';
@@ -4107,6 +4163,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     setSmpPaymentDetails({ paidAmount: 0 });
     syncSmpKidsNeedVisibility();
     syncSmpKidPanels({ resetOpen: true });
+    syncSmpRequiredRules();
     setLocked(!unlock);
     setMessage(notice);
     if (focus) fileNumberInput?.focus();
@@ -4135,6 +4192,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     syncChoiceStates(form);
     syncSmpKidPanels({ resetOpen: true });
     syncSmpKidsNeedVisibility();
+    syncSmpRequiredRules();
     deleteButton.hidden = !canDeleteSmp();
     printButton.hidden = false;
     setLocked(true);
@@ -4172,6 +4230,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       retiroId: retreat?.id || '',
       id: String(fileNumberInput?.value || '').trim(),
       numeroFichaSmp: String(fileNumberInput?.value || '').trim(),
+      previousId: selectedId || '',
       smpKidsNotNeeded: Boolean(form.elements.smpKidsNotNeeded?.checked),
       criadoEm: previousRecord?.criadoEm || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4211,6 +4270,26 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => control?.focus({ preventScroll: true }), 180);
   };
+  const firstSmpKidsIssue = () => {
+    if (expectedType !== 'cursista-smp' || form.elements.smpKidsNotNeeded?.checked) return null;
+    const usedPanels = smpKidPanels.filter(smpKidPanelHasData);
+    if (!usedPanels.length) return form.elements.smpKidsNotNeeded;
+    for (const panel of usedPanels) {
+      const kidNumber = panel.dataset.smpKidPanel;
+      const requiredNames = [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`];
+      const missingText = requiredNames.map((name) => form.elements[name]).find((control) => !String(control?.value || '').trim());
+      if (missingText) return missingText;
+      for (const [choiceName, detailName] of [
+        [`smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`],
+        [`smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`],
+      ]) {
+        const choice = new FormData(form).get(choiceName);
+        if (!choice) return form.querySelector(`[name="${choiceName}"]`);
+        if (choice === 'Sim' && !String(form.elements[detailName]?.value || '').trim()) return form.elements[detailName];
+      }
+    }
+    return null;
+  };
   const validateBeforeSave = () => {
     const blockedReason = canUseSmp();
     if (blockedReason) { setMessage(blockedReason); return false; }
@@ -4239,9 +4318,10 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       focusIssue(fileNumberInput);
       return false;
     }
+    syncSmpRequiredRules();
     const invalidCpf = cpfFields.map((name) => form.elements[name]).find((input) => {
       const cpf = normalizeCpf(input?.value || '');
-      return cpf && cpf.length === 11 && !isValidCpf(cpf);
+      return expectedType === 'cursista-smp' ? !isValidCpf(cpf) : (cpf && cpf.length === 11 && !isValidCpf(cpf));
     });
     if (invalidCpf) {
       setMessage('Revise o CPF informado antes de salvar.');
@@ -4255,6 +4335,15 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       invalidDate.setCustomValidity('Digite a data no formato dd/mm/aaaa.');
       setMessage('Revise a data informada. Use o formato dd/mm/aaaa.');
       focusIssue(invalidDate);
+      return false;
+    }
+    const kidsIssue = firstSmpKidsIssue();
+    const requiredIssue = kidsIssue || form.querySelector(':invalid');
+    if (!form.checkValidity() || requiredIssue) {
+      setMessage(kidsIssue
+        ? 'Informe os dados das criancas que usarao o Espaco Kids ou marque que nao necessita.'
+        : 'Revise todos os campos obrigatorios antes de salvar.');
+      focusIssue(requiredIssue);
       return false;
     }
     return true;
@@ -4350,6 +4439,11 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   form.addEventListener('input', syncChangedSmpKidPanel);
   form.addEventListener('change', syncChangedSmpKidPanel);
+  form.addEventListener('input', (event) => event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning'));
+  form.addEventListener('change', (event) => {
+    event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning');
+    syncSmpRequiredRules();
+  });
   form.querySelectorAll('[name^="smpKidNascimento"]').forEach((input) => {
     input.addEventListener('change', () => {
       if (cursistaKidExceedsRetreatAgeLimit(retreat, input.value)) {
@@ -4359,6 +4453,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   });
   syncSmpKidPanels({ resetOpen: true });
   syncSmpKidsNeedVisibility();
+  syncSmpRequiredRules();
   form.elements.estadoSmp?.addEventListener('input', () => { form.elements.estadoSmp.value = form.elements.estadoSmp.value.toUpperCase().slice(0, 2); });
   cpfFields.forEach((name) => {
     const input = form.elements[name];

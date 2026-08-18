@@ -15,6 +15,7 @@
     "test:community-atomic-move": "node scripts/test-community-member-atomic-move.js",
     "test:cursista-kids-age": "node scripts/test-cursista-kids-age-limit.js",
     "test:cursista-shirt-size": "node scripts/test-cursista-shirt-size.js",
+    "test:cursista-smp-validation": "node scripts/test-cursista-smp-validation.js",
     "test:dates": "node scripts/test-date-inputs.js && node scripts/test-date-persistence.js",
     "test:home-kids-care": "node scripts/test-home-kids-care.js",
     "test:retreat-focus": "node scripts/test-retreat-focus.js",

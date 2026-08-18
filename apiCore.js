@@ -891,7 +891,9 @@ async function handleApi(req, res, pathname) {
       if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
       const existing = (await listCoupleStudents(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
       if (denyIfMissingPermission(res, session, existing ? `${permissionPrefix}.editar` : `${permissionPrefix}.criar`)) return;
-      return sendJson(res, 200, await saveCoupleStudent(record));
+      return sendJson(res, 200, await saveCoupleStudent(resource === 'cursista-smp'
+        ? { ...record, validateCpfAvailability: true }
+        : record));
     }
     if (req.method === 'DELETE' && id && action) {
       const retreatId = decodeURIComponent(id);
