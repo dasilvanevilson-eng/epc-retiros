@@ -65,6 +65,11 @@ assert.match(app, /editSelectedStudent\?\.addEventListener\('click'[\s\S]*printS
 assert.match(app, /if \(publicContext\)[\s\S]*student-heading-actions'\)\?\.remove\(\)/, 'O acesso público Individual deve remover as ações autenticadas.');
 assert.match(app, /prepareSharedPublicCoupleStudentForm[\s\S]*cursista-smp-tools/, 'O acesso público SMP/EPC deve remover a barra que contém a impressão.');
 assert.match(app, /name="coupleNameSearch"[^>]*placeholder="Digite o nome dele ou dela"/, 'A impressão completa de casais deve permitir busca pelo nome dele ou dela.');
+assert.match(app, /<span>Buscar pelo nome<\/span><input name="coupleNameSearch"/);
+assert.match(app, /coupleNameSearchInput\?\.addEventListener\('focus', renderCoupleSearchResults\)/, 'A lista de casais deve abrir ao focar o campo de busca.');
+assert.match(app, /coupleNameSearchInput\?\.addEventListener\('input',[\s\S]*renderCoupleSearchResults\(\)/, 'A lista de casais deve ser refinada durante a digitação.');
+assert.match(app, /const matches = records\.filter\(\(record\) => normalizeText\(`\$\{record\.nomeDele \|\| ''\} \$\{record\.nomeDela \|\| ''\}`\)\.includes\(query\)\)/);
+assert.match(app, /data-complete-student-sheet-search-result[\s\S]*selectedCoupleRecord = matches/, 'A lista suspensa deve permitir selecionar exatamente um casal.');
 assert.match(app, /const hasRange = hasInitial \|\| hasFinal;[\s\S]*if \(!hasRange && !nameQuery\)/, 'A busca por nome deve funcionar sem remover o filtro atual por intervalo.');
 assert.match(app, /if \(hasRange\)[\s\S]*fileNumber >= initial && fileNumber <= final[\s\S]*if \(nameQuery\)[\s\S]*record\.nomeDele[\s\S]*record\.nomeDela/, 'Intervalo e nome devem poder ser aplicados em conjunto.');
 assert.match(app, /coupleNameSearchInput\.disabled = printAllInput\.checked/, 'Imprimir todas deve continuar ignorando e desabilitando os demais filtros.');

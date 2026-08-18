@@ -6536,7 +6536,7 @@ async function openCompleteStudentSheetsReport() {
     return String(firstName || '').localeCompare(String(secondName || ''), 'pt-BR', { sensitivity: 'base' });
   });
   const usesCoupleForm = configuredType !== 'cursista-individual';
-  const coupleSearchField = usesCoupleForm ? `<label class="field complete-student-sheet-search"><span>Buscar casal pelo nome dele ou dela</span><input name="coupleNameSearch" type="search" autocomplete="off" placeholder="Digite o nome dele ou dela" ${records.length ? '' : 'disabled'}><small>A busca pode ser usada sozinha ou junto com o intervalo de fichas.</small></label>` : '';
+  const coupleSearchField = usesCoupleForm ? `<div class="complete-student-sheet-search"><label class="field"><span>Buscar pelo nome</span><input name="coupleNameSearch" type="search" autocomplete="off" placeholder="Digite o nome dele ou dela" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="complete-student-sheet-search-results" ${records.length ? '' : 'disabled'}><small>A busca pode ser usada sozinha ou junto com o intervalo de fichas.</small></label><div id="complete-student-sheet-search-results" class="complete-student-sheet-search-results" role="listbox" hidden></div></div>` : '';
   const overlay = document.createElement('div');
   overlay.className = 'receiver-sector-overlay complete-student-sheets-overlay';
   overlay.innerHTML = `<section class="receiver-sector-dialog complete-student-sheets-dialog" role="dialog" aria-modal="true" aria-labelledby="complete-student-sheets-title"><div class="panel-heading"><div><p class="eyebrow">Cursistas · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="complete-student-sheets-title">Imprimir fichas completas</h2><p>${records.length} ficha(s) cadastrada(s). Cada ficha será impressa em uma página.</p></div></div><form class="complete-student-sheets-form"><div class="fields two-columns complete-student-sheet-range"><label class="field"><span>Ficha inicial</span><input name="initialFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Inicial" ${records.length ? '' : 'disabled'}></label><label class="field"><span>Ficha final</span><input name="finalFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Final" ${records.length ? '' : 'disabled'}></label></div>${coupleSearchField}<label class="complete-student-sheets-all"><input type="checkbox" name="printAll" ${records.length ? '' : 'disabled'}><span><strong>Imprimir todas</strong><small>Ignora os demais filtros e inclui todas as fichas deste retiro.</small></span></label><p class="form-message" data-complete-student-sheets-message aria-live="polite">${records.length ? (usesCoupleForm ? 'Informe o intervalo, busque pelo nome ou marque Imprimir todas.' : 'Informe o intervalo ou marque Imprimir todas.') : 'Não há fichas cadastradas para este retiro.'}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-complete-student-sheets-close>Cancelar</button><button type="submit" class="primary-button" ${records.length ? '' : 'disabled'}>Imprimir fichas</button></div></form></section>`;
@@ -6546,20 +6546,62 @@ async function openCompleteStudentSheetsReport() {
   const finalInput = form.elements.finalFile;
   const printAllInput = form.elements.printAll;
   const coupleNameSearchInput = form.elements.coupleNameSearch;
+  const coupleNameSearchResults = overlay.querySelector('.complete-student-sheet-search-results');
   const message = overlay.querySelector('[data-complete-student-sheets-message]');
   const submitButton = form.querySelector('button[type="submit"]');
+  let selectedCoupleRecord = null;
+  const coupleDisplayName = (record) => [record?.nomeDele, record?.nomeDela].map((name) => String(name || '').trim()).filter(Boolean).join(' e ') || 'Casal sem nome informado';
+  const closeCoupleSearchResults = () => {
+    if (!coupleNameSearchResults || !coupleNameSearchInput) return;
+    coupleNameSearchResults.hidden = true;
+    coupleNameSearchInput.setAttribute('aria-expanded', 'false');
+  };
+  const renderCoupleSearchResults = () => {
+    if (!coupleNameSearchResults || !coupleNameSearchInput || coupleNameSearchInput.disabled) return;
+    const query = normalizeText(coupleNameSearchInput.value);
+    const matches = records.filter((record) => normalizeText(`${record.nomeDele || ''} ${record.nomeDela || ''}`).includes(query));
+    coupleNameSearchResults.hidden = false;
+    coupleNameSearchInput.setAttribute('aria-expanded', 'true');
+    coupleNameSearchResults.innerHTML = matches.length ? matches.map((record, index) => {
+      const fileNumber = studentRegistrationReportFileNumber(record, configuredType);
+      return `<button type="button" role="option" data-complete-student-sheet-search-result="${index}"><strong>${escapeHtml(coupleDisplayName(record))}</strong><small>${fileNumber === null ? 'Ficha sem número' : `Ficha ${fileNumber}`}</small></button>`;
+    }).join('') : '<p>Nenhum casal encontrado.</p>';
+    coupleNameSearchResults.querySelectorAll('[data-complete-student-sheet-search-result]').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectedCoupleRecord = matches[Number(button.dataset.completeStudentSheetSearchResult)] || null;
+        if (!selectedCoupleRecord) return;
+        coupleNameSearchInput.value = coupleDisplayName(selectedCoupleRecord);
+        closeCoupleSearchResults();
+        message.textContent = `${coupleDisplayName(selectedCoupleRecord)} selecionado para impressão.`;
+      });
+    });
+  };
   const close = () => overlay.remove();
   overlay.querySelector('[data-complete-student-sheets-close]').addEventListener('click', close);
-  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-  overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) { close(); return; }
+    if (!event.target.closest('.complete-student-sheet-search')) closeCoupleSearchResults();
+  });
+  overlay.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (coupleNameSearchResults && !coupleNameSearchResults.hidden) {
+      closeCoupleSearchResults();
+      return;
+    }
+    close();
+  });
   printAllInput.addEventListener('change', () => {
     initialInput.disabled = printAllInput.checked;
     finalInput.disabled = printAllInput.checked;
     if (coupleNameSearchInput) coupleNameSearchInput.disabled = printAllInput.checked;
+    if (printAllInput.checked) closeCoupleSearchResults();
     message.textContent = printAllInput.checked ? `${records.length} ficha(s) serão impressas.` : (usesCoupleForm ? 'Informe o intervalo ou busque pelo nome.' : 'Informe o intervalo de fichas.');
   });
+  coupleNameSearchInput?.addEventListener('focus', renderCoupleSearchResults);
   coupleNameSearchInput?.addEventListener('input', () => {
+    selectedCoupleRecord = null;
     const query = normalizeText(coupleNameSearchInput.value);
+    renderCoupleSearchResults();
     if (!query) {
       message.textContent = 'Informe o intervalo, busque pelo nome ou marque Imprimir todas.';
       return;
@@ -6595,7 +6637,11 @@ async function openCompleteStudentSheetsReport() {
           return fileNumber !== null && fileNumber >= initial && fileNumber <= final;
         });
       }
-      if (nameQuery) selectedRecords = selectedRecords.filter((record) => normalizeText(`${record.nomeDele || ''} ${record.nomeDela || ''}`).includes(nameQuery));
+      if (nameQuery) {
+        selectedRecords = selectedCoupleRecord && normalizeText(coupleNameSearchInput.value) === normalizeText(coupleDisplayName(selectedCoupleRecord))
+          ? selectedRecords.filter((record) => record === selectedCoupleRecord)
+          : selectedRecords.filter((record) => normalizeText(`${record.nomeDele || ''} ${record.nomeDela || ''}`).includes(nameQuery));
+      }
     }
     if (!selectedRecords.length) {
       message.textContent = 'Nenhuma ficha cadastrada foi encontrada com os filtros informados.';
