@@ -99,7 +99,7 @@ async function main() {
   const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
   assert.match(admin, /const smpRequiredTextFields = \[[\s\S]*?'nomeDele'[\s\S]*?'valorInscricaoSmp'/);
   const requiredFieldsSource = admin.slice(admin.indexOf('const smpRequiredTextFields = ['), admin.indexOf('const smpRequiredChoiceFields = ['));
-  ['casamentoDele', 'casamentoDela', 'filhosDele', 'filhosDela'].forEach((field) => {
+  ['casamentoDele', 'casamentoDela', 'filhosDele', 'filhosDela', 'nrApto'].forEach((field) => {
     assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} nao deve ser obrigatorio.`);
   });
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
@@ -108,6 +108,8 @@ async function main() {
   assert.match(admin, /firstSmpKidsIssue[\s\S]*form\.checkValidity\(\)/);
   assert.match(admin, /if \(!usedPanels\.length\) return form\.elements\.smpKidsNotNeeded/);
   assert.match(admin, /requiredNames = \[`smpKidNome\$\{kidNumber\}`, `smpKidNascimento\$\{kidNumber\}`\]/);
+  assert.match(admin, /if \(!choice\) return form\.querySelector\(`\[name="\$\{choiceName\}"\]`\)/);
+  assert.match(admin, /if \(choice === 'Sim' && !String\(form\.elements\[detailName\]\?\.value \|\| ''\)\.trim\(\)\) return form\.elements\[detailName\]/);
   assert.match(api, /resource === 'cursista-smp'[\s\S]*validateCpfAvailability: true/);
 
   console.log(JSON.stringify({

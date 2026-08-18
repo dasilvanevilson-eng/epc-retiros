@@ -3997,7 +3997,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const smpRequiredTextFields = [
     'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
     'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela',
-    'cep', 'endereco', 'numero', 'nrApto', 'bairro',
+    'cep', 'endereco', 'numero', 'bairro',
     'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'nomeApresentante', 'foneApresentante',
     'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar',
     'valorInscricaoSmp',
