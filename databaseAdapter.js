@@ -740,9 +740,10 @@ async function moveCommunityMemberAtomic({ retreatId, targetCommunityId, members
   const cleanTargetCommunityId = String(targetCommunityId || '').trim();
   const cleanMembershipType = String(membershipType || '').trim().toLowerCase();
   const cleanStudentId = String(studentId || '').trim();
-  if (!isUuid(cleanRetreatId) || !isUuid(cleanTargetCommunityId) || !cleanStudentId) throw new Error('Retiro, comunidade de destino e integrante devem ser informados corretamente.');
+  if (!cleanRetreatId) throw new Error('O identificador do retiro nao foi informado.');
+  if (!cleanTargetCommunityId) throw new Error('O identificador da comunidade de destino nao foi informado.');
+  if (!cleanStudentId) throw new Error('O identificador do cursista ou casal nao foi informado.');
   if (!['individual', 'smp', 'epc'].includes(cleanMembershipType)) throw new Error('Tipo de ficha de cursista invalido.');
-  if (cleanMembershipType === 'individual' && !isUuid(cleanStudentId)) throw new Error('Identificador do cursista individual invalido.');
   try {
     return await supabaseRequest('rpc/epc_move_community_member_atomic', {
       method: 'POST',

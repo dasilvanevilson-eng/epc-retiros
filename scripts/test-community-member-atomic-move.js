@@ -55,8 +55,21 @@ async function main() {
   });
 
   calls.length = 0;
+  const postgresUuidWithoutRfcVersion = '77777777-7777-7777-7777-777777777777';
+  await moveCommunityMemberAtomic({
+    retreatId: postgresUuidWithoutRfcVersion,
+    targetCommunityId: postgresUuidWithoutRfcVersion,
+    membershipType: 'individual',
+    studentId: postgresUuidWithoutRfcVersion,
+  });
+  assert.equal(calls.length, 1, 'O adaptador não deve rejeitar antecipadamente UUID aceito pelo PostgreSQL.');
+
+  calls.length = 0;
   await assert.rejects(moveCommunityMemberAtomic({ retreatId, targetCommunityId, membershipType: 'invalido', studentId: '1' }), /Tipo de ficha/);
   assert.equal(calls.length, 0, 'Entrada inválida deve ser bloqueada antes de acessar o banco.');
+  await assert.rejects(moveCommunityMemberAtomic({ retreatId: '', targetCommunityId, membershipType: 'smp', studentId: '12' }), /identificador do retiro/);
+  await assert.rejects(moveCommunityMemberAtomic({ retreatId, targetCommunityId: '', membershipType: 'smp', studentId: '12' }), /comunidade de destino/);
+  await assert.rejects(moveCommunityMemberAtomic({ retreatId, targetCommunityId, membershipType: 'smp', studentId: '' }), /cursista ou casal/);
 
   global.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), method: options.method || 'GET', body: options.body || '' });
