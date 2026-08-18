@@ -661,7 +661,7 @@ async function handleApi(req, res, pathname) {
     if (denyIfMissingPermission(res, session, 'comunidades.editar')) return;
     try {
       const body = await readBody(req);
-      const retreatId = String(body.retiroId || '').trim();
+      const retreatId = String(body.retreatId || body.retiroId || '').trim();
       const targetCommunityId = String(body.targetCommunityId || '').trim();
       const membershipType = String(body.membershipType || '').trim().toLowerCase();
       const studentId = String(body.studentId || '').trim();

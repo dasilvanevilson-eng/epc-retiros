@@ -87,6 +87,7 @@ async function main() {
   assert.match(moveHandler, /dataService\.moveComunidadeMembro\(\{ retreatId: retreat\.id, targetCommunityId, membershipType, studentId \}\)/);
   assert.doesNotMatch(moveHandler, /listComunidades|saveComunidadeMembros|for \(const community/, 'Mover não pode voltar a salvar todas as comunidades.');
   assert.match(service, /api\('\/comunidades-mover-membro', \{[\s\S]*method: 'POST'/);
+  assert.match(api, /const retreatId = String\(body\.retreatId \|\| body\.retiroId \|\| ''\)\.trim\(\);/, 'A API deve aceitar o nome atual e o nome legado do identificador do retiro.');
   assert.match(api, /denyIfMissingPermission\(res, session, 'comunidades\.editar'\)/);
   assert.match(api, /canAccessRetreat\(session, retreatId\)/);
   assert.match(sql, /v_tipo not in \('individual', 'smp', 'epc'\)/);
