@@ -148,6 +148,12 @@ async function main() {
   assert.match(admin, /if \(choice === 'Sim' && !String\(form\.elements\[detailName\]\?\.value \|\| ''\)\.trim\(\)\) return form\.elements\[detailName\]/);
   assert.match(admin, /const syncSmpKidRequiredRules = \(\) => \{[\s\S]*control\.required = hasData;[\s\S]*setSmpRequiredMarker\(control, hasData\)/);
   assert.match(admin, /const detailRequired = hasData && new FormData\(form\)\.get\(choiceName\) === 'Sim';[\s\S]*setSmpRequiredMarker\(detail, detailRequired\)/);
+  assert.match(admin, /function wirePublicSmpValidation\(form\)[\s\S]*const setPublicRequiredMarker = \(control, required\) =>/);
+  assert.match(admin, /smpRequiredTextFields\.forEach[\s\S]*setPublicRequiredMarker\(form\.elements\[name\], true\)/);
+  assert.match(admin, /smpRequiredChoiceFields\.forEach[\s\S]*setPublicRequiredMarker\(controls\[0\], true\)/);
+  assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*setPublicRequiredMarker\(form\.elements\[detailName\], required\)/);
+  assert.match(admin, /setPublicRequiredMarker\(form\.elements\[name\], hasData\)/);
+  assert.match(admin, /setPublicRequiredMarker\(form\.elements\[detailName\], detailRequired\)/);
   assert.match(api, /resource === 'cursista-smp'[\s\S]*validateCpfAvailability: true/);
 
   console.log(JSON.stringify({

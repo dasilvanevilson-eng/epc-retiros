@@ -3625,16 +3625,39 @@ const smpRequiredChoiceFields = [
 
 function wirePublicSmpValidation(form) {
   const kidPanels = [...form.querySelectorAll('[data-smp-kid-panel]')];
+  const setPublicRequiredMarker = (control, required) => {
+    if (!control) return;
+    const container = control.closest('.field, fieldset, .smp-shirt-choice-line');
+    const label = container?.querySelector(':scope > span, :scope > legend');
+    if (!label) return;
+    let marker = label.querySelector(':scope > b[data-required-marker]');
+    if (required && !marker) {
+      marker = document.createElement('b');
+      marker.dataset.requiredMarker = 'true';
+      marker.textContent = '*';
+      label.append(document.createTextNode(' '), marker);
+    } else if (!required) marker?.remove();
+  };
   const kidPanelHasData = (panel) => [...panel.querySelectorAll('input, select, textarea')].some((control) => {
     if (['checkbox', 'radio'].includes(control.type)) return control.checked;
     return Boolean(String(control.value || '').trim());
   });
   const sync = () => {
-    smpRequiredTextFields.forEach((name) => { if (form.elements[name]) form.elements[name].required = true; });
-    smpRequiredChoiceFields.forEach((name) => form.querySelectorAll(`[name="${name}"]`).forEach((control) => { control.required = true; }));
+    smpRequiredTextFields.forEach((name) => {
+      if (!form.elements[name]) return;
+      form.elements[name].required = true;
+      setPublicRequiredMarker(form.elements[name], true);
+    });
+    smpRequiredChoiceFields.forEach((name) => {
+      const controls = [...form.querySelectorAll(`[name="${name}"]`)];
+      controls.forEach((control) => { control.required = true; });
+      setPublicRequiredMarker(controls[0], true);
+    });
     const values = new FormData(form);
     smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
-      if (form.elements[detailName]) form.elements[detailName].required = values.get(choiceName) === 'Sim';
+      const required = values.get(choiceName) === 'Sim';
+      if (form.elements[detailName]) form.elements[detailName].required = required;
+      setPublicRequiredMarker(form.elements[detailName], required);
     });
     const kidsNotNeeded = form.elements.smpKidsNotNeeded;
     const usedPanels = kidsNotNeeded?.checked ? [] : kidPanels.filter(kidPanelHasData);
@@ -3642,13 +3665,19 @@ function wirePublicSmpValidation(form) {
     kidPanels.forEach((panel) => {
       const kidNumber = panel.dataset.smpKidPanel;
       const hasData = usedPanels.includes(panel);
-      [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`].forEach((name) => { if (form.elements[name]) form.elements[name].required = hasData; });
+      [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`].forEach((name) => {
+        if (form.elements[name]) form.elements[name].required = hasData;
+        setPublicRequiredMarker(form.elements[name], hasData);
+      });
       [
         [`smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`],
         [`smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`],
       ].forEach(([choiceName, detailName]) => {
         form.querySelectorAll(`[name="${choiceName}"]`).forEach((control) => { control.required = hasData; });
-        if (form.elements[detailName]) form.elements[detailName].required = hasData && values.get(choiceName) === 'Sim';
+        setPublicRequiredMarker(form.querySelector(`[name="${choiceName}"]`), hasData);
+        const detailRequired = hasData && values.get(choiceName) === 'Sim';
+        if (form.elements[detailName]) form.elements[detailName].required = detailRequired;
+        setPublicRequiredMarker(form.elements[detailName], detailRequired);
       });
     });
     const hisCpf = normalizeCpf(form.elements.cpfDele?.value || '');
