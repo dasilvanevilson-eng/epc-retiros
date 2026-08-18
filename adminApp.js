@@ -1030,7 +1030,7 @@ function coupleStudentRegistrationPrintContent(record, studentFormType) {
     ['Casamento religioso', 'uniaoCasal', 'date'], ['Local do casamento', 'localCasamentoEpc'], ['Tem filhos?', 'temFilhosEpc'], ['Idade dos filhos', 'idadeFilhosEpc'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
     ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Contato de emergência', 'contatoEmergenciaEpc'], ['Fone de emergência', 'foneEmergenciaEpc', 'phone'],
   ] : [
-    ['Data da união', 'uniaoCasal', 'date'], ['Filhos da união', 'filhosUniao'], ['Precisa de acolhimento?', 'precisaAcolhimento'],
+    ['Data da união', 'uniaoCasal', 'date'], ['Filhos da união', 'filhosUniao'], ['Precisa de acolhimento?', 'precisaAcolhimento'], ['Por que querem fazer o retiro?', 'porqueQueremFazerRetiro'],
     ['Apresentante', 'nomeApresentante'], ['Fone do apresentante', 'foneApresentante', 'phone'], ['Curso do apresentante', 'cursoApresentante'], ['Cidade do apresentante', 'cidadeApresentante'], ['Paróquia do apresentante', 'paroquiaApresentante'], ['Familiar ou amigo', 'familiarAmigo'], ['Fone do familiar', 'foneFamiliar', 'phone'],
   ];
   const commonSections = studentFormType === 'cursista-smp'
@@ -3728,13 +3728,13 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <section class="cursista-smp-section">
       <div class="section-heading"><span>4.</span><div><h2>Filhos e casamento</h2></div></div>
       <div class="fields three-columns">
-        <label class="field smp-wide"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
+        <label class="field"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
+        <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDele')}</fieldset>
-        <label class="field smp-wide"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
+        <label class="field"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
+        <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDela')}</fieldset>
         <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" ${dateInputAttributes}></label>
-        <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
-        <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
       </div>
     </section>
@@ -3753,7 +3753,8 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
         <label class="field"><span>Qual?</span><input name="qualIntoleranciaAlimentarDele" placeholder="Digite a intolerância"></label>
         <fieldset><legend>Possui alguma intolerância alimentar? Ela</legend>${yesNo('intoleranciaAlimentarDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualIntoleranciaAlimentarDela" placeholder="Digite a intolerância"></label>
-        <fieldset class="smp-wide"><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
+        <fieldset><legend>Precisa de Acolhimento</legend>${yesNo('precisaAcolhimento')}</fieldset>
+        <label class="field"><span>Por que querem fazer o retiro?</span><input name="porqueQueremFazerRetiro" placeholder="Digite o motivo"></label>
         <div class="smp-shirt-row smp-wide"><strong>Manequim / Camisa normal</strong><div class="smp-shirt-choice-line"><span>Ele</span>${shirtChoices('manequimDele')}</div><div class="smp-shirt-choice-line"><span>Ela</span>${shirtChoices('manequimDela')}</div></div>
       </div>
     </section>
@@ -3820,7 +3821,7 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   app.querySelector('.cursista-smp-file-number')?.classList.add('smp-ownership-debug', 'smp-owner-common');
   markOwner('him', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'outrasUnioesDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
   markOwner('her', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'outrasUnioesDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
-  markOwner('common', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento']);
+  markOwner('common', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidsNotNeeded', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', 'precisaAcolhimento', 'porqueQueremFazerRetiro']);
   markSectionOwner('common', 'smpKidsNotNeeded');
   markSectionOwner('common', 'nomeApresentante');
   markSectionOwner('common', 'valorInscricaoSmp');
@@ -3843,9 +3844,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     const form = app.querySelector('#cursista-smp-form');
     const message = app.querySelector('#cursista-smp-message');
     const actions = app.querySelector('.cursista-smp-actions');
-    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'outrasUnioesDele', 'filhosDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
-    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'outrasUnioesDela', 'filhosDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
-    const commonFields = fieldsBlock('fields two-columns cursista-smp-common-fields', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
+    const himFields = fieldsBlock('fields two-columns', ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'crismaDele', 'religiaoDele', 'missaDele', 'movimentoIgrejaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'outrasUnioesDele', 'saudeDele', 'qualSaudeDele', 'intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele', 'manequimDele']);
+    const herFields = fieldsBlock('fields two-columns', ['nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'crismaDela', 'religiaoDela', 'missaDela', 'movimentoIgrejaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'outrasUnioesDela', 'saudeDela', 'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela']);
+    const commonFields = fieldsBlock('fields two-columns cursista-smp-common-fields', ['cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'smpKidsNotNeeded', 'precisaAcolhimento', 'porqueQueremFazerRetiro', 'nomeApresentante', 'foneApresentante', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp']);
     commonFields.querySelectorAll(':scope > .field, :scope > fieldset, :scope > .choice-block').forEach((field) => {
       field.classList.add('smp-owner-common');
     });
@@ -3985,7 +3986,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const epcKidRadioNames = Array.from({ length: 5 }, (_, index) => [`smpKidProblemaSaude${index + 1}Epc`, `smpKidIntolerancia${index + 1}Epc`]).flat();
   const epcKidTextFields = Array.from({ length: 5 }, (_, index) => [`smpKidDescricaoSaude${index + 1}Epc`, `smpKidDescricaoIntolerancia${index + 1}Epc`]).flat();
   const radioNames = ['crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioesDele', 'outrasUnioesDela', 'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela', 'precisaAcolhimento', 'temFilhosEpc', 'manequimDele', 'manequimDela', ...smpKidRadioNames, ...epcKidRadioNames];
-  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', ...smpKidTextFields, ...epcKidTextFields, 'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+  const textFields = ['nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele', 'qualMovimentoDele', 'casamentoDele', 'filhosDele', 'qualSaudeDele', 'qualIntoleranciaAlimentarDele', 'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela', 'qualMovimentoDela', 'casamentoDela', 'filhosDela', 'qualSaudeDela', 'qualIntoleranciaAlimentarDela', 'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc', 'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'porqueQueremFazerRetiro', 'smpKidNome1', 'smpKidNascimento1', 'smpKidNome2', 'smpKidNascimento2', 'smpKidNome3', 'smpKidNascimento3', 'smpKidNome4', 'smpKidNascimento4', 'smpKidNome5', 'smpKidNascimento5', ...smpKidTextFields, ...epcKidTextFields, 'nomeApresentante', 'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp', 'valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
   const typedDateFields = coupleStudentDateFieldNames.filter((name) => form.elements[name]);
   const phoneFields = expectedType === 'cursista-epc'
     ? ['foneDele', 'foneDela', 'foneApresentante', 'foneEmergenciaEpc']

@@ -88,10 +88,11 @@ async function main() {
   assert.equal(calls.filter(({ method }) => method === 'POST').length, 1, 'Rotinas que apenas atualizam o recebimento devem preservar a ficha historica.');
 
   calls = mockSupabase();
-  const individualizedUnions = await saveCursistaSmp(baseRecord({ outrasUnioes: 'Sim', outrasUnioesDele: 'Não', outrasUnioesDela: 'Sim' }));
+  const individualizedUnions = await saveCursistaSmp(baseRecord({ outrasUnioes: 'Sim', outrasUnioesDele: 'Não', outrasUnioesDela: 'Sim', porqueQueremFazerRetiro: 'Fortalecer a família' }));
   assert.equal(individualizedUnions.outrasUnioesDele, 'Não');
   assert.equal(individualizedUnions.outrasUnioesDela, 'Sim');
   assert.equal(individualizedUnions.outrasUnioes, 'Sim', 'A resposta historica em comum deve continuar preservada.');
+  assert.equal(individualizedUnions.porqueQueremFazerRetiro, 'Fortalecer a família');
 
   calls = mockSupabase({
     smp: [{ id: '1', retiro_id: retreatId, ele_cpf: hisCpf, ela_cpf: herCpf, extras: {} }],
@@ -109,9 +110,10 @@ async function main() {
     assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} nao deve ser obrigatorio.`);
   });
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
-  assert.match(admin, /'casamentoDele', 'outrasUnioesDele', 'filhosDele'/);
-  assert.match(admin, /'casamentoDela', 'outrasUnioesDela', 'filhosDela'/);
+  assert.match(admin, /'casamentoDele', 'filhosDele', 'outrasUnioesDele'/);
+  assert.match(admin, /'casamentoDela', 'filhosDela', 'outrasUnioesDela'/);
   assert.doesNotMatch(admin, /commonFields = fieldsBlock\([^\n]*'outrasUnioes'/);
+  assert.match(admin, /'precisaAcolhimento', 'porqueQueremFazerRetiro', 'nomeApresentante'/);
   assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);
