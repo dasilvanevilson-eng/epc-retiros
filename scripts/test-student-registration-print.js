@@ -34,6 +34,10 @@ for (const dependency of ['estuda', 'fezRetiro', 'paisMovimento', 'intoleranciaA
   assert.match(printSource, new RegExp(`'${dependency}'`), `A impressão deve respeitar a resposta de ${dependency}.`);
 }
 assert.match(printSource, /<th>Informação<\/th><th>Ele<\/th><th>Ela<\/th>/, 'SMP e EPC devem usar o quadro comparativo Ele e Ela.');
+assert.match(printSource, /\['Qual movimento\?', 'qualMovimentoDele', 'qualMovimentoDela', '', 'movimentoIgrejaDele', 'movimentoIgrejaDela'\]/);
+assert.match(printSource, /\['Qual problema de saúde\?', 'qualSaudeDele', 'qualSaudeDela', '', 'saudeDele', 'saudeDela'\]/);
+assert.match(printSource, /\['Qual intolerância\?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela', '', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'\]/);
+assert.match(printSource, /studentRegistrationPrintConditionalValue\(printRecord, hisKey, type, hisDependsOn\)[\s\S]*studentRegistrationPrintConditionalValue\(printRecord, herKey, type, herDependsOn\)/, 'Os campos Qual do casal devem respeitar separadamente as respostas dele e dela.');
 assert.match(printSource, /Contato de emergência/, 'As informações comuns específicas do EPC devem ser contempladas.');
 assert.match(printSource, /Familiar ou amigo/, 'As informações comuns específicas do SMP devem ser contempladas.');
 assert.match(printSource, /Informações em comum/, 'A ficha de casal deve identificar os dados compartilhados.');
@@ -60,5 +64,9 @@ assert.match(app, /loadStudent = \(student\)[\s\S]*selectedStudentRecord = stude
 assert.match(app, /editSelectedStudent\?\.addEventListener\('click'[\s\S]*printSelectedStudent\.hidden = true/, 'A impressão Individual deve ser ocultada durante edição.');
 assert.match(app, /if \(publicContext\)[\s\S]*student-heading-actions'\)\?\.remove\(\)/, 'O acesso público Individual deve remover as ações autenticadas.');
 assert.match(app, /prepareSharedPublicCoupleStudentForm[\s\S]*cursista-smp-tools/, 'O acesso público SMP/EPC deve remover a barra que contém a impressão.');
+assert.match(app, /name="coupleNameSearch"[^>]*placeholder="Digite o nome dele ou dela"/, 'A impressão completa de casais deve permitir busca pelo nome dele ou dela.');
+assert.match(app, /const hasRange = hasInitial \|\| hasFinal;[\s\S]*if \(!hasRange && !nameQuery\)/, 'A busca por nome deve funcionar sem remover o filtro atual por intervalo.');
+assert.match(app, /if \(hasRange\)[\s\S]*fileNumber >= initial && fileNumber <= final[\s\S]*if \(nameQuery\)[\s\S]*record\.nomeDele[\s\S]*record\.nomeDela/, 'Intervalo e nome devem poder ser aplicados em conjunto.');
+assert.match(app, /coupleNameSearchInput\.disabled = printAllInput\.checked/, 'Imprimir todas deve continuar ignorando e desabilitando os demais filtros.');
 
 console.log('Impressão A4 das fichas Individual, SMP e EPC validada.');

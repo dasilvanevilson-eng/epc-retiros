@@ -1004,11 +1004,11 @@ function coupleStudentRegistrationPrintContent(record, studentFormType) {
     ['Telefone', 'foneDele', 'foneDela', 'phone'],
     ['Crismado(a)?', 'crismaDele', 'crismaDela'],
     ['Participa de movimento?', 'movimentoIgrejaDele', 'movimentoIgrejaDela'],
-    ['Qual movimento?', 'qualMovimentoDele', 'qualMovimentoDela'],
+    ['Qual movimento?', 'qualMovimentoDele', 'qualMovimentoDela', '', 'movimentoIgrejaDele', 'movimentoIgrejaDela'],
     ['Problema de saúde?', 'saudeDele', 'saudeDela'],
-    ['Qual problema de saúde?', 'qualSaudeDele', 'qualSaudeDela'],
+    ['Qual problema de saúde?', 'qualSaudeDele', 'qualSaudeDela', '', 'saudeDele', 'saudeDela'],
     ['Intolerância alimentar?', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'],
-    ['Qual intolerância?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela'],
+    ['Qual intolerância?', 'qualIntoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDela', '', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela'],
     ['Manequim / camisa', 'manequimDele', 'manequimDela'],
   ];
   const smpOnlyRows = [
@@ -1021,7 +1021,7 @@ function coupleStudentRegistrationPrintContent(record, studentFormType) {
   const rows = studentFormType === 'cursista-smp'
     ? [...sharedRows.slice(0, 6), ...smpOnlyRows, ...sharedRows.slice(6)]
     : sharedRows;
-  const comparison = `<table class="couple-comparison"><thead><tr><th>Informação</th><th>Ele</th><th>Ela</th></tr></thead><tbody>${rows.map(([label, hisKey, herKey, type]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${studentRegistrationPrintValue(printRecord?.[hisKey], type)}</td><td>${studentRegistrationPrintValue(printRecord?.[herKey], type)}</td></tr>`).join('')}</tbody></table>`;
+  const comparison = `<table class="couple-comparison"><thead><tr><th>Informação</th><th>Ele</th><th>Ela</th></tr></thead><tbody>${rows.map(([label, hisKey, herKey, type, hisDependsOn, herDependsOn]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${studentRegistrationPrintConditionalValue(printRecord, hisKey, type, hisDependsOn)}</td><td>${studentRegistrationPrintConditionalValue(printRecord, herKey, type, herDependsOn)}</td></tr>`).join('')}</tbody></table>`;
   const addressFields = [
     ['CEP', 'cep'], ['Endereço', 'endereco'], ['Número', 'numero'], ['Apartamento', 'nrApto'], ['Bairro', 'bairro'], ['Cidade', 'cidade'], ['Estado', 'estadoSmp'],
   ];
@@ -6535,14 +6535,17 @@ async function openCompleteStudentSheetsReport() {
     const secondName = configuredType === 'cursista-individual' ? second.nome : `${second.nomeDele || ''} ${second.nomeDela || ''}`;
     return String(firstName || '').localeCompare(String(secondName || ''), 'pt-BR', { sensitivity: 'base' });
   });
+  const usesCoupleForm = configuredType !== 'cursista-individual';
+  const coupleSearchField = usesCoupleForm ? `<label class="field complete-student-sheet-search"><span>Buscar casal pelo nome dele ou dela</span><input name="coupleNameSearch" type="search" autocomplete="off" placeholder="Digite o nome dele ou dela" ${records.length ? '' : 'disabled'}><small>A busca pode ser usada sozinha ou junto com o intervalo de fichas.</small></label>` : '';
   const overlay = document.createElement('div');
   overlay.className = 'receiver-sector-overlay complete-student-sheets-overlay';
-  overlay.innerHTML = `<section class="receiver-sector-dialog complete-student-sheets-dialog" role="dialog" aria-modal="true" aria-labelledby="complete-student-sheets-title"><div class="panel-heading"><div><p class="eyebrow">Cursistas · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="complete-student-sheets-title">Imprimir fichas completas</h2><p>${records.length} ficha(s) cadastrada(s). Cada ficha será impressa em uma página.</p></div></div><form class="complete-student-sheets-form"><div class="fields two-columns complete-student-sheet-range"><label class="field"><span>Ficha inicial</span><input name="initialFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Inicial" ${records.length ? '' : 'disabled'}></label><label class="field"><span>Ficha final</span><input name="finalFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Final" ${records.length ? '' : 'disabled'}></label></div><label class="complete-student-sheets-all"><input type="checkbox" name="printAll" ${records.length ? '' : 'disabled'}><span><strong>Imprimir todas</strong><small>Ignora o intervalo e inclui todas as fichas deste retiro.</small></span></label><p class="form-message" data-complete-student-sheets-message aria-live="polite">${records.length ? 'Informe o intervalo ou marque Imprimir todas.' : 'Não há fichas cadastradas para este retiro.'}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-complete-student-sheets-close>Cancelar</button><button type="submit" class="primary-button" ${records.length ? '' : 'disabled'}>Imprimir fichas</button></div></form></section>`;
+  overlay.innerHTML = `<section class="receiver-sector-dialog complete-student-sheets-dialog" role="dialog" aria-modal="true" aria-labelledby="complete-student-sheets-title"><div class="panel-heading"><div><p class="eyebrow">Cursistas · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="complete-student-sheets-title">Imprimir fichas completas</h2><p>${records.length} ficha(s) cadastrada(s). Cada ficha será impressa em uma página.</p></div></div><form class="complete-student-sheets-form"><div class="fields two-columns complete-student-sheet-range"><label class="field"><span>Ficha inicial</span><input name="initialFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Inicial" ${records.length ? '' : 'disabled'}></label><label class="field"><span>Ficha final</span><input name="finalFile" type="number" min="1" step="1" inputmode="numeric" placeholder="Final" ${records.length ? '' : 'disabled'}></label></div>${coupleSearchField}<label class="complete-student-sheets-all"><input type="checkbox" name="printAll" ${records.length ? '' : 'disabled'}><span><strong>Imprimir todas</strong><small>Ignora os demais filtros e inclui todas as fichas deste retiro.</small></span></label><p class="form-message" data-complete-student-sheets-message aria-live="polite">${records.length ? (usesCoupleForm ? 'Informe o intervalo, busque pelo nome ou marque Imprimir todas.' : 'Informe o intervalo ou marque Imprimir todas.') : 'Não há fichas cadastradas para este retiro.'}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-complete-student-sheets-close>Cancelar</button><button type="submit" class="primary-button" ${records.length ? '' : 'disabled'}>Imprimir fichas</button></div></form></section>`;
   app.append(overlay);
   const form = overlay.querySelector('form');
   const initialInput = form.elements.initialFile;
   const finalInput = form.elements.finalFile;
   const printAllInput = form.elements.printAll;
+  const coupleNameSearchInput = form.elements.coupleNameSearch;
   const message = overlay.querySelector('[data-complete-student-sheets-message]');
   const submitButton = form.querySelector('button[type="submit"]');
   const close = () => overlay.remove();
@@ -6552,29 +6555,50 @@ async function openCompleteStudentSheetsReport() {
   printAllInput.addEventListener('change', () => {
     initialInput.disabled = printAllInput.checked;
     finalInput.disabled = printAllInput.checked;
-    message.textContent = printAllInput.checked ? `${records.length} ficha(s) serão impressas.` : 'Informe o intervalo de fichas.';
+    if (coupleNameSearchInput) coupleNameSearchInput.disabled = printAllInput.checked;
+    message.textContent = printAllInput.checked ? `${records.length} ficha(s) serão impressas.` : (usesCoupleForm ? 'Informe o intervalo ou busque pelo nome.' : 'Informe o intervalo de fichas.');
+  });
+  coupleNameSearchInput?.addEventListener('input', () => {
+    const query = normalizeText(coupleNameSearchInput.value);
+    if (!query) {
+      message.textContent = 'Informe o intervalo, busque pelo nome ou marque Imprimir todas.';
+      return;
+    }
+    const matchCount = records.filter((record) => normalizeText(`${record.nomeDele || ''} ${record.nomeDela || ''}`).includes(query)).length;
+    message.textContent = matchCount ? `${matchCount} casal(is) encontrado(s) pelo nome.` : 'Nenhum casal encontrado pelo nome informado.';
   });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     let selectedRecords = records;
     if (!printAllInput.checked) {
+      const nameQuery = normalizeText(coupleNameSearchInput?.value || '');
+      const hasInitial = Boolean(initialInput.value);
+      const hasFinal = Boolean(finalInput.value);
+      const hasRange = hasInitial || hasFinal;
+      if (!hasRange && !nameQuery) {
+        message.textContent = usesCoupleForm ? 'Informe o intervalo de fichas ou busque o casal pelo nome.' : 'Informe o intervalo de fichas.';
+        return;
+      }
       const initial = Number(initialInput.value);
       const final = Number(finalInput.value);
-      if (!initialInput.value || !finalInput.value || !Number.isInteger(initial) || !Number.isInteger(final) || initial < 1 || final < 1) {
+      if (hasRange && (!hasInitial || !hasFinal || !Number.isInteger(initial) || !Number.isInteger(final) || initial < 1 || final < 1)) {
         message.textContent = 'Informe números válidos para a ficha inicial e a ficha final.';
         return;
       }
-      if (initial > final) {
+      if (hasRange && initial > final) {
         message.textContent = 'A ficha inicial não pode ser maior que a ficha final.';
         return;
       }
-      selectedRecords = records.filter((record) => {
-        const fileNumber = studentRegistrationReportFileNumber(record, configuredType);
-        return fileNumber !== null && fileNumber >= initial && fileNumber <= final;
-      });
+      if (hasRange) {
+        selectedRecords = selectedRecords.filter((record) => {
+          const fileNumber = studentRegistrationReportFileNumber(record, configuredType);
+          return fileNumber !== null && fileNumber >= initial && fileNumber <= final;
+        });
+      }
+      if (nameQuery) selectedRecords = selectedRecords.filter((record) => normalizeText(`${record.nomeDele || ''} ${record.nomeDela || ''}`).includes(nameQuery));
     }
     if (!selectedRecords.length) {
-      message.textContent = 'Nenhuma ficha cadastrada foi encontrada no intervalo informado.';
+      message.textContent = 'Nenhuma ficha cadastrada foi encontrada com os filtros informados.';
       return;
     }
     submitButton.disabled = true;
