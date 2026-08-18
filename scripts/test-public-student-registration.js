@@ -118,17 +118,47 @@ const individualPayload = {
 
   retreat = { ...retreat, status: 'preparacao', tipoFichaCursista: 'cursista-smp' };
   const smpPayload = {
+    cpfDele: '529.982.247-25',
+    cpfDela: '111.444.777-35',
     nomeDele: 'João',
     nomeDela: 'Maria',
     nascimentoDele: '01/02/1980',
     nascimentoDela: '29/02/1984',
+    profissaoDele: 'Professor',
+    profissaoDela: 'Professora',
+    foneDele: '47999999991',
+    foneDela: '47999999992',
+    religiaoDele: 'Católica',
+    religiaoDela: 'Católica',
+    missaDele: 'Matriz',
+    missaDela: 'Matriz',
+    crismaDele: 'Sim',
+    crismaDela: 'Sim',
+    movimentoIgrejaDele: 'Não',
+    movimentoIgrejaDela: 'Não',
     casamentoDele: '03/04/2001',
     casamentoDela: '04/05/2002',
+    saudeDele: 'Não',
+    saudeDela: 'Não',
+    intoleranciaAlimentarDele: 'Não',
+    intoleranciaAlimentarDela: 'Não',
+    manequimDele: 'M',
+    manequimDela: 'M',
+    cep: '89000000',
+    endereco: 'Rua Teste',
+    numero: '10',
+    bairro: 'Centro',
+    cidade: 'Indaial',
+    estadoSmp: 'SC',
     uniaoCasal: '05/06/2010',
+    filhosUniao: '2',
     outrasUnioesDele: 'Não',
     outrasUnioesDela: 'Sim',
+    precisaAcolhimento: 'Não',
     porqueQueremFazerRetiro: 'Fortalecer a vida em família',
     comoSouberamRetiro: 'Por um casal amigo',
+    familiarAmigo: 'Carlos',
+    foneFamiliar: '47999999993',
     campoPublicoForjado: 'não deve salvar',
     smpKidNascimento1: '06/07/2015',
     smpKidNascimento2: '07/08/2016',
@@ -138,11 +168,51 @@ const individualPayload = {
     valorPagoSmp: 900,
     id: '99',
   };
+  for (let kidNumber = 1; kidNumber <= 5; kidNumber += 1) {
+    smpPayload[`smpKidNome${kidNumber}`] = `Criança ${kidNumber}`;
+    smpPayload[`smpKidProblemaSaude${kidNumber}`] = 'Não';
+    smpPayload[`smpKidIntolerancia${kidNumber}`] = 'Não';
+  }
   await assert.rejects(
     () => savePublicStudentRegistration('token-publico', { ...smpPayload, smpKidNascimento1: '29/02/2023' }),
     /Revise a data informada/,
   );
   assert.equal(savedSmp, null, 'Data SMP invalida nao pode chegar a persistencia.');
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...smpPayload, profissaoDele: '' }),
+    /campos obrigatorios/,
+  );
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...smpPayload, cpfDele: '111.111.111-11' }),
+    /CPFs|CPF valido/,
+  );
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...smpPayload, cpfDela: smpPayload.cpfDele }),
+    /CPF diferente/,
+  );
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', { ...smpPayload, saudeDele: 'Sim', qualSaudeDele: '' }),
+    /detalhe obrigatorios/,
+  );
+  const smpWithoutKids = Object.fromEntries(Object.entries(smpPayload).filter(([field]) => !field.startsWith('smpKid')));
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', smpWithoutKids),
+    /Espaco Kids/,
+  );
+  database.cursistas.push({ id: 'cursista-existente', retiroId: retreat.id, cpf: smpPayload.cpfDele });
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', smpPayload),
+    /CPF ja cadastrado/,
+  );
+  database.cursistas.length = 0;
+  database.pessoas.push({ id: 'pessoa-equipe', retiroId: retreat.id, cpf: smpPayload.cpfDele });
+  database.adesoes.push({ id: 'adesao-equipe', retiroId: retreat.id, pessoaId: 'pessoa-equipe' });
+  await assert.rejects(
+    () => savePublicStudentRegistration('token-publico', smpPayload),
+    /equipe de trabalho/,
+  );
+  database.pessoas.length = 0;
+  database.adesoes.length = 0;
   await savePublicStudentRegistration('token-publico', smpPayload);
   assert.deepEqual(
     [savedSmp.nascimentoDele, savedSmp.nascimentoDela, savedSmp.casamentoDele, savedSmp.casamentoDela, savedSmp.uniaoCasal,

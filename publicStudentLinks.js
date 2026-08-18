@@ -56,6 +56,26 @@ for (let index = 1; index <= 5; index += 1) {
   ].forEach((field) => coupleFields.add(field));
 }
 
+const smpRequiredTextFields = [
+  'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
+  'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela',
+  'cep', 'endereco', 'numero', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao',
+  'familiarAmigo', 'foneFamiliar',
+];
+const smpRequiredChoiceFields = [
+  'crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioesDele', 'outrasUnioesDela',
+  'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela',
+  'precisaAcolhimento', 'manequimDele', 'manequimDela',
+];
+const smpConditionalRequiredFields = [
+  ['movimentoIgrejaDele', 'qualMovimentoDele'],
+  ['movimentoIgrejaDela', 'qualMovimentoDela'],
+  ['saudeDele', 'qualSaudeDele'],
+  ['saudeDela', 'qualSaudeDela'],
+  ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
+  ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
+];
+
 const normalizeCount = (value) => {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : 0;
@@ -326,7 +346,7 @@ function validateIndividual(record) {
   }
 }
 
-function validateCouple(record) {
+function validateCouple(record, type) {
   if (!String(record.nomeDele || '').trim() || !String(record.nomeDela || '').trim()) {
     throw publicStudentError('Informe os nomes do casal antes de salvar.');
   }
@@ -336,6 +356,32 @@ function validateCouple(record) {
   if (record.cpfDele && record.cpfDela && normalizeCpf(record.cpfDele) === normalizeCpf(record.cpfDela)) {
     throw publicStudentError('Informe um CPF diferente para cada integrante do casal.');
   }
+  if (type !== 'cursista-smp') return;
+  if (smpRequiredTextFields.some((field) => !String(record[field] || '').trim())
+    || smpRequiredChoiceFields.some((field) => !String(record[field] || '').trim())) {
+    throw publicStudentError('Revise todos os campos obrigatorios antes de salvar.');
+  }
+  if (!isValidCpf(record.cpfDele) || !isValidCpf(record.cpfDela)) {
+    throw publicStudentError('Informe um CPF valido para cada integrante do casal.');
+  }
+  if (smpConditionalRequiredFields.some(([choice, detail]) => record[choice] === 'Sim' && !String(record[detail] || '').trim())) {
+    throw publicStudentError('Preencha os campos de detalhe obrigatorios antes de salvar.');
+  }
+  if (record.smpKidsNotNeeded === true) return;
+  const usedKids = Array.from({ length: 5 }, (_, index) => index + 1).filter((kidNumber) => [...coupleFields]
+    .filter((field) => field.startsWith(`smpKid`) && field.includes(String(kidNumber)))
+    .some((field) => String(record[field] || '').trim()));
+  if (!usedKids.length) throw publicStudentError('Informe os dados das criancas que usarao o Espaco Kids ou marque que nao necessita.');
+  const invalidKid = usedKids.some((kidNumber) => {
+    const name = String(record[`smpKidNome${kidNumber}`] || '').trim();
+    const birthDate = String(record[`smpKidNascimento${kidNumber}`] || '').trim();
+    const health = record[`smpKidProblemaSaude${kidNumber}`];
+    const intolerance = record[`smpKidIntolerancia${kidNumber}`];
+    return !name || !birthDate || !health || !intolerance
+      || (health === 'Sim' && !String(record[`smpKidDescricaoSaude${kidNumber}`] || '').trim())
+      || (intolerance === 'Sim' && !String(record[`smpKidDescricaoIntolerancia${kidNumber}`] || '').trim());
+  });
+  if (invalidKid) throw publicStudentError('Complete os dados obrigatorios das criancas que usarao o Espaco Kids.');
 }
 
 async function validateCpfAvailability(retreatId, record, type) {
@@ -379,7 +425,7 @@ async function savePublicStudentRegistration(token, incoming, expectedFileNumber
   }
   normalizePublicRecordDates(record, context.type);
   if (context.type === 'cursista-individual') validateIndividual(record);
-  else validateCouple(record);
+  else validateCouple(record, context.type);
   await validateCpfAvailability(context.retreat.id, record, context.type);
 
   const now = new Date().toISOString();

@@ -3603,6 +3603,66 @@ const wireSharedPublicStudentSubmission = (form, context, messageSelector) => {
   });
 };
 
+const smpConditionalRequiredFields = [
+  ['movimentoIgrejaDele', 'qualMovimentoDele'],
+  ['movimentoIgrejaDela', 'qualMovimentoDela'],
+  ['saudeDele', 'qualSaudeDele'],
+  ['saudeDela', 'qualSaudeDela'],
+  ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
+  ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
+];
+const smpRequiredTextFields = [
+  'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
+  'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela',
+  'cep', 'endereco', 'numero', 'bairro', 'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao',
+  'familiarAmigo', 'foneFamiliar', 'valorInscricaoSmp',
+];
+const smpRequiredChoiceFields = [
+  'crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioesDele', 'outrasUnioesDela',
+  'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela',
+  'precisaAcolhimento', 'manequimDele', 'manequimDela',
+];
+
+function wirePublicSmpValidation(form) {
+  const kidPanels = [...form.querySelectorAll('[data-smp-kid-panel]')];
+  const kidPanelHasData = (panel) => [...panel.querySelectorAll('input, select, textarea')].some((control) => {
+    if (['checkbox', 'radio'].includes(control.type)) return control.checked;
+    return Boolean(String(control.value || '').trim());
+  });
+  const sync = () => {
+    smpRequiredTextFields.forEach((name) => { if (form.elements[name]) form.elements[name].required = true; });
+    smpRequiredChoiceFields.forEach((name) => form.querySelectorAll(`[name="${name}"]`).forEach((control) => { control.required = true; }));
+    const values = new FormData(form);
+    smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
+      if (form.elements[detailName]) form.elements[detailName].required = values.get(choiceName) === 'Sim';
+    });
+    const kidsNotNeeded = form.elements.smpKidsNotNeeded;
+    const usedPanels = kidsNotNeeded?.checked ? [] : kidPanels.filter(kidPanelHasData);
+    kidsNotNeeded?.setCustomValidity(!kidsNotNeeded.checked && !usedPanels.length ? 'Informe os dados das crianças que usarão o Espaço Kids ou marque que não necessita.' : '');
+    kidPanels.forEach((panel) => {
+      const kidNumber = panel.dataset.smpKidPanel;
+      const hasData = usedPanels.includes(panel);
+      [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`].forEach((name) => { if (form.elements[name]) form.elements[name].required = hasData; });
+      [
+        [`smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`],
+        [`smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`],
+      ].forEach(([choiceName, detailName]) => {
+        form.querySelectorAll(`[name="${choiceName}"]`).forEach((control) => { control.required = hasData; });
+        if (form.elements[detailName]) form.elements[detailName].required = hasData && values.get(choiceName) === 'Sim';
+      });
+    });
+    const hisCpf = normalizeCpf(form.elements.cpfDele?.value || '');
+    const herCpf = normalizeCpf(form.elements.cpfDela?.value || '');
+    form.elements.cpfDele?.setCustomValidity(hisCpf && !isValidCpf(hisCpf) ? 'Informe um CPF válido.' : '');
+    form.elements.cpfDela?.setCustomValidity(herCpf && !isValidCpf(herCpf)
+      ? 'Informe um CPF válido.'
+      : (hisCpf && herCpf && hisCpf === herCpf ? 'Informe um CPF diferente para cada integrante do casal.' : ''));
+  };
+  form.addEventListener('input', sync);
+  form.addEventListener('change', sync);
+  sync();
+}
+
 function prepareSharedPublicCoupleStudentForm(context) {
   const form = app.querySelector('#cursista-smp-form');
   if (!form) return;
@@ -3631,6 +3691,7 @@ function prepareSharedPublicCoupleStudentForm(context) {
   form.querySelectorAll('[name^="smpKidNascimento"]').forEach((input) => input.addEventListener('change', () => {
     if (cursistaKidExceedsRetreatAgeLimit(context.retiro, input.value)) alert('Criança acima da idade permitida pra esse retiro');
   }));
+  if (context.tipoFichaCursista === 'cursista-smp') wirePublicSmpValidation(form);
   form.classList.add('shared-public-student-form');
   wireSharedPublicStudentSubmission(form, context, '#cursista-smp-message');
 }
@@ -3997,27 +4058,6 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const listCoupleStudents = activeCoupleStudentSource.list;
   const saveCoupleStudent = activeCoupleStudentSource.save;
   const deleteCoupleStudent = activeCoupleStudentSource.delete;
-  const smpConditionalRequiredFields = [
-    ['movimentoIgrejaDele', 'qualMovimentoDele'],
-    ['movimentoIgrejaDela', 'qualMovimentoDela'],
-    ['saudeDele', 'qualSaudeDele'],
-    ['saudeDela', 'qualSaudeDela'],
-    ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
-    ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
-  ];
-  const smpRequiredTextFields = [
-    'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
-    'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela',
-    'cep', 'endereco', 'numero', 'bairro',
-    'cidade', 'estadoSmp', 'uniaoCasal', 'filhosUniao', 'nomeApresentante', 'foneApresentante',
-    'cursoApresentante', 'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar',
-    'valorInscricaoSmp',
-  ];
-  const smpRequiredChoiceFields = [
-    'crismaDele', 'crismaDela', 'movimentoIgrejaDele', 'movimentoIgrejaDela', 'outrasUnioesDele', 'outrasUnioesDela',
-    'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela',
-    'precisaAcolhimento', 'manequimDele', 'manequimDela',
-  ];
   const setSmpRequiredMarker = (control, required) => {
     if (!control) return;
     const container = control.closest('.field, fieldset, .smp-shirt-choice-line');
