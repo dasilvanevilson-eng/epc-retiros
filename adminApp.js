@@ -7274,16 +7274,34 @@ async function renderBackup() {
 async function renderQuadrante() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
-  const [communities, students, savedQuadranteOrder] = await Promise.all([dataService.listComunidades(retreat.id), dataService.listCursistas(retreat.id), loadQuadranteOrderSetting()]);
+  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const usesCoupleStudents = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
+  const activeCoupleStudentSource = usesCoupleStudents ? coupleStudentSource(studentFormType) : null;
+  const memberField = usesCoupleStudents ? activeCoupleStudentSource.memberField : 'membroIds';
+  const [communities, students, savedQuadranteOrder] = await Promise.all([
+    dataService.listComunidades(retreat.id),
+    usesCoupleStudents ? activeCoupleStudentSource.list(retreat.id) : dataService.listCursistas(retreat.id),
+    loadQuadranteOrderSetting(),
+  ]);
   const entries = mergeEnrolmentsByParticipant(enrolments.filter((entry) => entry.retiroId === retreat.id && entry.setores?.length));
   const retreatStudentRecords = students.filter((student) => student.retiroId === retreat.id);
-  const retreatStudents = uniqueByParticipant(retreatStudentRecords);
+  const retreatStudents = usesCoupleStudents ? retreatStudentRecords : uniqueByParticipant(retreatStudentRecords);
   const reportCommunities = sortCommunitiesByPosition(communities.filter((community) => community.retiroId === retreat.id));
   const missing = '—';
   const byName = (first, second) => String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
   const personForEntry = (entry) => people.find((person) => person.id === entry.pessoaId) || entry;
   const addressForPerson = (person) => [[person.endereco, person.numero].filter(Boolean).join(', '), person.cep, person.bairro, person.cidade, person.estado].filter(Boolean).join(' · ') || missing;
   const addressForStudent = (student) => [[student.rua, student.numero].filter(Boolean).join(', '), student.cep, student.bairro, student.cidade, student.estado].filter(Boolean).join(' · ') || missing;
+  const addressForCoupleStudent = (student) => [[student.endereco, student.numero].filter(Boolean).join(', '), student.nrApto, student.cep, student.bairro, student.cidade, student.estadoSmp].filter(Boolean).join(' · ') || missing;
+  const coupleStudentId = (student) => String(student.id || student.numeroFichaSmp || '').trim();
+  const coupleStudentRows = (student) => {
+    const casalId = `cursista-${studentFormType}-${coupleStudentId(student)}`;
+    const address = addressForCoupleStudent(student);
+    return [
+      { person: { ...student, nome: student.nomeDele, nascimento: student.nascimentoDele, telefone: student.foneDele }, casalId, address },
+      { person: { ...student, nome: student.nomeDela, nascimento: student.nascimentoDela, telefone: student.foneDela }, casalId, address },
+    ].filter((row) => String(row.person.nome || '').trim());
+  };
   const quadranteColgroup = '<colgroup><col class="quadrante-name-col"><col class="quadrante-address-col"><col class="quadrante-birthday-col"><col class="quadrante-contact-col"></colgroup>';
   const communityLeaderLabel = (person) => normalizeText(person.genero) === 'feminino' ? 'Tia' : 'Tio';
   const nameSuffix = (person, className = '') => {
@@ -7341,12 +7359,16 @@ async function renderQuadrante() {
       .map((entry) => { const person = personForEntry(entry); return { person, casalId: entry.casalId, address: addressForPerson(person), coordenacaoSetor: Boolean(entry.coordenacaoSetor) }; });
     return `<article class="quadrante-sector"><h3>${escapeHtml(sector)}</h3><table>${quadranteColgroup}${groupedParticipantRows(sectorEntries)}</table></article>`;
   }).join('');
-  const assignedStudentIds = new Set(reportCommunities.flatMap((community) => community.membroIds || []));
-  const assignedStudentKeys = new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(student.id)).map(participantIdentity));
-  const unassignedStudents = retreatStudents.filter((student) => !assignedStudentKeys.has(participantIdentity(student)));
+  const assignedStudentIds = new Set(reportCommunities.flatMap((community) => community[memberField] || []).map(String));
+  const assignedStudentKeys = usesCoupleStudents
+    ? assignedStudentIds
+    : new Set(retreatStudentRecords.filter((student) => assignedStudentIds.has(String(student.id))).map(participantIdentity));
+  const unassignedStudents = retreatStudents.filter((student) => usesCoupleStudents
+    ? !assignedStudentIds.has(coupleStudentId(student))
+    : !assignedStudentKeys.has(participantIdentity(student)));
   const communitySections = [
     ...reportCommunities.map((community, index) => ({ ...community, nome: community.nome || `Comunidade ${index + 1}` })),
-    ...(unassignedStudents.length ? [{ id: 'sem-comunidade', nome: 'Sem comunidade', liderCasalId: null, membroIds: unassignedStudents.map((student) => student.id) }] : []),
+    ...(unassignedStudents.length ? [{ id: 'sem-comunidade', nome: 'Sem comunidade', liderCasalId: null, [memberField]: unassignedStudents.map((student) => usesCoupleStudents ? coupleStudentId(student) : student.id) }] : []),
   ].map((community) => {
     const leaderEntries = entries
       .filter((entry) => community.liderCasalId && entry.casalId === community.liderCasalId)
@@ -7355,10 +7377,11 @@ async function renderQuadrante() {
     const monitorEntries = entries
       .filter((entry) => (community.monitorIds || []).includes(entry.id) || (entry.casalId && monitorCasalIds.has(entry.casalId)))
       .map((entry) => { const person = personForEntry(entry); return { person, casalId: entry.casalId, address: addressForPerson(person) }; });
-    const memberIds = new Set(community.membroIds || []);
-    const members = uniqueByParticipant(retreatStudentRecords.filter((student) => memberIds.has(student.id)))
-      .sort(byName)
-      .map((student) => ({ person: student, address: addressForStudent(student) }));
+    const memberIds = new Set((community[memberField] || []).map(String));
+    const memberRecords = retreatStudentRecords.filter((student) => memberIds.has(usesCoupleStudents ? coupleStudentId(student) : String(student.id)));
+    const members = usesCoupleStudents
+      ? memberRecords.flatMap(coupleStudentRows)
+      : uniqueByParticipant(memberRecords).sort(byName).map((student) => ({ person: student, address: addressForStudent(student) }));
     return `<article><h3>${escapeHtml(community.nome)}</h3><table>${quadranteColgroup}${groupedParticipantRows(monitorEntries, 'community-monitor')}${groupedParticipantRows(leaderEntries, 'community-tio')}${groupedParticipantRows(members) || (!leaderEntries.length && !monitorEntries.length ? '<tbody class="quadrante-person-group"><tr><td colspan="4">Nenhum cursista alocado.</td></tr></tbody>' : '')}</table></article>`;
   }).join('');
   const reportHeader = `<table class="quadrante-column-head">${quadranteColgroup}<thead><tr><th>Nome</th><th>Endereço</th><th>ANIV</th><th>Contato</th></tr></thead></table>`;

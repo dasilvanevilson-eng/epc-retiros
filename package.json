@@ -33,6 +33,7 @@
     "test:badge-multi-print": "node scripts/test-badge-multi-print.js",
     "test:quadrante-print": "node scripts/test-quadrante-print.js",
     "test:quadrante-secret-friend": "node scripts/test-quadrante-secret-friend.js",
+    "test:quadrante-students": "node scripts/test-quadrante-student-source.js",
     "test:community-shirt-print": "node scripts/test-community-shirt-print.js",
     "test:community-deletion": "node scripts/test-community-deletion.js",
     "test:student-financial-summary": "node scripts/test-student-financial-summary.js",
