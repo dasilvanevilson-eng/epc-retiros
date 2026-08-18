@@ -41,6 +41,7 @@ const coupleFields = new Set([
   'qualSaudeDela', 'intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela', 'manequimDela',
   'cep', 'endereco', 'numero', 'nrApto', 'bairro', 'cidade', 'estadoSmp', 'emailEpc',
   'uniaoCasal', 'localCasamentoEpc', 'idadeFilhosEpc', 'filhosUniao', 'outrasUnioes',
+  'outrasUnioesDele', 'outrasUnioesDela', 'porqueQueremFazerRetiro', 'comoSouberamRetiro',
   'temFilhosEpc', 'smpKidsNotNeeded', 'precisaAcolhimento', 'nomeApresentante',
   'foneApresentante', 'contatoEmergenciaEpc', 'foneEmergenciaEpc', 'cursoApresentante',
   'cidadeApresentante', 'paroquiaApresentante', 'familiarAmigo', 'foneFamiliar',

@@ -125,6 +125,11 @@ const individualPayload = {
     casamentoDele: '03/04/2001',
     casamentoDela: '04/05/2002',
     uniaoCasal: '05/06/2010',
+    outrasUnioesDele: 'Não',
+    outrasUnioesDela: 'Sim',
+    porqueQueremFazerRetiro: 'Fortalecer a vida em família',
+    comoSouberamRetiro: 'Por um casal amigo',
+    campoPublicoForjado: 'não deve salvar',
     smpKidNascimento1: '06/07/2015',
     smpKidNascimento2: '07/08/2016',
     smpKidNascimento3: '08/09/2017',
@@ -149,6 +154,11 @@ const individualPayload = {
   assert.equal(savedSmp.id, '1');
   assert.equal(savedSmp.retiroId, retreat.id);
   assert.equal(savedSmp.valorPagoSmp, 0);
+  assert.equal(savedSmp.outrasUnioesDele, 'Não');
+  assert.equal(savedSmp.outrasUnioesDela, 'Sim');
+  assert.equal(savedSmp.porqueQueremFazerRetiro, 'Fortalecer a vida em família');
+  assert.equal(savedSmp.comoSouberamRetiro, 'Por um casal amigo');
+  assert.equal(Object.prototype.hasOwnProperty.call(savedSmp, 'campoPublicoForjado'), false, 'O ajuste nao pode liberar campos publicos desconhecidos.');
   const smpStatus = (await studentRegistrationLinkStatus(retreat))[0];
   assert.equal(smpStatus.tipoCadastro, 'casal');
   assert.equal(smpStatus.nomeCadastrado, 'João e Maria');
