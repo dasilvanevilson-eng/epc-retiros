@@ -110,6 +110,8 @@ async function main() {
   assert.match(admin, /requiredNames = \[`smpKidNome\$\{kidNumber\}`, `smpKidNascimento\$\{kidNumber\}`\]/);
   assert.match(admin, /if \(!choice\) return form\.querySelector\(`\[name="\$\{choiceName\}"\]`\)/);
   assert.match(admin, /if \(choice === 'Sim' && !String\(form\.elements\[detailName\]\?\.value \|\| ''\)\.trim\(\)\) return form\.elements\[detailName\]/);
+  assert.match(admin, /const syncSmpKidRequiredRules = \(\) => \{[\s\S]*control\.required = hasData;[\s\S]*setSmpRequiredMarker\(control, hasData\)/);
+  assert.match(admin, /const detailRequired = hasData && new FormData\(form\)\.get\(choiceName\) === 'Sim';[\s\S]*setSmpRequiredMarker\(detail, detailRequired\)/);
   assert.match(api, /resource === 'cursista-smp'[\s\S]*validateCpfAvailability: true/);
 
   console.log(JSON.stringify({

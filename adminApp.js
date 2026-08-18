@@ -4052,6 +4052,31 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     if (['checkbox', 'radio'].includes(control.type)) return control.checked;
     return Boolean(String(control.value || '').trim());
   });
+  const syncSmpKidRequiredRules = () => {
+    if (expectedType !== 'cursista-smp') return;
+    smpKidPanels.forEach((panel) => {
+      const kidNumber = panel.dataset.smpKidPanel;
+      const hasData = !form.elements.smpKidsNotNeeded?.checked && smpKidPanelHasData(panel);
+      [`smpKidNome${kidNumber}`, `smpKidNascimento${kidNumber}`].forEach((name) => {
+        const control = form.elements[name];
+        if (!control) return;
+        control.required = hasData;
+        setSmpRequiredMarker(control, hasData);
+      });
+      [
+        [`smpKidProblemaSaude${kidNumber}`, `smpKidDescricaoSaude${kidNumber}`],
+        [`smpKidIntolerancia${kidNumber}`, `smpKidDescricaoIntolerancia${kidNumber}`],
+      ].forEach(([choiceName, detailName]) => {
+        const choices = [...form.querySelectorAll(`[name="${choiceName}"]`)];
+        choices.forEach((control) => { control.required = hasData; });
+        setSmpRequiredMarker(choices[0], hasData);
+        const detail = form.elements[detailName];
+        const detailRequired = hasData && new FormData(form).get(choiceName) === 'Sim';
+        if (detail) detail.required = detailRequired;
+        setSmpRequiredMarker(detail, detailRequired);
+      });
+    });
+  };
   const syncSmpKidPanels = ({ resetOpen = false } = {}) => {
     let firstPanelWithData = -1;
     smpKidPanels.forEach((panel, index) => {
@@ -4062,6 +4087,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       const summary = panel.querySelector('.smp-kid-summary-value');
       if (summary) summary.textContent = name || (hasData ? 'Dados preenchidos' : 'Não preenchida');
     });
+    syncSmpKidRequiredRules();
     if (!resetOpen || !smpKidPanels.length) return;
     const openIndex = firstPanelWithData >= 0 ? firstPanelWithData : 0;
     smpKidPanels.forEach((panel, index) => { panel.open = index === openIndex; });
