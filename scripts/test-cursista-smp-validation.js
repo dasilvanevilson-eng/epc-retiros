@@ -103,6 +103,7 @@ async function main() {
   assert.equal(calls.some(({ method }) => method === 'POST'), false, 'O salvamento completo deve bloquear conflito preexistente informado na tela.');
 
   const admin = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
   const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
   assert.match(admin, /const smpRequiredTextFields = \[[\s\S]*?'nomeDele'[\s\S]*?'valorInscricaoSmp'/);
   const requiredFieldsSource = admin.slice(admin.indexOf('const smpRequiredTextFields = ['), admin.indexOf('const smpRequiredChoiceFields = ['));
@@ -114,6 +115,8 @@ async function main() {
   assert.match(admin, /'casamentoDela', 'filhosDela', 'outrasUnioesDela'/);
   assert.doesNotMatch(admin, /commonFields = fieldsBlock\([^\n]*'outrasUnioes'/);
   assert.match(admin, /'precisaAcolhimento', 'porqueQueremFazerRetiro', 'nomeApresentante'/);
+  assert.match(styles, /fieldset:has\(\[name="precisaAcolhimento"\]\) \{ grid-column:1 \/ span 6; \}/);
+  assert.match(styles, /\.field:has\(\[name="porqueQueremFazerRetiro"\]\) \{ grid-column:7 \/ span 6; \}/);
   assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);

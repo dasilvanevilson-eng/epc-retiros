@@ -5848,7 +5848,8 @@ body:has(.login-shell) {
 .cursista-smp-common-fields > .field:has([name="filhosUniao"]) { grid-column:5 / span 4; }
 .cursista-smp-common-fields > fieldset:has([name="outrasUnioes"]) { grid-column:9 / span 4; }
 .cursista-smp-common-fields > .choice-block:has([name="smpKidsNotNeeded"]) { grid-column:1 / -1; }
-.cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]) { grid-column:1 / span 4; }
+.cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]) { grid-column:1 / span 6; }
+.cursista-smp-common-fields > .field:has([name="porqueQueremFazerRetiro"]) { grid-column:7 / span 6; }
 .cursista-smp-common-fields > .field:has([name="nomeApresentante"]) { grid-column:1 / span 6; }
 .cursista-smp-common-fields > .field:has([name="foneApresentante"]) { grid-column:7 / span 3; }
 .cursista-smp-common-fields > .field:has([name="cursoApresentante"]) { grid-column:10 / span 3; }
@@ -6404,6 +6405,11 @@ body:has(.login-shell) {
     grid-column:1 / -1;
   }
 
+  .cursista-smp-form .cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="porqueQueremFazerRetiro"]) {
+    grid-column:span 3;
+  }
+
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorInscricaoSmp"]),
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="valorPagoSmp"]),
   .cursista-smp-form .cursista-smp-common-fields > .field:has([name="saldoPagarSmp"]) {
@@ -6761,6 +6767,11 @@ body:has(.login-shell) {
 @media(max-width:430px) {
   .cursista-smp-form .cursista-smp-common-fields > .field,
   .cursista-smp-form .cursista-smp-common-fields > fieldset {
+    grid-column:1 / -1;
+  }
+
+  .cursista-smp-form .cursista-smp-common-fields > fieldset:has([name="precisaAcolhimento"]),
+  .cursista-smp-form .cursista-smp-common-fields > .field:has([name="porqueQueremFazerRetiro"]) {
     grid-column:1 / -1;
   }
 
