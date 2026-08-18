@@ -87,6 +87,12 @@ async function main() {
   assert.equal(unchanged.id, '1');
   assert.equal(calls.filter(({ method }) => method === 'POST').length, 1, 'Rotinas que apenas atualizam o recebimento devem preservar a ficha historica.');
 
+  calls = mockSupabase();
+  const individualizedUnions = await saveCursistaSmp(baseRecord({ outrasUnioes: 'Sim', outrasUnioesDele: 'Não', outrasUnioesDela: 'Sim' }));
+  assert.equal(individualizedUnions.outrasUnioesDele, 'Não');
+  assert.equal(individualizedUnions.outrasUnioesDela, 'Sim');
+  assert.equal(individualizedUnions.outrasUnioes, 'Sim', 'A resposta historica em comum deve continuar preservada.');
+
   calls = mockSupabase({
     smp: [{ id: '1', retiro_id: retreatId, ele_cpf: hisCpf, ela_cpf: herCpf, extras: {} }],
     enrolments: [{ id: 'enrolment-1', retiro_id: retreatId, pessoa_id: personId }],
@@ -103,6 +109,10 @@ async function main() {
     assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} nao deve ser obrigatorio.`);
   });
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
+  assert.match(admin, /'casamentoDele', 'outrasUnioesDele', 'filhosDele'/);
+  assert.match(admin, /'casamentoDela', 'outrasUnioesDela', 'filhosDela'/);
+  assert.doesNotMatch(admin, /commonFields = fieldsBlock\([^\n]*'outrasUnioes'/);
+  assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);
   assert.match(admin, /firstSmpKidsIssue[\s\S]*form\.checkValidity\(\)/);
@@ -121,6 +131,7 @@ async function main() {
       'campos Qual sao condicionais a resposta Sim',
       'CPF repetido em cursistas ou equipe bloqueia antes da gravacao',
       'rotinas financeiras preservam fichas historicas sem dispensar a validacao da tela',
+      'outras unioes sao individuais e preservam a resposta historica em comum',
     ],
   }, null, 2));
 }
