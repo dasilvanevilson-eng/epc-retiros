@@ -3745,9 +3745,9 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     <section class="cursista-smp-section">
       <div class="section-heading"><span>6.</span><div><h2>Saúde e acolhimento</h2></div></div>
       <div class="fields two-columns">
-        <fieldset><legend>Possui algum problema de saúde? Ele</legend>${yesNo('saudeDele')}</fieldset>
+        <fieldset><legend>Possui algum problema de saúde/necessidade especial? Ele</legend>${yesNo('saudeDele')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDele" placeholder="Digite o problema"></label>
-        <fieldset><legend>Possui algum problema de saúde? Ela</legend>${yesNo('saudeDela')}</fieldset>
+        <fieldset><legend>Possui algum problema de saúde/necessidade especial? Ela</legend>${yesNo('saudeDela')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualSaudeDela" placeholder="Digite o problema"></label>
         <fieldset><legend>Possui alguma intolerância alimentar? Ele</legend>${yesNo('intoleranciaAlimentarDele')}</fieldset>
         <label class="field"><span>Qual?</span><input name="qualIntoleranciaAlimentarDele" placeholder="Digite a intolerância"></label>
