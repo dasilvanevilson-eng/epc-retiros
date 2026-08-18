@@ -98,10 +98,16 @@ async function main() {
   const admin = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
   const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
   assert.match(admin, /const smpRequiredTextFields = \[[\s\S]*?'nomeDele'[\s\S]*?'valorInscricaoSmp'/);
+  const requiredFieldsSource = admin.slice(admin.indexOf('const smpRequiredTextFields = ['), admin.indexOf('const smpRequiredChoiceFields = ['));
+  ['casamentoDele', 'casamentoDela', 'filhosDele', 'filhosDela'].forEach((field) => {
+    assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} nao deve ser obrigatorio.`);
+  });
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);
   assert.match(admin, /firstSmpKidsIssue[\s\S]*form\.checkValidity\(\)/);
+  assert.match(admin, /if \(!usedPanels\.length\) return form\.elements\.smpKidsNotNeeded/);
+  assert.match(admin, /requiredNames = \[`smpKidNome\$\{kidNumber\}`, `smpKidNascimento\$\{kidNumber\}`\]/);
   assert.match(api, /resource === 'cursista-smp'[\s\S]*validateCpfAvailability: true/);
 
   console.log(JSON.stringify({
