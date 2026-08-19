@@ -42,15 +42,17 @@ assert.match(appSource, /<header>\$\{escapeHtml\(settings\.topText \|\| ''\)\}<\
 assert.match(appSource, /femaleNameColor: '#ff1493'[\s\S]*maleNameColor: '#4169e1'/, 'As cores por gênero do nome devem ter padrões iniciais.');
 assert.match(appSource, /<span>Feminino<\/span>[\s\S]*name="femaleNameColor" type="color"/, 'A configuração do nome deve permitir escolher a cor feminina.');
 assert.match(appSource, /<span>Masculino<\/span>[\s\S]*name="maleNameColor" type="color"/, 'A configuração do nome deve permitir escolher a cor masculina.');
+assert.match(appSource, /data-standard-text-color[\s\S]*<span>Cor<\/span>/, 'A cor padrão deve continuar disponível para textos que não são nome.');
 assert.match(appSource, /profileSettings\.coupleNameColors[\s\S]*profileSettings\.femaleNameColor = '#ff1493'[\s\S]*profileSettings\.maleNameColor = '#4169e1'/, 'Modelos antigos com opção Casal devem migrar para as cores por gênero.');
 assert.match(appSource, /badgeCoupleNameColor[\s\S]*settings\?\.maleNameColor[\s\S]*settings\?\.femaleNameColor/, 'Nomes masculinos e femininos devem usar as cores configuradas.');
+assert.match(appSource, /querySelector\('\[data-standard-text-color\]'\)\?\.toggleAttribute\('hidden', target === 'name'\)/, 'A cor padrão deve ficar oculta ao configurar nome.');
 assert.match(appSource, /querySelectorAll\('\[data-gender-name-color\]'\)[\s\S]*toggleAttribute\('hidden', target !== 'name'\)/, 'As cores por gênero devem aparecer somente ao configurar o nome.');
 assert.doesNotMatch(appSource, /badge-couple-color-checkbox|data-couple-name-colors|setCoupleNameColors/, 'A opção antiga Casal deve ser removida.');
 assert.match(styles, /\.badge-card \{[^}]*grid-template-rows:auto 1fr auto/, 'O crachá deve reservar faixas para texto superior, conteúdo e rodapé.');
 assert.match(styles, /\.badge-card header \{[^}]*--badge-top-text/, 'O texto superior deve ter estilo proprio no topo do crachá.');
 assert.match(styles, /\.badge-card header \{[^}]*white-space:pre-line/, 'O texto superior deve preservar quebras de linha.');
 assert.match(styles, /\.badge-card footer \{[^}]*white-space:pre-line/, 'O slogan deve preservar quebras de linha.');
-assert.match(styles, /\.badge-name-color-tools \{[^}]*grid-column:span 3/, 'As cores do nome devem ocupar a linha inteira para ficarem alinhadas.');
+assert.match(styles, /\.badge-name-color-tools \{[^}]*grid-column:span 2/, 'As cores do nome devem exibir apenas Feminino e Masculino lado a lado.');
 assert.doesNotMatch(styles, /badge-couple-color-option|badge-couple-color-checkbox/, 'Os estilos do checkbox Casal antigo devem ser removidos.');
 
 const assignmentFunctionStart = appSource.indexOf('const renderBadgeAssignmentsPanel');
