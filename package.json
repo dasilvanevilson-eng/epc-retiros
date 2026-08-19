@@ -10,6 +10,7 @@
     "test:epc": "node scripts/test-cursista-epc-migration.js",
     "test:team-kids": "node scripts/test-team-kids-care.js",
     "test:team-participation": "node scripts/test-team-participation-rules.js",
+    "test:team-layout": "node scripts/test-team-responsive-layout.js",
     "test:team-couple-atomic": "node scripts/test-team-couple-atomic-save.js",
     "test:team-sector-links": "node scripts/test-team-sector-links.js",
     "test:community-atomic-move": "node scripts/test-community-member-atomic-move.js",

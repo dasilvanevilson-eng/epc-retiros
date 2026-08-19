@@ -7480,3 +7480,248 @@ body:has(.login-shell) {
 .finance-purchase-error { margin:0 0 16px; }
 @media(max-width:1100px) { .finance-line-row,.finance-offer-row { grid-template-columns:repeat(3,minmax(0,1fr)); }.finance-icon-button { align-self:end; }.finance-catalog-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:720px) { .finance-metrics,.finance-overview-grid,.finance-form-grid,.finance-stock-grid,.finance-catalog-grid,.finance-comparison,.finance-sector-summary,.finance-purchase-summary { grid-template-columns:1fr; }.finance-line-row,.finance-offer-row,.finance-quote-item { grid-template-columns:1fr; }.finance-icon-button { width:100%; }.finance-page-heading { flex-direction:column; }.finance-heading-actions { align-self:stretch; }.finance-heading-actions button { flex:1; }.finance-sector-tabs { margin-right:-4px; margin-left:-4px; }.finance-ranked-list>div { grid-template-columns:minmax(0,1fr) auto; }.finance-ranked-list>div button { grid-column:1 / -1; }.finance-report-actions button { width:100%; }.finance-balance-metrics { grid-template-columns:1fr 1fr; }.finance-section-heading { align-items:flex-start; flex-direction:column; }.finance-section-heading>button { width:100%; }.finance-purchase-form { align-items:stretch; flex-direction:column; }.finance-purchase-form button { width:100%; } }
+
+/* Equipe de trabalho: linguagem visual do Cursista SMP, sem alterar o fluxo do formulario. */
+.team-registration-shell > .hero {
+  padding-bottom:22px;
+}
+
+.team-registration-shell #public-form {
+  overflow:hidden;
+  border:1px solid #cde8f5;
+  border-radius:12px;
+  background:#fff;
+}
+
+.team-registration-shell #public-form > .form-section {
+  min-width:0;
+  margin:0;
+  padding:24px;
+  border:0;
+  border-bottom:1px solid #cde8f5;
+  background:#fff;
+}
+
+.team-registration-shell #public-form > .form-section .section-heading {
+  margin-bottom:16px;
+}
+
+.team-registration-shell #public-form > .form-section .section-heading h2 {
+  color:var(--leaf);
+  font-size:16px;
+  line-height:1.25;
+  text-transform:uppercase;
+}
+
+.team-registration-shell #public-form > .form-section .field,
+.team-registration-shell #public-form > .form-section fieldset {
+  min-width:0;
+}
+
+.team-registration-shell #public-form > .form-section input,
+.team-registration-shell #public-form > .form-section textarea,
+.team-registration-shell #public-form > .form-section select {
+  border-color:#cde8f5;
+  background:#fff;
+}
+
+.team-registration-shell #public-form > .form-section:has([name="cpf"]) {
+  border-top:3px solid #1e3a8a;
+  background:#eff6ff;
+}
+
+.team-registration-shell #public-form > .form-section:has([name="spouseCpf"]) {
+  border-top:3px solid #b91c1c;
+  background:#fef2f2;
+}
+
+.team-registration-shell #public-form > .form-section.common-section,
+.team-registration-shell #public-form > .form-section:has([name="setores"]),
+.team-registration-shell #public-form > .form-section:has([name="quadrante"]),
+.team-registration-shell #public-form > .form-section:has([name="kidsNotNeeded"]),
+.team-registration-shell #public-form > .form-section:has(#read-volunteer-term) {
+  background:#fffaf2;
+}
+
+.embedded-registration-shell #public-form {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+.embedded-registration-shell #public-form > .form-type-section,
+.embedded-registration-shell #public-form > .couple-only,
+.embedded-registration-shell #public-form > .common-section,
+.embedded-registration-shell #public-form > .form-section:has([name="setores"]),
+.embedded-registration-shell #public-form > .form-section:has([name="quadrante"]),
+.embedded-registration-shell #public-form > .form-section:has([name="kidsNotNeeded"]),
+.embedded-registration-shell #public-form > .form-section:has(#read-volunteer-term),
+.embedded-registration-shell #public-form > .form-message,
+.embedded-registration-shell #public-form > .form-actions,
+.embedded-registration-shell #public-form > datalist {
+  grid-column:1 / -1;
+}
+
+.embedded-registration-shell #public-form > .form-section:has([name="cpf"]) {
+  border-right:1px solid #cde8f5;
+}
+
+.embedded-registration-shell #public-form > .form-type-section,
+.embedded-registration-shell #public-form > .common-section,
+.embedded-registration-shell #public-form > .couple-only,
+.embedded-registration-shell #public-form > .form-section:has([name="setores"]),
+.embedded-registration-shell #public-form > .form-section:has([name="quadrante"]),
+.embedded-registration-shell #public-form > .form-section:has([name="kidsNotNeeded"]) {
+  border-right:0;
+}
+
+.embedded-registration-shell #public-form > .form-message {
+  margin:0;
+  padding:16px 24px 0;
+}
+
+.embedded-registration-shell #public-form > .form-actions {
+  margin:0;
+  padding:18px 24px 24px;
+  border:0;
+  background:#fff;
+}
+
+@media(max-width:980px) {
+  .embedded-registration-shell #public-form {
+    grid-template-columns:1fr;
+  }
+
+  .embedded-registration-shell #public-form > .form-section,
+  .embedded-registration-shell #public-form > .form-message,
+  .embedded-registration-shell #public-form > .form-actions {
+    grid-column:1;
+    border-right:0;
+  }
+}
+
+@media(max-width:720px) {
+  .external-registration-shell.team-registration-shell {
+    padding:14px 14px 34px;
+    background:#f4f9fc;
+  }
+
+  .external-registration-shell > .hero {
+    margin-bottom:12px;
+    padding:16px;
+    border:1px solid #cde8f5;
+    border-radius:14px;
+    background:#fff;
+  }
+
+  .external-registration-shell > .hero .eyebrow,
+  .external-registration-shell > .hero .hero-copy {
+    display:block;
+  }
+
+  .external-registration-shell > .hero .eyebrow {
+    margin-bottom:6px;
+    font-size:11px;
+  }
+
+  .external-registration-shell > .hero .hero-copy {
+    margin:8px 0 0;
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  .external-registration-shell #public-form {
+    display:grid;
+    gap:12px;
+    overflow:visible;
+    border:0;
+    border-radius:0;
+    background:transparent;
+  }
+
+  .external-registration-shell #public-form > .form-section {
+    padding:18px 14px;
+    border:1px solid #cde8f5;
+    border-radius:12px;
+    box-shadow:0 8px 22px rgba(21, 50, 74, .06);
+  }
+
+  .external-registration-shell #public-form > .form-section .section-heading {
+    margin-bottom:14px;
+  }
+
+  .external-registration-shell #public-form > .form-section .section-heading h2 {
+    font-size:17px;
+  }
+
+  .external-registration-shell #public-form > .form-section .section-heading p {
+    display:block;
+    margin-top:5px;
+    font-size:12px;
+    line-height:1.4;
+  }
+
+  .external-registration-shell #public-form .fields.two-columns,
+  .external-registration-shell #public-form .address-fields {
+    grid-template-columns:1fr;
+  }
+
+  .external-registration-shell #public-form .address-fields > .field {
+    grid-column:1 / -1;
+    grid-row:auto;
+  }
+
+  .external-registration-shell #public-form .field {
+    gap:6px;
+    font-size:13px;
+  }
+
+  .external-registration-shell #public-form input,
+  .external-registration-shell #public-form textarea,
+  .external-registration-shell #public-form select,
+  .external-registration-shell #public-form .choice {
+    min-height:48px;
+    font-size:14px;
+  }
+
+  .external-registration-shell #public-form .inline-choices:has(input[value="Sim"]):has(input[value="NÃ£o"]),
+  .external-registration-shell #public-form .form-type-choice .inline-choices {
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .external-registration-shell #public-form .day-confirmation-row {
+    grid-template-columns:1fr;
+    align-items:stretch;
+  }
+
+  .external-registration-shell #public-form .day-confirmation-options {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .external-registration-shell #public-form .day-confirmation-options .choice span {
+    width:100%;
+  }
+
+  .external-registration-shell #public-form > .form-message {
+    margin:0;
+    padding:0 4px;
+  }
+
+  .external-registration-shell #public-form > .form-actions {
+    position:sticky;
+    z-index:20;
+    bottom:8px;
+    margin:0;
+    padding:12px;
+    border:1px solid #cde8f5;
+    border-radius:12px;
+    background:rgba(255, 255, 255, .96);
+    box-shadow:0 12px 32px rgba(21, 50, 74, .16);
+    backdrop-filter:blur(8px);
+  }
+
+  .external-registration-shell #public-form > .form-actions button {
+    width:100%;
+    min-height:50px;
+  }
+}
