@@ -5378,7 +5378,8 @@ const defaultBadgeSettings = {
   accent: '#47724e',
   text: '#3a2614',
   muted: '#68737a',
-  coupleNameColors: false,
+  femaleNameColor: '#ff1493',
+  maleNameColor: '#4169e1',
   border: '#d7a752',
   font: 'DM Sans',
   align: 'center',
@@ -5412,6 +5413,10 @@ const loadBadgeSettings = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(badgeSettingsKey) || '{}') || {};
     const settings = { ...defaultBadgeSettings, ...saved };
+    if (saved.coupleNameColors && !saved.femaleNameColor && !saved.maleNameColor) {
+      settings.femaleNameColor = '#ff1493';
+      settings.maleNameColor = '#4169e1';
+    }
     if (settings.version !== badgeSettingsVersion) {
       settings.version = badgeSettingsVersion;
       settings.wallpaper = 'none';
@@ -5429,11 +5434,16 @@ const saveBadgeSettings = (settings) => localStorage.setItem(badgeSettingsKey, J
 const normalizeBadgeProfile = (profile = {}, retreatId = '') => {
   const rawSettings = profile.settings || profile;
   const { id, name, retiroId, retreatId: legacyRetreatId, updatedAt, createdAt, clonedFromRetreatId, sourceProfileId, ...settingsOnly } = rawSettings;
+  const profileSettings = { ...settingsOnly, ...(profile.settings || {}) };
+  if (profileSettings.coupleNameColors && !profileSettings.femaleNameColor && !profileSettings.maleNameColor) {
+    profileSettings.femaleNameColor = '#ff1493';
+    profileSettings.maleNameColor = '#4169e1';
+  }
   return {
     id: profile.id || id || createId(),
     retiroId: profile.retiroId || profile.retreatId || retreatId || legacyRetreatId || '',
     name: String(profile.name || name || '').trim() || 'Configuracao sem nome',
-    settings: { ...defaultBadgeSettings, ...settingsOnly, ...(profile.settings || {}), version: badgeSettingsVersion },
+    settings: { ...defaultBadgeSettings, ...profileSettings, version: badgeSettingsVersion },
     createdAt: profile.createdAt || createdAt || new Date().toISOString(),
     updatedAt: profile.updatedAt || updatedAt || new Date().toISOString(),
     clonedFromRetreatId: profile.clonedFromRetreatId || clonedFromRetreatId || '',
@@ -5591,10 +5601,9 @@ const badgeDisplayName = (entry) => {
 const badgeSecondaryDisplayName = (entry) => String(entry?.badgeSecondaryName || '').trim();
 const twoLineBadgeText = (value = '') => String(value || '').replace(/\r\n?/g, '\n').split('\n').slice(0, 2).join('\n');
 const badgeCoupleNameColor = (settings, gender = '') => {
-  if (!settings?.coupleNameColors) return '';
   const normalized = normalizeText(gender);
-  if (normalized === 'masculino') return '#4169e1';
-  if (normalized === 'feminino') return '#ff1493';
+  if (normalized === 'masculino') return settings?.maleNameColor || defaultBadgeSettings.maleNameColor;
+  if (normalized === 'feminino') return settings?.femaleNameColor || defaultBadgeSettings.femaleNameColor;
   return '';
 };
 const badgeNameColorStyle = (settings, gender = '') => {
@@ -5798,7 +5807,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="logo"><legend>Logo</legend><div class="badge-logo-picker">${logoOptions}</div><div class="badge-range-grid">${stepper('Tamanho', 'logoSize', 10, 32, 0.5, settings.logoSize)}${stepper('Horizontal', 'logoX', 0, 100, 1, settings.logoX)}${stepper('Vertical', 'logoY', 0, 100, 1, settings.logoY)}</div></fieldset>
       <fieldset data-badge-panel="wallpaper" hidden><legend>Papel de parede</legend><input name="wallpaperUrl" type="hidden" value="${escapeHtml(settings.wallpaperUrl)}"><div class="fields three-columns"><label class="field"><span>Op&ccedil;&atilde;o</span><select name="wallpaper">${wallpaperOptions}</select></label><label class="field badge-color-button"><span>Cor do papel</span><span class="color-caption" data-color-caption="accent" style="background:${escapeHtml(settings.accent)}"></span><input name="accent" type="color" value="${escapeHtml(settings.accent)}"></label><label class="field badge-color-button"><span>Cor da borda</span><span class="color-caption" data-color-caption="border" style="background:${escapeHtml(settings.border)}"></span><input name="border" type="color" value="${escapeHtml(settings.border)}"></label></div><div class="badge-range-grid">${stepper('Curvatura do canto', 'corner', 0, 18, 0.5, settings.corner, true)}${stepper('Largura da borda', 'borderWidth', 0, 2.5, 0.1, settings.borderWidth, true)}</div></fieldset>
       <fieldset data-badge-panel="watermark" hidden><legend>Marca d'agua</legend><div class="fields two-columns"><label class="field"><span>Imagem</span><select name="watermark">${watermarkOptions}</select></label><label class="field"><span>Caminho/URL da imagem</span><input name="watermarkUrl" value="${escapeHtml(settings.watermarkUrl)}" placeholder="assets/minha-imagem.png"></label></div><div class="badge-range-grid">${stepper('Opacidade', 'watermarkOpacity', 0, 35, 1, settings.watermarkOpacity, true)}${stepper('Tamanho', 'watermarkSize', 30, 110, 1, settings.watermarkSize, true)}${stepper('Horizontal', 'watermarkX', 0, 100, 1, settings.watermarkX, true)}${stepper('Vertical', 'watermarkY', 0, 100, 1, settings.watermarkY, true)}</div></fieldset>
-      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><div class="fields two-columns"><label class="field"><span>Texto superior</span><textarea name="topText" rows="2">${escapeHtml(settings.topText || '')}</textarea></label><label class="field"><span>Slogan do rodap&eacute;</span><textarea name="slogan" rows="2">${escapeHtml(settings.slogan)}</textarea></label></div><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="topText" ${settings.textTarget === 'topText' ? 'selected' : ''}>Texto Superior</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><div class="badge-name-color-tools"><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label><label class="badge-couple-color-option" data-couple-name-colors><input class="badge-couple-color-checkbox" name="coupleNameColors" type="checkbox" ${settings.coupleNameColors ? 'checked' : ''}><span>Casal</span><small>Feminino Rosa e Masculino Azul</small></label></div>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'topText' ? settings.topTextSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
+      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><div class="fields two-columns"><label class="field"><span>Texto superior</span><textarea name="topText" rows="2">${escapeHtml(settings.topText || '')}</textarea></label><label class="field"><span>Slogan do rodap&eacute;</span><textarea name="slogan" rows="2">${escapeHtml(settings.slogan)}</textarea></label></div><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="topText" ${settings.textTarget === 'topText' ? 'selected' : ''}>Texto Superior</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><div class="badge-name-color-tools"><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label><label class="field badge-color-button" data-gender-name-color><span>Feminino</span><span class="color-caption" data-color-caption="femaleNameColor" style="background:${escapeHtml(settings.femaleNameColor || defaultBadgeSettings.femaleNameColor)}"></span><input name="femaleNameColor" type="color" value="${escapeHtml(settings.femaleNameColor || defaultBadgeSettings.femaleNameColor)}"></label><label class="field badge-color-button" data-gender-name-color><span>Masculino</span><span class="color-caption" data-color-caption="maleNameColor" style="background:${escapeHtml(settings.maleNameColor || defaultBadgeSettings.maleNameColor)}"></span><input name="maleNameColor" type="color" value="${escapeHtml(settings.maleNameColor || defaultBadgeSettings.maleNameColor)}"></label></div>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'topText' ? settings.topTextSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
       <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Escolha os setores ou comunidades. Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor/comunidade".</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
@@ -5883,8 +5892,9 @@ async function renderCrachas() {
     if (form.elements.align) form.elements.align.value = source[keys.align] || defaultBadgeSettings[keys.align];
     if (form.elements.textSize) form.elements.textSize.value = source[keys.size] || defaultBadgeSettings[keys.size];
     if (form.elements.textColor) form.elements.textColor.value = source[keys.color] || defaultBadgeSettings[keys.color];
-    if (form.elements.coupleNameColors) form.elements.coupleNameColors.checked = Boolean(source.coupleNameColors);
-    form.querySelector('[data-couple-name-colors]')?.toggleAttribute('hidden', target !== 'name');
+    if (form.elements.femaleNameColor) form.elements.femaleNameColor.value = source.femaleNameColor || defaultBadgeSettings.femaleNameColor;
+    if (form.elements.maleNameColor) form.elements.maleNameColor.value = source.maleNameColor || defaultBadgeSettings.maleNameColor;
+    form.querySelectorAll('[data-gender-name-color]').forEach((control) => control.toggleAttribute('hidden', target !== 'name'));
     syncColorCaptions(source);
   };
   const applySettingsToForm = (source) => {
@@ -5939,7 +5949,8 @@ async function renderCrachas() {
     });
     next.topText = twoLineBadgeText(next.topText);
     next.slogan = twoLineBadgeText(next.slogan);
-    next.coupleNameColors = data.get('coupleNameColors') === 'on';
+    next.femaleNameColor = data.get('femaleNameColor') || next.femaleNameColor || defaultBadgeSettings.femaleNameColor;
+    next.maleNameColor = data.get('maleNameColor') || next.maleNameColor || defaultBadgeSettings.maleNameColor;
     const target = data.get('textTarget') || next.textTarget || 'name';
     const keys = textTargetKeys[activeTextTarget] || textTargetKeys.name;
     next.textTarget = target;
@@ -6104,7 +6115,7 @@ async function renderCrachas() {
     app.append(overlay);
   };
   const syncColorCaptions = (source = settings) => {
-    ['accent', 'border', 'textColor', 'background'].forEach((name) => {
+    ['accent', 'border', 'textColor', 'femaleNameColor', 'maleNameColor', 'background'].forEach((name) => {
       const caption = form.querySelector(`[data-color-caption="${name}"]`);
       if (!caption) return;
       const color = name === 'textColor' ? form.elements.textColor?.value : source[name] || defaultBadgeSettings[name];
@@ -6397,20 +6408,6 @@ async function renderCrachas() {
       const normalized = twoLineBadgeText(form.elements[name].value);
       if (form.elements[name].value !== normalized) form.elements[name].value = normalized;
     });
-  });
-  const setCoupleNameColors = (checked) => {
-    if (form.elements.coupleNameColors) form.elements.coupleNameColors.checked = Boolean(checked);
-    settings = { ...settings, coupleNameColors: Boolean(checked) };
-    renderBadges();
-  };
-  form.querySelector('[data-couple-name-colors]')?.addEventListener('click', (event) => {
-    event.preventDefault();
-    setCoupleNameColors(!form.elements.coupleNameColors?.checked);
-  });
-  form.elements.coupleNameColors?.addEventListener('keydown', (event) => {
-    if (![' ', 'Enter'].includes(event.key)) return;
-    event.preventDefault();
-    setCoupleNameColors(!form.elements.coupleNameColors.checked);
   });
   form.addEventListener('click', (event) => {
     const button = event.target.closest('[data-step-target]');
