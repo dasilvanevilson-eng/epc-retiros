@@ -19,8 +19,12 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
     .map((student) => {
       const sourceId = text(student.id || student.numeroFichaSmp || student.cpf);
       if (isCouple) {
-        const fullNames = [student.nomeDele, student.nomeDela].map(text).filter(Boolean);
-        const badgeName = fullNames.map(firstName).filter(Boolean).join(' e ');
+        const participants = [
+          { fullName: text(student.nomeDele), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDele) : '' },
+          { fullName: text(student.nomeDela), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDela) : '' },
+        ].filter((participant) => participant.fullName);
+        const fullNames = participants.map((participant) => participant.fullName);
+        const badgeName = participants.map((participant) => participant.customBadgeName || firstName(participant.fullName)).filter(Boolean).join(' e ');
         if (!sourceId || !badgeName) return null;
         return {
           entry: {

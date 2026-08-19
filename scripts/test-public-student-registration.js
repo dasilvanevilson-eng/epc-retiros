@@ -120,6 +120,8 @@ const individualPayload = {
   const smpPayload = {
     cpfDele: '529.982.247-25',
     cpfDela: '111.444.777-35',
+    nomeCrachaDele: 'Campo privado forjado para ele',
+    nomeCrachaDela: 'Campo privado forjado para ela',
     nomeDele: 'João',
     nomeDela: 'Maria',
     nascimentoDele: '01/02/1980',
@@ -229,6 +231,8 @@ const individualPayload = {
   assert.equal(savedSmp.porqueQueremFazerRetiro, 'Fortalecer a vida em família');
   assert.equal(savedSmp.comoSouberamRetiro, 'Por um casal amigo');
   assert.equal(Object.prototype.hasOwnProperty.call(savedSmp, 'campoPublicoForjado'), false, 'O ajuste nao pode liberar campos publicos desconhecidos.');
+  assert.equal(Object.prototype.hasOwnProperty.call(savedSmp, 'nomeCrachaDele'), false, 'O link publico nao pode gravar o nome para cracha dele.');
+  assert.equal(Object.prototype.hasOwnProperty.call(savedSmp, 'nomeCrachaDela'), false, 'O link publico nao pode gravar o nome para cracha dela.');
   const smpStatus = (await studentRegistrationLinkStatus(retreat))[0];
   assert.equal(smpStatus.tipoCadastro, 'casal');
   assert.equal(smpStatus.nomeCadastrado, 'João e Maria');

@@ -89,6 +89,8 @@ async function main() {
 
   calls = mockSupabase();
   const individualizedUnions = await saveCursistaSmp(baseRecord({
+    nomeCrachaDele: 'Joao do SMP',
+    nomeCrachaDela: 'Maria do SMP',
     outrasUnioes: 'Sim',
     outrasUnioesDele: 'Não',
     outrasUnioesDela: 'Sim',
@@ -102,6 +104,8 @@ async function main() {
   }));
   assert.equal(individualizedUnions.outrasUnioesDele, 'Não');
   assert.equal(individualizedUnions.outrasUnioesDela, 'Sim');
+  assert.equal(individualizedUnions.nomeCrachaDele, 'Joao do SMP');
+  assert.equal(individualizedUnions.nomeCrachaDela, 'Maria do SMP');
   assert.equal(individualizedUnions.outrasUnioes, 'Sim', 'A resposta historica em comum deve continuar preservada.');
   assert.equal(individualizedUnions.porqueQueremFazerRetiro, 'Fortalecer a família');
   assert.equal(individualizedUnions.comoSouberamRetiro, 'Por amigos');
@@ -126,6 +130,9 @@ async function main() {
   const requiredFieldsSource = admin.slice(admin.indexOf('const smpRequiredTextFields = ['), admin.indexOf('const smpRequiredChoiceFields = ['));
   ['casamentoDele', 'casamentoDela', 'filhosDele', 'filhosDela', 'nrApto'].forEach((field) => {
     assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} nao deve ser obrigatorio.`);
+  });
+  ['nomeCrachaDele', 'nomeCrachaDela'].forEach((field) => {
+    assert.doesNotMatch(requiredFieldsSource, new RegExp(`'${field}'`), `${field} deve permanecer opcional.`);
   });
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
   assert.match(admin, /'casamentoDele', 'filhosDele', 'outrasUnioesDele'/);

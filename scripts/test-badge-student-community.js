@@ -46,6 +46,14 @@ const path = require('node:path');
   assert.equal(smp[0].entry.badgeName, 'Carlos e Maria');
   assert.equal(smp[0].sector, 'Comunidade Verde');
 
+  const smpWithBadgeNames = buildCommunityStudentBadgeEntries({
+    community: { nome: 'Comunidade Verde', membroSmpIds: ['13'] },
+    students: [{ id: '13', retiroId: 'r2', nomeDele: 'Carlos Alberto', nomeCrachaDele: 'Carlinhos', nomeDela: 'Maria Helena', nomeCrachaDela: 'Maria da Acolhida' }],
+    studentFormType: 'cursista-smp',
+    retreatId: 'r2',
+  });
+  assert.equal(smpWithBadgeNames[0].entry.badgeName, 'Carlinhos e Maria da Acolhida', 'SMP deve usar os nomes opcionais informados para o cracha.');
+
   const epc = buildCommunityStudentBadgeEntries({
     community: { nome: 'Comunidade Dourada', membroEpcIds: ['7'] },
     students: [{ numeroFichaSmp: '7', retiroId: 'r3', nomeDele: 'Eduardo Lima', nomeDela: 'Fernanda Souza' }],
@@ -59,6 +67,12 @@ const path = require('node:path');
   const adminSource = await fs.readFile(path.join(__dirname, '..', 'adminApp.js'), 'utf8');
   assert.match(adminSource, /const badgeNameField = publicContext \? '' : '<label class="field full"><span>Nome para crach&aacute;<\/span><input name="nomeCracha" autocomplete="off"><\/label>';/, 'O campo opcional deve existir somente no formulário autenticado.');
   assert.match(adminSource, /name="nome" required><\/label>\$\{badgeNameField\}<label class="field"><span>Data de nascimento/, 'O nome para crachá deve ficar imediatamente abaixo do nome completo.');
+  assert.match(adminSource, /const smpBadgeNameFields = active === 'cursista-smp' && !publicContext/, 'Os nomes para cracha do SMP devem existir somente no acesso autenticado.');
+  assert.match(adminSource, /name="nomeDele"[\s\S]*name="nomeDela"[\s\S]*\$\{smpBadgeNameFields\}[\s\S]*name="nascimentoDele"/, 'Os nomes para cracha do casal SMP devem ficar abaixo dos nomes completos.');
+  assert.match(adminSource, /const himFields = fieldsBlock\('fields two-columns', \['nomeDele', 'nomeCrachaDele', 'nascimentoDele'/, 'O campo dele deve permanecer logo abaixo do nome apos a montagem da tela SMP.');
+  assert.match(adminSource, /const herFields = fieldsBlock\('fields two-columns', \['nomeDela', 'nomeCrachaDela', 'nascimentoDela'/, 'O campo dela deve permanecer logo abaixo do nome apos a montagem da tela SMP.');
+  assert.match(adminSource, /textFields\.splice\(textFields\.indexOf\('nomeDele'\) \+ 1, 0, 'nomeCrachaDele'\)[\s\S]*textFields\.splice\(textFields\.indexOf\('nomeDela'\) \+ 1, 0, 'nomeCrachaDela'\)/, 'Os dois nomes opcionais do SMP devem ser carregados e salvos.');
+  assert.match(adminSource, /renderCursistaSmpScreen\(\{ title: active[\s\S]*publicContext: context \}\)/, 'O link publico deve renderizar o SMP sem os campos internos.');
   const teamPersonalFields = adminSource.match(/const personalFields = embedded\s*\? `([^`]*)`\s*: `([^`]*)`;/);
   assert(teamPersonalFields, 'Os campos pessoais da equipe devem separar os contextos autenticado e publico.');
   assert.match(teamPersonalFields[1], /name="nome"[\s\S]*name="badgeName"/, 'A equipe autenticada deve exibir o nome para cracha abaixo do nome completo.');
