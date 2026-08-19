@@ -40,15 +40,17 @@ assert.match(appSource, /<option value="topText"[^>]*>Texto Superior<\/option>/,
 assert.match(appSource, /topText: \{ font: 'topTextFont', align: 'topTextAlign', size: 'topTextSize', color: 'topTextColor' \}/, 'Texto Superior deve ter controles proprios de fonte, alinhamento, tamanho e cor.');
 assert.match(appSource, /<header>\$\{escapeHtml\(settings\.topText \|\| ''\)\}<\/header>/, 'O crachá deve renderizar o texto superior acima do nome.');
 assert.match(appSource, /coupleNameColors: false/, 'A cor automática por casal deve iniciar desligada nos modelos antigos.');
-assert.match(appSource, /name="coupleNameColors" type="checkbox"/, 'A configuração do nome deve permitir ativar cores por casal.');
+assert.match(appSource, /class="badge-couple-color-checkbox" name="coupleNameColors" type="checkbox"/, 'A configuração do nome deve permitir ativar cores por casal.');
 assert.match(appSource, /Feminino Rosa e Masculino Azul/, 'A opção de casal deve explicar as cores automáticas.');
 assert.match(appSource, /badgeCoupleNameColor[\s\S]*#4169e1[\s\S]*#ff1493/, 'Nomes masculinos e femininos devem usar Azul Royal e Rosa Pink.');
 assert.match(appSource, /toggleAttribute\('hidden', target !== 'name'\)/, 'A opção Casal deve aparecer somente ao configurar o nome.');
+assert.match(appSource, /form\.elements\.coupleNameColors\?\.addEventListener\('change'/, 'O checkbox Casal deve aceitar mudança direta sem perder o estado.');
 assert.match(styles, /\.badge-card \{[^}]*grid-template-rows:auto 1fr auto/, 'O crachá deve reservar faixas para texto superior, conteúdo e rodapé.');
 assert.match(styles, /\.badge-card header \{[^}]*--badge-top-text/, 'O texto superior deve ter estilo proprio no topo do crachá.');
 assert.match(styles, /\.badge-card header \{[^}]*white-space:pre-line/, 'O texto superior deve preservar quebras de linha.');
 assert.match(styles, /\.badge-card footer \{[^}]*white-space:pre-line/, 'O slogan deve preservar quebras de linha.');
-assert.match(styles, /\.badge-name-color-tools \{/, 'A opção de cores do casal deve ficar agrupada ao seletor de cor.');
+assert.match(styles, /\.badge-name-color-tools \{[^}]*grid-column:span 2/, 'A opção de cores do casal deve ficar agrupada ao seletor de cor com espaço suficiente.');
+assert.match(styles, /\.badge-couple-color-option \.badge-couple-color-checkbox \{[^}]*appearance:auto/, 'O checkbox Casal deve manter aparência e clique de checkbox.');
 
 const assignmentFunctionStart = appSource.indexOf('const renderBadgeAssignmentsPanel');
 const assignmentFunctionEnd = appSource.indexOf('const renderBadgeSectorNamesPanel', assignmentFunctionStart);

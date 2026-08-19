@@ -269,10 +269,10 @@
 .badge-secondary-name { display:block; justify-self:var(--badge-name-justify); max-width:100%; margin-top:1mm; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:calc(var(--badge-name) * .62); line-height:1; font-style:normal; font-weight:800; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
 .badge-main span { display:block; justify-self:var(--badge-sector-justify); max-width:100%; margin-top:2.2mm; color:var(--badge-muted); font-family:var(--badge-sector-font),'DM Sans',sans-serif; font-size:var(--badge-sector); line-height:1.12; font-weight:800; text-align:var(--badge-sector-align); text-transform:uppercase; overflow-wrap:anywhere; }
 .badge-card footer { position:relative; z-index:2; align-self:end; justify-self:var(--badge-slogan-justify); max-width:100%; min-height:6mm; color:var(--badge-slogan-color); font-family:var(--badge-slogan-font),'DM Sans',sans-serif; font-size:var(--badge-slogan); line-height:1.15; font-weight:800; text-align:var(--badge-slogan-align); white-space:pre-line; overflow-wrap:anywhere; }
-.badge-name-color-tools { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
-.badge-couple-color-option { display:grid; grid-template-columns:auto 1fr; gap:2px 7px; align-items:center; min-height:58px; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:#fffdf7; font-weight:800; cursor:pointer; }
-.badge-couple-color-option input { width:16px; height:16px; margin:0; accent-color:var(--leaf); }
-.badge-couple-color-option small { grid-column:1 / -1; color:var(--muted); font-size:10px; line-height:1.15; font-weight:700; }
+.badge-name-color-tools { display:grid; grid-column:span 2; grid-template-columns:minmax(150px,1fr) minmax(168px,max-content); gap:10px; align-items:end; min-width:0; }
+.badge-couple-color-option { display:grid; grid-template-columns:18px auto; gap:2px 7px; align-items:center; min-height:58px; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:#fffdf7; font-weight:800; cursor:pointer; }
+.badge-couple-color-option .badge-couple-color-checkbox { appearance:auto; width:16px; height:16px; min-height:0; margin:0; padding:0; border:1px solid #9bb49c; background:#fff; accent-color:var(--leaf); box-shadow:none; cursor:pointer; }
+.badge-couple-color-option small { grid-column:2; color:var(--muted); font-size:10px; line-height:1.15; font-weight:700; white-space:normal; }
 .badge-print-area { display:none; }
 .badge-print-sheet { display:grid; grid-template-columns:repeat(2,95mm); grid-template-rows:repeat(4,65mm); align-content:start; justify-content:start; gap:2mm; width:210mm; height:297mm; padding:6mm; background:#fff; break-after:page; page-break-after:always; overflow:hidden; }
 .badge-print-sheet:last-child { break-after:auto; page-break-after:auto; }
