@@ -16,6 +16,8 @@ assert.match(styles, /\.team-registration-shell #public-form > \.form-section \.
 assert.match(styles, /\.team-registration-shell #public-form > \.form-section:has\(\[name="retiros"\]\) \.section-heading h2 \{[\s\S]*text-transform:none/);
 assert.match(admin, new RegExp('<h2>Quais retiros fez como CURSISTA na Fam\\u00edlia EPC\\?</h2>'), 'O titulo deve preservar exatamente as maiusculas e minusculas definidas.');
 assert.match(styles, /\.embedded-registration-shell #public-form \{[\s\S]*grid-template-columns:repeat\(2, minmax\(0, 1fr\)\)/);
+const embeddedFullWidthRule = styles.match(/\.embedded-registration-shell #public-form > \.form-type-section,[\s\S]*?\{\s*grid-column:1 \/ -1;\s*\}/)?.[0] || '';
+assert.doesNotMatch(embeddedFullWidthRule, /\.embedded-registration-shell #public-form > \.couple-only,/, 'No cadastro interno, o segundo conjuge deve ficar logo abaixo do primeiro e com a mesma largura.');
 assert.match(styles, /@media\(max-width:980px\)[\s\S]*\.embedded-registration-shell #public-form \{[\s\S]*grid-template-columns:1fr/);
 assert.match(styles, /@media\(max-width:720px\)[\s\S]*\.external-registration-shell #public-form \.fields\.two-columns,[\s\S]*grid-template-columns:1fr/);
 assert.match(styles, /\.external-registration-shell #public-form input,[\s\S]*min-height:48px/);

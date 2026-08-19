@@ -5372,6 +5372,7 @@ const defaultBadgeSettings = {
   wallpaperUrl: '',
   watermark: 'none',
   watermarkUrl: '',
+  topText: '',
   slogan: 'Familia unida, filhos com vida!',
   background: '#fffaf0',
   accent: '#47724e',
@@ -5383,16 +5384,20 @@ const defaultBadgeSettings = {
   textTarget: 'name',
   nameFont: 'DM Sans',
   sectorFont: 'DM Sans',
+  topTextFont: 'DM Sans',
   sloganFont: 'DM Sans',
   nameAlign: 'center',
   sectorAlign: 'center',
+  topTextAlign: 'center',
   sloganAlign: 'center',
+  topTextColor: '#3a2614',
   sloganColor: '#3a2614',
   logoSize: 18,
   logoX: 14,
   logoY: 13,
   nameSize: 10.5,
   sectorSize: 5,
+  topTextSize: 3.4,
   sloganSize: 3.4,
   watermarkOpacity: 12,
   watermarkSize: 62,
@@ -5603,6 +5608,7 @@ const badgeInlineStyle = (settings) => [
   `--badge-accent:${settings.accent}`,
   `--badge-text:${settings.text}`,
   `--badge-muted:${settings.muted}`,
+  `--badge-top-text-color:${settings.topTextColor}`,
   `--badge-slogan-color:${settings.sloganColor}`,
   `--badge-border:${settings.border}`,
   `--badge-font:${settings.font}`,
@@ -5610,18 +5616,22 @@ const badgeInlineStyle = (settings) => [
   `--badge-justify:${settings.align === 'left' ? 'start' : settings.align === 'right' ? 'end' : 'center'}`,
   `--badge-name-font:${settings.nameFont}`,
   `--badge-sector-font:${settings.sectorFont}`,
+  `--badge-top-text-font:${settings.topTextFont}`,
   `--badge-slogan-font:${settings.sloganFont}`,
   `--badge-name-align:${settings.nameAlign}`,
   `--badge-sector-align:${settings.sectorAlign}`,
+  `--badge-top-text-align:${settings.topTextAlign}`,
   `--badge-slogan-align:${settings.sloganAlign}`,
   `--badge-name-justify:${settings.nameAlign === 'left' ? 'start' : settings.nameAlign === 'right' ? 'end' : 'center'}`,
   `--badge-sector-justify:${settings.sectorAlign === 'left' ? 'start' : settings.sectorAlign === 'right' ? 'end' : 'center'}`,
+  `--badge-top-text-justify:${settings.topTextAlign === 'left' ? 'start' : settings.topTextAlign === 'right' ? 'end' : 'center'}`,
   `--badge-slogan-justify:${settings.sloganAlign === 'left' ? 'start' : settings.sloganAlign === 'right' ? 'end' : 'center'}`,
   `--badge-logo:${settings.logoSize}mm`,
   `--badge-logo-x:${settings.logoX}%`,
   `--badge-logo-y:${settings.logoY}%`,
   `--badge-name:${settings.nameSize}mm`,
   `--badge-sector:${settings.sectorSize}mm`,
+  `--badge-top-text:${settings.topTextSize}mm`,
   `--badge-slogan:${settings.sloganSize}mm`,
   `--badge-watermark-opacity:${Number(settings.watermarkOpacity) / 100}`,
   `--badge-watermark-size:${settings.watermarkSize}mm`,
@@ -5646,6 +5656,7 @@ const badgeCard = (entry, settings, sector = '', sectorNames = {}, applyConfigur
     ${badgeWallpaperStyle(settings) ? `<div class="badge-wallpaper"${badgeWallpaperStyle(settings)}></div>` : ''}
     ${watermark ? `<img class="badge-watermark" src="${escapeHtml(watermark)}" alt="">` : ''}
     ${showLogo ? `<img class="badge-logo" src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.name)}">` : ''}
+    <header>${escapeHtml(settings.topText || '')}</header>
     <div class="badge-main">
       <strong>${escapeHtml(badgeDisplayName(entry))}</strong>
       <span>${escapeHtml(badgeSectorText(entry, sector, sectorNames, applyConfiguredSectorNames))}</span>
@@ -5661,6 +5672,7 @@ const blankBadgeCard = (settings) => {
     ${badgeWallpaperStyle(settings) ? `<div class="badge-wallpaper"${badgeWallpaperStyle(settings)}></div>` : ''}
     ${watermark ? `<img class="badge-watermark" src="${escapeHtml(watermark)}" alt="">` : ''}
     ${showLogo ? `<img class="badge-logo" src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.name)}">` : ''}
+    <header>${escapeHtml(settings.topText || '')}</header>
     <div class="badge-main"><strong>&nbsp;</strong><span>&nbsp;</span></div>
     <footer>${escapeHtml(settings.slogan || '')}</footer>
   </article>`;
@@ -5673,6 +5685,7 @@ const sampleBadgeCard = (settings) => {
     ${badgeWallpaperStyle(settings) ? `<div class="badge-wallpaper"${badgeWallpaperStyle(settings)}></div>` : ''}
     ${watermark ? `<img class="badge-watermark" src="${escapeHtml(watermark)}" alt="">` : ''}
     ${showLogo ? `<img class="badge-logo" src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.name)}">` : ''}
+    <header>${escapeHtml(settings.topText || '')}</header>
     <div class="badge-main"><strong>Nome</strong><span>Setor</span></div>
     <footer>${escapeHtml(settings.slogan || '')}</footer>
   </article>`;
@@ -5731,7 +5744,7 @@ async function renderCrachas() {
   const fontStack = (font) => font === 'cursive' ? 'cursive' : `'${font}', ${cursiveFonts.has(font) ? 'cursive' : 'sans-serif'}`;
   const fontOptions = ['DM Sans', 'Fraunces', 'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'Trebuchet MS', 'Palatino Linotype', 'Garamond', 'Playwrite BR', 'Segoe Script', 'Segoe Print', 'Lucida Handwriting', 'Brush Script MT', 'Monotype Corsiva', 'Comic Sans MS', 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'cursive']
     .map((font) => `<option value="${escapeHtml(font)}" style="font-family:${escapeHtml(fontStack(font))}">${escapeHtml(font)}</option>`).join('');
-  const activeTextColor = settings.textTarget === 'sector' ? settings.muted : settings.textTarget === 'slogan' ? settings.sloganColor : settings.text;
+  const activeTextColor = settings.textTarget === 'sector' ? settings.muted : settings.textTarget === 'topText' ? settings.topTextColor : settings.textTarget === 'slogan' ? settings.sloganColor : settings.text;
   const stepper = (label, name, min, max, step, value, hideValue = false) => `<label class="badge-stepper${hideValue ? ' is-value-hidden' : ''}"><span>${label}<button type="button" data-step-target="${name}" data-step="-${step}">-</button><button type="button" data-step-target="${name}" data-step="${step}">+</button></span><input name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${escapeHtml(value)}"></label>`;
   layout(`<section class="page-heading badge-page-heading"><div><p class="eyebrow">Modelos de identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>${escapeHtml(retreat.nome)} - Configure modelos ou selecione um modelo salvo para impress&atilde;o.</p></div></section>
   <section class="panel badge-start-panel" id="badge-start-panel">
@@ -5769,7 +5782,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="logo"><legend>Logo</legend><div class="badge-logo-picker">${logoOptions}</div><div class="badge-range-grid">${stepper('Tamanho', 'logoSize', 10, 32, 0.5, settings.logoSize)}${stepper('Horizontal', 'logoX', 0, 100, 1, settings.logoX)}${stepper('Vertical', 'logoY', 0, 100, 1, settings.logoY)}</div></fieldset>
       <fieldset data-badge-panel="wallpaper" hidden><legend>Papel de parede</legend><input name="wallpaperUrl" type="hidden" value="${escapeHtml(settings.wallpaperUrl)}"><div class="fields three-columns"><label class="field"><span>Op&ccedil;&atilde;o</span><select name="wallpaper">${wallpaperOptions}</select></label><label class="field badge-color-button"><span>Cor do papel</span><span class="color-caption" data-color-caption="accent" style="background:${escapeHtml(settings.accent)}"></span><input name="accent" type="color" value="${escapeHtml(settings.accent)}"></label><label class="field badge-color-button"><span>Cor da borda</span><span class="color-caption" data-color-caption="border" style="background:${escapeHtml(settings.border)}"></span><input name="border" type="color" value="${escapeHtml(settings.border)}"></label></div><div class="badge-range-grid">${stepper('Curvatura do canto', 'corner', 0, 18, 0.5, settings.corner, true)}${stepper('Largura da borda', 'borderWidth', 0, 2.5, 0.1, settings.borderWidth, true)}</div></fieldset>
       <fieldset data-badge-panel="watermark" hidden><legend>Marca d'agua</legend><div class="fields two-columns"><label class="field"><span>Imagem</span><select name="watermark">${watermarkOptions}</select></label><label class="field"><span>Caminho/URL da imagem</span><input name="watermarkUrl" value="${escapeHtml(settings.watermarkUrl)}" placeholder="assets/minha-imagem.png"></label></div><div class="badge-range-grid">${stepper('Opacidade', 'watermarkOpacity', 0, 35, 1, settings.watermarkOpacity, true)}${stepper('Tamanho', 'watermarkSize', 30, 110, 1, settings.watermarkSize, true)}${stepper('Horizontal', 'watermarkX', 0, 100, 1, settings.watermarkX, true)}${stepper('Vertical', 'watermarkY', 0, 100, 1, settings.watermarkY, true)}</div></fieldset>
-      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
+      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><div class="fields two-columns"><label class="field"><span>Texto superior</span><input name="topText" value="${escapeHtml(settings.topText || '')}"></label><label class="field"><span>Slogan do rodap&eacute;</span><input name="slogan" value="${escapeHtml(settings.slogan)}"></label></div><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="topText" ${settings.textTarget === 'topText' ? 'selected' : ''}>Texto Superior</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'topText' ? settings.topTextSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
       <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Escolha os setores ou comunidades. Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor/comunidade".</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
@@ -5806,6 +5819,7 @@ async function renderCrachas() {
   const textTargetKeys = {
     name: { font: 'nameFont', align: 'nameAlign', size: 'nameSize', color: 'text' },
     sector: { font: 'sectorFont', align: 'sectorAlign', size: 'sectorSize', color: 'muted' },
+    topText: { font: 'topTextFont', align: 'topTextAlign', size: 'topTextSize', color: 'topTextColor' },
     slogan: { font: 'sloganFont', align: 'sloganAlign', size: 'sloganSize', color: 'sloganColor' },
   };
   let activeTextTarget = settings.textTarget || 'name';
@@ -5903,7 +5917,7 @@ async function renderCrachas() {
     const data = new FormData(form);
     const next = { ...settings };
     Object.keys(defaultBadgeSettings).forEach((key) => {
-      if (data.has(key)) next[key] = ['logoSize', 'logoX', 'logoY', 'nameSize', 'sectorSize', 'sloganSize', 'watermarkOpacity', 'watermarkSize', 'watermarkX', 'watermarkY', 'corner', 'borderWidth'].includes(key) ? Number(data.get(key)) : data.get(key);
+      if (data.has(key)) next[key] = ['logoSize', 'logoX', 'logoY', 'nameSize', 'sectorSize', 'topTextSize', 'sloganSize', 'watermarkOpacity', 'watermarkSize', 'watermarkX', 'watermarkY', 'corner', 'borderWidth'].includes(key) ? Number(data.get(key)) : data.get(key);
     });
     const target = data.get('textTarget') || next.textTarget || 'name';
     const keys = textTargetKeys[activeTextTarget] || textTargetKeys.name;
@@ -6248,7 +6262,7 @@ async function renderCrachas() {
     showBadgeView('config');
     selectedProfileId = '';
     blankPreview = true;
-    settings = { ...defaultBadgeSettings, logo: 'none', slogan: '' };
+    settings = { ...defaultBadgeSettings, logo: 'none', topText: '', slogan: '' };
     applySettingsToForm(settings);
     refreshProfileOptions('');
     if (configName) configName.value = '';
@@ -6273,11 +6287,12 @@ async function renderCrachas() {
     body { color:#1f2c3f; font-family:'DM Sans',sans-serif; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
     .badge-print-sheet { display:grid; grid-template-columns:repeat(2,95mm); grid-template-rows:repeat(4,65mm); align-content:start; justify-content:start; gap:2mm; width:210mm; height:297mm; padding:6mm; margin:0; overflow:hidden; background:#fff; break-after:page; page-break-after:always; }
     .badge-print-sheet:last-child { break-after:auto; page-break-after:auto; }
-    .badge-card { position:relative; isolation:isolate; display:grid; grid-template-rows:1fr auto; width:95mm; height:65mm; overflow:hidden; padding:5mm 6mm 4mm; border:var(--badge-border-width) solid var(--badge-border); border-radius:var(--badge-corner); background:var(--badge-bg); color:var(--badge-text); font-family:'DM Sans',sans-serif; box-shadow:none; break-inside:avoid; page-break-inside:avoid; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .badge-card { position:relative; isolation:isolate; display:grid; grid-template-rows:auto 1fr auto; width:95mm; height:65mm; overflow:hidden; padding:5mm 6mm 4mm; border:var(--badge-border-width) solid var(--badge-border); border-radius:var(--badge-corner); background:var(--badge-bg); color:var(--badge-text); font-family:'DM Sans',sans-serif; box-shadow:none; break-inside:avoid; page-break-inside:avoid; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
     .badge-wallpaper { position:absolute; z-index:0; inset:0; background-position:center; background-size:cover; background-repeat:no-repeat; pointer-events:none; }
     .badge-wallpaper::after { content:''; position:absolute; inset:0; background:var(--badge-accent); opacity:.08; mix-blend-mode:multiply; }
     .badge-watermark { position:absolute; z-index:1; left:var(--badge-watermark-x); top:var(--badge-watermark-y); width:var(--badge-watermark-size); height:var(--badge-watermark-size); object-fit:contain; opacity:var(--badge-watermark-opacity); transform:translate(-50%,-50%); }
     .badge-logo { position:absolute; z-index:3; left:var(--badge-logo-x); top:var(--badge-logo-y); width:var(--badge-logo); height:var(--badge-logo); object-fit:contain; transform:translate(-50%,-50%); }
+    .badge-card header { position:relative; z-index:2; align-self:start; justify-self:var(--badge-top-text-justify); max-width:100%; min-height:6mm; color:var(--badge-top-text-color); font-family:var(--badge-top-text-font),'DM Sans',sans-serif; font-size:var(--badge-top-text); line-height:1.15; font-weight:800; text-align:var(--badge-top-text-align); overflow-wrap:anywhere; }
     .badge-main { position:relative; z-index:2; display:grid; align-content:center; min-width:0; padding:12mm 0 5mm; }
     .badge-main strong { display:block; justify-self:var(--badge-name-justify); max-width:100%; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:var(--badge-name); line-height:.96; font-weight:900; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
     .badge-main span { display:block; justify-self:var(--badge-sector-justify); max-width:100%; margin-top:2.2mm; color:var(--badge-muted); font-family:var(--badge-sector-font),'DM Sans',sans-serif; font-size:var(--badge-sector); line-height:1.12; font-weight:800; text-align:var(--badge-sector-align); text-transform:uppercase; overflow-wrap:anywhere; }

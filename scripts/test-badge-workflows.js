@@ -32,6 +32,12 @@ assert.match(appSource, /assignmentPanel\.hidden = !isAssignment/);
 assert.match(appSource, /sectorNamePanel\.hidden = !isSectorNames/);
 assert.match(appSource, /workbench\.hidden = isStandalonePanel/);
 assert.match(appSource, /showBadgeView\(''\)/);
+assert.match(appSource, /<label class="field"><span>Texto superior<\/span><input name="topText"/, 'O editor deve permitir informar o texto superior.');
+assert.match(appSource, /<option value="topText"[^>]*>Texto Superior<\/option>/, 'O seletor Alterar deve incluir Texto Superior.');
+assert.match(appSource, /topText: \{ font: 'topTextFont', align: 'topTextAlign', size: 'topTextSize', color: 'topTextColor' \}/, 'Texto Superior deve ter controles proprios de fonte, alinhamento, tamanho e cor.');
+assert.match(appSource, /<header>\$\{escapeHtml\(settings\.topText \|\| ''\)\}<\/header>/, 'O crachá deve renderizar o texto superior acima do nome.');
+assert.match(styles, /\.badge-card \{[^}]*grid-template-rows:auto 1fr auto/, 'O crachá deve reservar faixas para texto superior, conteúdo e rodapé.');
+assert.match(styles, /\.badge-card header \{[^}]*--badge-top-text/, 'O texto superior deve ter estilo proprio no topo do crachá.');
 
 const assignmentFunctionStart = appSource.indexOf('const renderBadgeAssignmentsPanel');
 const assignmentFunctionEnd = appSource.indexOf('const renderBadgeSectorNamesPanel', assignmentFunctionStart);

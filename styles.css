@@ -258,11 +258,12 @@
 .badge-print-member-list small { margin-top:2px; color:var(--muted); font-size:12px; }
 .badge-multi-print-dialog { width:min(860px,100%); }
 .badge-print-group-list label { padding:14px 6px; }
-.badge-card { position:relative; isolation:isolate; display:grid; grid-template-rows:1fr auto; width:95mm; height:65mm; overflow:hidden; padding:5mm 6mm 4mm; border:var(--badge-border-width) solid var(--badge-border); border-radius:var(--badge-corner); background:var(--badge-bg); color:var(--badge-text); font-family:'DM Sans',sans-serif; box-shadow:0 16px 34px #2e211929; }
+.badge-card { position:relative; isolation:isolate; display:grid; grid-template-rows:auto 1fr auto; width:95mm; height:65mm; overflow:hidden; padding:5mm 6mm 4mm; border:var(--badge-border-width) solid var(--badge-border); border-radius:var(--badge-corner); background:var(--badge-bg); color:var(--badge-text); font-family:'DM Sans',sans-serif; box-shadow:0 16px 34px #2e211929; }
 .badge-wallpaper { position:absolute; z-index:0; inset:0; background-position:center; background-size:cover; background-repeat:no-repeat; pointer-events:none; }
 .badge-wallpaper::after { content:''; position:absolute; inset:0; background:var(--badge-accent); opacity:.08; mix-blend-mode:multiply; }
 .badge-watermark { position:absolute; z-index:1; left:var(--badge-watermark-x); top:var(--badge-watermark-y); width:var(--badge-watermark-size); height:var(--badge-watermark-size); object-fit:contain; opacity:var(--badge-watermark-opacity); transform:translate(-50%,-50%); }
 .badge-logo { position:absolute; z-index:3; left:var(--badge-logo-x); top:var(--badge-logo-y); width:var(--badge-logo); height:var(--badge-logo); object-fit:contain; transform:translate(-50%,-50%); }
+.badge-card header { position:relative; z-index:2; align-self:start; justify-self:var(--badge-top-text-justify); max-width:100%; min-height:6mm; color:var(--badge-top-text-color); font-family:var(--badge-top-text-font),'DM Sans',sans-serif; font-size:var(--badge-top-text); line-height:1.15; font-weight:800; text-align:var(--badge-top-text-align); overflow-wrap:anywhere; }
 .badge-main { position:relative; z-index:2; display:grid; align-content:center; min-width:0; padding:12mm 0 5mm; }
 .badge-main strong { display:block; justify-self:var(--badge-name-justify); max-width:100%; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:var(--badge-name); line-height:.96; font-weight:900; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
 .badge-main span { display:block; justify-self:var(--badge-sector-justify); max-width:100%; margin-top:2.2mm; color:var(--badge-muted); font-family:var(--badge-sector-font),'DM Sans',sans-serif; font-size:var(--badge-sector); line-height:1.12; font-weight:800; text-align:var(--badge-sector-align); text-transform:uppercase; overflow-wrap:anywhere; }
@@ -7553,7 +7554,6 @@ body:has(.login-shell) {
 }
 
 .embedded-registration-shell #public-form > .form-type-section,
-.embedded-registration-shell #public-form > .couple-only,
 .embedded-registration-shell #public-form > .common-section,
 .embedded-registration-shell #public-form > .form-section:has([name="setores"]),
 .embedded-registration-shell #public-form > .form-section:has([name="quadrante"]),
@@ -7571,7 +7571,6 @@ body:has(.login-shell) {
 
 .embedded-registration-shell #public-form > .form-type-section,
 .embedded-registration-shell #public-form > .common-section,
-.embedded-registration-shell #public-form > .couple-only,
 .embedded-registration-shell #public-form > .form-section:has([name="setores"]),
 .embedded-registration-shell #public-form > .form-section:has([name="quadrante"]),
 .embedded-registration-shell #public-form > .form-section:has([name="kidsNotNeeded"]) {
