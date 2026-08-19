@@ -5378,6 +5378,7 @@ const defaultBadgeSettings = {
   accent: '#47724e',
   text: '#3a2614',
   muted: '#68737a',
+  coupleNameColors: false,
   border: '#d7a752',
   font: 'DM Sans',
   align: 'center',
@@ -5589,6 +5590,17 @@ const badgeDisplayName = (entry) => {
 };
 const badgeSecondaryDisplayName = (entry) => String(entry?.badgeSecondaryName || '').trim();
 const twoLineBadgeText = (value = '') => String(value || '').replace(/\r\n?/g, '\n').split('\n').slice(0, 2).join('\n');
+const badgeCoupleNameColor = (settings, gender = '') => {
+  if (!settings?.coupleNameColors) return '';
+  const normalized = normalizeText(gender);
+  if (normalized === 'masculino') return '#4169e1';
+  if (normalized === 'feminino') return '#ff1493';
+  return '';
+};
+const badgeNameColorStyle = (settings, gender = '') => {
+  const color = badgeCoupleNameColor(settings, gender);
+  return color ? ` style="color:${color}"` : '';
+};
 const badgeSectorDisplayName = (sector = '', names = {}) => {
   const source = String(sector || '').trim();
   if (!source) return '';
@@ -5661,8 +5673,8 @@ const badgeCard = (entry, settings, sector = '', sectorNames = {}, applyConfigur
     ${showLogo ? `<img class="badge-logo" src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.name)}">` : ''}
     <header>${escapeHtml(settings.topText || '')}</header>
     <div class="badge-main">
-      <strong>${escapeHtml(badgeDisplayName(entry))}</strong>
-      ${secondaryName ? `<em class="badge-secondary-name">${escapeHtml(secondaryName)}</em>` : ''}
+      <strong${badgeNameColorStyle(settings, entry?.badgeNameGender)}>${escapeHtml(badgeDisplayName(entry))}</strong>
+      ${secondaryName ? `<em class="badge-secondary-name"${badgeNameColorStyle(settings, entry?.badgeSecondaryGender)}>${escapeHtml(secondaryName)}</em>` : ''}
       <span>${escapeHtml(badgeSectorText(entry, sector, sectorNames, applyConfiguredSectorNames))}</span>
     </div>
     <footer>${escapeHtml(settings.slogan || '')}</footer>
@@ -5786,7 +5798,7 @@ async function renderCrachas() {
       <fieldset data-badge-panel="logo"><legend>Logo</legend><div class="badge-logo-picker">${logoOptions}</div><div class="badge-range-grid">${stepper('Tamanho', 'logoSize', 10, 32, 0.5, settings.logoSize)}${stepper('Horizontal', 'logoX', 0, 100, 1, settings.logoX)}${stepper('Vertical', 'logoY', 0, 100, 1, settings.logoY)}</div></fieldset>
       <fieldset data-badge-panel="wallpaper" hidden><legend>Papel de parede</legend><input name="wallpaperUrl" type="hidden" value="${escapeHtml(settings.wallpaperUrl)}"><div class="fields three-columns"><label class="field"><span>Op&ccedil;&atilde;o</span><select name="wallpaper">${wallpaperOptions}</select></label><label class="field badge-color-button"><span>Cor do papel</span><span class="color-caption" data-color-caption="accent" style="background:${escapeHtml(settings.accent)}"></span><input name="accent" type="color" value="${escapeHtml(settings.accent)}"></label><label class="field badge-color-button"><span>Cor da borda</span><span class="color-caption" data-color-caption="border" style="background:${escapeHtml(settings.border)}"></span><input name="border" type="color" value="${escapeHtml(settings.border)}"></label></div><div class="badge-range-grid">${stepper('Curvatura do canto', 'corner', 0, 18, 0.5, settings.corner, true)}${stepper('Largura da borda', 'borderWidth', 0, 2.5, 0.1, settings.borderWidth, true)}</div></fieldset>
       <fieldset data-badge-panel="watermark" hidden><legend>Marca d'agua</legend><div class="fields two-columns"><label class="field"><span>Imagem</span><select name="watermark">${watermarkOptions}</select></label><label class="field"><span>Caminho/URL da imagem</span><input name="watermarkUrl" value="${escapeHtml(settings.watermarkUrl)}" placeholder="assets/minha-imagem.png"></label></div><div class="badge-range-grid">${stepper('Opacidade', 'watermarkOpacity', 0, 35, 1, settings.watermarkOpacity, true)}${stepper('Tamanho', 'watermarkSize', 30, 110, 1, settings.watermarkSize, true)}${stepper('Horizontal', 'watermarkX', 0, 100, 1, settings.watermarkX, true)}${stepper('Vertical', 'watermarkY', 0, 100, 1, settings.watermarkY, true)}</div></fieldset>
-      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><div class="fields two-columns"><label class="field"><span>Texto superior</span><textarea name="topText" rows="2">${escapeHtml(settings.topText || '')}</textarea></label><label class="field"><span>Slogan do rodap&eacute;</span><textarea name="slogan" rows="2">${escapeHtml(settings.slogan)}</textarea></label></div><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="topText" ${settings.textTarget === 'topText' ? 'selected' : ''}>Texto Superior</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'topText' ? settings.topTextSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
+      <fieldset data-badge-panel="text" hidden><legend>Texto/tamanho</legend><div class="fields two-columns"><label class="field"><span>Texto superior</span><textarea name="topText" rows="2">${escapeHtml(settings.topText || '')}</textarea></label><label class="field"><span>Slogan do rodap&eacute;</span><textarea name="slogan" rows="2">${escapeHtml(settings.slogan)}</textarea></label></div><div class="fields three-columns"><label class="field"><span>Alterar</span><select name="textTarget"><option value="name" ${settings.textTarget === 'name' ? 'selected' : ''}>Nome</option><option value="sector" ${settings.textTarget === 'sector' ? 'selected' : ''}>Setor</option><option value="topText" ${settings.textTarget === 'topText' ? 'selected' : ''}>Texto Superior</option><option value="slogan" ${settings.textTarget === 'slogan' ? 'selected' : ''}>Slogan</option></select></label><label class="field"><span>Fonte</span><select name="font">${fontOptions}</select></label><label class="field"><span>Alinhamento</span><select name="align"><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select></label><div class="badge-name-color-tools"><label class="field badge-color-button"><span>Cor</span><span class="color-caption" data-color-caption="textColor" style="background:${escapeHtml(activeTextColor)}"></span><input name="textColor" type="color"></label><label class="badge-couple-color-option" data-couple-name-colors><input name="coupleNameColors" type="checkbox" ${settings.coupleNameColors ? 'checked' : ''}><span>Casal</span><small>Feminino Rosa e Masculino Azul</small></label></div>${stepper('Tamanho', 'textSize', 2.5, 16, 0.1, settings.textTarget === 'sector' ? settings.sectorSize : settings.textTarget === 'topText' ? settings.topTextSize : settings.textTarget === 'slogan' ? settings.sloganSize : settings.nameSize, true)}</div></fieldset>
     </form>
     <section class="panel badge-print-panel" id="badge-print-panel" hidden>
       <div class="panel-heading"><div><h2>Imprimir crach&aacute;s</h2><p>Escolha os setores ou comunidades. Ser&atilde;o usados os modelos definidos em "Definir crach&aacute;s por setor/comunidade".</p></div><button type="button" class="secondary-button badge-view-back" data-badge-home>Voltar</button></div>
@@ -5871,6 +5883,8 @@ async function renderCrachas() {
     if (form.elements.align) form.elements.align.value = source[keys.align] || defaultBadgeSettings[keys.align];
     if (form.elements.textSize) form.elements.textSize.value = source[keys.size] || defaultBadgeSettings[keys.size];
     if (form.elements.textColor) form.elements.textColor.value = source[keys.color] || defaultBadgeSettings[keys.color];
+    if (form.elements.coupleNameColors) form.elements.coupleNameColors.checked = Boolean(source.coupleNameColors);
+    form.querySelector('[data-couple-name-colors]')?.toggleAttribute('hidden', target !== 'name');
     syncColorCaptions(source);
   };
   const applySettingsToForm = (source) => {
@@ -5925,6 +5939,7 @@ async function renderCrachas() {
     });
     next.topText = twoLineBadgeText(next.topText);
     next.slogan = twoLineBadgeText(next.slogan);
+    next.coupleNameColors = data.get('coupleNameColors') === 'on';
     const target = data.get('textTarget') || next.textTarget || 'name';
     const keys = textTargetKeys[activeTextTarget] || textTargetKeys.name;
     next.textTarget = target;
@@ -5997,7 +6012,9 @@ async function renderCrachas() {
               id: `${entry.id}-casal-smp-${index}`,
               nome: couple.map((member) => personForBadge(member).nome || member.nome).filter(Boolean).join(' e '),
               badgeName: primaryName,
+              badgeNameGender: person.genero,
               badgeSecondaryName: secondaryName,
+              badgeSecondaryGender: spousePerson.genero,
               badgeCoupleVariant: true,
             },
             sector: item.sector,
@@ -6407,7 +6424,12 @@ async function renderCrachas() {
     profileMenu.hidden = !open;
     profileTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
   };
+  let suppressProfileFocusOpen = false;
   profileTrigger?.addEventListener('focus', (event) => {
+    if (suppressProfileFocusOpen) {
+      suppressProfileFocusOpen = false;
+      return;
+    }
     if (!profilePicker?.contains(event.relatedTarget)) setProfileMenuOpen(true);
   });
   profileTrigger?.addEventListener('click', () => setProfileMenuOpen(true));
@@ -6428,6 +6450,7 @@ async function renderCrachas() {
     configSelect.value = option.dataset.badgeProfileChoice || '';
     setProfileMenuOpen(false);
     loadSelectedProfile();
+    suppressProfileFocusOpen = true;
     profileTrigger.focus();
   });
   profileMenu?.addEventListener('keydown', (event) => {

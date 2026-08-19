@@ -44,9 +44,13 @@ const path = require('node:path');
   });
   assert.equal(smp.length, 2, 'SMP deve gerar dois crachás por casal, alternando o cônjuge em destaque.');
   assert.equal(smp[0].entry.badgeName, 'Carlos');
+  assert.equal(smp[0].entry.badgeNameGender, 'masculino');
   assert.equal(smp[0].entry.badgeSecondaryName, 'Maria');
+  assert.equal(smp[0].entry.badgeSecondaryGender, 'feminino');
   assert.equal(smp[1].entry.badgeName, 'Maria');
+  assert.equal(smp[1].entry.badgeNameGender, 'feminino');
   assert.equal(smp[1].entry.badgeSecondaryName, 'Carlos');
+  assert.equal(smp[1].entry.badgeSecondaryGender, 'masculino');
   assert.equal(smp[0].sector, 'Comunidade Verde');
 
   const smpWithBadgeNames = buildCommunityStudentBadgeEntries({

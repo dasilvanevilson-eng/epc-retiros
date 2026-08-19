@@ -20,8 +20,8 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
       const sourceId = text(student.id || student.numeroFichaSmp || student.cpf);
       if (isCouple) {
         const participants = [
-          { fullName: text(student.nomeDele), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDele) : '' },
-          { fullName: text(student.nomeDela), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDela) : '' },
+          { fullName: text(student.nomeDele), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDele) : '', gender: 'masculino' },
+          { fullName: text(student.nomeDela), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDela) : '', gender: 'feminino' },
         ].filter((participant) => participant.fullName);
         if (studentFormType === 'cursista-smp' && participants.length >= 2) {
           if (!sourceId) return null;
@@ -35,7 +35,9 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
                 id: `student-${studentFormType}-${sourceId}-${index}`,
                 nome: participants.map((item) => item.fullName).join(' e '),
                 badgeName: primaryName,
+                badgeNameGender: participant.gender,
                 badgeSecondaryName: secondaryName,
+                badgeSecondaryGender: spouse.gender,
                 setores: [label],
                 badgeParticipantType: 'student',
                 badgeCoupleVariant: true,
