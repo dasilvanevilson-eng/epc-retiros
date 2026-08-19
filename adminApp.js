@@ -6398,9 +6398,19 @@ async function renderCrachas() {
       if (form.elements[name].value !== normalized) form.elements[name].value = normalized;
     });
   });
-  form.elements.coupleNameColors?.addEventListener('change', () => {
-    settings = { ...settings, coupleNameColors: Boolean(form.elements.coupleNameColors.checked) };
+  const setCoupleNameColors = (checked) => {
+    if (form.elements.coupleNameColors) form.elements.coupleNameColors.checked = Boolean(checked);
+    settings = { ...settings, coupleNameColors: Boolean(checked) };
     renderBadges();
+  };
+  form.querySelector('[data-couple-name-colors]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    setCoupleNameColors(!form.elements.coupleNameColors?.checked);
+  });
+  form.elements.coupleNameColors?.addEventListener('keydown', (event) => {
+    if (![' ', 'Enter'].includes(event.key)) return;
+    event.preventDefault();
+    setCoupleNameColors(!form.elements.coupleNameColors.checked);
   });
   form.addEventListener('click', (event) => {
     const button = event.target.closest('[data-step-target]');

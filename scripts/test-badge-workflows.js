@@ -44,7 +44,9 @@ assert.match(appSource, /class="badge-couple-color-checkbox" name="coupleNameCol
 assert.match(appSource, /Feminino Rosa e Masculino Azul/, 'A opção de casal deve explicar as cores automáticas.');
 assert.match(appSource, /badgeCoupleNameColor[\s\S]*#4169e1[\s\S]*#ff1493/, 'Nomes masculinos e femininos devem usar Azul Royal e Rosa Pink.');
 assert.match(appSource, /toggleAttribute\('hidden', target !== 'name'\)/, 'A opção Casal deve aparecer somente ao configurar o nome.');
-assert.match(appSource, /form\.elements\.coupleNameColors\?\.addEventListener\('change'/, 'O checkbox Casal deve aceitar mudança direta sem perder o estado.');
+assert.match(appSource, /const setCoupleNameColors = \(checked\) =>/, 'O estado do checkbox Casal deve ter atualização centralizada.');
+assert.match(appSource, /querySelector\('\[data-couple-name-colors\]'\)\?\.addEventListener\('click'[\s\S]*event\.preventDefault\(\);[\s\S]*setCoupleNameColors\(!form\.elements\.coupleNameColors\?\.checked\)/, 'O bloco Casal deve alternar o checkbox manualmente ao clicar.');
+assert.match(appSource, /form\.elements\.coupleNameColors\?\.addEventListener\('keydown'/, 'O checkbox Casal deve aceitar teclado.');
 assert.match(styles, /\.badge-card \{[^}]*grid-template-rows:auto 1fr auto/, 'O crachá deve reservar faixas para texto superior, conteúdo e rodapé.');
 assert.match(styles, /\.badge-card header \{[^}]*--badge-top-text/, 'O texto superior deve ter estilo proprio no topo do crachá.');
 assert.match(styles, /\.badge-card header \{[^}]*white-space:pre-line/, 'O texto superior deve preservar quebras de linha.');
