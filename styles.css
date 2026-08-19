@@ -7513,6 +7513,10 @@ body:has(.login-shell) {
   text-transform:uppercase;
 }
 
+.team-registration-shell #public-form > .form-section:has([name="retiros"]) .section-heading h2 {
+  text-transform:none;
+}
+
 .team-registration-shell #public-form > .form-section .field,
 .team-registration-shell #public-form > .form-section fieldset {
   min-width:0;
