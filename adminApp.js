@@ -5587,6 +5587,7 @@ const badgeDisplayName = (entry) => {
   const person = personForBadge(entry);
   return firstName(person.nome || entry.nome);
 };
+const badgeSecondaryDisplayName = (entry) => String(entry?.badgeSecondaryName || '').trim();
 const badgeSectorDisplayName = (sector = '', names = {}) => {
   const source = String(sector || '').trim();
   if (!source) return '';
@@ -5652,6 +5653,7 @@ const badgeCard = (entry, settings, sector = '', sectorNames = {}, applyConfigur
   const logo = logoById(settings.logo);
   const showLogo = logo.id !== 'none' && logo.src;
   const watermark = settings.watermark && settings.watermark !== 'none' ? (settings.watermark === 'custom' ? settings.watermarkUrl : logoById(settings.watermark)?.src) : '';
+  const secondaryName = badgeSecondaryDisplayName(entry);
   return `<article class="badge-card" style="${escapeHtml(badgeInlineStyle(settings))}">
     ${badgeWallpaperStyle(settings) ? `<div class="badge-wallpaper"${badgeWallpaperStyle(settings)}></div>` : ''}
     ${watermark ? `<img class="badge-watermark" src="${escapeHtml(watermark)}" alt="">` : ''}
@@ -5659,6 +5661,7 @@ const badgeCard = (entry, settings, sector = '', sectorNames = {}, applyConfigur
     <header>${escapeHtml(settings.topText || '')}</header>
     <div class="badge-main">
       <strong>${escapeHtml(badgeDisplayName(entry))}</strong>
+      ${secondaryName ? `<em class="badge-secondary-name">${escapeHtml(secondaryName)}</em>` : ''}
       <span>${escapeHtml(badgeSectorText(entry, sector, sectorNames, applyConfiguredSectorNames))}</span>
     </div>
     <footer>${escapeHtml(settings.slogan || '')}</footer>
@@ -5968,7 +5971,39 @@ async function renderCrachas() {
       ? entries.filter((entry) => entryHasSector(entry, group.key)).map((entry) => ({ entry, sector: group.label }))
       : communityBadgeEntries(group.key);
     const badgeSettings = { ...defaultBadgeSettings, ...(profile?.settings || {}), version: badgeSettingsVersion };
-    return groupEntries.map((item) => ({
+    const preparedEntries = type === 'sector' && badgeStudentFormType === 'cursista-smp'
+      ? (() => {
+        const usedCoupleIds = new Set();
+        return groupEntries.flatMap((item) => {
+        if (!item.entry?.casalId) return [item];
+        if (usedCoupleIds.has(item.entry.casalId)) return [];
+        usedCoupleIds.add(item.entry.casalId);
+        const couple = entries
+          .filter((entry) => entry.retiroId === retreat.id && entry.casalId === item.entry.casalId)
+          .sort((first, second) => String(first.papelNoCasal || '').localeCompare(String(second.papelNoCasal || ''), 'pt-BR', { sensitivity: 'base' }) || String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' }));
+        if (couple.length < 2) return [item];
+        return couple.map((entry, index) => {
+          const spouse = couple[(index + 1) % couple.length];
+          const person = personForBadge(entry);
+          const spousePerson = personForBadge(spouse);
+          const primaryName = String(entry.badgeName || '').trim() || firstName(person.nome || entry.nome);
+          const secondaryName = String(spouse.badgeName || '').trim() || firstName(spousePerson.nome || spouse.nome);
+          return {
+            entry: {
+              ...entry,
+              id: `${entry.id}-casal-smp-${index}`,
+              nome: couple.map((member) => personForBadge(member).nome || member.nome).filter(Boolean).join(' e '),
+              badgeName: primaryName,
+              badgeSecondaryName: secondaryName,
+              badgeCoupleVariant: true,
+            },
+            sector: item.sector,
+          };
+        });
+        });
+      })()
+      : groupEntries;
+    return preparedEntries.map((item) => ({
       ...item,
       groupType: type,
       groupKey: group.key,
@@ -6295,6 +6330,7 @@ async function renderCrachas() {
     .badge-card header { position:relative; z-index:2; align-self:start; justify-self:var(--badge-top-text-justify); max-width:100%; min-height:6mm; color:var(--badge-top-text-color); font-family:var(--badge-top-text-font),'DM Sans',sans-serif; font-size:var(--badge-top-text); line-height:1.15; font-weight:800; text-align:var(--badge-top-text-align); overflow-wrap:anywhere; }
     .badge-main { position:relative; z-index:2; display:grid; align-content:center; min-width:0; padding:12mm 0 5mm; }
     .badge-main strong { display:block; justify-self:var(--badge-name-justify); max-width:100%; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:var(--badge-name); line-height:.96; font-weight:900; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
+    .badge-secondary-name { display:block; justify-self:var(--badge-name-justify); max-width:100%; margin-top:1mm; color:var(--badge-text); font-family:var(--badge-name-font),'DM Sans',sans-serif; font-size:calc(var(--badge-name) * .62); line-height:1; font-style:normal; font-weight:800; text-align:var(--badge-name-align); overflow-wrap:anywhere; }
     .badge-main span { display:block; justify-self:var(--badge-sector-justify); max-width:100%; margin-top:2.2mm; color:var(--badge-muted); font-family:var(--badge-sector-font),'DM Sans',sans-serif; font-size:var(--badge-sector); line-height:1.12; font-weight:800; text-align:var(--badge-sector-align); text-transform:uppercase; overflow-wrap:anywhere; }
     .badge-card footer { position:relative; z-index:2; align-self:end; justify-self:var(--badge-slogan-justify); max-width:100%; min-height:6mm; color:var(--badge-slogan-color); font-family:var(--badge-slogan-font),'DM Sans',sans-serif; font-size:var(--badge-slogan); line-height:1.15; font-weight:800; text-align:var(--badge-slogan-align); overflow-wrap:anywhere; }
   </style>

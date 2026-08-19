@@ -42,8 +42,11 @@ const path = require('node:path');
     studentFormType: 'cursista-smp',
     retreatId: 'r2',
   });
-  assert.equal(smp.length, 1, 'SMP deve gerar um único crachá por casal.');
-  assert.equal(smp[0].entry.badgeName, 'Carlos e Maria');
+  assert.equal(smp.length, 2, 'SMP deve gerar dois crachás por casal, alternando o cônjuge em destaque.');
+  assert.equal(smp[0].entry.badgeName, 'Carlos');
+  assert.equal(smp[0].entry.badgeSecondaryName, 'Maria');
+  assert.equal(smp[1].entry.badgeName, 'Maria');
+  assert.equal(smp[1].entry.badgeSecondaryName, 'Carlos');
   assert.equal(smp[0].sector, 'Comunidade Verde');
 
   const smpWithBadgeNames = buildCommunityStudentBadgeEntries({
@@ -52,7 +55,10 @@ const path = require('node:path');
     studentFormType: 'cursista-smp',
     retreatId: 'r2',
   });
-  assert.equal(smpWithBadgeNames[0].entry.badgeName, 'Carlinhos e Maria da Acolhida', 'SMP deve usar os nomes opcionais informados para o cracha.');
+  assert.equal(smpWithBadgeNames[0].entry.badgeName, 'Carlinhos', 'SMP deve usar o nome opcional do cônjuge em destaque.');
+  assert.equal(smpWithBadgeNames[0].entry.badgeSecondaryName, 'Maria da Acolhida', 'SMP deve usar o nome opcional do outro cônjuge.');
+  assert.equal(smpWithBadgeNames[1].entry.badgeName, 'Maria da Acolhida', 'SMP deve alternar o cônjuge em destaque usando o nome opcional.');
+  assert.equal(smpWithBadgeNames[1].entry.badgeSecondaryName, 'Carlinhos', 'SMP deve alternar o outro cônjuge usando o nome opcional.');
 
   const epc = buildCommunityStudentBadgeEntries({
     community: { nome: 'Comunidade Dourada', membroEpcIds: ['7'] },
@@ -89,6 +95,8 @@ const path = require('node:path');
   assert.match(adminSource, /badgeUsesCoupleStudentForm \? badgeCoupleStudentSource\.list\(retreat\.id\)/);
   assert.match(adminSource, /first && selected\.length \? badgeCard\(first\.entry, firstSettings, first\.sector, badgeSectorNames, firstUsesConfiguredSectorName\)/, 'A prévia deve usar participante, modelo e regra de nome do grupo selecionado.');
   assert.match(adminSource, /firstUsesConfiguredSectorName = first\?\.groupType !== 'community'/, 'Rótulos de comunidade não devem receber nomes configurados para setores.');
+  assert.match(adminSource, /badgeStudentFormType === 'cursista-smp'[\s\S]*badgeSecondaryName/, 'Adesões casal em retiros SMP devem gerar crachás alternados com o outro cônjuge em fonte menor.');
+  assert.match(adminSource, /class="badge-secondary-name"/, 'O crachá deve renderizar o nome secundário quando existir.');
 
   console.log('Crachás: comunidade dos cursistas individuais, SMP e EPC validada.');
 })().catch((error) => {

@@ -23,6 +23,27 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
           { fullName: text(student.nomeDele), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDele) : '' },
           { fullName: text(student.nomeDela), customBadgeName: studentFormType === 'cursista-smp' ? text(student.nomeCrachaDela) : '' },
         ].filter((participant) => participant.fullName);
+        if (studentFormType === 'cursista-smp' && participants.length >= 2) {
+          if (!sourceId) return null;
+          return participants.map((participant, index) => {
+            const spouse = participants[(index + 1) % participants.length];
+            const primaryName = participant.customBadgeName || firstName(participant.fullName);
+            const secondaryName = spouse.customBadgeName || firstName(spouse.fullName);
+            if (!primaryName || !secondaryName) return null;
+            return {
+              entry: {
+                id: `student-${studentFormType}-${sourceId}-${index}`,
+                nome: participants.map((item) => item.fullName).join(' e '),
+                badgeName: primaryName,
+                badgeSecondaryName: secondaryName,
+                setores: [label],
+                badgeParticipantType: 'student',
+                badgeCoupleVariant: true,
+              },
+              sector: label,
+            };
+          }).filter(Boolean);
+        }
         const fullNames = participants.map((participant) => participant.fullName);
         const badgeName = participants.map((participant) => participant.customBadgeName || firstName(participant.fullName)).filter(Boolean).join(' e ');
         if (!sourceId || !badgeName) return null;
@@ -51,5 +72,6 @@ export function buildCommunityStudentBadgeEntries({ community = {}, students = [
         sector: label,
       };
     })
+    .flat()
     .filter(Boolean);
 }
