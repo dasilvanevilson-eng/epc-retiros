@@ -192,9 +192,9 @@ async function rowsWhereIn(table, column, values = [], order = '', select = '*')
   return pages.flat();
 }
 
-async function optionalRowsWhereIn(table, column, values = [], order = '') {
+async function optionalRowsWhereIn(table, column, values = [], order = '', select = '*') {
   try {
-    return await rowsWhereIn(table, column, values, order);
+    return await rowsWhereIn(table, column, values, order, select);
   } catch (error) {
     if (isMissingRelationError(error, table)) return [];
     throw error;
@@ -390,6 +390,17 @@ async function findPersonRow(id) {
   if (!id) return null;
   if (isUuid(id)) return oneWhere('pessoas', `id=eq.${enc(id)}`);
   return oneWhere('pessoas', `cpf=eq.${enc(id)}`);
+}
+
+async function findPersonRows(ids = []) {
+  const uniqueIds = [...new Set(array(ids).map((id) => String(id || '').trim()).filter(Boolean))];
+  const uuidIds = uniqueIds.filter(isUuid);
+  const cpfIds = uniqueIds.filter((id) => !isUuid(id));
+  const [byUuid, byCpf] = await Promise.all([
+    rowsWhereIn('pessoas', 'id', uuidIds, '', 'id'),
+    rowsWhereIn('pessoas', 'cpf', cpfIds, '', 'id,cpf'),
+  ]);
+  return [...byUuid, ...byCpf];
 }
 
 async function savePerson(record) {
@@ -1425,56 +1436,61 @@ async function communityLookups(rows) {
 }
 
 async function syncIndividualCommunityMembers(communityId, retreatId, memberIds = []) {
-  const desiredRows = (await Promise.all([...new Set(array(memberIds))].map((id) => findStudentRowForRetreat(id, retreatId)))).filter(Boolean);
-  if (desiredRows.length !== new Set(array(memberIds)).size) throw new Error('Um ou mais cursistas individuais nao foram encontrados neste retiro. Nenhum vinculo foi alterado.');
+  const desiredKeys = [...new Set(array(memberIds).map((id) => String(id || '').trim()).filter(Boolean))];
+  const uuidIds = desiredKeys.filter(isUuid);
+  const cpfIds = desiredKeys.filter((id) => !isUuid(id));
+  const [uuidRows, cpfRows] = await Promise.all([
+    rowsWhereIn('cursistas', 'id', uuidIds, '', 'id,cpf,retiro_id'),
+    rowsWhereIn('cursistas', 'cpf', cpfIds, '', 'id,cpf,retiro_id'),
+  ]);
+  const desiredRows = [...uuidRows, ...cpfRows].filter((student) => student.retiro_id === retreatId);
+  const foundKeys = new Set(desiredRows.flatMap((student) => [student.id, student.cpf].map((value) => String(value || '').trim()).filter(Boolean)));
+  if (desiredKeys.some((id) => !foundKeys.has(id))) throw new Error('Um ou mais cursistas individuais nao foram encontrados neste retiro. Nenhum vinculo foi alterado.');
   const desiredIds = new Set(desiredRows.map((student) => student.id));
-  const currentRows = await rowsWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}`);
+  const currentRows = await rowsWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}`, '', 'cursista_id');
   const currentIds = new Set(currentRows.map((item) => item.cursista_id));
   const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, cursista_id: id }));
+  const removals = [...currentIds].filter((id) => !desiredIds.has(id));
   if (additions.length) await upsert('comunidade_cursistas', additions, 'comunidade_id,cursista_id');
-  for (const id of currentIds) {
-    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}&cursista_id=eq.${enc(id)}`);
-  }
+  if (removals.length) await deleteWhere('comunidade_cursistas', `comunidade_id=eq.${enc(communityId)}&cursista_id=in.(${removals.map(enc).join(',')})`);
 }
 
 async function syncSmpCommunityMembers(communityId, retreatId, memberIds = []) {
   const desiredIds = new Set(array(memberIds).map((id) => String(id || '').trim()).filter(Boolean));
-  const availableIds = new Set((await rowsWhere('cursista_smp', `retiro_id=eq.${enc(retreatId)}`, '')).map((item) => String(item.id)));
+  const availableIds = new Set((await rowsWhereIn('cursista_smp', 'id', [...desiredIds], '', 'id,retiro_id')).filter((item) => item.retiro_id === retreatId).map((item) => String(item.id)));
   const missingIds = [...desiredIds].filter((id) => !availableIds.has(id));
   if (missingIds.length) throw new Error('Uma ou mais fichas SMP nao foram encontradas neste retiro. Nenhum vinculo foi alterado.');
   let currentRows;
   try {
-    currentRows = await rowsWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}`, '');
+    currentRows = await rowsWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}`, '', 'cursista_id');
   } catch (error) {
     if (isMissingRelationError(error, 'comunidade_cursistas_smp')) throw new Error('A migracao comunidade_cursistas_smp ainda nao foi aplicada ao banco.');
     throw error;
   }
   const currentIds = new Set(currentRows.map((item) => String(item.cursista_id)));
   const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, retiro_id: retreatId, cursista_id: id }));
+  const removals = [...currentIds].filter((id) => !desiredIds.has(id));
   if (additions.length) await upsert('comunidade_cursistas_smp', additions, 'comunidade_id,retiro_id,cursista_id');
-  for (const id of currentIds) {
-    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=eq.${enc(id)}`);
-  }
+  if (removals.length) await deleteWhere('comunidade_cursistas_smp', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=in.(${removals.map(enc).join(',')})`);
 }
 
 async function syncEpcCommunityMembers(communityId, retreatId, memberIds = []) {
   const desiredIds = new Set(array(memberIds).map((id) => String(id || '').trim()).filter(Boolean));
-  const availableIds = new Set((await rowsWhere('cursista_epc', `retiro_id=eq.${enc(retreatId)}`, '')).map((item) => String(item.id)));
+  const availableIds = new Set((await rowsWhereIn('cursista_epc', 'id', [...desiredIds], '', 'id,retiro_id')).filter((item) => item.retiro_id === retreatId).map((item) => String(item.id)));
   const missingIds = [...desiredIds].filter((id) => !availableIds.has(id));
   if (missingIds.length) throw new Error('Uma ou mais fichas EPC nao foram encontradas neste retiro. Nenhum vinculo foi alterado.');
   let currentRows;
   try {
-    currentRows = await rowsWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}`, '');
+    currentRows = await rowsWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}`, '', 'cursista_id');
   } catch (error) {
     if (isMissingRelationError(error, 'comunidade_cursistas_epc')) throw new Error('A migracao comunidade_cursistas_epc ainda nao foi aplicada ao banco.');
     throw error;
   }
   const currentIds = new Set(currentRows.map((item) => String(item.cursista_id)));
   const additions = [...desiredIds].filter((id) => !currentIds.has(id)).map((id) => ({ comunidade_id: communityId, retiro_id: retreatId, cursista_id: id }));
+  const removals = [...currentIds].filter((id) => !desiredIds.has(id));
   if (additions.length) await upsert('comunidade_cursistas_epc', additions, 'comunidade_id,retiro_id,cursista_id');
-  for (const id of currentIds) {
-    if (!desiredIds.has(id)) await deleteWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=eq.${enc(id)}`);
-  }
+  if (removals.length) await deleteWhere('comunidade_cursistas_epc', `comunidade_id=eq.${enc(communityId)}&retiro_id=eq.${enc(retreatId)}&cursista_id=in.(${removals.map(enc).join(',')})`);
 }
 
 async function saveCommunity(record) {
@@ -1495,7 +1511,7 @@ async function saveCommunity(record) {
   await Promise.all([
     deleteWhere('comunidade_monitores', `comunidade_id=eq.${enc(record.id)}`),
   ]);
-  const monitorRows = (await Promise.all(array(record.monitorIds).map(findPersonRow))).filter(Boolean);
+  const monitorRows = await findPersonRows(record.monitorIds);
   await Promise.all([
     monitorRows.length ? upsert('comunidade_monitores', monitorRows.map((person) => ({ comunidade_id: record.id, pessoa_id: person.id })), 'comunidade_id,pessoa_id') : null,
   ]);
