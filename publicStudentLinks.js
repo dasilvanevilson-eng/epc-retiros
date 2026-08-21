@@ -385,22 +385,33 @@ function validateCouple(record, type) {
 }
 
 async function validateCpfAvailability(retreatId, record, type) {
-  const records = await studentRecordsForRetreat(retreatId);
   const submitted = type === 'cursista-individual'
     ? [normalizeCpf(record.cpf)]
     : [normalizeCpf(record.cpfDele), normalizeCpf(record.cpfDela)];
+  const submittedCpfs = [...new Set(submitted.filter(Boolean))];
+  const optionalCoupleList = async (loader) => {
+    try {
+      return await loader(retreatId, submittedCpfs);
+    } catch (error) {
+      if (/usa somente Supabase/i.test(String(error?.message || ''))) return [];
+      throw error;
+    }
+  };
+  const [individual, smp, epc] = await Promise.all([
+    Promise.all(submittedCpfs.map((cpf) => listRecords('cursistas', { retiroId: retreatId, cpf }))).then((groups) => groups.flat()),
+    optionalCoupleList(listCursistasSmp),
+    optionalCoupleList(listCursistasEpc),
+  ]);
   const existing = [
-    ...records.individual.map((item) => normalizeCpf(item.cpf)),
-    ...records.smp.flatMap((item) => [normalizeCpf(item.cpfDele), normalizeCpf(item.cpfDela)]),
-    ...records.epc.flatMap((item) => [normalizeCpf(item.cpfDele), normalizeCpf(item.cpfDela)]),
+    ...individual.filter((item) => item.retiroId === retreatId).map((item) => normalizeCpf(item.cpf)),
+    ...smp.flatMap((item) => [normalizeCpf(item.cpfDele), normalizeCpf(item.cpfDela)]),
+    ...epc.flatMap((item) => [normalizeCpf(item.cpfDele), normalizeCpf(item.cpfDela)]),
   ].filter(Boolean);
   if (submitted.filter(Boolean).some((cpf) => existing.includes(cpf))) {
     throw publicStudentError('CPF ja cadastrado para este retiro.', 409, 'DUPLICATE_RETREAT_STUDENT_CPF');
   }
-  const people = await listRecords('pessoas', { retiroId: retreatId });
-  const enrolments = await listRecords('adesoes', { retiroId: retreatId });
-  const personIds = new Set(people.filter((person) => submitted.includes(normalizeCpf(person.cpf || person.id))).flatMap((person) => [person.id, normalizeCpf(person.cpf)]));
-  if (enrolments.some((entry) => entry.retiroId === retreatId && (personIds.has(entry.pessoaId) || submitted.includes(normalizeCpf(entry.pessoaId))))) {
+  const enrolments = (await Promise.all(submittedCpfs.map((cpf) => listRecords('adesoes', { retiroId: retreatId, cpf }).catch(() => [])))).flat();
+  if (enrolments.some((entry) => entry.retiroId === retreatId)) {
     throw publicStudentError('Este CPF ja esta cadastrado na equipe de trabalho deste retiro.', 409, 'STUDENT_TEAM_CONFLICT');
   }
 }

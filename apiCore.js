@@ -343,13 +343,13 @@ async function normalizeFinanceRecord(resource, record, session) {
   if (!retreat) throw new Error('Retiro em foco nao encontrado.');
   const sectorKey = financeSectorKey(next.setorChave || next.setor);
   const configuredSector = (retreat.setores || []).find((sector) => financeSectorKey(sector) === sectorKey);
-  const currentSheets = await listRecords('financeiro_planilhas', { retiroId: next.retiroId });
+  const currentSheets = await listRecords('financeiro_planilhas', { retiroId: next.retiroId, setorChave: sectorKey });
   const current = currentSheets.find((sheet) => sheet.id === next.id) || null;
   if (!configuredSector && !current) throw new Error('O setor nao faz parte da configuracao do retiro em foco.');
   if (currentSheets.some((sheet) => sheet.id !== next.id && sheet.setorChave === sectorKey)) throw new Error('A planilha deste setor ja foi inicializada. Recarregue a pagina.');
   const retreats = await listRecords('retiros');
   const previousRetreat = previousFinanceRetreat(retreat, retreats);
-  const previousSheets = previousRetreat ? await listRecords('financeiro_planilhas', { retiroId: previousRetreat.id }) : [];
+  const previousSheets = previousRetreat ? await listRecords('financeiro_planilhas', { retiroId: previousRetreat.id, setorChave: sectorKey }) : [];
   const previousSheet = previousSheets.find((sheet) => sheet.setorChave === sectorKey) || null;
   const currentLines = current?.itensRecorrentes || [];
   const previousLines = previousSheet?.itensRecorrentes || [];
@@ -530,8 +530,16 @@ async function handleApi(req, res, pathname) {
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const [resource, id, action, fourth] = parts;
   const requestUrl = new URL(req.url || pathname || '/', 'https://familiaepcindaial.local');
-  const listRetreatId = String(requestUrl.searchParams.get('retiroId') || '').trim();
-  const listCpf = String(requestUrl.searchParams.get('cpf') || '').replace(/\D/g, '').trim();
+  const listOptions = {
+    retiroId: String(requestUrl.searchParams.get('retiroId') || '').trim(),
+    cpf: String(requestUrl.searchParams.get('cpf') || '').replace(/\D/g, '').trim(),
+    numeroFicha: String(requestUrl.searchParams.get('numeroFicha') || '').trim(),
+    nomeNormalizado: String(requestUrl.searchParams.get('nomeNormalizado') || '').trim(),
+    nascimento: String(requestUrl.searchParams.get('nascimento') || '').trim(),
+    setorChave: String(requestUrl.searchParams.get('setorChave') || '').trim(),
+  };
+  const listRetreatId = listOptions.retiroId;
+  const hasListFilters = Object.entries(listOptions).some(([key, value]) => key !== 'retiroId' && value);
 
   if (resource === 'cadastro-cursista' && id) {
     try {
@@ -931,8 +939,7 @@ async function handleApi(req, res, pathname) {
   if (!publicRegistrationRequest && !hasGlobalRetreatAccess(session) && resource === 'retiros' && req.method === 'PUT' && !id) return sendError(res, 403, noRetreatAccessMessage);
   if (req.method === 'GET' && !id) {
     if (publicRegistrationRequest && ['pessoas', 'adesoes'].includes(resource) && !listRetreatId) return sendError(res, 400, 'Informe o retiro para esta consulta.');
-    if (listCpf) {
-      const listOptions = { ...(listRetreatId ? { retiroId: listRetreatId } : {}), cpf: listCpf };
+    if (hasListFilters) {
       return sendJson(res, 200, publicRegistrationRequest
         ? await listRecords(resource, listOptions)
         : await listAuthorizedRecords(resource, session, listOptions));

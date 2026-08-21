@@ -154,7 +154,9 @@ async function list(storeName, options = {}) {
   await ensureBackend();
   const params = new URLSearchParams();
   if (options.retiroId) params.set('retiroId', options.retiroId);
-  if (options.cpf) params.set('cpf', options.cpf);
+  ['cpf', 'numeroFicha', 'nomeNormalizado', 'nascimento', 'setorChave'].forEach((key) => {
+    if (options[key]) params.set(key, options[key]);
+  });
   const query = params.toString();
   return api(`/${storeName}${query ? `?${query}` : ''}`);
 }
@@ -284,6 +286,7 @@ export const dataService = {
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: (retiroId = '') => list('cursistas', { retiroId }),
   listCursistasPorCpf: (retiroId = '', cpf = '') => list('cursistas', { retiroId, cpf }),
+  listCursistasPorFicha: (retiroId = '', numeroFicha = '') => list('cursistas', { retiroId, numeroFicha }),
   getCursista: (id) => get('cursistas', id),
   saveCursista: (student) => saveStudentRegistration(student),
   // A exclusao passa pelo servidor para remover a foto privada antes da ficha.
@@ -328,8 +331,8 @@ export const dataService = {
   deleteFinanceSheet: (id, reason = '') => removeWithReason('financeiro_planilhas', id, reason),
   listFinanceAudit: () => list('financeiro_planilha_auditoria'),
   findPessoa: async (nome, nascimento) => {
-    const people = await list('pessoas');
     const normalized = nome.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
+    const people = await list('pessoas', { nomeNormalizado: normalized, nascimento });
     return people.find((person) => person.nomeNormalizado === normalized && person.nascimento === nascimento);
   },
 };

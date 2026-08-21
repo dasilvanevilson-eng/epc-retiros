@@ -147,7 +147,7 @@ async function findStudent(type, retreatId, recordId) {
     const record = await getRecordStrict('cursistas', recordId);
     return record?.retiroId === retreatId ? record : null;
   }
-  const records = type === 'epc' ? await listCursistasEpc(retreatId) : await listCursistasSmp(retreatId);
+  const records = type === 'epc' ? await listCursistasEpc(retreatId, { id: recordId }) : await listCursistasSmp(retreatId, { id: recordId });
   return records.find((item) => String(item.id || '') === String(recordId) || String(item.numeroFichaSmp || '') === String(recordId)) || null;
 }
 
@@ -155,9 +155,9 @@ async function findStudentByFile(type, retreatId, fileNumber) {
   type = normalizeType(type);
   const target = String(Number(fileNumber) || fileNumber || '').trim();
   if (type === 'individual') {
-    return (await listRecords('cursistas', { retiroId: retreatId })).find((item) => String(Number(item.numeroFichaIndividual) || item.numeroFichaIndividual) === target) || null;
+    return (await listRecords('cursistas', { retiroId: retreatId, numeroFicha: target })).find((item) => String(Number(item.numeroFichaIndividual) || item.numeroFichaIndividual) === target) || null;
   }
-  const records = type === 'epc' ? await listCursistasEpc(retreatId) : await listCursistasSmp(retreatId);
+  const records = type === 'epc' ? await listCursistasEpc(retreatId, { numeroFicha: target }) : await listCursistasSmp(retreatId, { numeroFicha: target });
   return records.find((item) => String(Number(item.numeroFichaSmp || item.id) || item.numeroFichaSmp || item.id) === target) || null;
 }
 

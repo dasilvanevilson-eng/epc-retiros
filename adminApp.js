@@ -5126,9 +5126,12 @@ async function renderCursista({ publicContext = null } = {}) {
     }
     if (await checkStudentCpf(true)) return;
     const previousId = values.get('id');
-    const currentStudents = await dataService.listCursistas(focusStudentRetreat?.id || '');
-    const currentStudent = previousId && currentStudents.find((student) => student.id === previousId);
-    const duplicatedFileNumber = currentStudents.find((student) => (
+    const [currentStudent, studentsByFileNumber, studentsByCpf] = await Promise.all([
+      previousId ? dataService.getCursista(previousId).catch(() => null) : null,
+      dataService.listCursistasPorFicha(focusStudentRetreat?.id || '', numeroFichaIndividual),
+      dataService.listCursistasPorCpf(focusStudentRetreat?.id || '', cpf),
+    ]);
+    const duplicatedFileNumber = studentsByFileNumber.find((student) => (
       (!focusStudentRetreat || student.retiroId === focusStudentRetreat.id)
       && String(student.numeroFichaIndividual || '') === numeroFichaIndividual
       && student.id !== previousId
@@ -5138,7 +5141,7 @@ async function renderCursista({ publicContext = null } = {}) {
       focusStudentIssue(studentFileNumberInput);
       return;
     }
-    const duplicatedCpf = currentStudents.find((student) => student.retiroId === focusStudentRetreat?.id && normalizeCpf(student.cpf) === cpf && student.id !== previousId);
+    const duplicatedCpf = studentsByCpf.find((student) => student.retiroId === focusStudentRetreat?.id && normalizeCpf(student.cpf) === cpf && student.id !== previousId);
     if (duplicatedCpf) {
       app.querySelector('#student-message').textContent = duplicateStudentCpfMessage;
       focusStudentIssue(form.elements.cpf);
@@ -9714,7 +9717,9 @@ async function route() {
         return;
       }
       try {
-        const students = await loadStudentList();
+        const students = typeof dataService.listCursistasPorFicha === 'function'
+          ? await dataService.listCursistasPorFicha(activeRetreat?.id || '', fileNumber)
+          : await loadStudentList();
         if (currentRequest !== studentFileLookupRequest) return;
         const student = students.find((item) => (
           item.retiroId === activeRetreat?.id

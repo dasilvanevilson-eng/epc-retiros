@@ -435,6 +435,13 @@ async function listPeople(retiroId = '') {
   return people.map(mapPerson);
 }
 
+async function listPeopleByNameBirth(nomeNormalizado = '', nascimento = '') {
+  const normalizedName = String(nomeNormalizado || '').trim();
+  const birthDate = String(nascimento || '').trim();
+  if (!normalizedName || !birthDate) return [];
+  return (await rowsWhere('pessoas', `nome_normalizado=eq.${enc(normalizedName)}&nascimento=eq.${enc(birthDate)}`)).map(mapPerson);
+}
+
 async function getPerson(id) {
   const row = await findPersonRow(id);
   return row ? mapPerson(row) : null;
@@ -1075,9 +1082,24 @@ function mapCursistaSmp(row) {
   };
 }
 
-async function listCursistasSmp(retiroId) {
+async function listCursistasSmp(retiroId, options = []) {
   requireSupabaseForCursistaSmp();
   const filter = retiroId ? `retiro_id=eq.${enc(retiroId)}` : '';
+  const optionBag = Array.isArray(options) ? { cpfValues: options } : (options || {});
+  const cpfs = [...new Set(array(optionBag.cpfValues).map(normalizeCpfDigits).filter(Boolean))];
+  if (filter && cpfs.length) {
+    const cpfFilter = `in.(${cpfs.map(enc).join(',')})`;
+    const [byHisCpf, byHerCpf] = await Promise.all([
+      rowsWhere('cursista_smp', `${filter}&ele_cpf=${cpfFilter}`),
+      rowsWhere('cursista_smp', `${filter}&ela_cpf=${cpfFilter}`),
+    ]);
+    return [...new Map([...byHisCpf, ...byHerCpf].map((row) => [row.id, row])).values()].map(mapCursistaSmp);
+  }
+  const fileNumber = String(optionBag.numeroFicha || optionBag.id || '').trim();
+  if (filter && fileNumber) {
+    const rows = await rowsWhere('cursista_smp', `${filter}&id=eq.${enc(fileNumber)}`, 'updated_at.desc');
+    return rows.map(mapCursistaSmp);
+  }
   const rows = filter ? await rowsWhere('cursista_smp', filter, 'updated_at.desc') : await allRows('cursista_smp');
   return rows.map(mapCursistaSmp);
 }
@@ -1278,9 +1300,24 @@ function mapCursistaEpc(row) {
   return record;
 }
 
-async function listCursistasEpc(retiroId) {
+async function listCursistasEpc(retiroId, options = []) {
   requireSupabaseForCursistaEpc();
   const filter = retiroId ? `retiro_id=eq.${enc(retiroId)}` : '';
+  const optionBag = Array.isArray(options) ? { cpfValues: options } : (options || {});
+  const cpfs = [...new Set(array(optionBag.cpfValues).map(normalizeCpfDigits).filter(Boolean))];
+  if (filter && cpfs.length) {
+    const cpfFilter = `in.(${cpfs.map(enc).join(',')})`;
+    const [byHisCpf, byHerCpf] = await Promise.all([
+      rowsWhere('cursista_epc', `${filter}&ele_cpf=${cpfFilter}`),
+      rowsWhere('cursista_epc', `${filter}&ela_cpf=${cpfFilter}`),
+    ]);
+    return [...new Map([...byHisCpf, ...byHerCpf].map((row) => [row.id, row])).values()].map(mapCursistaEpc);
+  }
+  const fileNumber = String(optionBag.numeroFicha || optionBag.id || '').trim();
+  if (filter && fileNumber) {
+    const rows = await rowsWhere('cursista_epc', `${filter}&id=eq.${enc(fileNumber)}`, 'updated_at.desc');
+    return rows.map(mapCursistaEpc);
+  }
   const rows = filter ? await rowsWhere('cursista_epc', filter, 'updated_at.desc') : await allRows('cursista_epc');
   return rows.map(mapCursistaEpc);
 }
@@ -1617,17 +1654,26 @@ const retreatScopedSimpleStores = new Set(['casais', 'crachas', 'financeiro_plan
 async function listRelational(storeName, options = {}) {
   const retreatId = typeof options === 'string' ? options : String(options.retiroId || '').trim();
   const cpf = typeof options === 'string' ? '' : String(options.cpf || '').replace(/\D/g, '').trim();
+  const numeroFicha = typeof options === 'string' ? '' : String(options.numeroFicha || '').trim();
+  const nomeNormalizado = typeof options === 'string' ? '' : String(options.nomeNormalizado || '').trim();
+  const nascimento = typeof options === 'string' ? '' : String(options.nascimento || '').trim();
+  const setorChave = typeof options === 'string' ? '' : String(options.setorChave || '').trim();
   if (storeName === 'retiros') return listRetreats();
-  if (storeName === 'pessoas') return listPeople(retreatId);
+  if (storeName === 'pessoas') return nomeNormalizado && nascimento ? listPeopleByNameBirth(nomeNormalizado, nascimento) : listPeople(retreatId);
   if (storeName === 'adesoes') return cpf ? listEnrolmentsByCpf(retreatId, cpf) : listEnrolments(retreatId);
   if (storeName === 'cursistas') {
-    const filter = [retreatId ? `retiro_id=eq.${enc(retreatId)}` : '', cpf ? `cpf=eq.${enc(cpf)}` : ''].filter(Boolean).join('&');
+    const filter = [
+      retreatId ? `retiro_id=eq.${enc(retreatId)}` : '',
+      cpf ? `cpf=eq.${enc(cpf)}` : '',
+      numeroFicha ? `numero_ficha_individual=eq.${enc(numeroFicha)}` : '',
+    ].filter(Boolean).join('&');
     return (filter ? await rowsWhere('cursistas', filter, 'updated_at.desc') : await allRows('cursistas')).map(mapStudent);
   }
   if (storeName === 'comunidades') return listCommunities(retreatId);
   const table = tableByStore[storeName];
   const mapper = simpleMappers[storeName];
   if (!table || !mapper) throw new Error(`Store nao mapeada: ${storeName}`);
+  if (retreatId && storeName === 'financeiro_planilhas' && setorChave) return (await rowsWhere(table, `retiro_id=eq.${enc(retreatId)}&setor_chave=eq.${enc(setorChave)}`, 'updated_at.desc')).map(mapper);
   if (retreatId && retreatScopedSimpleStores.has(storeName)) return (await rowsWhere(table, `retiro_id=eq.${enc(retreatId)}`, 'updated_at.desc')).map(mapper);
   return (await allRows(table, table.includes('permissoes') || table.includes('retiros') ? '' : 'updated_at.desc')).map(mapper);
 }
