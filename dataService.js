@@ -154,6 +154,7 @@ async function list(storeName, options = {}) {
   await ensureBackend();
   const params = new URLSearchParams();
   if (options.retiroId) params.set('retiroId', options.retiroId);
+  if (options.cpf) params.set('cpf', options.cpf);
   const query = params.toString();
   return api(`/${storeName}${query ? `?${query}` : ''}`);
 }
@@ -273,6 +274,7 @@ export const dataService = {
   setSectorRegistrationLinkClosed: (retreatId, setor, inscricaoEncerrada) => api(`/cursista-links/${encodeURIComponent(retreatId)}/setor`, { method: 'POST', body: JSON.stringify({ setor, inscricaoEncerrada }) }),
   deleteRetiro: (id) => remove('retiros', id),
   listAdesoes: (retiroId = '') => list('adesoes', { retiroId }),
+  listAdesoesPorCpf: (retiroId = '', cpf = '') => list('adesoes', { retiroId, cpf }),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),
   saveTeamCouple: (payload) => api('/adesoes-casal', { method: 'POST', body: JSON.stringify(payload), timeoutMs: 120000 }),
   deleteAdesao: (id) => remove('adesoes', id),
@@ -281,6 +283,7 @@ export const dataService = {
   savePessoa: (person) => save('pessoas', person),
   deletePessoa: (id) => remove('pessoas', id),
   listCursistas: (retiroId = '') => list('cursistas', { retiroId }),
+  listCursistasPorCpf: (retiroId = '', cpf = '') => list('cursistas', { retiroId, cpf }),
   getCursista: (id) => get('cursistas', id),
   saveCursista: (student) => saveStudentRegistration(student),
   // A exclusao passa pelo servidor para remover a foto privada antes da ficha.

@@ -561,6 +561,16 @@ async function listEnrolments(retiroId = '') {
   return rows.map((row) => mapEnrolment(row, lookups));
 }
 
+async function listEnrolmentsByCpf(retiroId = '', cpf = '') {
+  const normalizedCpf = String(cpf || '').replace(/\D/g, '');
+  if (!retiroId || !normalizedCpf) return listEnrolments(retiroId);
+  const people = await rowsWhere('pessoas', `cpf=eq.${enc(normalizedCpf)}`, '', 'id');
+  const rows = await rowsWhereIn('adesoes', 'pessoa_id', people.map((person) => person.id), 'updated_at.desc');
+  const scopedRows = rows.filter((row) => row.retiro_id === retiroId);
+  const lookups = await enrolmentLookups(scopedRows);
+  return scopedRows.map((row) => mapEnrolment(row, lookups));
+}
+
 async function getEnrolment(id) {
   const row = await oneWhere('adesoes', `id=eq.${enc(id)}`);
   if (!row) return null;
@@ -1606,10 +1616,14 @@ const retreatScopedSimpleStores = new Set(['casais', 'crachas', 'financeiro_plan
 
 async function listRelational(storeName, options = {}) {
   const retreatId = typeof options === 'string' ? options : String(options.retiroId || '').trim();
+  const cpf = typeof options === 'string' ? '' : String(options.cpf || '').replace(/\D/g, '').trim();
   if (storeName === 'retiros') return listRetreats();
   if (storeName === 'pessoas') return listPeople(retreatId);
-  if (storeName === 'adesoes') return listEnrolments(retreatId);
-  if (storeName === 'cursistas') return (retreatId ? await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}`, 'updated_at.desc') : await allRows('cursistas')).map(mapStudent);
+  if (storeName === 'adesoes') return cpf ? listEnrolmentsByCpf(retreatId, cpf) : listEnrolments(retreatId);
+  if (storeName === 'cursistas') {
+    const filter = [retreatId ? `retiro_id=eq.${enc(retreatId)}` : '', cpf ? `cpf=eq.${enc(cpf)}` : ''].filter(Boolean).join('&');
+    return (filter ? await rowsWhere('cursistas', filter, 'updated_at.desc') : await allRows('cursistas')).map(mapStudent);
+  }
   if (storeName === 'comunidades') return listCommunities(retreatId);
   const table = tableByStore[storeName];
   const mapper = simpleMappers[storeName];

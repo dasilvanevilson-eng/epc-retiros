@@ -469,7 +469,7 @@ async function currentSession(req) {
 async function listAuthorizedRecords(resource, session, options = {}) {
   const requestedRetreatId = String(options.retiroId || '').trim();
   if (requestedRetreatId && !canAccessRetreat(session, requestedRetreatId)) return [];
-  const records = await listRecords(resource, requestedRetreatId ? { retiroId: requestedRetreatId } : {});
+  const records = await listRecords(resource, { ...options, ...(requestedRetreatId ? { retiroId: requestedRetreatId } : {}) });
   if (hasGlobalRetreatAccess(session)) return resource === 'retiros' ? records.map((retreat) => tagRetreatAccess(session, retreat)) : records;
   if (resource === 'retiros') return records.map((retreat) => tagRetreatAccess(session, retreat));
   if (['adesoes', 'cursistas', 'casais', 'comunidades', 'crachas'].includes(resource)) return filterByAllowedRetreats(session, records);
@@ -531,6 +531,7 @@ async function handleApi(req, res, pathname) {
   const [resource, id, action, fourth] = parts;
   const requestUrl = new URL(req.url || pathname || '/', 'https://familiaepcindaial.local');
   const listRetreatId = String(requestUrl.searchParams.get('retiroId') || '').trim();
+  const listCpf = String(requestUrl.searchParams.get('cpf') || '').replace(/\D/g, '').trim();
 
   if (resource === 'cadastro-cursista' && id) {
     try {
@@ -930,6 +931,12 @@ async function handleApi(req, res, pathname) {
   if (!publicRegistrationRequest && !hasGlobalRetreatAccess(session) && resource === 'retiros' && req.method === 'PUT' && !id) return sendError(res, 403, noRetreatAccessMessage);
   if (req.method === 'GET' && !id) {
     if (publicRegistrationRequest && ['pessoas', 'adesoes'].includes(resource) && !listRetreatId) return sendError(res, 400, 'Informe o retiro para esta consulta.');
+    if (listCpf) {
+      const listOptions = { ...(listRetreatId ? { retiroId: listRetreatId } : {}), cpf: listCpf };
+      return sendJson(res, 200, publicRegistrationRequest
+        ? await listRecords(resource, listOptions)
+        : await listAuthorizedRecords(resource, session, listOptions));
+    }
     return sendJson(res, 200, publicRegistrationRequest
       ? await listRecords(resource, listRetreatId ? { retiroId: listRetreatId } : {})
       : await listAuthorizedRecords(resource, session, listRetreatId ? { retiroId: listRetreatId } : {}));

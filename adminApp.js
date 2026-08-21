@@ -8524,8 +8524,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     if (publicCpfMessages.includes(currentMessage) || currentMessage.startsWith('Seu conjuge ')) form.querySelector('#form-message').textContent = '';
     setDuplicateCpfLock(false);
   };
-  const listStudentsForCpfCheck = async () => {
+  const listStudentsForCpfCheck = async (cpf = '') => {
     try {
+      const normalizedCpf = normalizeCpf(cpf);
+      if (normalizedCpf && typeof dataService.listCursistasPorCpf === 'function') return await dataService.listCursistasPorCpf(id, normalizedCpf);
       return await dataService.listCursistas(id);
     } catch {
       return [];
@@ -8538,7 +8540,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       clearDuplicateCpfMessage();
       return false;
     }
-    const students = await listStudentsForCpfCheck();
+    const students = await listStudentsForCpfCheck(cpf);
     const hasConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf) === cpf);
     if (!hasConflict) {
       if (form.querySelector('#form-message').textContent === publicStudentConflictMessage) clearDuplicateCpfMessage();
@@ -8560,6 +8562,10 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   ]);
   const entryMatchesCpf = (entry, cpf) => personIdsForCpf(cpf).has(entry.pessoaId) || normalizeCpf(entry.pessoaId) === cpf;
   const findFocusedRetreatEntryByCpf = async (cpf, excludeEntryId = '') => {
+    if (typeof dataService.listAdesoesPorCpf === 'function') {
+      const cpfEnrolments = await dataService.listAdesoesPorCpf(id, cpf).catch(() => null);
+      if (Array.isArray(cpfEnrolments)) return cpfEnrolments.find((entry) => entry.retiroId === id && entry.id !== excludeEntryId && entryMatchesCpf(entry, cpf));
+    }
     const latestEnrolments = await dataService.listAdesoes(id).catch(() => enrolments);
     if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
     return enrolments.find((entry) => entry.retiroId === id && entry.id !== excludeEntryId && entryMatchesCpf(entry, cpf));
@@ -8573,7 +8579,7 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
     }
     const mainCpf = normalizeCpf(form.elements.cpf.value);
     const teamConflictEntry = await findFocusedRetreatEntryByCpf(cpf, embedded ? editingSpouseEntry?.id : '');
-    const students = await listStudentsForCpfCheck();
+    const students = await listStudentsForCpfCheck(cpf);
     const studentConflict = students.some((student) => student.retiroId === id && normalizeCpf(student.cpf) === cpf);
     const sameAsMainCpf = mainCpf && mainCpf === cpf;
     if (!teamConflictEntry && !studentConflict && !sameAsMainCpf) {
@@ -8907,10 +8913,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
       ...(isCouple() ? [{ cpf: normalizeCpf(data.get('spouseCpf')), control: form.elements.spouseCpf, excludeEntryId: editingSpouseEntry?.id || '' }] : []),
     ].filter((item) => isValidCpf(item.cpf));
     if (!checks.length) return false;
-    const latestEnrolments = await dataService.listAdesoes(id).catch(() => enrolments);
-    if (Array.isArray(latestEnrolments)) enrolments = latestEnrolments;
     for (const item of checks) {
-      const duplicateEntry = enrolments.find((entry) => entry.retiroId === id && entry.id !== item.excludeEntryId && entryMatchesCpf(entry, item.cpf));
+      const duplicateEntry = await findFocusedRetreatEntryByCpf(item.cpf, item.excludeEntryId);
       if (duplicateEntry) {
         showCpfLockMessage(item.control, 'Este CPF ja possui adesao neste retiro.');
         item.control.scrollIntoView({ behavior: 'smooth', block: 'center' });
