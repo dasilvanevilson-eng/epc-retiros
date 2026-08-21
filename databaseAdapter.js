@@ -169,9 +169,9 @@ async function optionalAllRows(table, order = '') {
   }
 }
 
-async function rowsWhere(table, filter, order = '') {
+async function rowsWhere(table, filter, order = '', select = '*') {
   const orderQuery = order ? `&order=${order}` : '';
-  return pagedRows(`${table}?${filter}&select=*${orderQuery}`);
+  return pagedRows(`${table}?${filter}&select=${select}${orderQuery}`);
 }
 
 async function optionalRowsWhere(table, filter, order = '') {
@@ -183,12 +183,12 @@ async function optionalRowsWhere(table, filter, order = '') {
   }
 }
 
-async function rowsWhereIn(table, column, values = [], order = '') {
+async function rowsWhereIn(table, column, values = [], order = '', select = '*') {
   const uniqueValues = [...new Set(array(values).map((value) => String(value || '').trim()).filter(Boolean))];
   if (!uniqueValues.length) return [];
   const chunks = [];
   for (let index = 0; index < uniqueValues.length; index += 100) chunks.push(uniqueValues.slice(index, index + 100));
-  const pages = await Promise.all(chunks.map((chunk) => rowsWhere(table, `${column}=in.(${chunk.map(enc).join(',')})`, order)));
+  const pages = await Promise.all(chunks.map((chunk) => rowsWhere(table, `${column}=in.(${chunk.map(enc).join(',')})`, order, select)));
   return pages.flat();
 }
 
@@ -201,8 +201,8 @@ async function optionalRowsWhereIn(table, column, values = [], order = '') {
   }
 }
 
-async function oneWhere(table, filter) {
-  const rows = await supabaseRequest(`${table}?${filter}&select=*&limit=1`);
+async function oneWhere(table, filter, select = '*') {
+  const rows = await supabaseRequest(`${table}?${filter}&select=${select}&limit=1`);
   return rows[0] || null;
 }
 
@@ -272,7 +272,7 @@ async function getRetreat(id) {
 
 async function referencedIds(table, column, ids = []) {
   if (!ids.length) return new Set();
-  const rows = await rowsWhere(table, `${column}=in.(${ids.map(enc).join(',')})`);
+  const rows = await rowsWhere(table, `${column}=in.(${ids.map(enc).join(',')})`, '', column);
   return new Set(rows.map((row) => row[column]).filter(Boolean));
 }
 
@@ -844,9 +844,9 @@ async function findStudentRow(id) {
 
 async function findStudentRowForRetreat(id, retreatId) {
   if (!id) return null;
-  if (isUuid(id)) return oneWhere('cursistas', `id=eq.${enc(id)}&retiro_id=eq.${enc(retreatId)}`);
+  if (isUuid(id)) return oneWhere('cursistas', `id=eq.${enc(id)}&retiro_id=eq.${enc(retreatId)}`, 'id');
   if (!retreatId) return findStudentRow(id);
-  return oneWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(id)}`);
+  return oneWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(id)}`, 'id');
 }
 
 async function assertStudentBusinessKeys(record, currentId = '') {
@@ -855,7 +855,7 @@ async function assertStudentBusinessKeys(record, currentId = '') {
   const fileNumber = Number(record.numeroFichaIndividual);
   if (!retreatId) return;
   if (cpf) {
-    const duplicateCpf = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(cpf)}`))
+    const duplicateCpf = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&cpf=eq.${enc(cpf)}`, '', 'id'))
       .find((row) => row.id !== currentId);
     if (duplicateCpf) {
       const error = new Error(duplicateStudentCpfMessage);
@@ -864,7 +864,7 @@ async function assertStudentBusinessKeys(record, currentId = '') {
     }
   }
   if (Number.isInteger(fileNumber) && fileNumber > 0) {
-    const duplicateFileNumber = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&numero_ficha_individual=eq.${enc(fileNumber)}`))
+    const duplicateFileNumber = (await rowsWhere('cursistas', `retiro_id=eq.${enc(retreatId)}&numero_ficha_individual=eq.${enc(fileNumber)}`, '', 'id'))
       .find((row) => row.id !== currentId);
     if (duplicateFileNumber) {
       const error = new Error(duplicateStudentFileNumberMessage);
@@ -1692,7 +1692,7 @@ async function saveRecord(storeName, record) {
 
 async function saveRetreatStudentRegistrationLinks(retreatId, linksCadastroCursistas = []) {
   if (!hasSupabase()) throw supabaseRequiredError();
-  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`, 'extras');
   if (!row) return null;
   await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
     method: 'PATCH',
@@ -1708,7 +1708,7 @@ async function saveRetreatStudentRegistrationLinks(retreatId, linksCadastroCursi
 
 async function saveRetreatClosedRegistrationSectors(retreatId, setoresInscricoesEncerradas = []) {
   if (!hasSupabase()) throw supabaseRequiredError();
-  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`);
+  const row = await oneWhere('retiros', `id=eq.${enc(retreatId)}`, 'extras');
   if (!row) return null;
   await supabaseRequest(`retiros?id=eq.${enc(retreatId)}`, {
     method: 'PATCH',
