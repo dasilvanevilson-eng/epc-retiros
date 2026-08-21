@@ -18,6 +18,8 @@ const publicReceiverRetreatId = globalThis.EPC_PUBLIC_RECEIVER?.retiroId || '';
 let retreats = [];
 let enrolments = [];
 let people = [];
+let loadedDataFocusRetreatId = null;
+let homeDataCache = { key: '', promise: null, data: null };
 let participantSort = { key: 'nome', direction: 'asc' };
 let participantsVisible = false;
 let receiverSort = { key: 'nome', direction: 'asc' };
@@ -756,14 +758,75 @@ function wireTypedBirthDates(root) {
   wireTypedDates(root, namedFieldSelector(['nascimento', 'spouseNascimento', ...teamKidDateFieldNames]));
 }
 
-async function loadData() {
+const invalidateHomeDataCache = () => {
+  homeDataCache = { key: '', promise: null, data: null };
+};
+
+const invalidateOperationalDataCaches = () => {
+  loadedDataFocusRetreatId = null;
+  invalidateHomeDataCache();
+};
+
+[
+  'saveRetiro', 'deleteRetiro',
+  'saveAdesao', 'saveTeamCouple', 'deleteAdesao',
+  'saveCursista', 'deleteCursista',
+  'saveCursistaSmp', 'deleteCursistaSmp',
+  'saveCursistaEpc', 'deleteCursistaEpc',
+  'saveComunidade', 'saveComunidadeMembros', 'moveComunidadeMembro', 'deleteComunidade',
+].forEach((methodName) => {
+  const original = dataService[methodName];
+  if (typeof original !== 'function') return;
+  dataService[methodName] = async (...args) => {
+    try {
+      return await original(...args);
+    } finally {
+      invalidateOperationalDataCaches();
+    }
+  };
+});
+
+const homeDataKey = (retreat = null) => [retreat?.id || '', retreat?.tipoFichaCursista || defaultStudentFormType].join(':');
+
+async function loadHomeData(retreat = null, loadCoupleStudents = null) {
+  const activeStudentFormType = retreat?.tipoFichaCursista || defaultStudentFormType;
+  const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
+  const key = homeDataKey(retreat);
+  if (homeDataCache.key !== key) invalidateHomeDataCache();
+  homeDataCache.key = key;
+  if (!homeDataCache.promise) {
+    homeDataCache.promise = (retreat?.id ? Promise.all([
+      dataService.listCursistas(retreat.id),
+      dataService.listComunidades(retreat.id),
+      usesCoupleStudentForm && typeof loadCoupleStudents === 'function' ? loadCoupleStudents().catch((error) => {
+        console.error(error);
+        return [];
+      }) : Promise.resolve([]),
+    ]) : Promise.resolve([[], [], []]))
+      .then(([allStudents, allCommunities, coupleStudents]) => {
+        homeDataCache.data = { allStudents, allCommunities, coupleStudents };
+        return homeDataCache.data;
+      })
+      .catch((error) => {
+        invalidateHomeDataCache();
+        throw error;
+      });
+  }
+  return homeDataCache.data || homeDataCache.promise;
+}
+
+async function loadData({ reuse = false } = {}) {
+  let focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
+  if (reuse && retreats.length && loadedDataFocusRetreatId === focusRetreatId) return;
+  invalidateHomeDataCache();
   retreats = await dataService.listRetiros();
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   normalizeRetreatSectorsForDisplay();
-  const focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
+  focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
   [enrolments, people] = focusRetreatId
     ? await Promise.all([dataService.listAdesoes(focusRetreatId), dataService.listPessoas(focusRetreatId)])
     : [[], []];
+  loadedDataFocusRetreatId = focusRetreatId;
 }
 
 async function ensureRetreatFocusLoaded() {
@@ -1451,14 +1514,8 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const active = selectedRetreat();
   const activeStudentFormType = active?.tipoFichaCursista || defaultStudentFormType;
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
-  const [allStudents, allCommunities, coupleStudents] = await Promise.all([
-    dataService.listCursistas(active?.id || ''),
-    dataService.listComunidades(active?.id || ''),
-    active?.id && usesCoupleStudentForm ? coupleStudentSource(activeStudentFormType).list(active.id).catch((error) => {
-      console.error(error);
-      return [];
-    }) : Promise.resolve([]),
-  ]);
+  const loadCoupleStudentsForHome = () => active?.id && usesCoupleStudentForm ? coupleStudentSource(activeStudentFormType).list(active.id) : Promise.resolve([]);
+  const { allStudents, allCommunities, coupleStudents } = await loadHomeData(active, loadCoupleStudentsForHome);
   const activeCommunities = active ? allCommunities.filter((community) => community.retiroId === active.id) : [];
   const activeCommunityDetails = studentCommunityDetails(activeCommunities);
   const activeCoupleCommunityDetails = coupleCommunityDetails(activeCommunities, activeStudentFormType);
@@ -9407,7 +9464,7 @@ async function route() {
       await loadData();
       return renderCursistaSmp(requestedStudentFileNumber);
     }
-    await loadData();
+    await loadData({ reuse: target === 'inicio' });
     if (target === 'inicio') return renderHome();
     if (target === 'retiros') return renderRetiros();
     if (target === 'configuracoes') return renderConfiguracoes();
