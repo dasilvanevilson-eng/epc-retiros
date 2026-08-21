@@ -9514,11 +9514,12 @@ async function route() {
     const deleteStudentRecord = async (id) => {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'excluir cursistas')) return;
       if (!id || !confirm('Excluir este cursista?')) return;
-      const students = await dataService.listCursistas(activeRetreat?.id || '');
+      const students = await loadStudentList();
       const student = students.find((item) => item.id === id) || id;
       form.querySelector('#student-message').textContent = 'Excluindo cursista e foto...';
       try {
         await dataService.deleteCursista(id);
+        invalidateStudentListCache();
         await removeStudentFromCommunities(student).catch(() => null);
         clearStudentForm({ focus: false, message: 'Cursista e foto excluídos com sucesso.' });
         setStudentFormLocked(true);
@@ -9537,17 +9538,46 @@ async function route() {
     };
     const studentSearchInput = app.querySelector('#student-search');
     const studentSearchResults = app.querySelector('#student-search-results');
+    let studentListRetreatId = '';
+    let studentListPromise = null;
+    let studentListCache = [];
+    const invalidateStudentListCache = () => {
+      studentListRetreatId = '';
+      studentListPromise = null;
+      studentListCache = [];
+    };
+    const loadStudentList = async ({ fresh = false } = {}) => {
+      const retreatId = activeRetreat?.id || '';
+      if (fresh || studentListRetreatId !== retreatId) invalidateStudentListCache();
+      studentListRetreatId = retreatId;
+      if (!studentListPromise) {
+        studentListPromise = dataService.listCursistas(retreatId)
+          .then((students) => {
+            studentListCache = students;
+            return students;
+          })
+          .catch((error) => {
+            invalidateStudentListCache();
+            throw error;
+          });
+      }
+      return studentListCache.length ? studentListCache : studentListPromise;
+    };
     let studentSearchRequest = 0;
+    let studentSearchTimer = 0;
     let studentSearchOpen = false;
     const closeStudentSearchResults = () => {
       studentSearchOpen = false;
       studentSearchRequest += 1;
+      window.clearTimeout(studentSearchTimer);
+      studentSearchTimer = 0;
       studentSearchInput.value = '';
       studentSearchResults.hidden = true;
       studentSearchResults.innerHTML = '';
     };
     form.addEventListener('student-form-cleared-after-save', () => {
       cancelStudentFileLookup();
+      invalidateStudentListCache();
       selectedStudentId = '';
       selectedStudentRecord = null;
       closeStudentSearchResults();
@@ -9556,7 +9586,7 @@ async function route() {
       studentSearchOpen = true;
       const currentRequest = ++studentSearchRequest;
       const term = normalizeText(studentSearchInput.value);
-      const students = (await dataService.listCursistas(activeRetreat?.id || ''))
+      const students = (await loadStudentList())
         .filter((student) => (!activeRetreat || student.retiroId === activeRetreat.id))
         .filter((student) => {
           const cpf = normalizeCpf(student.cpf);
@@ -9585,6 +9615,19 @@ async function route() {
         }
       }));
     };
+    const scheduleStudentSearch = ({ immediate = false } = {}) => {
+      studentSearchOpen = true;
+      window.clearTimeout(studentSearchTimer);
+      studentSearchTimer = 0;
+      studentSearchRequest += 1;
+      if (immediate) {
+        void renderStudentSearch();
+        return;
+      }
+      studentSearchTimer = window.setTimeout(() => {
+        void renderStudentSearch();
+      }, 300);
+    };
     const resetStudentFileLookupState = (fileNumber, message) => {
       selectedStudentId = '';
       selectedStudentRecord = null;
@@ -9610,7 +9653,7 @@ async function route() {
         return;
       }
       try {
-        const students = await dataService.listCursistas(activeRetreat?.id || '');
+        const students = await loadStudentList();
         if (currentRequest !== studentFileLookupRequest) return;
         const student = students.find((item) => (
           item.retiroId === activeRetreat?.id
@@ -9651,7 +9694,7 @@ async function route() {
       if (!ensureRetreatCanBeChanged(activeRetreat, 'incluir cursistas')) return;
       cancelStudentFileLookup();
       clearStudentForm({ focus: false });
-      const students = await dataService.listCursistas(activeRetreat?.id || '');
+      const students = await loadStudentList();
       if (!studentFileNumberInput) return;
       studentFileNumberInput.value = nextAvailableStudentFileNumber(students, activeRetreat?.id || '');
       studentFileNumberInput.closest('.student-file-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -9669,8 +9712,8 @@ async function route() {
       event.preventDefault();
       lookupStudentByFileNumber({ immediate: true });
     });
-    studentSearchInput.addEventListener('focus', () => { cancelStudentFileLookup(); renderStudentSearch(); });
-    studentSearchInput.addEventListener('input', () => { cancelStudentFileLookup(); renderStudentSearch(); });
+    studentSearchInput.addEventListener('focus', () => { cancelStudentFileLookup(); scheduleStudentSearch({ immediate: true }); });
+    studentSearchInput.addEventListener('input', () => { cancelStudentFileLookup(); scheduleStudentSearch(); });
     const studentSearchField = studentSearchInput.closest('.registration-search-field');
     const hideStudentSearch = () => {
       studentSearchOpen = false;
@@ -9686,7 +9729,7 @@ async function route() {
     document.addEventListener('focusin', closeStudentSearch, true);
     form.querySelector('.delete-student')?.addEventListener('click', () => deleteStudentRecord(form.elements.id?.value));
     if (requestedStudentFileNumber && studentFileNumberInput) {
-      const students = await dataService.listCursistas(activeRetreat?.id || '');
+      const students = await loadStudentList();
       const requestedStudent = students.find((student) => student.retiroId === activeRetreat?.id && Number(student.numeroFichaIndividual) === requestedStudentFileNumber);
       if (requestedStudent) {
         loadStudent(requestedStudent);
