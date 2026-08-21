@@ -1078,12 +1078,17 @@ async function assertCursistaSmpCpfAvailability(record, currentId = '') {
   if (cpfs.some((cpf) => !isValidCpfNumber(cpf))) throw new Error('Informe um CPF valido para cada integrante do casal.');
   if (cpfs[0] === cpfs[1]) throw new Error('Informe um CPF diferente para cada integrante do casal.');
 
-  const [individualStudents, smpStudents, epcStudents, enrolmentRows] = await Promise.all([
-    rowsWhere('cursistas', filter),
-    rowsWhere('cursista_smp', filter),
-    optionalRowsWhere('cursista_epc', filter),
-    rowsWhere('adesoes', filter),
+  const cpfFilter = `in.(${cpfsToCheck.map(enc).join(',')})`;
+  const [individualStudents, smpByHisCpf, smpByHerCpf, epcByHisCpf, epcByHerCpf, enrolmentRows] = await Promise.all([
+    rowsWhere('cursistas', `${filter}&cpf=${cpfFilter}`, '', 'id,cpf'),
+    rowsWhere('cursista_smp', `${filter}&ele_cpf=${cpfFilter}`, '', 'id,ele_cpf,ela_cpf'),
+    rowsWhere('cursista_smp', `${filter}&ela_cpf=${cpfFilter}`, '', 'id,ele_cpf,ela_cpf'),
+    optionalRowsWhere('cursista_epc', `${filter}&ele_cpf=${cpfFilter}`, '', 'id,ele_cpf,ela_cpf'),
+    optionalRowsWhere('cursista_epc', `${filter}&ela_cpf=${cpfFilter}`, '', 'id,ele_cpf,ela_cpf'),
+    rowsWhere('adesoes', filter, '', 'pessoa_id'),
   ]);
+  const smpStudents = [...smpByHisCpf, ...smpByHerCpf];
+  const epcStudents = [...epcByHisCpf, ...epcByHerCpf];
   const studentCpfSet = new Set([
     ...individualStudents.map((row) => normalizeCpfDigits(row.cpf)),
     ...smpStudents
@@ -1097,7 +1102,7 @@ async function assertCursistaSmpCpfAvailability(record, currentId = '') {
     throw error;
   }
 
-  const peopleRows = await rowsWhereIn('pessoas', 'id', enrolmentRows.map((row) => row.pessoa_id));
+  const peopleRows = await rowsWhereIn('pessoas', 'id', enrolmentRows.map((row) => row.pessoa_id), '', 'id,cpf,extras');
   const teamCpfSet = new Set(peopleRows.map((row) => normalizeCpfDigits(row.cpf || row.extras?.cpf)).filter(Boolean));
   if (cpfsToCheck.some((cpf) => teamCpfSet.has(cpf))) {
     const error = new Error(studentTeamCpfConflictMessage);
