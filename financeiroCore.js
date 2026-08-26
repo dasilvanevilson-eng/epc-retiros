@@ -87,6 +87,34 @@ export function inheritSectorSheet({ retreat, sector, previousRetreat, previousS
   };
 }
 
+export function cloneRecurringStructureSheet({ retreat, sector, sourceRetreat, sourceSheet, id = '' } = {}) {
+  const key = normalizeSectorKey(sector);
+  return {
+    id,
+    retiroId: retreat?.id || '',
+    setor: String(sector || '').trim(),
+    setorChave: key,
+    retiroOrigemId: sourceSheet ? sourceRetreat?.id || sourceSheet.retiroId || '' : '',
+    inicializada: true,
+    itensRecorrentes: (sourceSheet?.itensRecorrentes || []).map((item, index) => ({
+      id: '',
+      chaveRecorrencia: item.chaveRecorrencia || item.id || '',
+      itemOrigemId: item.id || '',
+      descricao: item.descricao || '',
+      unidade: item.unidade || 'un',
+      fornecedor: item.fornecedor || '',
+      modo: 'movimento',
+      posicaoAnterior: 0,
+      entrada: 0,
+      saida: 0,
+      saldo: 0,
+      precoUnitario: 0,
+      ordem: index + 1,
+    })),
+    despesasEventuais: [],
+  };
+}
+
 export function sectorSheetTotals(sheet = {}) {
   const recurring = (sheet.itensRecorrentes || []).map(calculateRecurringItem);
   const eventual = (sheet.despesasEventuais || []).reduce((total, item) => total + nonNegativeFinanceNumber(item.valor), 0);

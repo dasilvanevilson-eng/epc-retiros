@@ -13,6 +13,8 @@ assert.match(app, /<select name="tipoRetiro" required>\$\{retreatTypeOptions\(\)
 assert.match(app, /<select name="tipoRetiro" required>\$\{retreatTypeOptions\(retreat\.tipoRetiro\)\}<\/select>/, 'A edição deve carregar o tipo salvo.');
 assert.match(app, /form\.elements\.tipoRetiro\.value = source\?\.tipoRetiro \|\| ''/, 'A cópia da estrutura deve copiar o tipo do retiro.');
 assert.match(app, /tipoRetiro: values\.get\('tipoRetiro'\)/, 'A criação deve persistir o tipo do retiro.');
+assert.match(app, /copyFinanceRecurringStructureToRetreat\(sourceRetreatId, retreat\)/, 'A criação baseada em outro retiro deve copiar a estrutura dos insumos recorrentes do Financeiro.');
+assert.match(app, /cloneRecurringStructureSheet\(\{ retreat: targetRetreat, sector, sourceRetreat, sourceSheet, id: createId\(\) \}\)/, 'A cópia financeira deve criar planilhas novas e zeradas para o retiro destino.');
 assert.match(app, /Object\.assign\(retreat, \{ nome: values\.get\('nome'\)\.trim\(\), tipoRetiro: values\.get\('tipoRetiro'\)/, 'A edição deve persistir o tipo do retiro.');
 assert.match(api, /allowedRetreatTypes/);
 assert.match(api, /Tipo do retiro invalido/);

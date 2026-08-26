@@ -3,6 +3,7 @@ import { buildKidsCareSummary } from './kidsCareSummary.js';
 import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 import { attachStudentPhotoField, photoUrl as studentPhotoUrl } from './studentPhotoClient.js';
 import { renderFinanceiro } from './financeiro.js?v=20260809-acoes-cabecalho';
+import { cloneRecurringStructureSheet, normalizeSectorKey } from './financeiroCore.js?v=20260809-sugestao-compra';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -2120,7 +2121,10 @@ async function renderNewRetreat(returnHash = '#configuracoes') {
       const setoresInscricoesEncerradas = sortedSectors.filter((sector) => closedKeys.has(normalizeText(sector)));
       const retreat = { id: createId(), nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: values.get('local').trim(), tipoFichaCursista: values.get('tipoFichaCursista') || defaultStudentFormType, valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), versaoFormatoLinksEquipe: teamSectorLinkFormatVersion, status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
-      if (sourceRetreatId) await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
+      if (sourceRetreatId) {
+        await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
+        await copyFinanceRecurringStructureToRetreat(sourceRetreatId, retreat);
+      }
       await loadData();
       alert(`Retiro "${retreat.nome}" criado. Para colocá-lo em foco, selecione-o na tela Início.`);
       location.hash = returnHash;
@@ -5637,6 +5641,20 @@ const copyBadgeProfilesToRetreat = async (sourceRetreatId, targetRetreatId) => {
     clonedFromRetreatId: sourceRetreatId,
     sourceProfileId: profile.id,
   })));
+};
+const copyFinanceRecurringStructureToRetreat = async (sourceRetreatId, targetRetreat = {}) => {
+  if (!sourceRetreatId || !targetRetreat?.id) return;
+  const sourceRetreat = retreats.find((retreat) => retreat.id === sourceRetreatId) || { id: sourceRetreatId };
+  const sourceSheets = await dataService.listFinanceSheets(sourceRetreatId);
+  const sourceSheetBySector = new Map(sourceSheets.map((sheet) => [normalizeSectorKey(sheet.setorChave || sheet.setor), sheet]));
+  const drafts = (targetRetreat.setores || [])
+    .map((sector) => {
+      const sourceSheet = sourceSheetBySector.get(normalizeSectorKey(sector));
+      if (!sourceSheet?.itensRecorrentes?.length) return null;
+      return cloneRecurringStructureSheet({ retreat: targetRetreat, sector, sourceRetreat, sourceSheet, id: createId() });
+    })
+    .filter(Boolean);
+  await Promise.all(drafts.map((draft) => dataService.saveFinanceSheet(draft)));
 };
 const badgeLogoOptions = [{ id: 'none', name: 'Sem logo', src: '' }, ...publicBadgeLogos];
 const logoById = (id) => badgeLogoOptions.find((logo) => logo.id === id) || publicBadgeLogos[0];

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   calculateRecurringItem,
+  cloneRecurringStructureSheet,
   dailyParticipationTotal,
   findPreviousRetreat,
   inheritSectorSheet,
@@ -54,6 +55,26 @@ assert.equal(inherited.itensRecorrentes[0].posicaoAnterior, 8);
 assert.equal(inherited.itensRecorrentes[0].precoUnitario, 7);
 assert.equal(inherited.itensRecorrentes[0].fornecedor, 'Atacado EPC');
 assert.equal(inherited.itensRecorrentes[0].chaveRecorrencia, 'rice');
+const clonedStructure = cloneRecurringStructureSheet({
+  retreat: { id: 'new-retreat' },
+  sector: 'Cozinha',
+  sourceRetreat: { id: 'base-retreat' },
+  sourceSheet: {
+    retiroId: 'base-retreat',
+    itensRecorrentes: [{ id: 'rice-prev', chaveRecorrencia: 'rice', descricao: 'Arroz', unidade: 'kg', fornecedor: 'Atacado EPC', saldo: 8, entrada: 3, saida: 2, precoUnitario: 7 }],
+    despesasEventuais: [{ descricao: 'Frete', valor: 30 }],
+  },
+});
+assert.equal(clonedStructure.retiroId, 'new-retreat');
+assert.equal(clonedStructure.retiroOrigemId, 'base-retreat');
+assert.equal(clonedStructure.itensRecorrentes[0].descricao, 'Arroz');
+assert.equal(clonedStructure.itensRecorrentes[0].fornecedor, 'Atacado EPC');
+assert.equal(clonedStructure.itensRecorrentes[0].posicaoAnterior, 0);
+assert.equal(clonedStructure.itensRecorrentes[0].entrada, 0);
+assert.equal(clonedStructure.itensRecorrentes[0].saida, 0);
+assert.equal(clonedStructure.itensRecorrentes[0].saldo, 0);
+assert.equal(clonedStructure.itensRecorrentes[0].precoUnitario, 0);
+assert.deepEqual(clonedStructure.despesasEventuais, []);
 
 const totals = sectorSheetTotals({
   itensRecorrentes: [{ modo: 'movimento', posicaoAnterior: 10, entrada: 5, saida: 4, precoUnitario: 2 }],
