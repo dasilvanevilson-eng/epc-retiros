@@ -22,6 +22,7 @@ const createId = () => globalThis.crypto?.randomUUID?.() || `finance-${Date.now(
 const inputValue = (value) => Number.isFinite(Number(value)) ? String(Number(value)) : '0';
 const supplierListId = 'finance-supplier-options';
 const normalizeFinanceSearch = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
+const recurringKey = (item = {}) => String(item.chaveRecorrencia || item.itemOrigemId || item.id || createId()).trim();
 
 const supplierOptionsHtml = (sheets = []) => {
   const suppliers = new Map();
@@ -59,9 +60,9 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   const calculated = calculateRecurringItem(item);
   const disabled = canEdit ? '' : 'disabled';
   const movement = calculated.modo !== 'saldo';
-  return `<tr data-finance-recurring-row data-id="${escapeHtml(item.id || '')}" data-key="${escapeHtml(item.chaveRecorrencia || '')}" data-origin="${escapeHtml(item.itemOrigemId || '')}">
-    <td class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></td>
-    <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição" ${disabled}></td>
+  const key = recurringKey(item);
+  return `<tr data-finance-recurring-row data-id="${escapeHtml(item.id || '')}" data-key="${escapeHtml(key)}" data-origin="${escapeHtml(item.itemOrigemId || '')}">
+    <td><div class="finance-description-cell"><span class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></span><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição" ${disabled}></div></td>
     <td><input data-field="unidade" value="${escapeHtml(item.unidade || 'un')}" placeholder="un" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="posicaoAnterior" value="${inputValue(calculated.posicaoAnterior)}" readonly tabindex="-1"><input type="hidden" data-field="modo" value="${escapeHtml(calculated.modo)}"><input type="hidden" data-field="entrada" value="${inputValue(calculated.entrada)}"></td>
@@ -88,11 +89,12 @@ function sectorSheetHtml(sheet, state, permissions, initializationError = '') {
   const totals = sectorSheetTotals(sheet);
   const inherited = sheet.retiroOrigemId && state.previousRetreat;
   const supplierOptions = supplierOptionsHtml(state.allSheets);
+  const sortHeader = (key, label) => `<button type="button" class="finance-sort-header" data-recurring-sort="${key}" aria-sort="none">${label}<span aria-hidden="true"></span></button>`;
   return `<section class="finance-section-heading"><div><p class="eyebrow">Movimentação por setor</p><h2>${escapeHtml(sheet.setor)}</h2><p>${inherited ? `Posição e preços herdados de ${escapeHtml(state.previousRetreat.nome)}.` : 'Sem posição anterior disponível; itens novos iniciam zerados.'}</p></div></section>
   <form id="finance-sector-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div class="finance-recurring-heading"><h2>Insumos Recorrentes</h2><p>Controle resumido de entrada, saída e saldo, sem lançamento de notas.</p><label class="finance-recurring-search"><span>Buscar insumo</span><input type="search" data-recurring-search placeholder="Digite a descrição" autocomplete="off"></label></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-recurring>Adicionar insumo</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>Ordem</th><th>Insumo</th><th>Unidade</th><th>Fornecedor</th><th>Posição anterior</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valores</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>${sortHeader('descricao', 'Insumo')}</th><th>${sortHeader('unidade', 'Unidade')}</th><th>${sortHeader('fornecedor', 'Fornecedor')}</th><th>${sortHeader('posicaoAnterior', 'Posição anterior')}</th><th>${sortHeader('saida', 'Saída')}</th><th>${sortHeader('saldo', 'Saldo')}</th><th>${sortHeader('precoUnitario', 'Preço unitário')}</th><th>${sortHeader('valorSaida', 'Valores')}</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.itensRecorrentes?.length ? '' : '<p class="empty-state" data-recurring-empty>Nenhum insumo recorrente neste setor.</p>'}
       <p class="empty-state" data-recurring-no-results hidden>Nenhum insumo encontrado para esta busca.</p>
     </section>
@@ -217,7 +219,7 @@ function wirePurchaseSuggestion(root, state, context) {
 
 function collectSheet(root, sheet, retreat) {
   const recurring = [...root.querySelectorAll('[data-finance-recurring-row]')].map((row, index) => ({
-    id: row.dataset.id, chaveRecorrencia: row.dataset.key, itemOrigemId: row.dataset.origin,
+    id: row.dataset.id, chaveRecorrencia: row.dataset.key || row.dataset.origin || row.dataset.id || createId(), itemOrigemId: row.dataset.origin,
     descricao: row.querySelector('[data-field="descricao"]').value,
     unidade: row.querySelector('[data-field="unidade"]').value,
     fornecedor: row.querySelector('[data-field="fornecedor"]').value,
@@ -275,6 +277,46 @@ function moveRow(button) {
   if (button.dataset.move === 'down' && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
 }
 
+function sortRecurringRows(root, button) {
+  const key = button.dataset.recurringSort;
+  const body = root.querySelector('[data-recurring-body]');
+  if (!key || !body) return;
+  const nextDirection = button.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
+  const textValue = (row, field) => normalizeFinanceSearch(row.querySelector(`[data-field="${field}"]`)?.value);
+  const numericValue = (row, field) => financeNumber(row.querySelector(`[data-field="${field}"]`)?.value);
+  const rowValue = (row) => {
+    if (['descricao', 'unidade', 'fornecedor'].includes(key)) return textValue(row, key);
+    if (key === 'valorSaida') {
+      const item = calculateRecurringItem({
+        posicaoAnterior: numericValue(row, 'posicaoAnterior'),
+        entrada: numericValue(row, 'entrada'),
+        saida: numericValue(row, 'saida'),
+        saldo: numericValue(row, 'saldo'),
+        precoUnitario: numericValue(row, 'precoUnitario'),
+        modo: row.querySelector('[data-field="modo"]')?.value,
+      });
+      return item.valorSaida;
+    }
+    return numericValue(row, key);
+  };
+  const rows = [...body.querySelectorAll('[data-finance-recurring-row]')];
+  rows.sort((first, second) => {
+    const firstValue = rowValue(first);
+    const secondValue = rowValue(second);
+    const result = typeof firstValue === 'string'
+      ? firstValue.localeCompare(secondValue, 'pt-BR', { numeric: true, sensitivity: 'base' })
+      : firstValue - secondValue;
+    return nextDirection === 'asc' ? result : -result;
+  });
+  rows.forEach((row) => body.append(row));
+  root.querySelectorAll('[data-recurring-sort]').forEach((header) => {
+    header.dataset.sortDirection = '';
+    header.setAttribute('aria-sort', 'none');
+  });
+  button.dataset.sortDirection = nextDirection;
+  button.setAttribute('aria-sort', nextDirection === 'asc' ? 'ascending' : 'descending');
+}
+
 function filterRecurringRows(root) {
   const query = normalizeFinanceSearch(root.querySelector('[data-recurring-search]')?.value);
   const rows = [...root.querySelectorAll('[data-finance-recurring-row]')];
@@ -309,6 +351,13 @@ function wireSheet(root, sheet, state, context, permissions) {
     const addEventual = event.target.closest('[data-add-eventual]');
     const move = event.target.closest('[data-move]');
     const remove = event.target.closest('[data-remove-row]');
+    const sort = event.target.closest('[data-recurring-sort]');
+    if (sort) {
+      sortRecurringRows(root, sort);
+      filterRecurringRows(root);
+      refreshSectorTotals(root);
+      return;
+    }
     if (addRecurring) {
       root.querySelector('[data-recurring-body]').insertAdjacentHTML('beforeend', recurringRowHtml({ id: '', chaveRecorrencia: createId(), unidade: 'un', modo: 'movimento' }, permissions));
       root.querySelector('[data-recurring-empty]')?.remove();

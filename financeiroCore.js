@@ -70,7 +70,7 @@ export function inheritSectorSheet({ retreat, sector, previousRetreat, previousS
     inicializada: true,
     itensRecorrentes: (previousSheet?.itensRecorrentes || []).map((item, index) => calculateRecurringItem({
       id: '',
-      chaveRecorrencia: item.chaveRecorrencia || item.id || '',
+      chaveRecorrencia: item.chaveRecorrencia || item.itemOrigemId || item.id || '',
       itemOrigemId: item.id || '',
       descricao: item.descricao || '',
       unidade: item.unidade || 'un',
@@ -98,7 +98,7 @@ export function cloneRecurringStructureSheet({ retreat, sector, sourceRetreat, s
     inicializada: true,
     itensRecorrentes: (sourceSheet?.itensRecorrentes || []).map((item, index) => ({
       id: '',
-      chaveRecorrencia: item.chaveRecorrencia || item.id || '',
+      chaveRecorrencia: item.chaveRecorrencia || item.itemOrigemId || item.id || '',
       itemOrigemId: item.id || '',
       descricao: item.descricao || '',
       unidade: item.unidade || 'un',
@@ -158,7 +158,9 @@ export function purchaseSuggestionRows({ currentSheets = [], baseSheets = [], ba
   const baseItems = baseSheets.flatMap((sheet) => (sheet.itensRecorrentes || []).map((item) => ({ ...calculateRecurringItem(item), setorChave: sheet.setorChave })));
   return currentSheets.flatMap((sheet) => (sheet.itensRecorrentes || []).map((raw) => {
     const item = calculateRecurringItem(raw);
-    const baseItem = baseItems.find((candidate) => item.chaveRecorrencia && candidate.chaveRecorrencia === item.chaveRecorrencia)
+    const identity = item.chaveRecorrencia || item.itemOrigemId || item.id || '';
+    const baseItem = baseItems.find((candidate) => identity && [candidate.chaveRecorrencia, candidate.itemOrigemId, candidate.id].includes(identity))
+      || baseItems.find((candidate) => item.itemOrigemId && candidate.id === item.itemOrigemId)
       || baseItems.find((candidate) => candidate.setorChave === sheet.setorChave && normalizeSectorKey(candidate.descricao) === normalizeSectorKey(item.descricao));
     const baseConsumption = nonNegativeFinanceNumber(baseItem?.saida);
     const consumptionPerParticipation = baseConsumption / baseTotal;

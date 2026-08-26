@@ -91,11 +91,12 @@ assert.equal(dailyParticipationTotal({
 }), 9, 'A participação diária deve somar equipe escalada, cursistas e crianças em cada dia.');
 
 const suggestions = purchaseSuggestionRows({
-  currentSheets: [{ setor: 'Cozinha', setorChave: 'cozinha', itensRecorrentes: [{ chaveRecorrencia: 'arroz', descricao: 'Arroz', unidade: 'kg', posicaoAnterior: 2, entrada: 0, saida: 0, precoUnitario: 5 }] }],
+  currentSheets: [{ setor: 'Cozinha', setorChave: 'cozinha', itensRecorrentes: [{ chaveRecorrencia: 'arroz', descricao: 'Arroz parboilizado', unidade: 'kg', posicaoAnterior: 2, entrada: 0, saida: 0, precoUnitario: 5 }] }],
   baseSheets: [{ setor: 'Cozinha', setorChave: 'cozinha', itensRecorrentes: [{ chaveRecorrencia: 'arroz', descricao: 'Arroz', unidade: 'kg', posicaoAnterior: 20, entrada: 0, saida: 10, precoUnitario: 4 }] }],
   baseParticipations: 20,
   focusParticipations: 30,
 });
+assert.equal(suggestions[0].descricao, 'Arroz parboilizado');
 assert.equal(suggestions[0].consumoBase, 10);
 assert.equal(suggestions[0].consumoPorParticipacao, 0.5);
 assert.equal(suggestions[0].necessidadeProjetada, 15);
@@ -105,6 +106,7 @@ assert.throws(() => purchaseSuggestionRows({ baseParticipations: 0 }), /não pos
 
 const app = read('adminApp.js');
 const ui = read('financeiro.js');
+const styles = read('styles.css');
 const api = read('apiCore.js');
 const stores = read('storeConfig.js');
 const permissions = read('permissions.js');
@@ -121,6 +123,9 @@ assert.match(ui, /<th>Saída<\/th><th>Saldo<\/th><th>Preço unitário<\/th><th>V
 assert.match(ui, /finance-balance-output-value/);
 assert.match(ui, /financeMoney\(item\.valorSaida\)/);
 assert.match(ui, /data-field="fornecedor"/);
+assert.match(ui, /const recurringKey = \(item = \{\}\) => String\(item\.chaveRecorrencia \|\| item\.itemOrigemId \|\| item\.id \|\| createId\(\)\)\.trim\(\)/);
+assert.match(ui, /data-key="\$\{escapeHtml\(key\)\}"/);
+assert.match(ui, /chaveRecorrencia: row\.dataset\.key \|\| row\.dataset\.origin \|\| row\.dataset\.id \|\| createId\(\)/);
 assert.match(ui, /finance-supplier-options/);
 assert.match(ui, /supplierOptionsHtml\(state\.allSheets\)/);
 assert.match(ui, /data-recurring-search/);
@@ -128,12 +133,25 @@ assert.match(ui, /filterRecurringRows\(root\)/);
 assert.match(ui, /normalizeFinanceSearch/);
 assert.match(ui, /Insumos Recorrentes/);
 assert.match(ui, /Nenhum insumo encontrado para esta busca/);
-assert.match(ui, /<th>Insumo<\/th><th>Unidade<\/th><th>Fornecedor<\/th><th>Posição anterior<\/th>/);
-assert.match(ui, /<th>Posição anterior<\/th><th>Saída<\/th><th>Saldo<\/th><th>Preço unitário<\/th>/);
+assert.match(ui, /sortHeader = \(key, label\) => `<button type="button" class="finance-sort-header" data-recurring-sort="\$\{key\}" aria-sort="none">/);
+assert.match(ui, /sortHeader\('descricao', 'Insumo'\)[\s\S]*sortHeader\('unidade', 'Unidade'\)[\s\S]*sortHeader\('valorSaida', 'Valores'\)/);
+assert.match(ui, /function sortRecurringRows\(root, button\)/);
+assert.match(ui, /button\.dataset\.sortDirection === 'asc' \? 'desc' : 'asc'/);
+assert.match(ui, /rows\.forEach\(\(row\) => body\.append\(row\)\)/);
+assert.match(ui, /event\.target\.closest\('\[data-recurring-sort\]'\)/);
+assert.match(ui, /sortRecurringRows\(root, sort\)/);
+assert.doesNotMatch(ui, /<th>Ordem<\/th><th>Insumo<\/th>/);
+assert.match(ui, /finance-description-cell[\s\S]*finance-row-order[\s\S]*data-field="descricao"/);
+assert.match(ui, /sortHeader\('posicaoAnterior', 'Posição anterior'\)[\s\S]*sortHeader\('saida', 'Saída'\)[\s\S]*sortHeader\('saldo', 'Saldo'\)[\s\S]*sortHeader\('precoUnitario', 'Preço unitário'\)/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th>/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th><th>Entrada<\/th><th>Saída<\/th><th>Saldo<\/th>/);
 assert.match(ui, /type="hidden" data-field="entrada"/);
 assert.match(ui, /type="hidden" data-field="modo"/);
+assert.match(styles, /\.finance-sheet-table \{ width:100%; min-width:1040px; border-collapse:collapse; \}/);
+assert.match(styles, /\.finance-sort-header \{ display:inline-flex;[\s\S]*?cursor:pointer; \}/);
+assert.match(styles, /\.finance-sort-header\[data-sort-direction="asc"\] span::after \{ content:'↑'; color:var\(--leaf\); \}/);
+assert.match(styles, /\.finance-description-cell \{ display:grid; grid-template-columns:auto minmax\(190px,1fr\); gap:8px; align-items:center; \}/);
+assert.match(styles, /\.finance-sheet-table td:nth-child\(2\) input,[\s\S]*?\.finance-sheet-table td:nth-child\(7\) input \{ min-width:46px; max-width:74px; \}/);
 assert.match(ui, /<th>Descrição<\/th><th>Fornecedor<\/th><th>Valor<\/th>/);
 assert.match(ui, /Sugestão de compra/);
 assert.match(ui, /finance-heading-actions/);
