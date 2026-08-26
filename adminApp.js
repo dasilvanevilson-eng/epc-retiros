@@ -1558,6 +1558,25 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
       if (dayResult) return dayResult;
       return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
     });
+  const coupleBirthdayStudents = coupleStudents
+    .filter((record) => record.retiroId === active?.id)
+    .flatMap((record) => [
+      { record, nome: record.nomeDele, nascimento: record.nascimentoDele },
+      { record, nome: record.nomeDela, nascimento: record.nascimentoDela },
+    ])
+    .filter((student) => {
+      const birthDate = parseLocalDate(student.nascimento);
+      return birthDate && retreatBirthdayMonths.has(birthDate.getMonth());
+    })
+    .sort((first, second) => {
+      const firstBirth = parseLocalDate(first.nascimento);
+      const secondBirth = parseLocalDate(second.nascimento);
+      const monthResult = firstBirth.getMonth() - secondBirth.getMonth();
+      if (monthResult) return monthResult;
+      const dayResult = firstBirth.getDate() - secondBirth.getDate();
+      if (dayResult) return dayResult;
+      return String(first.nome || '').localeCompare(String(second.nome || ''), 'pt-BR', { sensitivity: 'base' });
+    });
   const activeEnrolments = active ? mergeEnrolmentsByParticipant(enrolments.filter((item) => item.retiroId === active.id)) : [];
   const activeEntries = active ? enrolments.filter((item) => item.retiroId === active.id) : [];
   const activeStatEntries = activeEntries.length ? activeEntries : activeEnrolments;
@@ -1740,8 +1759,8 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
   const preferenceRows = (rows, fallback) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.detail)}</span></div>`).join('')}</div>` : `<p class="empty-state">${fallback}</p>`;
   const kidsRows = (rows) => rows.length ? `<div class="student-health-list kids-health-list">${rows.map((kid) => `<div><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><div class="kids-care-comments"><small>Responsável: ${escapeHtml(kid.responsible || kid.volunteer || 'Não informado')}${kid.contact ? ` · Contato: ${escapeHtml(kid.contact)}` : ''}</small><small>Origem: ${escapeHtml(kid.origin || 'Equipe de trabalho')} · ${escapeHtml(kid.contextLabel || 'Setor de trabalho')}: ${escapeHtml(kid.contextValue || (Array.isArray(kid.sectors) && kid.sectors.length ? kid.sectors.join(', ') : 'Não informado'))}</small></div></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma criança cadastrada no Espaço Kids.</p>';
   const kidsCareRows = (rows, fallback, emptyMessage) => rows.length ? `<div class="student-health-list kids-health-list kids-care-comment-list">${rows.map((kid) => `<div style="grid-template-columns:1fr;gap:6px"><strong>${escapeHtml(kid.nome || 'Sem nome')}<span class="student-health-inline">${escapeHtml(ageInYearsAndMonths(kid.nascimento))}</span></strong><div class="kids-care-comments" style="display:grid;gap:3px"><small>Responsável: ${escapeHtml(kid.responsible || 'Não informado')}</small><small>Origem: ${escapeHtml(kid.origin)} · ${escapeHtml(kid.contextLabel)}: ${escapeHtml(kid.contextValue)}</small><small class="kids-care-problem"><strong>Problema descrito: ${escapeHtml(kid.detail || fallback)}</strong></small></div></div>`).join('')}</div>` : `<p class="empty-state">${emptyMessage}</p>`;
-  const birthdayRowsHtml = (students) => students.length ? `<div class="student-health-list">${students.map((student) => {
-    const community = studentCommunityDetail(student, activeCommunityDetails);
+  const birthdayRowsHtml = (students, communityForStudent = (student) => studentCommunityDetail(student, activeCommunityDetails)) => students.length ? `<div class="student-health-list">${students.map((student) => {
+    const community = communityForStudent(student);
     return `<div><div class="student-health-person"><strong>${escapeHtml(student.nome || 'Sem nome')}</strong><small>Comunidade: ${escapeHtml(community.name)}</small></div><span>${escapeHtml(date(student.nascimento))}</span></div>`;
   }).join('')}</div>` : '<p class="empty-state">Nenhum cursista aniversariante nos meses deste retiro.</p>';
   const teamBirthdayRowsHtml = (rows) => rows.length ? `<div class="student-health-list">${rows.map((row) => `<div><div class="student-health-person"><strong>${escapeHtml(row.name)}</strong><small>Setor: ${escapeHtml(row.sectors.length ? row.sectors.join(', ') : 'Setor não informado')}</small></div><span>${escapeHtml(date(row.nascimento))}</span></div>`).join('')}</div>` : '<p class="empty-state">Nenhuma pessoa da equipe de trabalho aniversariante nos meses deste retiro.</p>';
@@ -1759,6 +1778,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
         ${homeHealthCard('Possui intolerância alimentar', smpIntolerancePeople.length, 'smp-intolerance')}
         ${homeHealthCard('Possui problema de saúde', smpHealthPeople.length, 'smp-health')}
         ${homeHealthCard('Precisa de acolhimento', smpAcolhimentoCouples.length, 'smp-acolhimento', 'Visualizar', 'Casal(is)')}
+        ${homeHealthCard('Aniversariantes do mês', coupleBirthdayStudents.length, 'birthdays')}
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>`
     : `<section class="home-column"><div class="home-column-heading"><h2>Cursistas</h2><div class="home-column-total"><strong>${activeStudents.length}</strong><small>Pessoa(s)</small></div></div><div class="home-column-list">
@@ -1837,7 +1857,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     'kids-intolerance': `<div class="panel-heading"><div><h2>Crianças com intolerância alimentar</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.intolerance, 'Não detalhado', 'Nenhuma criança com intolerância alimentar informada.')}`,
     'kids-health': `<div class="panel-heading"><div><h2>Crianças com problema de saúde</h2><p>Crianças informadas pela Equipe de Trabalho e nas fichas de cursistas do retiro em foco.</p></div></div>${kidsCareRows(kidsCareSummary.health, 'Não detalhado', 'Nenhuma criança com problema de saúde informada.')}`,
     cities: `<div class="panel-heading"><div><h2>Cidades com participantes</h2><p>Quantidade de pessoas por cidade, separando cursistas e equipe de trabalho.</p></div></div>${cityRowsHtml(cityRows)}`,
-    birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${birthdayRowsHtml(birthdayStudents)}`,
+    birthdays: `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Comunidade, nome do cursista e data de nascimento.</p></div></div>${usesCoupleStudentForm ? birthdayRowsHtml(coupleBirthdayStudents, (student) => coupleCommunityDetail(student.record, activeCoupleCommunityDetails)) : birthdayRowsHtml(birthdayStudents)}`,
     'team-birthdays': `<div class="panel-heading"><div><h2>Aniversariantes do mês</h2><p>Nome completo, setor da equipe de trabalho e data de nascimento.</p></div></div>${teamBirthdayRowsHtml(teamBirthdayRows)}`,
   };
   app.querySelectorAll('[data-home-health]').forEach((button) => {

@@ -117,6 +117,9 @@ const path = require('node:path');
   assert.match(adminSource, /const dayCount = \(day\).*?\+ activeStudentPresenceCount \+ kidsCareSummary\.children\.length;/, 'A presença do painel Inicio deve combinar equipe, cursistas da fonte configurada e crianças.');
   assert.match(adminSource, /const dayCount = \(day\).*?\+ retreatStudentPresenceCount \+ retreatKidsSummary\.children\.length;/, 'A presença em Links de cadastro deve combinar equipe, cursistas da fonte configurada e crianças.');
   assert.match(adminSource, /Equipe de trabalho \+ Cursistas \+ Crianças Kids/, 'O card de presenca deve informar que inclui as criancas do Espaco Kids.');
+  assert.match(adminSource, /const coupleBirthdayStudents = coupleStudents[\s\S]*?record\.retiroId === active\?\.id[\s\S]*?nome: record\.nomeDele, nascimento: record\.nascimentoDele[\s\S]*?nome: record\.nomeDela, nascimento: record\.nascimentoDela/, 'SMP e EPC devem buscar aniversariantes somente nas fichas de cursistas do retiro em foco, individualizando o casal.');
+  assert.match(adminSource, /usesCoupleStudentForm \? birthdayRowsHtml\(coupleBirthdayStudents, \(student\) => coupleCommunityDetail\(student\.record, activeCoupleCommunityDetails\)\) : birthdayRowsHtml\(birthdayStudents\)/, 'A janela de aniversariantes deve usar a fonte de cursistas correta conforme a ficha do retiro em foco.');
+  assert.match(adminSource, /homeHealthCard\('Aniversariantes do mês', coupleBirthdayStudents\.length, 'birthdays'\)/, 'O painel SMP e EPC deve exibir o mesmo card de aniversariantes do mes.');
 
   console.log('Inicio: indicadores combinados de saude das criancas validados.');
 })().catch((error) => {
