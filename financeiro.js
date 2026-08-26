@@ -62,7 +62,7 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   const movement = calculated.modo !== 'saldo';
   const key = recurringKey(item);
   return `<tr data-finance-recurring-row data-id="${escapeHtml(item.id || '')}" data-key="${escapeHtml(key)}" data-origin="${escapeHtml(item.itemOrigemId || '')}">
-    <td><div class="finance-description-cell"><span class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></span><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição" ${disabled}></div></td>
+    <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição" ${disabled}></td>
     <td><input data-field="unidade" value="${escapeHtml(item.unidade || 'un')}" placeholder="un" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="posicaoAnterior" value="${inputValue(calculated.posicaoAnterior)}" readonly tabindex="-1"><input type="hidden" data-field="modo" value="${escapeHtml(calculated.modo)}"><input type="hidden" data-field="entrada" value="${inputValue(calculated.entrada)}"></td>
@@ -77,7 +77,6 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
 const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   const disabled = canEdit ? '' : 'disabled';
   return `<tr data-finance-eventual-row data-id="${escapeHtml(item.id || '')}">
-    <td class="finance-row-order"><button type="button" data-move="up" ${disabled} aria-label="Mover para cima">↑</button><button type="button" data-move="down" ${disabled} aria-label="Mover para baixo">↓</button></td>
     <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição da despesa" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="valor" inputmode="decimal" value="${inputValue(item.valor)}" ${disabled}></td>
@@ -99,7 +98,7 @@ function sectorSheetHtml(sheet, state, permissions, initializationError = '') {
       <p class="empty-state" data-recurring-no-results hidden>Nenhum insumo encontrado para esta busca.</p>
     </section>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Ordem</th><th>Descrição</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Descrição</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.despesasEventuais?.length ? '' : '<p class="empty-state" data-eventual-empty>Nenhuma despesa eventual neste setor.</p>'}
     </section>
     <section class="panel finance-sector-summary"><div><span>Entradas recorrentes</span><strong data-sector-input>${financeMoney(totals.input)}</strong></div><div><span>Saídas recorrentes</span><strong data-sector-output>${financeMoney(totals.output)}</strong></div><div><span>Eventuais</span><strong data-sector-eventual>${financeMoney(totals.eventual)}</strong></div><div><span>Saldo valorizado</span><strong data-sector-balance>${financeMoney(totals.balance)}</strong></div></section>
@@ -271,12 +270,6 @@ function refreshSectorTotals(root) {
   } catch { /* A validação completa será mostrada ao salvar. */ }
 }
 
-function moveRow(button) {
-  const row = button.closest('tr');
-  if (button.dataset.move === 'up' && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
-  if (button.dataset.move === 'down' && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
-}
-
 function sortRecurringRows(root, button) {
   const key = button.dataset.recurringSort;
   const body = root.querySelector('[data-recurring-body]');
@@ -349,7 +342,6 @@ function wireSheet(root, sheet, state, context, permissions) {
   root.addEventListener('click', (event) => {
     const addRecurring = event.target.closest('[data-add-recurring]');
     const addEventual = event.target.closest('[data-add-eventual]');
-    const move = event.target.closest('[data-move]');
     const remove = event.target.closest('[data-remove-row]');
     const sort = event.target.closest('[data-recurring-sort]');
     if (sort) {
@@ -367,7 +359,6 @@ function wireSheet(root, sheet, state, context, permissions) {
       root.querySelector('[data-eventual-body]').insertAdjacentHTML('beforeend', eventualRowHtml({}, permissions));
       root.querySelector('[data-eventual-empty]')?.remove();
     }
-    if (move) moveRow(move);
     if (remove) {
       const row = remove.closest('tr');
       if (row.dataset.id) {
