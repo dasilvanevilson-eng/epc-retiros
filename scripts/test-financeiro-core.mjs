@@ -145,7 +145,7 @@ assert.doesNotMatch(ui, /data-move=/);
 assert.doesNotMatch(ui, /function moveRow/);
 assert.doesNotMatch(ui, /finance-row-order/);
 assert.doesNotMatch(ui, /<th>Ordem<\/th><th>Descrição<\/th>/);
-assert.match(ui, /sortHeader\('posicaoAnterior', 'Posição anterior'\)[\s\S]*sortHeader\('saida', 'Saída'\)[\s\S]*sortHeader\('saldo', 'Saldo'\)[\s\S]*sortHeader\('precoUnitario', 'Preço unitário'\)/);
+assert.match(ui, /sortHeader\('posicaoAnterior', 'POSIÇÃO ANT\.'\)[\s\S]*sortHeader\('saida', 'Saída'\)[\s\S]*sortHeader\('saldo', 'Saldo'\)[\s\S]*sortHeader\('precoUnitario', 'R\$ UNITÁRIO'\)/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th>/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th><th>Entrada<\/th><th>Saída<\/th><th>Saldo<\/th>/);
 assert.match(ui, /type="hidden" data-field="entrada"/);
