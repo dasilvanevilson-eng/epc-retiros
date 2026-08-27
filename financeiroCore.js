@@ -31,6 +31,7 @@ export function calculateRecurringItem(item = {}) {
   const position = nonNegativeFinanceNumber(item.posicaoAnterior);
   let input = nonNegativeFinanceNumber(item.entrada);
   let output = financeNumber(item.saida);
+  const donation = financeNumber(item.doacao);
   let balance;
   const mode = item.modo === 'saldo' ? 'saldo' : 'movimento';
   if (mode === 'saldo') {
@@ -48,6 +49,7 @@ export function calculateRecurringItem(item = {}) {
     posicaoAnterior: position,
     entrada: input,
     saida: output,
+    doacao: donation,
     saldo: balance,
     precoUnitario: unitPrice,
     valorPosicaoAnterior: position * unitPrice,
@@ -77,6 +79,7 @@ export function inheritSectorSheet({ retreat, sector, previousRetreat, previousS
       posicaoAnterior: item.saldo,
       entrada: 0,
       saida: 0,
+      doacao: 0,
       saldo: item.saldo,
       precoUnitario: item.precoUnitario,
       ordem: index + 1,
@@ -105,6 +108,7 @@ export function cloneRecurringStructureSheet({ retreat, sector, sourceRetreat, s
       posicaoAnterior: 0,
       entrada: 0,
       saida: 0,
+      doacao: 0,
       saldo: 0,
       precoUnitario: 0,
       ordem: index + 1,

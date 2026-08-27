@@ -295,6 +295,7 @@ const normalizeFinanceLine = (line, position, existing = null, previous = null, 
   const initial = nonNegativeFinanceNumber(position);
   let input = nonNegativeFinanceNumber(line.entrada);
   let output = financeNumber(line.saida);
+  const donation = financeNumber(line.doacao);
   let balance;
   if (mode === 'saldo') {
     balance = nonNegativeFinanceNumber(line.saldo);
@@ -317,6 +318,7 @@ const normalizeFinanceLine = (line, position, existing = null, previous = null, 
     posicaoAnterior: initial,
     entrada: input,
     saida: output,
+    doacao: donation,
     saldo: balance,
     precoUnitario: nonNegativeFinanceNumber(line.precoUnitario),
     ordem: index + 1,
@@ -354,7 +356,7 @@ async function normalizeFinanceRecord(resource, record, session) {
   const requestedLines = Array.isArray(next.itensRecorrentes) ? next.itensRecorrentes : [];
   const inheritedLines = !current && previousSheet ? previousLines.map((previous) => requestedLines.find((line) => line.chaveRecorrencia === previous.chaveRecorrencia || line.itemOrigemId === previous.id) || {
     id: '', chaveRecorrencia: previous.chaveRecorrencia || previous.id, itemOrigemId: previous.id,
-    descricao: previous.descricao, unidade: previous.unidade, fornecedor: previous.fornecedor || '', modo: 'movimento', entrada: 0, saida: 0,
+    descricao: previous.descricao, unidade: previous.unidade, fornecedor: previous.fornecedor || '', modo: 'movimento', entrada: 0, saida: 0, doacao: 0,
     saldo: previous.saldo, precoUnitario: previous.precoUnitario,
   }) : [];
   const inheritedKeys = new Set(inheritedLines.map((line) => line.chaveRecorrencia || line.itemOrigemId));
