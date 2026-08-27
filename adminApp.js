@@ -3743,6 +3743,8 @@ function wirePublicSmpValidation(form) {
     const kidsNotNeeded = form.elements.smpKidsNotNeeded;
     const usedPanels = kidsNotNeeded?.checked ? [] : kidPanels.filter(kidPanelHasData);
     kidsNotNeeded?.setCustomValidity(!kidsNotNeeded.checked && !usedPanels.length ? 'Informe os dados das crianças que usarão o Espaço Kids ou marque que não necessita.' : '');
+    const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
+    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : 'Informe a data do 1º casamento de pelo menos um dos cônjuges.');
     kidPanels.forEach((panel) => {
       const kidNumber = panel.dataset.smpKidPanel;
       const hasData = usedPanels.includes(panel);
@@ -4210,6 +4212,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       detail.required = required;
       setSmpRequiredMarker(detail, required);
     });
+    const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
+    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : 'Informe a data do 1º casamento de pelo menos um dos cônjuges.');
   };
   if (typedDateFields.length) wireTypedDates(form, namedFieldSelector(typedDateFields));
   let records = [];
@@ -4488,6 +4492,11 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     }
     return null;
   };
+  const firstSmpChurchMarriageIssue = () => {
+    if (expectedType !== 'cursista-smp') return null;
+    const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
+    return hasChurchMarriageDate ? null : form.elements.casamentoDele;
+  };
   const validateBeforeSave = () => {
     const blockedReason = canUseSmp();
     if (blockedReason) { setMessage(blockedReason); return false; }
@@ -4533,6 +4542,12 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       invalidDate.setCustomValidity('Digite a data no formato dd/mm/aaaa.');
       setMessage('Revise a data informada. Use o formato dd/mm/aaaa.');
       focusIssue(invalidDate);
+      return false;
+    }
+    const churchMarriageIssue = firstSmpChurchMarriageIssue();
+    if (churchMarriageIssue) {
+      setMessage('Informe a data do 1º casamento de pelo menos um dos cônjuges.');
+      focusIssue(churchMarriageIssue);
       return false;
     }
     const kidsIssue = firstSmpKidsIssue();

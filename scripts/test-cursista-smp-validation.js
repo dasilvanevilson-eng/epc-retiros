@@ -20,6 +20,7 @@ const baseRecord = (extra = {}) => ({
   numeroFichaSmp: '1',
   cpfDele: hisCpf,
   cpfDela: herCpf,
+  casamentoDele: '01/02/2000',
   nomeDele: 'Joao Teste',
   nomeDela: 'Maria Teste',
   ...extra,
@@ -63,7 +64,11 @@ async function main() {
   delete require.cache[require.resolve('../databaseAdapter')];
   const { saveCursistaSmp } = require('../databaseAdapter');
 
-  let calls = mockSupabase({ individual: [{ id: 'student-1', retiro_id: retreatId, cpf: hisCpf }] });
+  let calls = mockSupabase();
+  await assert.rejects(saveCursistaSmp(baseRecord({ casamentoDele: '', casamentoDela: '' })), /1º casamento de pelo menos um dos cônjuges/i);
+  assert.equal(calls.some(({ method }) => method === 'POST'), false, 'Ficha SMP sem data de casamento religioso nao pode chegar ao upsert.');
+
+  calls = mockSupabase({ individual: [{ id: 'student-1', retiro_id: retreatId, cpf: hisCpf }] });
   await assert.rejects(saveCursistaSmp(baseRecord()), /cadastro de cursista neste retiro/i);
   assert.equal(calls.some(({ method }) => method === 'POST'), false, 'CPF duplicado nao pode chegar ao upsert.');
 
