@@ -124,6 +124,23 @@ function cropDialog(blob, { type }) {
   });
 }
 
+function openPhotoViewer(src, alt = 'Foto ampliada') {
+  if (!src) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'student-photo-viewer-overlay';
+  overlay.innerHTML = `<section class="student-photo-viewer" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" data-photo-viewer-close aria-label="Fechar foto ampliada">×</button><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"></section>`;
+  const close = () => {
+    document.removeEventListener('keydown', onEscape);
+    overlay.remove();
+  };
+  const onEscape = (event) => { if (event.key === 'Escape') close(); };
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+  overlay.querySelector('[data-photo-viewer-close]').addEventListener('click', close);
+  document.addEventListener('keydown', onEscape);
+  document.body.append(overlay);
+  overlay.querySelector('[data-photo-viewer-close]').focus({ preventScroll: true });
+}
+
 const photoUrl = (type, retreatId, recordId) => `/api/cursista-foto/${encodeURIComponent(type)}/${encodeURIComponent(retreatId)}/${encodeURIComponent(recordId)}`;
 
 export function attachStudentPhotoField(form, { type, publicMode = false, mountTarget = null } = {}) {
@@ -132,7 +149,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const section = document.createElement('section');
   section.className = 'student-photo-field is-file-number-photo';
   section.dataset.studentPhotoField = type;
-  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><div class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}"><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></div><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><button type="button" class="secondary-button" data-photo-paste>Colar imagem</button><button type="button" class="delete-student-photo" data-photo-delete hidden>Excluir foto</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB. Você também pode copiar uma imagem e colá-la aqui.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
+  section.innerHTML = `<div class="section-heading"><span aria-hidden="true">📷</span><div><h2>${individual ? 'Foto do cursista' : 'Foto do casal'}</h2><p>Opcional · enquadramento ${individual ? 'vertical' : 'horizontal'}</p></div></div><div class="student-photo-layout"><button type="button" class="student-photo-preview ${individual ? 'is-portrait' : 'is-landscape'}" data-photo-view disabled><span>Nenhuma foto selecionada</span><img alt="${escapeHtml(individual ? 'Foto do cursista' : 'Foto do casal')}" hidden></button><div class="student-photo-controls"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" data-photo-file hidden><input type="file" accept="image/*" capture="environment" data-photo-camera hidden><button type="button" data-photo-choose>Escolher no dispositivo</button><button type="button" data-photo-capture>Usar câmera</button><button type="button" class="secondary-button" data-photo-paste>Colar imagem</button><button type="button" class="delete-student-photo" data-photo-delete hidden>Excluir foto</button><p class="hint">JPEG, PNG, WebP, HEIC ou HEIF, até 15 MB. Você também pode copiar uma imagem e colá-la aqui.</p><p class="form-message" data-photo-message aria-live="polite"></p></div></div>`;
   const target = mountTarget || form;
   if (mountTarget) target.append(section);
   else {
@@ -154,6 +171,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   const showBlob = (blob) => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = URL.createObjectURL(blob); image.src = previewUrl; image.hidden = false; placeholder.hidden = true;
+    preview.disabled = false;
   };
   const choose = async (file) => {
     if (!file) return;
@@ -168,6 +186,9 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
   };
   section.querySelector('[data-photo-choose]').addEventListener('click', () => fileInput.click());
   section.querySelector('[data-photo-capture]').addEventListener('click', () => cameraInput.click());
+  preview.addEventListener('click', () => {
+    if (!image.hidden && image.currentSrc) openPhotoViewer(image.currentSrc, image.alt);
+  });
   fileInput.addEventListener('change', () => choose(fileInput.files?.[0]));
   cameraInput.addEventListener('change', () => choose(cameraInput.files?.[0]));
   const clipboardImage = (items = []) => Array.from(items).find((item) => item.kind === 'file' && String(item.type || '').toLowerCase().startsWith('image/'))?.getAsFile() || null;
@@ -228,7 +249,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
       currentRecord = record || null;
       if (deleteButton) deleteButton.hidden = true;
       if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = ''; }
-      image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; setMessage('');
+      image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; preview.disabled = true; setMessage('');
       if (publicMode || !record?.retiroId || !(record.id || record.numeroFichaSmp)) return;
       try {
         const response = await fetch(photoUrl(type, record.retiroId, record.id || record.numeroFichaSmp), { credentials: 'same-origin', cache: 'no-store' });
@@ -237,7 +258,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
         showBlob(await response.blob()); placeholder.textContent = ''; if (deleteButton) deleteButton.hidden = false;
       } catch { /* A ficha permanece utilizavel mesmo se a foto estiver indisponivel. */ }
     },
-    reset() { pendingBlob = null; currentRecord = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto selecionada'; if (deleteButton) deleteButton.hidden = true; setMessage(''); },
+    reset() { pendingBlob = null; currentRecord = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto selecionada'; preview.disabled = true; if (deleteButton) deleteButton.hidden = true; setMessage(''); },
   };
   deleteButton?.addEventListener('click', async () => {
     const retreatId = currentRecord?.retiroId; const recordId = currentRecord?.id || currentRecord?.numeroFichaSmp;
@@ -248,7 +269,7 @@ export function attachStudentPhotoField(form, { type, publicMode = false, mountT
       const response = await fetch(photoUrl(type, retreatId, recordId), { method: 'DELETE', credentials: 'same-origin', headers: { 'X-Confirm-Photo-Deletion': 'definitive' } });
       const details = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(details.error || 'Nao foi possivel excluir a foto.');
-      pendingBlob = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; deleteButton.hidden = true; setMessage('Foto excluída definitivamente.');
+      pendingBlob = null; if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; image.hidden = true; image.removeAttribute('src'); placeholder.hidden = false; placeholder.textContent = 'Nenhuma foto cadastrada'; preview.disabled = true; deleteButton.hidden = true; setMessage('Foto excluída definitivamente.');
     } catch (error) { setMessage(error.message || 'Nao foi possivel excluir a foto.'); }
     finally { deleteButton.disabled = false; }
   });

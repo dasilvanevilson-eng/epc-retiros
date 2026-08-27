@@ -57,6 +57,10 @@ assert.match(client, /data-photo-paste>Colar imagem/, 'As tres fichas devem ofer
 assert.match(client, /navigator\.clipboard\?\.read[\s\S]*item\.getType\(imageType\)/, 'O botao deve ler imagens da area de transferencia quando permitido.');
 assert.match(client, /addEventListener\('paste'[\s\S]*event\.clipboardData\?\.items[\s\S]*choose\(file\)/, 'Ctrl+V deve encaminhar a imagem colada ao fluxo atual de preparacao.');
 assert.match(client, /Excluir definitivamente a foto e todas as versões anteriores/, 'A interface deve confirmar a irreversibilidade.');
+assert.match(client, /function openPhotoViewer\(src, alt = 'Foto ampliada'\)/, 'A prévia deve abrir um visualizador compartilhado.');
+assert.match(client, /class="student-photo-preview[\s\S]*data-photo-view disabled/, 'A prévia deve ser um botão acessível e inativo sem foto.');
+assert.match(client, /preview\.addEventListener\('click'[\s\S]*openPhotoViewer\(image\.currentSrc, image\.alt\)/, 'Clique na prévia com foto deve ampliar a imagem.');
+assert.match(client, /event\.key === 'Escape'[\s\S]*overlay\.remove\(\)/, 'O visualizador deve fechar pelo teclado.');
 assert.match(client, /900, height: 1200[\s\S]*1200, height: 900/);
 assert.match(app, /attachStudentPhotoField[\s\S]*uploadPublic[\s\S]*uploadLogged/);
 assert.match(app, /mountTarget: app\.querySelector\('\.student-file-number'\)/, 'Individual deve posicionar foto ao lado do numero da ficha.');
@@ -65,6 +69,8 @@ assert.match(app, /student-registration-actions'\)\?\.append\(app\.querySelector
 assert.match(app, /cursista-smp-tool-actions'\)\?\.append\(deleteButton\)/, 'Excluir SMP e EPC deve ficar junto de Novo, Editar e Imprimir.');
 assert.match(app, /id="new-cursista-smp">Incluir novo<\/button>/, 'SMP e EPC devem exibir Incluir novo por extenso.');
 assert.doesNotMatch(styles, /#new-student::before\s*\{[\s\S]*?content:\s*'\+'/s, 'Individual nao deve substituir Incluir novo por um simbolo no mobile.');
+assert.match(styles, /\.student-photo-viewer-overlay\{position:fixed;inset:0;z-index:1200/, 'A foto ampliada deve aparecer em sobreposição.');
+assert.match(styles, /button\.student-photo-preview\{[\s\S]*cursor:zoom-in/, 'A prévia com foto deve indicar ampliação.');
 assert.match(styles, /@media\(max-width:720px\)[\s\S]*?\.student-screen \.student-registration-tools\s*\{[\s\S]*?grid-template-columns:minmax\(0, 1fr\)/, 'A barra Individual deve ocupar a largura disponivel no mobile.');
 assert.match(styles, /@media\(max-width:720px\)[\s\S]*?\.cursista-smp-tool-actions\s*\{[\s\S]*?grid-template-columns:repeat\(2, minmax\(0, 1fr\)\)/, 'As barras SMP e EPC devem organizar os comandos em grade no mobile.');
 assert.match(backup, /\['cursista_fotos', \['id'\]\]/);
