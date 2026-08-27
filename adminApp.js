@@ -4472,6 +4472,13 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => control?.focus({ preventScroll: true }), 180);
   };
+  const focusChurchMarriageIssue = () => {
+    [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => {
+      control?.closest('.field')?.classList.add('field-warning');
+    });
+    form.elements.casamentoDele?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => form.elements.casamentoDele?.focus({ preventScroll: true }), 180);
+  };
   const firstSmpKidsIssue = () => {
     if (expectedType !== 'cursista-smp' || form.elements.smpKidsNotNeeded?.checked) return null;
     const usedPanels = smpKidPanels.filter(smpKidPanelHasData);
@@ -4547,7 +4554,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     const churchMarriageIssue = firstSmpChurchMarriageIssue();
     if (churchMarriageIssue) {
       setMessage('Informe a data do 1º casamento de pelo menos um dos cônjuges.');
-      focusIssue(churchMarriageIssue);
+      focusChurchMarriageIssue();
       return false;
     }
     const kidsIssue = firstSmpKidsIssue();
@@ -4652,9 +4659,15 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   form.addEventListener('input', syncChangedSmpKidPanel);
   form.addEventListener('change', syncChangedSmpKidPanel);
-  form.addEventListener('input', (event) => event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning'));
-  form.addEventListener('change', (event) => {
+  const clearChangedFieldWarning = (event) => {
     event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning');
+    if (['casamentoDele', 'casamentoDela'].includes(event.target.name)) {
+      [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => control?.closest('.field')?.classList.remove('field-warning'));
+    }
+  };
+  form.addEventListener('input', clearChangedFieldWarning);
+  form.addEventListener('change', (event) => {
+    clearChangedFieldWarning(event);
     syncSmpRequiredRules();
   });
   form.querySelectorAll('[name^="smpKidNascimento"]').forEach((input) => {

@@ -164,6 +164,9 @@ async function main() {
   assert.match(admin, /requiredNames = \[`smpKidNome\$\{kidNumber\}`, `smpKidNascimento\$\{kidNumber\}`\]/);
   assert.match(admin, /if \(!choice\) return form\.querySelector\(`\[name="\$\{choiceName\}"\]`\)/);
   assert.match(admin, /if \(choice === 'Sim' && !String\(form\.elements\[detailName\]\?\.value \|\| ''\)\.trim\(\)\) return form\.elements\[detailName\]/);
+  assert.match(admin, /const focusChurchMarriageIssue = \(\) => \{[\s\S]*form\.elements\.casamentoDele[\s\S]*form\.elements\.casamentoDela[\s\S]*classList\.add\('field-warning'\)/);
+  assert.match(admin, /setMessage\('Informe a data do 1º casamento de pelo menos um dos cônjuges\.'\);[\s\S]*focusChurchMarriageIssue\(\)/);
+  assert.match(admin, /if \(\['casamentoDele', 'casamentoDela'\]\.includes\(event\.target\.name\)\) \{[\s\S]*form\.elements\.casamentoDele[\s\S]*form\.elements\.casamentoDela[\s\S]*classList\.remove\('field-warning'\)/);
   assert.match(admin, /const syncSmpKidRequiredRules = \(\) => \{[\s\S]*control\.required = hasData;[\s\S]*setSmpRequiredMarker\(control, hasData\)/);
   assert.match(admin, /const detailRequired = hasData && new FormData\(form\)\.get\(choiceName\) === 'Sim';[\s\S]*setSmpRequiredMarker\(detail, detailRequired\)/);
   assert.match(admin, /function wirePublicSmpValidation\(form\)[\s\S]*const setPublicRequiredMarker = \(control, required\) =>/);
