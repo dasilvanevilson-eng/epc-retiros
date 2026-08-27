@@ -94,9 +94,9 @@ const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   return `<tr data-finance-eventual-row data-id="${escapeHtml(item.id || '')}">
     <td><input data-field="numero" value="${escapeHtml(item.numero || item.descricao || '')}" placeholder="Número" ${disabled}></td>
     <td><input data-field="tipoSerie" value="${escapeHtml(item.tipoSerie || '')}" placeholder="Tipo/Série" ${disabled}></td>
-    <td><input data-field="observacao" value="${escapeHtml(item.observacao || '')}" placeholder="Observação" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="valor" inputmode="decimal" value="${inputValue(item.valor)}" ${disabled}></td>
+    <td><input data-field="observacao" value="${escapeHtml(item.observacao || '')}" placeholder="Observação" ${disabled}></td>
     <td>${canEdit && canDelete ? '<button type="button" class="finance-remove-row" data-remove-row aria-label="Remover despesa eventual">×</button>' : ''}</td>
   </tr>`;
 };
@@ -124,7 +124,7 @@ function eventualSheetHtml(sheet, state, permissions, initializationError = '') 
   <form id="finance-retreat-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Observação</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Fornecedor</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.despesasEventuais?.length ? '' : '<p class="empty-state" data-eventual-empty>Nenhuma despesa eventual neste retiro.</p>'}
     </section>
     <p class="form-message" data-finance-message>${escapeHtml(initializationError)}</p>
@@ -140,10 +140,10 @@ function balanceSectorHtml(sheet) {
     const item = calculateRecurringItem(raw);
     return `<tr><td>${escapeHtml(item.descricao)}</td><td>${escapeHtml(item.unidade)}</td><td>${financeQuantity(item.posicaoAnterior)}<small>${financeMoney(item.valorPosicaoAnterior)}</small></td><td>${financeQuantity(item.entrada)}<small>${financeMoney(item.valorEntrada)}</small></td><td>${financeQuantity(item.saida)}</td><td>${financeQuantity(item.saldo)}<small>${financeMoney(item.valorSaldo)}</small></td><td>${financeMoney(item.precoUnitario)}</td><td><strong>${financeMoney(item.valorSaida)}</strong></td></tr>`;
   }).join('');
-  const eventualRows = (sheet.despesasEventuais || []).map((item) => `<tr><td>${escapeHtml(item.numero || item.descricao)}</td><td>${escapeHtml(item.tipoSerie || '')}</td><td>${escapeHtml(item.observacao || '')}</td><td>${financeMoney(item.valor)}</td></tr>`).join('');
+  const eventualRows = (sheet.despesasEventuais || []).map((item) => `<tr><td>${escapeHtml(item.numero || item.descricao)}</td><td>${escapeHtml(item.tipoSerie || '')}</td><td>${financeMoney(item.valor)}</td><td>${escapeHtml(item.observacao || '')}</td></tr>`).join('');
   return `<section class="panel finance-balance-sector"><h2>${escapeHtml(sheet.setor)}</h2>
     ${recurringRows ? `<div class="finance-sheet-scroll"><table class="finance-balance-recurring"><colgroup><col class="finance-balance-description"><col class="finance-balance-unit"><col class="finance-balance-previous"><col class="finance-balance-input"><col class="finance-balance-output"><col class="finance-balance-stock"><col class="finance-balance-price"><col class="finance-balance-output-value"></colgroup><thead><tr><th>Insumo</th><th>Unidade</th><th>Posição anterior</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valor da saída</th></tr></thead><tbody>${recurringRows}</tbody></table></div>` : '<p class="empty-state">Sem insumos recorrentes.</p>'}
-    ${eventualRows ? `<h3>Despesas eventuais</h3><table class="finance-balance-eventual"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Observação</th><th>Valor</th></tr></thead><tbody>${eventualRows}</tbody></table>` : ''}
+    ${eventualRows ? `<h3>Despesas eventuais</h3><table class="finance-balance-eventual"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${eventualRows}</tbody></table>` : ''}
     <footer><span>Entradas: <b>${financeMoney(totals.input)}</b></span><span>Saídas: <b>${financeMoney(totals.output)}</b></span><span>Eventuais: <b>${financeMoney(totals.eventual)}</b></span><span>Saldo: <b>${financeMoney(totals.balance)}</b></span></footer></section>`;
 }
 
