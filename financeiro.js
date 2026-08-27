@@ -92,7 +92,9 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
 const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
   const disabled = canEdit ? '' : 'disabled';
   return `<tr data-finance-eventual-row data-id="${escapeHtml(item.id || '')}">
-    <td><input data-field="descricao" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição da despesa" ${disabled}></td>
+    <td><input data-field="numero" value="${escapeHtml(item.numero || item.descricao || '')}" placeholder="Número" ${disabled}></td>
+    <td><input data-field="tipoSerie" value="${escapeHtml(item.tipoSerie || '')}" placeholder="Tipo/Série" ${disabled}></td>
+    <td><input data-field="observacao" value="${escapeHtml(item.observacao || '')}" placeholder="Observação" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="valor" inputmode="decimal" value="${inputValue(item.valor)}" ${disabled}></td>
     <td>${canEdit && canDelete ? '<button type="button" class="finance-remove-row" data-remove-row aria-label="Remover despesa eventual">×</button>' : ''}</td>
@@ -100,7 +102,6 @@ const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
 };
 
 function recurringSheetHtml(sheet, state, permissions, initializationError = '') {
-  const totals = sectorSheetTotals(sheet);
   const inherited = sheet.retiroOrigemId && state.previousRetreat;
   const supplierOptions = supplierOptionsHtml(state.allSheets);
   const sortHeader = (key, label) => `<button type="button" class="finance-sort-header" data-recurring-sort="${key}" aria-sort="none">${label}<span aria-hidden="true"></span></button>`;
@@ -112,23 +113,20 @@ function recurringSheetHtml(sheet, state, permissions, initializationError = '')
       ${sheet.itensRecorrentes?.length ? '' : '<p class="empty-state" data-recurring-empty>Nenhum insumo recorrente neste retiro.</p>'}
       <p class="empty-state" data-recurring-no-results hidden>Nenhum insumo encontrado para esta busca.</p>
     </section>
-    <section class="panel finance-sector-summary"><div><span>Entradas recorrentes</span><strong data-sector-input>${financeMoney(totals.input)}</strong></div><div><span>Saídas recorrentes</span><strong data-sector-output>${financeMoney(totals.output)}</strong></div><div><span>Eventuais</span><strong data-sector-eventual>${financeMoney(totals.eventual)}</strong></div><div><span>Saldo valorizado</span><strong data-sector-balance>${financeMoney(totals.balance)}</strong></div></section>
     <p class="form-message" data-finance-message>${escapeHtml(initializationError)}</p>
     ${permissions.canEdit ? '<div class="form-actions finance-save-actions"><span>As alterações afetam somente este retiro.</span><button type="submit">Salvar insumos <span>→</span></button></div>' : ''}
   </form>`;
 }
 
 function eventualSheetHtml(sheet, state, permissions, initializationError = '') {
-  const totals = sectorSheetTotals(sheet);
   const supplierOptions = supplierOptionsHtml(state.allSheets);
   return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Despesas eventuais</h2><p>Lançamentos eventuais indexados diretamente ao retiro em foco.</p></div></section>
   <form id="finance-retreat-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Descrição</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Observação</th><th>Fornecedor</th><th>Valor</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.despesasEventuais?.length ? '' : '<p class="empty-state" data-eventual-empty>Nenhuma despesa eventual neste retiro.</p>'}
     </section>
-    <section class="panel finance-sector-summary"><div><span>Entradas recorrentes</span><strong data-sector-input>${financeMoney(totals.input)}</strong></div><div><span>Saídas recorrentes</span><strong data-sector-output>${financeMoney(totals.output)}</strong></div><div><span>Eventuais</span><strong data-sector-eventual>${financeMoney(totals.eventual)}</strong></div><div><span>Saldo valorizado</span><strong data-sector-balance>${financeMoney(totals.balance)}</strong></div></section>
     <p class="form-message" data-finance-message>${escapeHtml(initializationError)}</p>
     ${permissions.canEdit ? '<div class="form-actions finance-save-actions"><span>As alterações afetam somente este retiro.</span><button type="submit">Salvar despesas <span>→</span></button></div>' : ''}
   </form>`;
@@ -142,10 +140,10 @@ function balanceSectorHtml(sheet) {
     const item = calculateRecurringItem(raw);
     return `<tr><td>${escapeHtml(item.descricao)}</td><td>${escapeHtml(item.unidade)}</td><td>${financeQuantity(item.posicaoAnterior)}<small>${financeMoney(item.valorPosicaoAnterior)}</small></td><td>${financeQuantity(item.entrada)}<small>${financeMoney(item.valorEntrada)}</small></td><td>${financeQuantity(item.saida)}</td><td>${financeQuantity(item.saldo)}<small>${financeMoney(item.valorSaldo)}</small></td><td>${financeMoney(item.precoUnitario)}</td><td><strong>${financeMoney(item.valorSaida)}</strong></td></tr>`;
   }).join('');
-  const eventualRows = (sheet.despesasEventuais || []).map((item) => `<tr><td>${escapeHtml(item.descricao)}</td><td>${financeMoney(item.valor)}</td></tr>`).join('');
+  const eventualRows = (sheet.despesasEventuais || []).map((item) => `<tr><td>${escapeHtml(item.numero || item.descricao)}</td><td>${escapeHtml(item.tipoSerie || '')}</td><td>${escapeHtml(item.observacao || '')}</td><td>${financeMoney(item.valor)}</td></tr>`).join('');
   return `<section class="panel finance-balance-sector"><h2>${escapeHtml(sheet.setor)}</h2>
     ${recurringRows ? `<div class="finance-sheet-scroll"><table class="finance-balance-recurring"><colgroup><col class="finance-balance-description"><col class="finance-balance-unit"><col class="finance-balance-previous"><col class="finance-balance-input"><col class="finance-balance-output"><col class="finance-balance-stock"><col class="finance-balance-price"><col class="finance-balance-output-value"></colgroup><thead><tr><th>Insumo</th><th>Unidade</th><th>Posição anterior</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valor da saída</th></tr></thead><tbody>${recurringRows}</tbody></table></div>` : '<p class="empty-state">Sem insumos recorrentes.</p>'}
-    ${eventualRows ? `<h3>Despesas eventuais</h3><table class="finance-balance-eventual"><thead><tr><th>Descrição</th><th>Valor</th></tr></thead><tbody>${eventualRows}</tbody></table>` : ''}
+    ${eventualRows ? `<h3>Despesas eventuais</h3><table class="finance-balance-eventual"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Observação</th><th>Valor</th></tr></thead><tbody>${eventualRows}</tbody></table>` : ''}
     <footer><span>Entradas: <b>${financeMoney(totals.input)}</b></span><span>Saídas: <b>${financeMoney(totals.output)}</b></span><span>Eventuais: <b>${financeMoney(totals.eventual)}</b></span><span>Saldo: <b>${financeMoney(totals.balance)}</b></span></footer></section>`;
 }
 
@@ -257,7 +255,9 @@ function collectSheet(root, sheet, retreat) {
   })) : (sheet.itensRecorrentes || []);
   const eventualRows = [...root.querySelectorAll('[data-finance-eventual-row]')];
   const eventual = eventualRows.length ? eventualRows.map((row, index) => ({
-    id: row.dataset.id, descricao: row.querySelector('[data-field="descricao"]').value,
+    id: row.dataset.id, numero: row.querySelector('[data-field="numero"]').value,
+    tipoSerie: row.querySelector('[data-field="tipoSerie"]').value,
+    observacao: row.querySelector('[data-field="observacao"]').value,
     fornecedor: row.querySelector('[data-field="fornecedor"]').value,
     valor: financeNumber(row.querySelector('[data-field="valor"]').value), ordem: index + 1,
   })) : (sheet.despesasEventuais || []);
@@ -285,17 +285,6 @@ function refreshRow(row, changedField = '') {
     row.querySelector('[data-row-values]').innerHTML = `<small>Saída ${financeMoney(item.valorSaida)}</small><strong>Saldo ${financeMoney(item.valorSaldo)}</strong>`;
     row.classList.remove('is-invalid');
   } catch { row.classList.add('is-invalid'); }
-}
-
-function refreshSectorTotals(root) {
-  try {
-    const provisional = collectSheet(root, { id: '', setor: '' }, { id: '' });
-    const totals = sectorSheetTotals(provisional);
-    root.querySelector('[data-sector-input]').textContent = financeMoney(totals.input);
-    root.querySelector('[data-sector-output]').textContent = financeMoney(totals.output);
-    root.querySelector('[data-sector-eventual]').textContent = financeMoney(totals.eventual);
-    root.querySelector('[data-sector-balance]').textContent = financeMoney(totals.balance);
-  } catch { /* A validação completa será mostrada ao salvar. */ }
 }
 
 function sortRecurringRows(root, button) {
@@ -361,12 +350,10 @@ function wireSheet(root, sheet, state, context, permissions) {
     const row = event.target.closest('[data-finance-recurring-row]');
     if (row && ['entrada', 'saida', 'doacao', 'saldo', 'precoUnitario'].includes(event.target.dataset.field)) refreshRow(row, event.target.dataset.field);
     if (row && event.target.dataset.field === 'descricao') filterRecurringRows(root);
-    refreshSectorTotals(root);
   });
   root.addEventListener('change', (event) => {
     const row = event.target.closest('[data-finance-recurring-row]');
     if (row && event.target.dataset.field === 'modo') refreshRow(row);
-    refreshSectorTotals(root);
   });
   root.addEventListener('click', (event) => {
     const addRecurring = event.target.closest('[data-add-recurring]');
@@ -376,7 +363,6 @@ function wireSheet(root, sheet, state, context, permissions) {
     if (sort) {
       sortRecurringRows(root, sort);
       filterRecurringRows(root);
-      refreshSectorTotals(root);
       return;
     }
     if (addRecurring) {
@@ -397,7 +383,6 @@ function wireSheet(root, sheet, state, context, permissions) {
       }
       row.remove();
       filterRecurringRows(root);
-      refreshSectorTotals(root);
     }
   });
   root.addEventListener('submit', async (event) => {

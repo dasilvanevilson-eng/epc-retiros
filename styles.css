@@ -7446,10 +7446,6 @@ body:has(.login-shell) {
 .finance-sheet-table [data-row-values] small { color:var(--muted); }
 .finance-remove-row { width:29px; height:32px; padding:0; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--leaf); box-shadow:none; }
 .finance-remove-row { color:#9a3927; border-color:#d6aaa1; font-size:19px; }
-.finance-sector-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; margin:0; padding:0; overflow:hidden; background:var(--line); }
-.finance-sector-summary>div { display:flex; flex-direction:column; padding:17px; background:#fff; }
-.finance-sector-summary span { color:var(--muted); font-size:12px; font-weight:700; }
-.finance-sector-summary strong { margin-top:5px; color:var(--leaf); font-size:20px; }
 .finance-save-actions { margin-top:0; }
 .finance-balance-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:20px; }
 .finance-balance-metrics article { min-height:105px; }
@@ -7491,7 +7487,7 @@ body:has(.login-shell) {
 .finance-purchase-warning { margin:0 0 16px; padding:11px 13px; border:1px solid #d8a849; border-radius:8px; background:#fffaf0; color:#745800; }
 .finance-purchase-error { margin:0 0 16px; }
 @media(max-width:1100px) { .finance-line-row,.finance-offer-row { grid-template-columns:repeat(3,minmax(0,1fr)); }.finance-icon-button { align-self:end; }.finance-catalog-grid { grid-template-columns:1fr 1fr; } }
-@media(max-width:720px) { .finance-metrics,.finance-overview-grid,.finance-form-grid,.finance-stock-grid,.finance-catalog-grid,.finance-comparison,.finance-sector-summary,.finance-purchase-summary { grid-template-columns:1fr; }.finance-line-row,.finance-offer-row,.finance-quote-item { grid-template-columns:1fr; }.finance-icon-button { width:100%; }.finance-page-heading { flex-direction:column; }.finance-heading-actions { align-self:stretch; }.finance-heading-actions button { flex:1; }.finance-sector-tabs { margin-right:-4px; margin-left:-4px; }.finance-ranked-list>div { grid-template-columns:minmax(0,1fr) auto; }.finance-ranked-list>div button { grid-column:1 / -1; }.finance-report-actions button { width:100%; }.finance-balance-metrics { grid-template-columns:1fr 1fr; }.finance-section-heading { align-items:flex-start; flex-direction:column; }.finance-section-heading>button { width:100%; }.finance-purchase-form { align-items:stretch; flex-direction:column; }.finance-purchase-form button { width:100%; } }
+@media(max-width:720px) { .finance-metrics,.finance-overview-grid,.finance-form-grid,.finance-stock-grid,.finance-catalog-grid,.finance-comparison,.finance-purchase-summary { grid-template-columns:1fr; }.finance-line-row,.finance-offer-row,.finance-quote-item { grid-template-columns:1fr; }.finance-icon-button { width:100%; }.finance-page-heading { flex-direction:column; }.finance-heading-actions { align-self:stretch; }.finance-heading-actions button { flex:1; }.finance-sector-tabs { margin-right:-4px; margin-left:-4px; }.finance-ranked-list>div { grid-template-columns:minmax(0,1fr) auto; }.finance-ranked-list>div button { grid-column:1 / -1; }.finance-report-actions button { width:100%; }.finance-balance-metrics { grid-template-columns:1fr 1fr; }.finance-section-heading { align-items:flex-start; flex-direction:column; }.finance-section-heading>button { width:100%; }.finance-purchase-form { align-items:stretch; flex-direction:column; }.finance-purchase-form button { width:100%; } }
 
 /* Equipe de trabalho: linguagem visual do Cursista SMP, sem alterar o fluxo do formulario. */
 .team-registration-shell > .hero {

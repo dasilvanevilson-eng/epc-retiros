@@ -374,11 +374,13 @@ async function normalizeFinanceRecord(resource, record, session) {
   const incomingEventual = Array.isArray(next.despesasEventuais) ? next.despesasEventuais : [];
   if (incomingEventual.length > 500) throw new Error('A planilha excede o limite de 500 despesas eventuais.');
   next.despesasEventuais = incomingEventual.map((item, index) => {
-    const description = String(item.descricao || '').trim();
-    if (!description) throw new Error('Toda despesa eventual precisa de descricao.');
+    const number = String(item.numero || item.descricao || '').trim();
+    if (!number) throw new Error('Toda despesa eventual precisa de numero.');
     const existing = (current?.despesasEventuais || []).find((candidate) => candidate.id === item.id) || null;
+    const typeSeries = Object.hasOwn(item, 'tipoSerie') ? String(item.tipoSerie || '').trim() : String(existing?.tipoSerie || '').trim();
+    const note = Object.hasOwn(item, 'observacao') ? String(item.observacao || '').trim() : String(existing?.observacao || '').trim();
     const supplier = Object.hasOwn(item, 'fornecedor') ? String(item.fornecedor || '').trim() : String(existing?.fornecedor || '').trim();
-    return { id: String(item.id || '').trim() || randomUUID(), descricao: description, fornecedor: supplier, valor: nonNegativeFinanceNumber(item.valor), ordem: index + 1 };
+    return { id: String(item.id || '').trim() || randomUUID(), numero: number, tipoSerie: typeSeries, observacao: note, fornecedor: supplier, valor: nonNegativeFinanceNumber(item.valor), ordem: index + 1 };
   });
   const removed = current ? [
     ...currentLines.filter((item) => !next.itensRecorrentes.some((incoming) => incoming.id === item.id)).map((item) => ({ tipo: 'recorrente', item })),
