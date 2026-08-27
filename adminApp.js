@@ -133,11 +133,14 @@ const setSelectedRetreatId = (id = '') => {
 const selectedRetreatId = () => localStorage.getItem(selectedRetreatStorageKey()) || '';
 const fallbackRetreat = () => accessibleRetreats().find((retreat) => retreat.status === 'publicado') || accessibleRetreats().find((retreat) => retreat.status === 'preparacao') || accessibleRetreats().find((retreat) => retreat.status === 'concluido') || accessibleRetreats()[0] || null;
 const selectedRetreat = () => {
-  const selected = retreats.find((retreat) => retreat.id === selectedRetreatId() && canAccessRetreat(retreat));
-  if (selected) return selected;
+  const id = selectedRetreatId();
+  return id ? retreats.find((retreat) => retreat.id === id && canAccessRetreat(retreat)) || null : null;
+};
+const initializeSelectedRetreatId = () => {
+  if (selectedRetreatId()) return selectedRetreat();
   const fallback = fallbackRetreat();
-  if (fallback) setSelectedRetreatId(fallback.id);
-  else setSelectedRetreatId('');
+  if (!fallback) return null;
+  setSelectedRetreatId(fallback.id);
   return fallback;
 };
 const isRetreatConcluded = (retreat = {}) => retreat?.status === 'concluido';
@@ -817,12 +820,14 @@ async function loadHomeData(retreat = null, loadCoupleStudents = null) {
 }
 
 async function loadData({ reuse = false } = {}) {
+  if (retreats.length) initializeSelectedRetreatId();
   let focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
   if (reuse && retreats.length && loadedDataFocusRetreatId === focusRetreatId) return;
   invalidateHomeDataCache();
   retreats = await dataService.listRetiros();
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   normalizeRetreatSectorsForDisplay();
+  initializeSelectedRetreatId();
   focusRetreatId = publicRetreatId || publicReceiverRetreatId || selectedRetreat()?.id || '';
   [enrolments, people] = focusRetreatId
     ? await Promise.all([dataService.listAdesoes(focusRetreatId), dataService.listPessoas(focusRetreatId)])
@@ -831,10 +836,14 @@ async function loadData({ reuse = false } = {}) {
 }
 
 async function ensureRetreatFocusLoaded() {
-  if (retreats.length) return;
+  if (retreats.length) {
+    initializeSelectedRetreatId();
+    return;
+  }
   retreats = await dataService.listRetiros();
   retreats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   normalizeRetreatSectorsForDisplay();
+  initializeSelectedRetreatId();
 }
 
 function ageFromBirth(dateOfBirth) {
@@ -1791,7 +1800,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
         ${homeStatCard('Camisetas dos cursistas', null, 'shirts', 'Visualizar detalhes')}
       </div></section>`;
   const homeFocusRetreats = accessibleRetreats();
-  const homeFocusDisabled = homeFocusRetreats.length <= 1;
+  const homeFocusDisabled = Boolean(active) && homeFocusRetreats.length <= 1;
   const homeFocusOptions = homeFocusRetreats.map((retreat, index) => {
     const readOnlyLabel = retreat.status === 'concluido' ? ' · Somente leitura' : '';
     const optionDetails = [dateRange(retreat.dataInicio, retreat.dataTermino), retreat.local].filter(Boolean).join(' · ');
@@ -1801,7 +1810,7 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     ? 'Digite para buscar por nome, período, local ou situação.'
     : (homeFocusRetreats.length === 1 ? 'Único retiro disponível para o seu usuário.' : 'Nenhum retiro disponível para o seu usuário.');
   const homeRetreatSelectorHtml = `<section class="home-retreat-selector" data-home-retreat-selector aria-labelledby="home-retreat-selector-label"><label id="home-retreat-selector-label" for="home-retreat-search">Retiro em foco</label><div class="home-retreat-picker"><input type="search" id="home-retreat-search" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-retreat-options" aria-describedby="home-retreat-selector-hint" autocomplete="off" value="${escapeHtml(active?.nome || (homeFocusRetreats.length ? '' : 'Nenhum retiro disponível'))}" ${homeFocusDisabled ? 'disabled' : ''}><span aria-hidden="true">⌄</span><div class="home-retreat-options" id="home-retreat-options" role="listbox" hidden>${homeFocusOptions}<p data-home-retreat-empty hidden>Nenhum retiro encontrado.</p></div></div><small id="home-retreat-selector-hint">${escapeHtml(homeFocusHint)}</small><p class="home-retreat-focus-message" data-home-retreat-message role="status" aria-live="polite">${escapeHtml(focusChangedMessage)}</p></section>`;
-  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : 'Crie ou publique um retiro para acompanhar as estatísticas.'}</p><div class="gold-divider" aria-hidden="true"></div></section>${homeRetreatSelectorHtml}
+  layout(`<section class="home-topline"><section class="dashboard-hero"><div class="hero-cross" aria-hidden="true"></div><h1>${active ? escapeHtml(active.nome) : 'Retiro em foco'}</h1><p>${active ? `${dateRange(active.dataInicio, active.dataTermino)}${active.local ? ` · ${escapeHtml(active.local)}` : ''}` : (homeFocusRetreats.length ? 'Selecione explicitamente o retiro em foco para acompanhar as estatísticas.' : 'Crie ou publique um retiro para acompanhar as estatísticas.')}</p><div class="gold-divider" aria-hidden="true"></div></section>${homeRetreatSelectorHtml}
     </section>
     <section class="home-overview" aria-label="Resumo do retiro em foco">
       ${studentColumnHtml}

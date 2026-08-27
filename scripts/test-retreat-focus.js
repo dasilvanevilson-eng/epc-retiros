@@ -16,7 +16,8 @@ const focusState = section('const selectedRetreatStorageKeyPrefix', 'const isRet
 assert.match(focusState, /currentUser\?\.id \|\| currentUser\?\.username/, 'A preferência deve ser separada por usuário.');
 assert.match(focusState, /encodeURIComponent\(userKey\)/, 'A identidade do usuário deve formar uma chave local segura.');
 assert.match(focusState, /localStorage\.setItem\(selectedRetreatStorageKey\(\), id\)/, 'O foco deve persistir no navegador atual.');
-assert.match(focusState, /if \(fallback\) setSelectedRetreatId\(fallback\.id\)/, 'Foco inválido deve ser substituído pelo retiro permitido de fallback.');
+assert.match(focusState, /const selectedRetreat = \(\) => \{[\s\S]*return id \? retreats\.find\(\(retreat\) => retreat\.id === id && canAccessRetreat\(retreat\)\) \|\| null : null;[\s\S]*\}/, 'Ler o retiro em foco não pode alterar a preferência salva.');
+assert.match(focusState, /const initializeSelectedRetreatId = \(\) => \{[\s\S]*if \(selectedRetreatId\(\)\) return selectedRetreat\(\);[\s\S]*setSelectedRetreatId\(fallback\.id\)/, 'Fallback automático deve ocorrer somente na inicialização sem foco salvo.');
 assert.doesNotMatch(focusState, /getItem\(selectedRetreatStorageKeyPrefix\)/, 'A antiga preferência compartilhada não pode ser reutilizada.');
 
 const selectorSource = section('function wireHomeRetreatSelector', 'async function renderHome');
@@ -32,6 +33,8 @@ assert.doesNotMatch(selectorSource, /dataService\.save/, 'A seleção do foco n�
 
 const homeSource = section('async function renderHome', 'async function renderRetiros');
 assert.match(homeSource, /const homeFocusRetreats = accessibleRetreats\(\)/, 'Somente retiros permitidos devem aparecer.');
+assert.match(homeSource, /const homeFocusDisabled = Boolean\(active\) && homeFocusRetreats\.length <= 1/, 'Sem foco válido, o seletor deve continuar habilitado para escolha explícita.');
+assert.match(homeSource, /Selecione explicitamente o retiro em foco para acompanhar as estatísticas\./, 'Sem foco válido, o Início deve orientar a seleção manual.');
 assert.match(homeSource, /role="combobox"/, 'O campo deve usar semântica acessível de combobox.');
 assert.match(homeSource, /role="listbox"/, 'As opções devem usar semântica acessível de lista.');
 assert.match(homeSource, /Somente leitura/, 'Retiros concluídos devem ser identificados como somente leitura.');
