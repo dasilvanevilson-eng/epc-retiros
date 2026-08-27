@@ -19,6 +19,7 @@ let purchaseBaseRetreatId = '';
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const createId = () => globalThis.crypto?.randomUUID?.() || `finance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const inputValue = (value) => Number.isFinite(Number(value)) ? String(Number(value)) : '0';
+const moneyInputValue = (value) => financeNumber(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const supplierListId = 'finance-supplier-options';
 const normalizeFinanceSearch = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
 const recurringKey = (item = {}) => String(item.chaveRecorrencia || item.itemOrigemId || item.id || createId()).trim();
@@ -93,7 +94,7 @@ const eventualRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
     <td><input data-field="numero" value="${escapeHtml(item.numero || item.descricao || '')}" placeholder="Número" ${disabled}></td>
     <td><input data-field="tipoSerie" value="${escapeHtml(item.tipoSerie || '')}" placeholder="Tipo/Série" ${disabled}></td>
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
-    <td><input data-field="valor" inputmode="decimal" value="${inputValue(item.valor)}" ${disabled}></td>
+    <td><input data-field="valor" inputmode="decimal" value="${moneyInputValue(item.valor)}" ${disabled}></td>
     <td><input data-field="observacao" value="${escapeHtml(item.observacao || '')}" placeholder="Observação" ${disabled}></td>
     <td>${canEdit && canDelete ? '<button type="button" class="finance-remove-row" data-remove-row aria-label="Remover despesa eventual">×</button>' : ''}</td>
   </tr>`;
@@ -118,10 +119,10 @@ function recurringSheetHtml(sheet, state, permissions, initializationError = '')
 
 function eventualSheetHtml(sheet, state, permissions, initializationError = '') {
   const supplierOptions = supplierOptionsHtml(state.allSheets);
-  return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Despesas eventuais</h2><p>Lançamentos eventuais indexados diretamente ao retiro em foco.</p></div></section>
+  return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Despesas</h2><p>Os lançamentos abaixo serão indexados ao retiro em foco</p></div></section>
   <form id="finance-retreat-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
-    <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas eventuais</h2><p>Despesas não recorrentes, sem controle de estoque.</p></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
+    <section class="panel finance-sheet-panel"><div class="panel-heading"><div><h2>Despesas</h2></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-eventual>Adicionar despesa</button>' : ''}</div>
       <div class="finance-sheet-scroll"><table class="finance-eventual-table"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Fornecedor</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody data-eventual-body>${(sheet.despesasEventuais || []).map((item) => eventualRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.despesasEventuais?.length ? '' : '<p class="empty-state" data-eventual-empty>Nenhuma despesa eventual neste retiro.</p>'}
     </section>
@@ -331,6 +332,10 @@ function filterRecurringRows(root) {
   if (noResults) noResults.hidden = !query || visibleRows > 0 || rows.length === 0;
 }
 
+function formatEventualMoneyInput(input) {
+  input.value = moneyInputValue(input.value);
+}
+
 function wireSheet(root, sheet, state, context, permissions) {
   root.addEventListener('input', (event) => {
     if (event.target.matches('[data-recurring-search]')) {
@@ -344,7 +349,11 @@ function wireSheet(root, sheet, state, context, permissions) {
   root.addEventListener('change', (event) => {
     const row = event.target.closest('[data-finance-recurring-row]');
     if (row && event.target.dataset.field === 'modo') refreshRow(row);
+    if (event.target.matches('[data-finance-eventual-row] [data-field="valor"]')) formatEventualMoneyInput(event.target);
   });
+  root.addEventListener('blur', (event) => {
+    if (event.target.matches('[data-finance-eventual-row] [data-field="valor"]')) formatEventualMoneyInput(event.target);
+  }, true);
   root.addEventListener('click', (event) => {
     const addRecurring = event.target.closest('[data-add-recurring]');
     const addEventual = event.target.closest('[data-add-eventual]');
@@ -379,6 +388,7 @@ function wireSheet(root, sheet, state, context, permissions) {
     event.preventDefault();
     const message = root.querySelector('[data-finance-message]');
     const button = root.querySelector('button[type="submit"]');
+    root.querySelectorAll('[data-finance-eventual-row] [data-field="valor"]').forEach(formatEventualMoneyInput);
     try {
       button.disabled = true;
       message.textContent = 'Salvando...';
@@ -428,7 +438,7 @@ export async function renderFinanceiro(context) {
   const permissions = { canEdit, canDelete };
   const navigation = `<nav class="finance-sector-tabs" aria-label="Opções do Financeiro">${[
     ['recorrentes', 'Insumos recorrentes'],
-    ['eventuais', 'Despesas eventuais'],
+    ['eventuais', 'Despesas'],
     ['compra', 'Sugestão de compras'],
     ['balanco', 'Relatório Insumos'],
   ].map(([view, label]) => `<button type="button" data-finance-view="${view}" class="${activeView === view ? 'is-active' : ''}">${label}</button>`).join('')}</nav>`;
