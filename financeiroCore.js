@@ -11,6 +11,8 @@ export const nonNegativeFinanceNumber = (value) => Math.max(0, financeNumber(val
 export const financeMoney = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financeNumber(value));
 export const financeQuantity = (value) => nonNegativeFinanceNumber(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 export const normalizeSectorKey = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+export const RETREAT_FINANCE_KEY = '__retiro__';
+export const RETREAT_FINANCE_LABEL = 'Retiro';
 
 const retreatOrderValue = (retreat = {}) => {
   const start = String(retreat.dataInicio || '').slice(0, 10);

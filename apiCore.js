@@ -278,6 +278,8 @@ const financeNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const nonNegativeFinanceNumber = (value) => Math.max(0, financeNumber(value));
+const RETREAT_FINANCE_KEY = '__retiro__';
+const RETREAT_FINANCE_LABEL = 'Retiro';
 const financeSectorKey = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 const retreatFinanceOrder = (retreat = {}) => {
   const start = String(retreat.dataInicio || '').slice(0, 10);
@@ -342,10 +344,11 @@ async function normalizeFinanceRecord(resource, record, session) {
   const retreat = await getRecord('retiros', next.retiroId);
   if (!retreat) throw new Error('Retiro em foco nao encontrado.');
   const sectorKey = financeSectorKey(next.setorChave || next.setor);
+  const isRetreatSheet = sectorKey === RETREAT_FINANCE_KEY;
   const configuredSector = (retreat.setores || []).find((sector) => financeSectorKey(sector) === sectorKey);
   const currentSheets = await listRecords('financeiro_planilhas', { retiroId: next.retiroId, setorChave: sectorKey });
   const current = currentSheets.find((sheet) => sheet.id === next.id) || null;
-  if (!configuredSector && !current) throw new Error('O setor nao faz parte da configuracao do retiro em foco.');
+  if (!isRetreatSheet && !configuredSector && !current) throw new Error('O setor nao faz parte da configuracao do retiro em foco.');
   if (currentSheets.some((sheet) => sheet.id !== next.id && sheet.setorChave === sectorKey)) throw new Error('A planilha deste setor ja foi inicializada. Recarregue a pagina.');
   const retreats = await listRecords('retiros');
   const previousRetreat = previousFinanceRetreat(retreat, retreats);
@@ -388,7 +391,7 @@ async function normalizeFinanceRecord(resource, record, session) {
     for (const removedItem of removed) await saveFinanceAudit({ sheet: current, action: 'exclusao_item', reason, data: removedItem, session });
   }
   delete next.motivoExclusao;
-  next.setor = current?.setor || configuredSector || String(next.setor || '').trim();
+  next.setor = current?.setor || (isRetreatSheet ? RETREAT_FINANCE_LABEL : configuredSector) || String(next.setor || '').trim();
   next.setorChave = current?.setorChave || sectorKey;
   next.retiroOrigemId = current?.retiroOrigemId || previousSheet?.retiroId || '';
   next.inicializada = true;
