@@ -3894,19 +3894,19 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
         <label class="field"><span>Religião dela</span><input name="religiaoDela" placeholder="Digite a religião"></label>
         <label class="field"><span>Participa das missas? Ele</span><input name="missaDele" placeholder="Informe a participação"></label>
         <label class="field"><span>Participa das missas? Ela</span><input name="missaDela" placeholder="Informe a participação"></label>
-        <fieldset><legend>Pertence a movimento da Igreja? Ele</legend>${yesNo('movimentoIgrejaDele')}</fieldset>
+        <fieldset class="smp-pair-row-start"><legend>Pertence a movimento da Igreja? Ele</legend>${yesNo('movimentoIgrejaDele')}</fieldset>
         <label class="field"><span>Qual movimento dele?</span><input name="qualMovimentoDele" placeholder="Digite o movimento"></label>
-        <fieldset><legend>Pertence a movimento da Igreja? Ela</legend>${yesNo('movimentoIgrejaDela')}</fieldset>
+        <fieldset class="smp-pair-row-start"><legend>Pertence a movimento da Igreja? Ela</legend>${yesNo('movimentoIgrejaDela')}</fieldset>
         <label class="field"><span>Qual movimento dela?</span><input name="qualMovimentoDela" placeholder="Digite o movimento"></label>
       </div>
     </section>
     <section class="cursista-smp-section">
       <div class="section-heading"><span>4.</span><div><h2>Filhos e casamento</h2></div></div>
       <div class="fields three-columns">
-        <label class="field"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
+        <label class="field smp-pair-row-start"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
         <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDele')}</fieldset>
-        <label class="field"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
+        <label class="field smp-pair-row-start"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
         <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDela')}</fieldset>
         <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" ${dateInputAttributes}></label>

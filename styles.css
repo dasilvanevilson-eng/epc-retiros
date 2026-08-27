@@ -5922,6 +5922,10 @@ body:has(.login-shell) {
   grid-template-columns:repeat(2, minmax(0, 1fr));
 }
 
+.cursista-smp-form .smp-pair-row-start {
+  grid-column:1;
+}
+
 .cursista-smp-form fieldset {
   margin:0;
   padding:0;
@@ -6376,6 +6380,10 @@ body:has(.login-shell) {
   .cursista-smp-form .three-columns,
   .cursista-smp-address {
     grid-template-columns:1fr;
+  }
+
+  .cursista-smp-form .smp-pair-row-start {
+    grid-column:auto;
   }
 
   .cursista-smp-form .three-columns.cursista-epc-common-fields {

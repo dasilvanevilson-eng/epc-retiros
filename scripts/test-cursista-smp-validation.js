@@ -137,6 +137,10 @@ async function main() {
   assert.match(admin, /const smpRequiredChoiceFields = \[[\s\S]*?'crismaDele'[\s\S]*?'manequimDela'/);
   assert.match(admin, /'casamentoDele', 'filhosDele', 'outrasUnioesDele'/);
   assert.match(admin, /'casamentoDela', 'filhosDela', 'outrasUnioesDela'/);
+  assert.match(admin, /class="smp-pair-row-start"><legend>Pertence a movimento da Igreja\? Ele/);
+  assert.match(admin, /class="smp-pair-row-start"><legend>Pertence a movimento da Igreja\? Ela/);
+  assert.match(admin, /class="field smp-pair-row-start"><span>Data do 1º casamento dele/);
+  assert.match(admin, /class="field smp-pair-row-start"><span>Data do 1º casamento dela/);
   assert.doesNotMatch(admin, /commonFields = fieldsBlock\([^\n]*'outrasUnioes'/);
   const smpCommonFieldsSource = admin.match(/const commonFields = fieldsBlock\('fields two-columns cursista-smp-common-fields', \[[^\n]+/)?.[0] || '';
   assert.match(smpCommonFieldsSource, /'precisaAcolhimento', 'porqueQueremFazerRetiro', 'comoSouberamRetiro', 'familiarAmigo'/);
@@ -145,6 +149,8 @@ async function main() {
   });
   assert.match(styles, /fieldset:has\(\[name="precisaAcolhimento"\]\) \{ grid-column:1 \/ span 6; \}/);
   assert.match(styles, /\.field:has\(\[name="porqueQueremFazerRetiro"\]\) \{ grid-column:7 \/ span 6; \}/);
+  assert.match(styles, /\.cursista-smp-form \.smp-pair-row-start \{\s*grid-column:1;\s*\}/);
+  assert.match(styles, /@media\(max-width:720px\)[\s\S]*?\.cursista-smp-form \.smp-pair-row-start \{\s*grid-column:auto;\s*\}/);
   assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);
