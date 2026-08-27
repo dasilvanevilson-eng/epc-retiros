@@ -20,11 +20,15 @@ const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 assert.equal(normalizeSectorKey('  Cozinha Ágil  '), 'cozinha agil');
 
 const movement = calculateRecurringItem({ modo: 'movimento', posicaoAnterior: 10, entrada: 5, saida: 3, precoUnitario: 4 });
-assert.equal(movement.saldo, 12);
+assert.equal(movement.saldo, 0);
 assert.equal(movement.valorEntrada, 20);
 assert.equal(movement.valorSaida, 12);
-assert.equal(movement.valorSaldo, 48);
-assert.throws(() => calculateRecurringItem({ modo: 'movimento', posicaoAnterior: 2, entrada: 0, saida: 3 }), /saldo negativo/);
+assert.equal(movement.valorSaldo, 0);
+const unrestrictedUse = calculateRecurringItem({ modo: 'movimento', posicaoAnterior: 2, entrada: 0, saida: 3, saldo: 2, precoUnitario: 4 });
+assert.equal(unrestrictedUse.saida, 3);
+assert.equal(unrestrictedUse.saldo, 2);
+const signedUse = calculateRecurringItem({ modo: 'movimento', saida: -1.5 });
+assert.equal(signedUse.saida, -1.5);
 
 const lowerBalance = calculateRecurringItem({ modo: 'saldo', posicaoAnterior: 10, saldo: 7, entrada: 99, saida: 99 });
 assert.equal(lowerBalance.entrada, 0);
@@ -80,7 +84,7 @@ const totals = sectorSheetTotals({
   itensRecorrentes: [{ modo: 'movimento', posicaoAnterior: 10, entrada: 5, saida: 4, precoUnitario: 2 }],
   despesasEventuais: [{ descricao: 'Frete', valor: 30 }],
 });
-assert.deepEqual(totals, { previous: 20, input: 10, output: 8, balance: 22, eventual: 30, acquired: 40, consumed: 38 });
+assert.deepEqual(totals, { previous: 20, input: 10, output: 8, balance: 0, eventual: 30, acquired: 40, consumed: 38 });
 assert.deepEqual(retreatBalance([{ itensRecorrentes: [], despesasEventuais: [{ valor: 10 }] }, { itensRecorrentes: [], despesasEventuais: [{ valor: 5 }] }]).eventual, 15);
 
 assert.equal(dailyParticipationTotal({
@@ -145,11 +149,12 @@ assert.doesNotMatch(ui, /data-move=/);
 assert.doesNotMatch(ui, /function moveRow/);
 assert.doesNotMatch(ui, /finance-row-order/);
 assert.doesNotMatch(ui, /<th>Ordem<\/th><th>Descrição<\/th>/);
-assert.match(ui, /sortHeader\('posicaoAnterior', 'POSIÇÃO ANT\.'\)[\s\S]*sortHeader\('saida', 'Saída'\)[\s\S]*sortHeader\('saldo', 'Saldo'\)[\s\S]*sortHeader\('precoUnitario', 'R\$ UNITÁRIO'\)/);
+assert.match(ui, /sortHeader\('posicaoAnterior', 'POSIÇÃO ANT\.'\)[\s\S]*sortHeader\('saida', 'Uso'\)[\s\S]*sortHeader\('saldo', 'Saldo'\)[\s\S]*sortHeader\('precoUnitario', 'R\$ UNITÁRIO'\)/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th>/);
 assert.doesNotMatch(ui, /<th>Lançamento<\/th><th>Entrada<\/th><th>Saída<\/th><th>Saldo<\/th>/);
 assert.match(ui, /type="hidden" data-field="entrada"/);
 assert.match(ui, /type="hidden" data-field="modo"/);
+assert.match(ui, /row\.querySelector\('\[data-field="saldo"\]'\)\.readOnly = false/);
 assert.match(styles, /\.finance-sheet-table \{ width:100%; min-width:1040px; border-collapse:collapse; \}/);
 assert.match(styles, /\.finance-sort-header \{ display:inline-flex;[\s\S]*?cursor:pointer; \}/);
 assert.match(styles, /\.finance-sort-header\[data-sort-direction="asc"\] span::after \{ content:'↑'; color:var\(--leaf\); \}/);
@@ -174,7 +179,7 @@ assert.match(ui, /setor histórico/);
 assert.match(api, /financeiro_planilhas/);
 assert.match(api, /Object\.hasOwn\(line, 'fornecedor'\)/);
 assert.match(api, /existing\?\.fornecedor \|\| previous\?\.fornecedor/);
-assert.match(api, /A saida de .* nao pode gerar saldo negativo/);
+assert.doesNotMatch(api, /nao pode gerar saldo negativo/);
 assert.match(api, /exclusao_item/);
 assert.match(api, /Retiro encerrado: Financeiro disponivel apenas para consulta/);
 assert.match(stores, /financeiro_planilhas/);

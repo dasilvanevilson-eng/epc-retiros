@@ -294,7 +294,7 @@ const normalizeFinanceLine = (line, position, existing = null, previous = null, 
   const mode = line.modo === 'saldo' ? 'saldo' : 'movimento';
   const initial = nonNegativeFinanceNumber(position);
   let input = nonNegativeFinanceNumber(line.entrada);
-  let output = nonNegativeFinanceNumber(line.saida);
+  let output = financeNumber(line.saida);
   let balance;
   if (mode === 'saldo') {
     balance = nonNegativeFinanceNumber(line.saldo);
@@ -302,9 +302,7 @@ const normalizeFinanceLine = (line, position, existing = null, previous = null, 
     input = delta > 0 ? delta : 0;
     output = delta < 0 ? Math.abs(delta) : 0;
   } else {
-    balance = initial + input - output;
-    if (balance < -0.000001) throw new Error(`A saida de ${line.descricao || 'um item'} nao pode gerar saldo negativo.`);
-    balance = Math.max(0, balance);
+    balance = nonNegativeFinanceNumber(line.saldo);
   }
   const description = String(line.descricao || '').trim();
   if (!description) throw new Error('Toda despesa recorrente precisa de descricao.');

@@ -30,7 +30,7 @@ export function findPreviousRetreat(retreat = {}, retreats = []) {
 export function calculateRecurringItem(item = {}) {
   const position = nonNegativeFinanceNumber(item.posicaoAnterior);
   let input = nonNegativeFinanceNumber(item.entrada);
-  let output = nonNegativeFinanceNumber(item.saida);
+  let output = financeNumber(item.saida);
   let balance;
   const mode = item.modo === 'saldo' ? 'saldo' : 'movimento';
   if (mode === 'saldo') {
@@ -39,9 +39,7 @@ export function calculateRecurringItem(item = {}) {
     input = delta > 0 ? delta : 0;
     output = delta < 0 ? Math.abs(delta) : 0;
   } else {
-    balance = position + input - output;
-    if (balance < -0.000001) throw new Error('A saída não pode gerar saldo negativo.');
-    balance = Math.max(0, balance);
+    balance = nonNegativeFinanceNumber(item.saldo);
   }
   const unitPrice = nonNegativeFinanceNumber(item.precoUnitario);
   return {

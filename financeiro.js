@@ -67,7 +67,7 @@ const recurringRowHtml = (item = {}, { canEdit, canDelete } = {}) => {
     <td><input data-field="fornecedor" list="${supplierListId}" value="${escapeHtml(item.fornecedor || '')}" placeholder="Fornecedor" autocomplete="off" ${disabled}></td>
     <td><input data-field="posicaoAnterior" value="${inputValue(calculated.posicaoAnterior)}" readonly tabindex="-1"><input type="hidden" data-field="modo" value="${escapeHtml(calculated.modo)}"><input type="hidden" data-field="entrada" value="${inputValue(calculated.entrada)}"></td>
     <td><input data-field="saida" inputmode="decimal" value="${inputValue(calculated.saida)}" ${disabled} ${movement ? '' : 'readonly'}></td>
-    <td><input data-field="saldo" inputmode="decimal" value="${inputValue(calculated.saldo)}" ${disabled} ${movement ? 'readonly' : ''}></td>
+    <td><input data-field="saldo" inputmode="decimal" value="${inputValue(calculated.saldo)}" ${disabled}></td>
     <td><input data-field="precoUnitario" inputmode="decimal" value="${inputValue(calculated.precoUnitario)}" ${disabled}></td>
     <td data-row-values><small>Saída ${financeMoney(calculated.valorSaida)}</small><strong>Saldo ${financeMoney(calculated.valorSaldo)}</strong></td>
     <td>${canEdit && canDelete ? '<button type="button" class="finance-remove-row" data-remove-row aria-label="Remover insumo recorrente">×</button>' : ''}</td>
@@ -93,7 +93,7 @@ function sectorSheetHtml(sheet, state, permissions, initializationError = '') {
   <form id="finance-sector-sheet" class="finance-sheet-form" data-sheet-id="${escapeHtml(sheet.id || '')}">
     <datalist id="${supplierListId}">${supplierOptions}</datalist>
     <section class="panel finance-sheet-panel"><div class="panel-heading"><div class="finance-recurring-heading"><h2>Insumos Recorrentes</h2><p>Controle resumido de entrada, saída e saldo, sem lançamento de notas.</p><label class="finance-recurring-search"><span>Buscar insumo</span><input type="search" data-recurring-search placeholder="Digite a descrição" autocomplete="off"></label></div>${permissions.canEdit ? '<button type="button" class="secondary-button" data-add-recurring>Adicionar insumo</button>' : ''}</div>
-      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>${sortHeader('descricao', 'Insumo')}</th><th>${sortHeader('unidade', 'Unidade')}</th><th>${sortHeader('fornecedor', 'Fornecedor')}</th><th>${sortHeader('posicaoAnterior', 'POSIÇÃO ANT.')}</th><th>${sortHeader('saida', 'Saída')}</th><th>${sortHeader('saldo', 'Saldo')}</th><th>${sortHeader('precoUnitario', 'R$ UNITÁRIO')}</th><th>${sortHeader('valorSaida', 'Valores')}</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
+      <div class="finance-sheet-scroll"><table class="finance-sheet-table"><thead><tr><th>${sortHeader('descricao', 'Insumo')}</th><th>${sortHeader('unidade', 'Unidade')}</th><th>${sortHeader('fornecedor', 'Fornecedor')}</th><th>${sortHeader('posicaoAnterior', 'POSIÇÃO ANT.')}</th><th>${sortHeader('saida', 'Uso')}</th><th>${sortHeader('saldo', 'Saldo')}</th><th>${sortHeader('precoUnitario', 'R$ UNITÁRIO')}</th><th>${sortHeader('valorSaida', 'Valores')}</th><th></th></tr></thead><tbody data-recurring-body>${(sheet.itensRecorrentes || []).map((item) => recurringRowHtml(item, permissions)).join('')}</tbody></table></div>
       ${sheet.itensRecorrentes?.length ? '' : '<p class="empty-state" data-recurring-empty>Nenhum insumo recorrente neste setor.</p>'}
       <p class="empty-state" data-recurring-no-results hidden>Nenhum insumo encontrado para esta busca.</p>
     </section>
@@ -250,10 +250,10 @@ function refreshRow(row, changedField = '') {
     });
     const movement = mode !== 'saldo';
     row.querySelector('[data-field="saida"]').readOnly = !movement;
-    row.querySelector('[data-field="saldo"]').readOnly = movement;
+    row.querySelector('[data-field="saldo"]').readOnly = false;
     if (!movement || changedField !== 'entrada') row.querySelector('[data-field="entrada"]').value = inputValue(item.entrada);
     if (!movement || changedField !== 'saida') row.querySelector('[data-field="saida"]').value = inputValue(item.saida);
-    if (movement || changedField !== 'saldo') row.querySelector('[data-field="saldo"]').value = inputValue(item.saldo);
+    if (!movement && changedField !== 'saldo') row.querySelector('[data-field="saldo"]').value = inputValue(item.saldo);
     row.querySelector('[data-row-values]').innerHTML = `<small>Saída ${financeMoney(item.valorSaida)}</small><strong>Saldo ${financeMoney(item.valorSaldo)}</strong>`;
     row.classList.remove('is-invalid');
   } catch { row.classList.add('is-invalid'); }
