@@ -10,8 +10,6 @@ import {
   purchaseSuggestionRows,
   RETREAT_FINANCE_KEY,
   RETREAT_FINANCE_LABEL,
-  retreatBalance,
-  sectorSheetTotals,
 } from './financeiroCore.js?v=20260809-sugestao-compra';
 
 let activeView = 'recorrentes';
@@ -132,28 +130,20 @@ function eventualSheetHtml(sheet, state, permissions, initializationError = '') 
   </form>`;
 }
 
-const metricHtml = (label, value) => `<article><span>${label}</span><strong>${financeMoney(value)}</strong></article>`;
-
 function balanceSectorHtml(sheet) {
-  const totals = sectorSheetTotals(sheet);
   const recurringRows = (sheet.itensRecorrentes || []).map((raw) => {
     const item = calculateRecurringItem(raw);
-    return `<tr><td>${escapeHtml(item.descricao)}</td><td>${escapeHtml(item.unidade)}</td><td>${financeQuantity(item.posicaoAnterior)}<small>${financeMoney(item.valorPosicaoAnterior)}</small></td><td>${financeQuantity(item.entrada)}<small>${financeMoney(item.valorEntrada)}</small></td><td>${financeQuantity(item.saida)}</td><td>${financeQuantity(item.saldo)}<small>${financeMoney(item.valorSaldo)}</small></td><td>${financeMoney(item.precoUnitario)}</td><td><strong>${financeMoney(item.valorSaida)}</strong></td></tr>`;
+    return `<tr><td>${escapeHtml(item.descricao)}</td><td>${escapeHtml(item.unidade)}</td><td>${escapeHtml(item.fornecedor || '')}</td><td>${financeQuantity(item.posicaoAnterior)}</td><td>${financeQuantity(item.saida)}</td><td>${financeQuantity(item.doacao)}</td><td>${financeQuantity(item.saldo)}</td><td>${financeMoney(item.precoUnitario)}</td><td><strong>${financeMoney(item.valorSaida)}</strong></td></tr>`;
   }).join('');
-  const eventualRows = (sheet.despesasEventuais || []).map((item) => `<tr><td>${escapeHtml(item.numero || item.descricao)}</td><td>${escapeHtml(item.tipoSerie || '')}</td><td>${financeMoney(item.valor)}</td><td>${escapeHtml(item.observacao || '')}</td></tr>`).join('');
   return `<section class="panel finance-balance-sector"><h2>${escapeHtml(sheet.setor)}</h2>
-    ${recurringRows ? `<div class="finance-sheet-scroll"><table class="finance-balance-recurring"><colgroup><col class="finance-balance-description"><col class="finance-balance-unit"><col class="finance-balance-previous"><col class="finance-balance-input"><col class="finance-balance-output"><col class="finance-balance-stock"><col class="finance-balance-price"><col class="finance-balance-output-value"></colgroup><thead><tr><th>Insumo</th><th>Unidade</th><th>Posição anterior</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Preço unitário</th><th>Valor da saída</th></tr></thead><tbody>${recurringRows}</tbody></table></div>` : '<p class="empty-state">Sem insumos recorrentes.</p>'}
-    ${eventualRows ? `<h3>Despesas eventuais</h3><table class="finance-balance-eventual"><thead><tr><th>Número</th><th>Tipo/Série</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${eventualRows}</tbody></table>` : ''}
-    <footer><span>Entradas: <b>${financeMoney(totals.input)}</b></span><span>Saídas: <b>${financeMoney(totals.output)}</b></span><span>Eventuais: <b>${financeMoney(totals.eventual)}</b></span><span>Saldo: <b>${financeMoney(totals.balance)}</b></span></footer></section>`;
+    ${recurringRows ? `<div class="finance-sheet-scroll"><table class="finance-balance-recurring"><colgroup><col class="finance-balance-description"><col class="finance-balance-unit"><col class="finance-balance-supplier"><col class="finance-balance-previous"><col class="finance-balance-output"><col class="finance-balance-donation"><col class="finance-balance-stock"><col class="finance-balance-price"><col class="finance-balance-output-value"></colgroup><thead><tr><th>Insumo</th><th>Unidade</th><th>Fornecedor</th><th>Posição ant.</th><th>Comprado</th><th>Doação</th><th>Saldo</th><th>R$ unitário</th><th>Valores</th></tr></thead><tbody>${recurringRows}</tbody></table></div>` : '<p class="empty-state">Sem insumos recorrentes.</p>'}</section>`;
 }
 
 function sheetsForBalance(state) { return [generalSheet(state)]; }
 
 function balanceHtml(state) {
   const sheets = sheetsForBalance(state);
-  const totals = retreatBalance(sheets);
-  return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Balanço de ${escapeHtml(state.retreat.nome)}</h2><p>Valores adquiridos e consumidos apresentados separadamente.</p></div><button type="button" data-finance-print>Visualizar / imprimir</button></section>
-    <section class="finance-metrics finance-balance-metrics">${metricHtml('Posição anterior', totals.previous)}${metricHtml('Entradas recorrentes', totals.input)}${metricHtml('Saídas / consumo', totals.output)}${metricHtml('Despesas eventuais', totals.eventual)}${metricHtml('Saldo final valorizado', totals.balance)}${metricHtml('Total adquirido / desembolsado', totals.acquired)}${metricHtml('Total consumido', totals.consumed)}</section>
+  return `<section class="finance-section-heading"><div><p class="eyebrow">Retiro em foco</p><h2>Relatório Insumos</h2><p>Listagem dos campos cadastrados em insumos recorrentes.</p></div><button type="button" data-finance-print>Visualizar / imprimir</button></section>
     <div class="finance-balance-sectors">${sheets.map(balanceSectorHtml).join('') || '<section class="panel"><p class="empty-state">Nenhum lançamento financeiro neste retiro.</p></section>'}</div>`;
 }
 
@@ -404,11 +394,10 @@ function wireSheet(root, sheet, state, context, permissions) {
 
 function printBalance(state, currentUser) {
   const sheets = sheetsForBalance(state);
-  const totals = retreatBalance(sheets);
   const popup = window.open('', '_blank');
   if (!popup) return alert('Permita pop-ups para visualizar e imprimir o balanço.');
   popup.opener = null;
-  popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Balanço - ${escapeHtml(state.retreat.nome)}</title><style>@page{size:A4 landscape;margin:12mm}body{font:11px Arial;color:#203328}h1{margin:0}h2{margin:22px 0 8px;border-bottom:2px solid #315d39;padding-bottom:5px}small{display:block;color:#667}table{width:100%;border-collapse:collapse;margin:8px 0 14px}th,td{padding:6px;border:1px solid #ccd5cc;text-align:left;vertical-align:middle}.finance-balance-recurring{table-layout:fixed}.finance-balance-description{width:24%}.finance-balance-unit{width:8%}.finance-balance-previous{width:13%}.finance-balance-input{width:11%}.finance-balance-output{width:8%}.finance-balance-output-value{width:13%}.finance-balance-stock{width:11%}.finance-balance-price{width:12%}.finance-balance-recurring th{white-space:normal}.finance-balance-recurring td:not(:first-child){white-space:nowrap}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0}.summary div{border:1px solid #ccd5cc;padding:9px}.summary strong{display:block;font-size:14px;margin-top:4px}.sector{break-inside:avoid}.footer{display:flex;gap:18px;flex-wrap:wrap;font-weight:bold}</style></head><body><h1>Balanço financeiro</h1><p>${escapeHtml(state.retreat.nome)} · gerado em ${new Date().toLocaleString('pt-BR')} por ${escapeHtml(currentUser?.username || currentUser?.nome || 'usuário')}</p><div class="summary">${[['Posição anterior', totals.previous], ['Entradas recorrentes', totals.input], ['Saídas / consumo', totals.output], ['Eventuais', totals.eventual], ['Saldo final', totals.balance], ['Total adquirido / desembolsado', totals.acquired], ['Total consumido', totals.consumed]].map(([label, value]) => `<div>${label}<strong>${financeMoney(value)}</strong></div>`).join('')}</div>${sheets.map((sheet) => `<div class="sector">${balanceSectorHtml(sheet).replace(/<section[^>]*>|<\/section>|class="finance-sheet-scroll"|class="finance-balance-eventual"/g, '')}</div>`).join('')}</body></html>`);
+  popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório Insumos - ${escapeHtml(state.retreat.nome)}</title><style>@page{size:A4 landscape;margin:12mm}body{font:11px Arial;color:#203328}h1{margin:0}h2{margin:22px 0 8px;border-bottom:2px solid #315d39;padding-bottom:5px}small{display:block;color:#667}table{width:100%;border-collapse:collapse;margin:8px 0 14px}th,td{padding:6px;border:1px solid #ccd5cc;text-align:left;vertical-align:middle}.finance-balance-recurring{table-layout:fixed}.finance-balance-description{width:20%}.finance-balance-unit{width:7%}.finance-balance-supplier{width:16%}.finance-balance-previous{width:10%}.finance-balance-output{width:9%}.finance-balance-donation{width:9%}.finance-balance-output-value{width:10%}.finance-balance-stock{width:9%}.finance-balance-price{width:10%}.finance-balance-recurring th{white-space:normal}.finance-balance-recurring td:not(:first-child){white-space:nowrap}.sector{break-inside:avoid}</style></head><body><h1>Relatório Insumos</h1><p>${escapeHtml(state.retreat.nome)} · gerado em ${new Date().toLocaleString('pt-BR')} por ${escapeHtml(currentUser?.username || currentUser?.nome || 'usuário')}</p>${sheets.map((sheet) => `<div class="sector">${balanceSectorHtml(sheet).replace(/<section[^>]*>|<\/section>|class="finance-sheet-scroll"/g, '')}</div>`).join('')}</body></html>`);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 250);
 }
@@ -441,7 +430,7 @@ export async function renderFinanceiro(context) {
     ['recorrentes', 'Insumos recorrentes'],
     ['eventuais', 'Despesas eventuais'],
     ['compra', 'Sugestão de compras'],
-    ['balanco', 'Balanço'],
+    ['balanco', 'Relatório Insumos'],
   ].map(([view, label]) => `<button type="button" data-finance-view="${view}" class="${activeView === view ? 'is-active' : ''}">${label}</button>`).join('')}</nav>`;
   const content = activeView === 'balanco' ? balanceHtml(state) : activeView === 'compra' ? purchaseSuggestionHtml(state) : activeView === 'eventuais' ? eventualSheetHtml(sheet, state, permissions, initializationError) : recurringSheetHtml(sheet, state, permissions, initializationError);
   layout(`<section class="page-heading finance-page-heading"><div><p class="eyebrow">Módulo independente · retiro em foco</p><h1>Financeiro</h1><p><strong>${escapeHtml(retreat.nome)}</strong> · controle simplificado de despesas do retiro.</p>${readOnly ? '<p class="finance-readonly">Retiro concluído: módulo disponível somente para consulta.</p>' : ''}</div></section>${navigation}<div class="finance-content">${content}</div>`, 'financeiro');
