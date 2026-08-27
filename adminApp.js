@@ -3712,6 +3712,7 @@ const smpRequiredChoiceFields = [
   'saudeDele', 'saudeDela', 'intoleranciaAlimentarDele', 'intoleranciaAlimentarDela',
   'precisaAcolhimento', 'manequimDele', 'manequimDela',
 ];
+const smpChurchMarriageMessage = 'A data de casamento religioso de pelo menos um dos cônjuges deve ser preenchida.';
 
 function wirePublicSmpValidation(form) {
   const kidPanels = [...form.querySelectorAll('[data-smp-kid-panel]')];
@@ -3753,7 +3754,7 @@ function wirePublicSmpValidation(form) {
     const usedPanels = kidsNotNeeded?.checked ? [] : kidPanels.filter(kidPanelHasData);
     kidsNotNeeded?.setCustomValidity(!kidsNotNeeded.checked && !usedPanels.length ? 'Informe os dados das crianças que usarão o Espaço Kids ou marque que não necessita.' : '');
     const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
-    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : 'Informe a data do 1º casamento de pelo menos um dos cônjuges.');
+    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : smpChurchMarriageMessage);
     kidPanels.forEach((panel) => {
       const kidNumber = panel.dataset.smpKidPanel;
       const hasData = usedPanels.includes(panel);
@@ -4222,7 +4223,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       setSmpRequiredMarker(detail, required);
     });
     const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
-    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : 'Informe a data do 1º casamento de pelo menos um dos cônjuges.');
+    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : smpChurchMarriageMessage);
   };
   if (typedDateFields.length) wireTypedDates(form, namedFieldSelector(typedDateFields));
   let records = [];
@@ -4485,6 +4486,15 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => {
       control?.closest('.field')?.classList.add('field-warning');
     });
+    let inlineMessage = form.querySelector('[data-smp-church-marriage-message]');
+    if (!inlineMessage) {
+      inlineMessage = document.createElement('p');
+      inlineMessage.className = 'form-message smp-church-marriage-message';
+      inlineMessage.dataset.smpChurchMarriageMessage = 'true';
+      inlineMessage.role = 'alert';
+      form.elements.filhosDela?.closest('.field')?.after(inlineMessage);
+    }
+    if (inlineMessage) inlineMessage.textContent = smpChurchMarriageMessage;
     form.elements.casamentoDele?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => form.elements.casamentoDele?.focus({ preventScroll: true }), 180);
   };
@@ -4562,7 +4572,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     }
     const churchMarriageIssue = firstSmpChurchMarriageIssue();
     if (churchMarriageIssue) {
-      setMessage('Informe a data do 1º casamento de pelo menos um dos cônjuges.');
+      setMessage(smpChurchMarriageMessage);
       focusChurchMarriageIssue();
       return false;
     }
@@ -4672,6 +4682,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning');
     if (['casamentoDele', 'casamentoDela'].includes(event.target.name)) {
       [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => control?.closest('.field')?.classList.remove('field-warning'));
+      form.querySelector('[data-smp-church-marriage-message]')?.remove();
     }
   };
   form.addEventListener('input', clearChangedFieldWarning);

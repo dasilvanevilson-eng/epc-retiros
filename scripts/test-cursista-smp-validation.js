@@ -65,7 +65,7 @@ async function main() {
   const { saveCursistaSmp } = require('../databaseAdapter');
 
   let calls = mockSupabase();
-  await assert.rejects(saveCursistaSmp(baseRecord({ casamentoDele: '', casamentoDela: '' })), /1º casamento de pelo menos um dos cônjuges/i);
+  await assert.rejects(saveCursistaSmp(baseRecord({ casamentoDele: '', casamentoDela: '' })), /casamento religioso de pelo menos um dos cônjuges/i);
   assert.equal(calls.some(({ method }) => method === 'POST'), false, 'Ficha SMP sem data de casamento religioso nao pode chegar ao upsert.');
 
   calls = mockSupabase({ individual: [{ id: 'student-1', retiro_id: retreatId, cpf: hisCpf }] });
@@ -165,8 +165,11 @@ async function main() {
   assert.match(admin, /if \(!choice\) return form\.querySelector\(`\[name="\$\{choiceName\}"\]`\)/);
   assert.match(admin, /if \(choice === 'Sim' && !String\(form\.elements\[detailName\]\?\.value \|\| ''\)\.trim\(\)\) return form\.elements\[detailName\]/);
   assert.match(admin, /const focusChurchMarriageIssue = \(\) => \{[\s\S]*form\.elements\.casamentoDele[\s\S]*form\.elements\.casamentoDela[\s\S]*classList\.add\('field-warning'\)/);
-  assert.match(admin, /setMessage\('Informe a data do 1º casamento de pelo menos um dos cônjuges\.'\);[\s\S]*focusChurchMarriageIssue\(\)/);
-  assert.match(admin, /if \(\['casamentoDele', 'casamentoDela'\]\.includes\(event\.target\.name\)\) \{[\s\S]*form\.elements\.casamentoDele[\s\S]*form\.elements\.casamentoDela[\s\S]*classList\.remove\('field-warning'\)/);
+  assert.match(admin, /const smpChurchMarriageMessage = 'A data de casamento religioso de pelo menos um dos cônjuges deve ser preenchida\.'/);
+  assert.match(admin, /inlineMessage\.dataset\.smpChurchMarriageMessage = 'true'[\s\S]*inlineMessage\.role = 'alert'/);
+  assert.match(admin, /setMessage\(smpChurchMarriageMessage\);[\s\S]*focusChurchMarriageIssue\(\)/);
+  assert.match(admin, /if \(\['casamentoDele', 'casamentoDela'\]\.includes\(event\.target\.name\)\) \{[\s\S]*form\.elements\.casamentoDele[\s\S]*form\.elements\.casamentoDela[\s\S]*classList\.remove\('field-warning'\)[\s\S]*data-smp-church-marriage-message/);
+  assert.match(styles, /\.cursista-smp-form \.smp-church-marriage-message \{[\s\S]*grid-column:1 \/ -1;[\s\S]*font-weight:700;/);
   assert.match(admin, /const syncSmpKidRequiredRules = \(\) => \{[\s\S]*control\.required = hasData;[\s\S]*setSmpRequiredMarker\(control, hasData\)/);
   assert.match(admin, /const detailRequired = hasData && new FormData\(form\)\.get\(choiceName\) === 'Sim';[\s\S]*setSmpRequiredMarker\(detail, detailRequired\)/);
   assert.match(admin, /function wirePublicSmpValidation\(form\)[\s\S]*const setPublicRequiredMarker = \(control, required\) =>/);

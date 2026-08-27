@@ -5926,6 +5926,13 @@ body:has(.login-shell) {
   grid-column:1;
 }
 
+.cursista-smp-form .smp-church-marriage-message {
+  grid-column:1 / -1;
+  margin:0;
+  color:#9f241b;
+  font-weight:700;
+}
+
 .cursista-smp-form fieldset {
   margin:0;
   padding:0;
