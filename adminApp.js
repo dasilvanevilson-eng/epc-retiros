@@ -3686,7 +3686,10 @@ const wireSharedPublicStudentSubmission = (form, context, messageSelector) => {
       }
       publicStudentUnavailable('Cadastro realizado', `A ficha ${context.numeroFicha} foi cadastrada com sucesso.`);
     } catch (error) {
-      if (message) message.textContent = error.message || 'Não foi possível concluir o cadastro.';
+      if (error.message === smpChurchMarriageMessage) {
+        if (message) message.textContent = '';
+        showSmpChurchMarriageDialog(form);
+      } else if (message) message.textContent = error.message || 'Não foi possível concluir o cadastro.';
       button.disabled = false;
       if (registrationSaved) button.innerHTML = 'Tentar enviar a foto novamente <span>→</span>';
     }
@@ -3713,6 +3716,37 @@ const smpRequiredChoiceFields = [
   'precisaAcolhimento', 'manequimDele', 'manequimDela',
 ];
 const smpChurchMarriageMessage = 'A data de casamento religioso de pelo menos um dos cônjuges deve ser preenchida.';
+const smpHasChurchMarriageDate = (form) => Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
+const focusSmpChurchMarriageIssue = (form) => {
+  [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => {
+    control?.closest('.field')?.classList.add('field-warning');
+  });
+  form.elements.casamentoDele?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => form.elements.casamentoDele?.focus({ preventScroll: true }), 180);
+};
+const showSmpChurchMarriageDialog = (form) => {
+  if (document.querySelector('.smp-church-marriage-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'hidden-team-alert-overlay smp-church-marriage-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'smp-church-marriage-title');
+  overlay.innerHTML = `<div class="hidden-team-alert-dialog smp-church-marriage-dialog"><p class="eyebrow">Ficha Cursista SMP</p><h2 id="smp-church-marriage-title">Data de casamento religioso</h2><p>${escapeHtml(smpChurchMarriageMessage)}</p><button type="button" class="hidden-team-alert-close">Entendi</button></div>`;
+  const close = () => {
+    document.removeEventListener('keydown', onKeydown);
+    overlay.remove();
+    focusSmpChurchMarriageIssue(form);
+  };
+  overlay.querySelector('.hidden-team-alert-close')?.addEventListener('click', close);
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+  const onKeydown = (event) => {
+    if (event.key !== 'Escape') return;
+    close();
+  };
+  document.addEventListener('keydown', onKeydown);
+  document.body.append(overlay);
+  overlay.querySelector('.hidden-team-alert-close')?.focus({ preventScroll: true });
+};
 
 function wirePublicSmpValidation(form) {
   const kidPanels = [...form.querySelectorAll('[data-smp-kid-panel]')];
@@ -3753,8 +3787,7 @@ function wirePublicSmpValidation(form) {
     const kidsNotNeeded = form.elements.smpKidsNotNeeded;
     const usedPanels = kidsNotNeeded?.checked ? [] : kidPanels.filter(kidPanelHasData);
     kidsNotNeeded?.setCustomValidity(!kidsNotNeeded.checked && !usedPanels.length ? 'Informe os dados das crianças que usarão o Espaço Kids ou marque que não necessita.' : '');
-    const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
-    form.elements.casamentoDele?.setCustomValidity(hasChurchMarriageDate ? '' : smpChurchMarriageMessage);
+    form.elements.casamentoDele?.setCustomValidity(smpHasChurchMarriageDate(form) ? '' : smpChurchMarriageMessage);
     kidPanels.forEach((panel) => {
       const kidNumber = panel.dataset.smpKidPanel;
       const hasData = usedPanels.includes(panel);
@@ -3782,6 +3815,14 @@ function wirePublicSmpValidation(form) {
   };
   form.addEventListener('input', sync);
   form.addEventListener('change', sync);
+  form.addEventListener('submit', (event) => {
+    sync();
+    if (smpHasChurchMarriageDate(form)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    app.querySelector('#student-message')?.replaceChildren();
+    showSmpChurchMarriageDialog(form);
+  }, true);
   sync();
 }
 
@@ -4482,22 +4523,6 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => control?.focus({ preventScroll: true }), 180);
   };
-  const focusChurchMarriageIssue = () => {
-    [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => {
-      control?.closest('.field')?.classList.add('field-warning');
-    });
-    let inlineMessage = form.querySelector('[data-smp-church-marriage-message]');
-    if (!inlineMessage) {
-      inlineMessage = document.createElement('p');
-      inlineMessage.className = 'form-message smp-church-marriage-message';
-      inlineMessage.dataset.smpChurchMarriageMessage = 'true';
-      inlineMessage.role = 'alert';
-      form.elements.filhosDela?.closest('.field')?.after(inlineMessage);
-    }
-    if (inlineMessage) inlineMessage.textContent = smpChurchMarriageMessage;
-    form.elements.casamentoDele?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => form.elements.casamentoDele?.focus({ preventScroll: true }), 180);
-  };
   const firstSmpKidsIssue = () => {
     if (expectedType !== 'cursista-smp' || form.elements.smpKidsNotNeeded?.checked) return null;
     const usedPanels = smpKidPanels.filter(smpKidPanelHasData);
@@ -4520,8 +4545,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   };
   const firstSmpChurchMarriageIssue = () => {
     if (expectedType !== 'cursista-smp') return null;
-    const hasChurchMarriageDate = Boolean(String(form.elements.casamentoDele?.value || '').trim() || String(form.elements.casamentoDela?.value || '').trim());
-    return hasChurchMarriageDate ? null : form.elements.casamentoDele;
+    return smpHasChurchMarriageDate(form) ? null : form.elements.casamentoDele;
   };
   const validateBeforeSave = () => {
     const blockedReason = canUseSmp();
@@ -4572,8 +4596,8 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     }
     const churchMarriageIssue = firstSmpChurchMarriageIssue();
     if (churchMarriageIssue) {
-      setMessage(smpChurchMarriageMessage);
-      focusChurchMarriageIssue();
+      message.textContent = '';
+      showSmpChurchMarriageDialog(form);
       return false;
     }
     const kidsIssue = firstSmpKidsIssue();
@@ -4682,7 +4706,6 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     event.target.closest('.field, fieldset, .choice-block')?.classList.remove('field-warning');
     if (['casamentoDele', 'casamentoDela'].includes(event.target.name)) {
       [form.elements.casamentoDele, form.elements.casamentoDela].forEach((control) => control?.closest('.field')?.classList.remove('field-warning'));
-      form.querySelector('[data-smp-church-marriage-message]')?.remove();
     }
   };
   form.addEventListener('input', clearChangedFieldWarning);
