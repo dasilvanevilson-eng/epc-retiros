@@ -4,6 +4,7 @@ import { buildCommunityStudentBadgeEntries } from './badgeParticipants.js';
 import { attachStudentPhotoField, photoUrl as studentPhotoUrl } from './studentPhotoClient.js';
 import { renderFinanceiro } from './financeiro.js?v=20260809-acoes-cabecalho';
 import { cloneRecurringStructureSheet, normalizeSectorKey } from './financeiroCore.js?v=20260809-sugestao-compra';
+import { helpArticles } from './helpArticles.js';
 
 const app = document.querySelector('#app');
 const publicPathRetreatId = location.pathname.match(/^\/adesao\/([^/?#]+)/)?.[1];
@@ -62,26 +63,6 @@ const viewPermissions = {
 };
 
 const retreatConfigurationPermissions = ['retiros.criar', 'retiros.editar', 'retiros.publicar', 'retiros.encerrar', 'retiros.excluir'];
-const helpTopicDetails = {
-  inicio: ['Visão geral do retiro em foco, números principais e atalhos de acompanhamento.', 'home painel resumo indicadores estatisticas começo andamento'],
-  retiros: ['Copiar links de cadastro da equipe e dos cursistas.', 'link inscrição inscricao cadastro equipe cursista compartilhar enviar setor ficha'],
-  configuracoes: ['Criar, editar, publicar, encerrar e revisar configurações do retiro.', 'configurar retiro criar editar publicar encerrar setores datas local'],
-  pessoas: ['Cadastrar e consultar pessoas da equipe de trabalho.', 'equipe trabalho voluntario voluntário pessoa adesao adesão cadastrar editar consultar'],
-  'validacao-inscricoes': ['Conferir fichas e pendências antes do retiro.', 'validar validacao validação conferir pendencia pendência ficha inscrição inscricao'],
-  'cursista-epc': ['Cadastrar e consultar fichas de casal do Cursista EPC.', 'cursista epc casal ficha inscrição inscricao cadastro editar consultar'],
-  cursista: ['Cadastrar e consultar fichas de Cursista Individual.', 'cursista individual ficha inscrição inscricao cadastro editar consultar'],
-  'cursista-smp': ['Cadastrar e consultar fichas de casal do Cursista SMP.', 'cursista smp casal ficha inscrição inscricao cadastro editar consultar'],
-  comunidades: ['Organizar cursistas em comunidades, líderes e monitores.', 'comunidade comunidades lider líder monitor grupo organizar cursistas'],
-  'recado-equipe': ['Preparar comunicado para a equipe do retiro.', 'recado mensagem comunicado equipe aviso texto'],
-  crachas: ['Gerar e imprimir crachás da equipe e dos cursistas.', 'cracha crachá crachas crachás imprimir impressão identificacao identificação etiqueta'],
-  quadrante: ['Montar o quadrante e acompanhar distribuição dos participantes.', 'quadrante distribuição distribuicao sala grupo organização organizacao'],
-  recebedor: ['Acompanhar recebimentos e pagamentos do retiro.', 'recebedor pagamento pagar pago financeiro recebimento saldo caixa'],
-  relatorios: ['Gerar relatórios e listagens do retiro.', 'relatorio relatório relatorios relatórios listagem imprimir exportar conferir'],
-  financeiro: ['Controlar planilhas financeiras, pagamentos e auditoria.', 'financeiro planilha pagamento saldo despesa receita auditoria caixa'],
-  'alterar-senha': ['Alterar a senha do usuário logado.', 'senha trocar alterar login acesso usuario usuário'],
-  backup: ['Gerar backup e restaurar dados quando autorizado.', 'backup restauração restauracao restaurar exportar importar segurança seguranca'],
-  usuarios: ['Gerenciar usuários, permissões e acessos.', 'usuario usuário usuarios usuários permissao permissão permissoes permissões acesso login perfil'],
-};
 
 const defaultStudentFormType = 'cursista-individual';
 const normalizeExpectedStudentFileCount = (value) => {
@@ -952,11 +933,14 @@ function setupMetricSearch() {
 
 function openHelpSearch(navItems = []) {
   app.querySelector('.help-search-overlay')?.remove();
-  const topics = navItems.map(([id, label]) => {
-    const textLabel = htmlToText(label);
-    const [detail = '', keywords = ''] = helpTopicDetails[id] || ['Abrir esta área do sistema.', ''];
-    return { id, label: textLabel, detail, keywords, href: `#${id}` };
-  });
+  const allowedTargets = new Map(navItems.map(([id, label]) => [id, htmlToText(label)]));
+  const topics = helpArticles
+    .filter((article) => allowedTargets.has(article.target))
+    .map((article) => ({
+      ...article,
+      targetLabel: allowedTargets.get(article.target) || 'Abrir tela',
+      href: `#${article.target}`,
+    }));
   const overlay = document.createElement('section');
   overlay.className = 'help-search-overlay';
   overlay.setAttribute('role', 'dialog');
@@ -978,9 +962,9 @@ function openHelpSearch(navItems = []) {
   };
   const render = () => {
     const term = normalizeText(input.value);
-    const entries = topics.filter((topic) => !term || normalizeText(`${topic.label} ${topic.detail} ${topic.keywords}`).includes(term));
+    const entries = topics.filter((topic) => !term || normalizeText(`${topic.question} ${topic.answer} ${topic.targetLabel} ${topic.keywords || ''}`).includes(term));
     results.innerHTML = entries.length
-      ? entries.map((topic) => `<a href="${topic.href}" data-help-result><strong>${escapeHtml(topic.label)}</strong><span>${escapeHtml(topic.detail)}</span></a>`).join('')
+      ? entries.map((topic) => `<article class="help-search-result"><h3>${escapeHtml(topic.question)}</h3><p>${escapeHtml(topic.answer)}</p><a href="${topic.href}" data-help-result>Abrir ${escapeHtml(topic.targetLabel)}</a></article>`).join('')
       : '<p class="empty-state">Nenhum tópico encontrado.</p>';
   };
   function onKeydown(event) {

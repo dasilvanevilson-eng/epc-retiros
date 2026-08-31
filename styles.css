@@ -652,31 +652,49 @@ body {
   padding-top:2px;
 }
 
-.help-search-results a {
+.help-search-result {
   display:grid;
-  gap:4px;
-  padding:13px 14px;
+  gap:8px;
+  padding:14px;
   border:1px solid #cde8f5;
   border-radius:8px;
   background:#fff;
-  color:#15324a;
-  text-decoration:none;
 }
 
-.help-search-results a:hover,
-.help-search-results a:focus-visible {
+.help-search-result:hover {
   border-color:#58a6dd;
-  background:#e8f7ff;
+  background:#f7fcff;
 }
 
-.help-search-results strong {
+.help-search-result h3 {
+  margin:0;
+  color:#15324a;
   font-size:15px;
 }
 
-.help-search-results span {
+.help-search-result p {
+  margin:0;
   color:#5d7184;
   font-size:13px;
-  line-height:1.35;
+  line-height:1.4;
+}
+
+.help-search-result a {
+  justify-self:start;
+  padding:7px 10px;
+  border:1px solid #cde8f5;
+  border-radius:7px;
+  background:#e8f7ff;
+  color:#15537a;
+  font-size:13px;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.help-search-result a:hover,
+.help-search-result a:focus-visible {
+  border-color:#58a6dd;
+  background:#dff3ff;
 }
 
 .admin-main,
