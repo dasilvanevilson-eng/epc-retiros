@@ -5,6 +5,12 @@ export const helpArticles = [
     target: 'inicio',
     keywords: 'home painel resumo indicadores estatisticas começo andamento visão geral',
   },
+    {
+    question: 'Como encontro os cursistas aniversariantes do mês?',
+    answer: 'Abra Início no menu principal, vá até a coluna Cursista, lá você encontra Aniversariantes do mês.',
+    target: 'inicio',
+    keywords: 'home painel resumo indicadores estatisticas começo andamento visão geral pato formiga',
+  },
   {
     question: 'Como copiar os links de cadastro?',
     answer: 'Abra Links de cadastro, confira o retiro em foco e copie o link correspondente à equipe, ao setor ou às fichas de cursistas.',
