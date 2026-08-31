@@ -4,7 +4,9 @@ const { allPermissions, defaultPerfilPermissoes, defaultProfiles, normalizeRole,
 
 const cookieName = 'epc_session';
 const roles = ['admin', 'coordenador_geral', 'coordenador_retiro', 'gestor', 'consulta'];
-const defaultMaxAge = 60 * 60 * 8;
+const idleMaxAge = 60 * 60 * 4;
+const absoluteMaxAge = 60 * 60 * 12;
+const expiredCookieGraceAge = 60 * 5;
 const passwordIterations = 120000;
 const passwordKeyLength = 32;
 
@@ -47,7 +49,7 @@ function parseCookies(header = '') {
   }));
 }
 
-function sessionCookie(token, maxAge = defaultMaxAge) {
+function sessionCookie(token, maxAge = absoluteMaxAge + expiredCookieGraceAge) {
   const secure = process.env.VERCEL || process.env.NODE_ENV === 'production' ? '; Secure' : '';
   return `${cookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
@@ -59,6 +61,7 @@ function clearSessionCookie() {
 function createSession(user) {
   const secret = getSecret();
   if (!secret) throw new Error('EPC_AUTH_SECRET nao configurado.');
+  const now = Math.floor(Date.now() / 1000);
   const payload = base64url(JSON.stringify({
     sub: user.username || user.login,
     id: user.id || user.username || user.login,
@@ -68,25 +71,51 @@ function createSession(user) {
     perfilCodigo: user.perfilCodigo || normalizeRole(user.role),
     permissions: user.permissions || permissionsForRole(user.role || user.perfilCodigo),
     retiroIds: user.retiroIds || [],
-    exp: Math.floor(Date.now() / 1000) + defaultMaxAge,
+    iat: now,
+    lastSeen: now,
+    idleExp: now + idleMaxAge,
+    exp: now + absoluteMaxAge,
   }));
   return `${payload}.${sign(payload, secret)}`;
 }
 
-function readSession(req) {
+function readSessionResult(req) {
   const secret = getSecret();
-  if (!secret) return null;
+  if (!secret) return { session: null, reason: 'not-configured' };
   const token = parseCookies(req.headers.cookie || '')[cookieName];
-  if (!token || !token.includes('.')) return null;
+  if (!token || !token.includes('.')) return { session: null, reason: 'missing' };
   const [payload, signature] = token.split('.');
-  if (!timingSafeEqual(sign(payload, secret), signature)) return null;
+  if (!timingSafeEqual(sign(payload, secret), signature)) return { session: null, reason: 'invalid' };
   try {
     const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!session.exp || session.exp < Math.floor(Date.now() / 1000)) return null;
-    return session;
+    const now = Math.floor(Date.now() / 1000);
+    const issuedAt = Number(session.iat) || Number(session.exp || 0) - absoluteMaxAge;
+    const absoluteExpiresAt = Number(session.exp) || issuedAt + absoluteMaxAge;
+    const idleExpiresAt = Number(session.idleExp) || (Number(session.lastSeen) || issuedAt) + idleMaxAge;
+    if (absoluteExpiresAt <= now) return { session: null, reason: 'expired' };
+    if (idleExpiresAt <= now) return { session: null, reason: 'idle-expired' };
+    return { session: { ...session, iat: issuedAt, exp: absoluteExpiresAt, idleExp: idleExpiresAt }, reason: '' };
   } catch {
-    return null;
+    return { session: null, reason: 'invalid' };
   }
+}
+
+function readSession(req) {
+  return readSessionResult(req).session;
+}
+
+function refreshSession(session) {
+  const secret = getSecret();
+  if (!secret || !session) return '';
+  const now = Math.floor(Date.now() / 1000);
+  const absoluteExpiresAt = Number(session.exp) || now + absoluteMaxAge;
+  const payload = base64url(JSON.stringify({
+    ...session,
+    lastSeen: now,
+    idleExp: Math.min(now + idleMaxAge, absoluteExpiresAt),
+    exp: absoluteExpiresAt,
+  }));
+  return `${payload}.${sign(payload, secret)}`;
 }
 
 async function validateLogin(username, password) {
@@ -272,6 +301,8 @@ module.exports = {
   hydrateUser,
   listAccessData,
   readSession,
+  readSessionResult,
+  refreshSession,
   saveAccessUser,
   sessionCookie,
   validateLogin,

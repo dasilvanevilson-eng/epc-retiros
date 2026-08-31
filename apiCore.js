@@ -1,6 +1,6 @@
 const { randomUUID } = require('crypto');
 const { stores, financeStores } = require('./storeConfig');
-const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
+const { authStatus, changeOwnPassword, clearSessionCookie, createSession, deleteAccessUser, hydrateUser, listAccessData, readSession, readSessionResult, refreshSession, saveAccessUser, sessionCookie, validateLogin } = require('./auth');
 const { checkDatabaseConnection, deleteCursistaEpc, deleteCursistaSmp, getRecord, getRecordStrict, importDatabase, listCursistasEpc, listCursistasSmp, listRecords, moveCommunityMemberAtomic, readDatabase, saveCursistaEpc, saveCursistaSmp, saveRecord, saveTeamCoupleAtomic, saveRetreatClosedRegistrationSectors, saveRetreatStudentRegistrationLinks, deleteRecord, deleteRecordStrict } = require('./databaseAdapter');
 const { can } = require('./permissions');
 const { cancelOperation, commitRestore, createRestore, createSnapshot, isMaintenanceActive, listChunks, previewRestore, uploadRestoreChunk } = require('./backupService');
@@ -38,7 +38,9 @@ async function readBody(req) {
 }
 
 function sendJson(res, status, data, headers = {}) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...headers });
+  const nextHeaders = { ...headers };
+  if (res.epcRefreshSessionCookie && !nextHeaders['Set-Cookie']) nextHeaders['Set-Cookie'] = res.epcRefreshSessionCookie;
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...nextHeaders });
   res.end(JSON.stringify(data));
 }
 
@@ -464,11 +466,23 @@ async function allowedPersonIdsForSession(session = {}) {
   return new Set(entries.map((entry) => entry.pessoaId).filter(Boolean));
 }
 
-async function currentSession(req) {
+async function currentSession(req, res) {
   const session = readSession(req);
   if (!session || String(session.id || '').startsWith('env:')) return session;
   const user = (await listRecords('usuarios')).find((item) => (item.id === session.id || item.login === session.sub) && item.ativo !== false);
-  return user ? hydrateUser(user) : null;
+  if (!user) return null;
+  const hydrated = await hydrateUser(user);
+  const nextSession = {
+    ...hydrated,
+    sub: hydrated.username || hydrated.login || session.sub,
+    iat: session.iat,
+    lastSeen: session.lastSeen,
+    idleExp: session.idleExp,
+    exp: session.exp,
+  };
+  const refreshedToken = refreshSession(nextSession);
+  if (res && refreshedToken) res.epcRefreshSessionCookie = sessionCookie(refreshedToken);
+  return nextSession;
 }
 
 async function listAuthorizedRecords(resource, session, options = {}) {
@@ -610,10 +624,14 @@ async function handleApi(req, res, pathname) {
     }
   }
   if (resource === 'auth' && id === 'session' && req.method === 'GET') {
-    const session = await currentSession(req);
+    const sessionResult = readSessionResult(req);
+    const session = sessionResult.session ? await currentSession(req, res) : null;
+    const expired = ['expired', 'idle-expired'].includes(sessionResult.reason);
     return sendJson(res, 200, {
       authenticated: Boolean(session),
       user: session ? { id: session.id, username: session.username || session.sub, nome: session.nome, role: session.role, perfilId: session.perfilId, perfilCodigo: session.perfilCodigo, permissions: session.permissions || [], retiroIds: session.retiroIds || [] } : null,
+      expired,
+      reason: session ? '' : sessionResult.reason,
       configured: authStatus(req).configured,
     });
   }
@@ -629,7 +647,7 @@ async function handleApi(req, res, pathname) {
     return sendError(res, 503, 'O sistema esta temporariamente em manutencao para restauracao de backup. Tente novamente em alguns minutos.');
   }
 
-  const session = await currentSession(req);
+  const session = await currentSession(req, res);
   const publicRegistrationRequest = !session && isPublicRegistrationRequest(resource, id, req);
   if (await handlePublicReceiverRequest(req, res, resource, id, action)) return;
   if (!publicRegistrationRequest && !session) return sendError(res, 401, 'Acesso restrito. Faca login para continuar.');

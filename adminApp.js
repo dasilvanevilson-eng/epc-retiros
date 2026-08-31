@@ -32,6 +32,7 @@ let badgePrintTitle = '';
 let currentUser = null;
 let authChecked = false;
 let authenticationBackendError = '';
+let authenticationExpired = false;
 let legacyLocalDataWarningShown = false;
 let closeAdminMenuOnOutsidePointer = null;
 let closeHomeRetreatSelectorOnOutsidePointer = null;
@@ -61,6 +62,26 @@ const viewPermissions = {
 };
 
 const retreatConfigurationPermissions = ['retiros.criar', 'retiros.editar', 'retiros.publicar', 'retiros.encerrar', 'retiros.excluir'];
+const helpTopicDetails = {
+  inicio: ['Visão geral do retiro em foco, números principais e atalhos de acompanhamento.', 'home painel resumo indicadores estatisticas começo andamento'],
+  retiros: ['Copiar links de cadastro da equipe e dos cursistas.', 'link inscrição inscricao cadastro equipe cursista compartilhar enviar setor ficha'],
+  configuracoes: ['Criar, editar, publicar, encerrar e revisar configurações do retiro.', 'configurar retiro criar editar publicar encerrar setores datas local'],
+  pessoas: ['Cadastrar e consultar pessoas da equipe de trabalho.', 'equipe trabalho voluntario voluntário pessoa adesao adesão cadastrar editar consultar'],
+  'validacao-inscricoes': ['Conferir fichas e pendências antes do retiro.', 'validar validacao validação conferir pendencia pendência ficha inscrição inscricao'],
+  'cursista-epc': ['Cadastrar e consultar fichas de casal do Cursista EPC.', 'cursista epc casal ficha inscrição inscricao cadastro editar consultar'],
+  cursista: ['Cadastrar e consultar fichas de Cursista Individual.', 'cursista individual ficha inscrição inscricao cadastro editar consultar'],
+  'cursista-smp': ['Cadastrar e consultar fichas de casal do Cursista SMP.', 'cursista smp casal ficha inscrição inscricao cadastro editar consultar'],
+  comunidades: ['Organizar cursistas em comunidades, líderes e monitores.', 'comunidade comunidades lider líder monitor grupo organizar cursistas'],
+  'recado-equipe': ['Preparar comunicado para a equipe do retiro.', 'recado mensagem comunicado equipe aviso texto'],
+  crachas: ['Gerar e imprimir crachás da equipe e dos cursistas.', 'cracha crachá crachas crachás imprimir impressão identificacao identificação etiqueta'],
+  quadrante: ['Montar o quadrante e acompanhar distribuição dos participantes.', 'quadrante distribuição distribuicao sala grupo organização organizacao'],
+  recebedor: ['Acompanhar recebimentos e pagamentos do retiro.', 'recebedor pagamento pagar pago financeiro recebimento saldo caixa'],
+  relatorios: ['Gerar relatórios e listagens do retiro.', 'relatorio relatório relatorios relatórios listagem imprimir exportar conferir'],
+  financeiro: ['Controlar planilhas financeiras, pagamentos e auditoria.', 'financeiro planilha pagamento saldo despesa receita auditoria caixa'],
+  'alterar-senha': ['Alterar a senha do usuário logado.', 'senha trocar alterar login acesso usuario usuário'],
+  backup: ['Gerar backup e restaurar dados quando autorizado.', 'backup restauração restauracao restaurar exportar importar segurança seguranca'],
+  usuarios: ['Gerenciar usuários, permissões e acessos.', 'usuario usuário usuarios usuários permissao permissão permissoes permissões acesso login perfil'],
+};
 
 const defaultStudentFormType = 'cursista-individual';
 const normalizeExpectedStudentFileCount = (value) => {
@@ -360,6 +381,11 @@ const sortSectors = (sectors = []) => [...sectors].sort((first, second) => first
 const hiddenTeamSectors = new Set(['camareiro(a)', 'camareiros(as)', 'cozinha', 'espaço kids', 'espiritual', 'externo', 'pegue e pague', 'refeitório', 'secretaria', 'zeladoria']);
 const sectorArea = (sector) => hiddenTeamSectors.has(String(sector).toLocaleLowerCase('pt-BR')) ? 'escondida' : 'sala';
 const normalizeText = (value = '') => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+const htmlToText = (value = '') => {
+  const template = document.createElement('template');
+  template.innerHTML = String(value);
+  return template.content.textContent || '';
+};
 const teamSectorLinkFormatVersion = 2;
 const teamSectorLinkSlug = (sector = '') => normalizeText(sector)
   .replace(/[^a-z0-9]+/g, '-')
@@ -924,6 +950,56 @@ function setupMetricSearch() {
   });
 }
 
+function openHelpSearch(navItems = []) {
+  app.querySelector('.help-search-overlay')?.remove();
+  const topics = navItems.map(([id, label]) => {
+    const textLabel = htmlToText(label);
+    const [detail = '', keywords = ''] = helpTopicDetails[id] || ['Abrir esta área do sistema.', ''];
+    return { id, label: textLabel, detail, keywords, href: `#${id}` };
+  });
+  const overlay = document.createElement('section');
+  overlay.className = 'help-search-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'help-search-title');
+  overlay.innerHTML = `<div class="help-search-dialog">
+    <div class="help-search-heading">
+      <div><p class="eyebrow">Ajuda</p><h2 id="help-search-title">O que você quer fazer?</h2></div>
+      <button type="button" class="help-search-close" aria-label="Fechar ajuda">×</button>
+    </div>
+    <label class="field help-search-field"><span class="sr-only">Buscar tópico de ajuda</span><input type="search" id="help-search-input" placeholder="Digite uma função, dúvida ou tarefa" autocomplete="off"></label>
+    <div class="help-search-results" data-help-search-results></div>
+  </div>`;
+  const input = overlay.querySelector('#help-search-input');
+  const results = overlay.querySelector('[data-help-search-results]');
+  const close = () => {
+    document.removeEventListener('keydown', onKeydown);
+    overlay.remove();
+  };
+  const render = () => {
+    const term = normalizeText(input.value);
+    const entries = topics.filter((topic) => !term || normalizeText(`${topic.label} ${topic.detail} ${topic.keywords}`).includes(term));
+    results.innerHTML = entries.length
+      ? entries.map((topic) => `<a href="${topic.href}" data-help-result><strong>${escapeHtml(topic.label)}</strong><span>${escapeHtml(topic.detail)}</span></a>`).join('')
+      : '<p class="empty-state">Nenhum tópico encontrado.</p>';
+  };
+  function onKeydown(event) {
+    if (event.key === 'Escape') close();
+  }
+  overlay.querySelector('.help-search-close').addEventListener('click', close);
+  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+  overlay.addEventListener('click', (event) => {
+    const link = event.target.closest('[data-help-result]');
+    if (!link) return;
+    close();
+  });
+  input.addEventListener('input', render);
+  document.addEventListener('keydown', onKeydown);
+  app.append(overlay);
+  render();
+  input.focus();
+}
+
 function layout(content, active = 'inicio') {
   if (closeHomeRetreatSelectorOnOutsidePointer) {
     document.removeEventListener('pointerdown', closeHomeRetreatSelectorOnOutsidePointer, true);
@@ -972,6 +1048,7 @@ function layout(content, active = 'inicio') {
           ${currentUser ? `<div class="mobile-session-user" title="Login ativo: ${escapeHtml(currentUser.username)}${focusedRetreat?.nome ? ` · Retiro em foco: ${escapeHtml(focusedRetreat.nome)}` : ''}" aria-label="Login ativo: ${escapeHtml(currentUser.username)}${focusedRetreat?.nome ? `. Retiro em foco: ${escapeHtml(focusedRetreat.nome)}` : ''}"><div class="mobile-session-login"><span>Logado:</span><strong>${escapeHtml(currentUser.username)}</strong></div>${focusedRetreat?.nome ? `<small class="mobile-session-retreat">Retiro: ${escapeHtml(focusedRetreat.nome)}</small>` : ''}</div>` : ''}
           <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
         </header><nav class="main-nav admin-menu-nav" aria-label="Menu principal">
+          <button type="button" class="help-link" id="help-search-button">Ajuda</button>
           ${navItems.map(([id, label]) => `<a href="#${id}" class="${active === id ? 'is-active' : ''}">${label}</a>`).join('')}
           <button type="button" class="logout-link" id="logout-button">Sair do sistema</button>
         </nav>
@@ -988,6 +1065,10 @@ function layout(content, active = 'inicio') {
   menuToggle.addEventListener('click', () => {
     const open = mainNav.classList.toggle('is-open');
     menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  app.querySelector('#help-search-button')?.addEventListener('click', () => {
+    closeAdminMenu();
+    openHelpSearch(navItems);
   });
   mainNav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeAdminMenu));
   if (closeAdminMenuOnOutsidePointer) document.removeEventListener('pointerdown', closeAdminMenuOnOutsidePointer, true);
@@ -9493,6 +9574,7 @@ async function ensureAuthenticated() {
   try {
     const session = await dataService.getSession();
     currentUser = session.authenticated ? session.user : null;
+    authenticationExpired = !session.authenticated && session.expired;
     authenticationBackendError = '';
     if (!legacyLocalDataWarningShown) {
       const legacyStatus = await dataService.inspectLegacyLocalData().catch(() => ({ total: 0, counts: {} }));
@@ -9504,6 +9586,7 @@ async function ensureAuthenticated() {
     }
   } catch (error) {
     currentUser = null;
+    authenticationExpired = false;
     authenticationBackendError = error.message || 'Nao foi possivel conectar ao Supabase.';
   }
   authChecked = true;
@@ -9539,6 +9622,7 @@ function renderLogin(message = '') {
       const session = await dataService.login(form.elements.username.value.trim(), form.elements.password.value);
       currentUser = session.user;
       authChecked = true;
+      authenticationExpired = false;
       location.hash = '#inicio';
       await route();
     } catch (error) {
@@ -9560,7 +9644,7 @@ async function route() {
       await loadData();
       return renderRecebedor();
     }
-    if (!(await ensureAuthenticated())) return renderLogin(authenticationBackendError || (location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.'));
+    if (!(await ensureAuthenticated())) return renderLogin(authenticationBackendError || (authenticationExpired ? 'Sua sessão expirou. Entre novamente para continuar.' : (location.hash === '#login' ? '' : 'Faca login para acessar a area restrita.')));
     const rawTarget = location.hash.slice(1) || firstAllowedSection();
     const [target, targetQuery = ''] = rawTarget.split('?');
     const targetParams = new URLSearchParams(targetQuery);

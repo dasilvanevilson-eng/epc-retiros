@@ -539,6 +539,25 @@ body {
   color:#6b5c4a;
 }
 
+.main-nav .help-link {
+  display:inline-flex;
+  align-items:center;
+  min-height:38px;
+  padding:9px 12px;
+  border:1px solid rgba(43,145,207,.24);
+  border-radius:9px;
+  background:#e8f7ff;
+  color:#15537a;
+  box-shadow:none;
+  font:700 14px 'DM Sans', sans-serif;
+}
+
+.main-nav .help-link:hover {
+  border-color:rgba(43,145,207,.42);
+  background:#dff3ff;
+  color:#0f4f77;
+}
+
 .main-nav a:hover,
 .main-nav a.is-active {
   border-color:rgba(215,167,82,.32);
@@ -558,6 +577,106 @@ body {
   border-color:rgba(230,139,117,.35);
   background:#fff1ec;
   color:#84321f;
+}
+
+.help-search-overlay {
+  position:fixed;
+  z-index:1100;
+  inset:0;
+  display:grid;
+  place-items:start center;
+  padding:clamp(18px, 7vh, 70px) 18px 18px;
+  background:rgba(21, 50, 74, .44);
+}
+
+.help-search-dialog {
+  width:min(680px, 100%);
+  max-height:calc(100vh - 36px);
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:24px;
+  border:1px solid rgba(142, 201, 232, .58);
+  border-radius:16px;
+  background:#fbfdff;
+  box-shadow:0 24px 70px rgba(21, 50, 74, .28);
+}
+
+.help-search-heading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.help-search-heading h2 {
+  margin:2px 0 0;
+  color:#15324a;
+  font-size:24px;
+}
+
+.help-search-close {
+  display:grid;
+  place-items:center;
+  width:38px;
+  height:38px;
+  min-height:0;
+  padding:0;
+  border:1px solid #cde8f5;
+  border-radius:8px;
+  background:#fff;
+  color:#15324a;
+  box-shadow:none;
+  font-size:24px;
+  line-height:1;
+}
+
+.help-search-close:hover {
+  background:#e8f7ff;
+}
+
+.help-search-field {
+  margin:0;
+}
+
+.help-search-field input {
+  min-height:48px;
+  font-size:16px;
+}
+
+.help-search-results {
+  flex:1;
+  overflow:auto;
+  display:grid;
+  gap:8px;
+  padding-top:2px;
+}
+
+.help-search-results a {
+  display:grid;
+  gap:4px;
+  padding:13px 14px;
+  border:1px solid #cde8f5;
+  border-radius:8px;
+  background:#fff;
+  color:#15324a;
+  text-decoration:none;
+}
+
+.help-search-results a:hover,
+.help-search-results a:focus-visible {
+  border-color:#58a6dd;
+  background:#e8f7ff;
+}
+
+.help-search-results strong {
+  font-size:15px;
+}
+
+.help-search-results span {
+  color:#5d7184;
+  font-size:13px;
+  line-height:1.35;
 }
 
 .admin-main,
