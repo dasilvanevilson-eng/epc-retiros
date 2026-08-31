@@ -933,13 +933,15 @@ function setupMetricSearch() {
 
 function openHelpSearch(navItems = []) {
   app.querySelector('.help-search-overlay')?.remove();
-  const allowedTargets = new Map(navItems.map(([id, label]) => [id, htmlToText(label)]));
+  const menuTargets = navItems.map(([id, label]) => ({ id, label: htmlToText(label) }));
+  const targetByLabel = new Map(menuTargets.map((item) => [normalizeText(item.label), item]));
   const topics = helpArticles
-    .filter((article) => allowedTargets.has(article.target))
+    .map((article) => ({ ...article, resolvedTarget: targetByLabel.get(normalizeText(article.target)) }))
+    .filter((article) => article.resolvedTarget)
     .map((article) => ({
       ...article,
-      targetLabel: allowedTargets.get(article.target) || 'Abrir tela',
-      href: `#${article.target}`,
+      targetLabel: article.resolvedTarget.label,
+      href: `#${article.resolvedTarget.id}`,
     }));
   const overlay = document.createElement('section');
   overlay.className = 'help-search-overlay';
