@@ -964,7 +964,11 @@ function openHelpSearch(navItems = []) {
   };
   const render = () => {
     const term = normalizeText(input.value);
-    const entries = topics.filter((topic) => !term || normalizeText(`${topic.question} ${topic.answer} ${topic.targetLabel} ${topic.keywords || ''}`).includes(term));
+    if (!term) {
+      results.innerHTML = '<p class="empty-state">Digite uma palavra ou dúvida para buscar na ajuda.</p>';
+      return;
+    }
+    const entries = topics.filter((topic) => normalizeText(`${topic.question} ${topic.answer} ${topic.targetLabel} ${topic.keywords || ''}`).includes(term));
     results.innerHTML = entries.length
       ? entries.map((topic) => `<article class="help-search-result"><h3>${escapeHtml(topic.question)}</h3><p>${escapeHtml(topic.answer)}</p><a href="${topic.href}" data-help-result>Abrir ${escapeHtml(topic.targetLabel)}</a></article>`).join('')
       : '<p class="empty-state">Nenhum tópico encontrado.</p>';

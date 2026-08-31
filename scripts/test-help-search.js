@@ -13,6 +13,7 @@ assert.match(source, /\.map\(\(article\) => \(\{ \.\.\.article, resolvedTarget: 
 assert.match(source, /\.filter\(\(article\) => article\.resolvedTarget\)/, 'A ajuda deve mostrar apenas perguntas ligadas a telas permitidas.');
 assert.match(source, /id="help-search-button">Ajuda<\/button>/, 'O menu deve exibir a opção Ajuda.');
 assert.match(source, /openHelpSearch\(navItems\)/, 'O botão Ajuda deve abrir a busca usando a lista atual de navegação.');
+assert.match(source, /if \(!term\) \{[\s\S]*Digite uma palavra ou dúvida para buscar na ajuda\.[\s\S]*return;[\s\S]*\}/, 'A ajuda não deve listar todos os tópicos antes de o usuário digitar.');
 assert.match(source, /normalizeText\(`\$\{topic\.question\} \$\{topic\.answer\} \$\{topic\.targetLabel\} \$\{topic\.keywords \|\| ''\}`\)\.includes\(term\)/, 'A busca deve considerar pergunta, resposta, tela e palavras relacionadas.');
 assert.match(source, /<article class="help-search-result"><h3>\$\{escapeHtml\(topic\.question\)\}<\/h3><p>\$\{escapeHtml\(topic\.answer\)\}<\/p>/, 'Os resultados devem exibir pergunta e resposta.');
 assert.match(styles, /\.help-search-overlay[\s\S]*position:fixed/, 'A janela de ajuda deve aparecer como sobreposição.');
