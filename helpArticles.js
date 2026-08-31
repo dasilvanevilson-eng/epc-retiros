@@ -125,6 +125,12 @@ export const helpArticles = [
     target: 'Equipe de trabalho',
     keywords: 'equipe trabalho alterar setor setor mudar trocar',
   },
+   {
+    question: 'Como personalizar o nome de alguém da equipe de trabalho no crachá?',
+    answer: 'Abra Equipe de trabalho, busque o nome da pessoa que deseja personalizar o nome no crachá e preencha o campo Nome para crachá. A partir deste momento, na impressão do crachá ele vei ignorar o primeiro nome da pessao e vai usar integralmente o que estiver descrito nesta linha',
+    target: 'Equipe de trabalho',
+    keywords: 'equipe trabalho nome crachá crachás personalizar',
+  },
   {
     question: 'Como cadastrar um cursista individual?',
     answer: 'Abra Cursista Individual para cadastrar, editar, consultar e imprimir a ficha de um cursista individual. Esse cadastro também pode ser realizado com link de cadastro.',
@@ -171,7 +177,13 @@ export const helpArticles = [
     question: 'Como trocar cursistas para outra comunidades?',
     answer: 'Abra Comunidades, vá até a comunidade onde está o cursista que será trocado, clicar em Mover para e selecionar na lista a comunidade de destino.',
     target: 'Comunidades',
-    keywords: 'comunidade comunidades tracar mudar alterar cursista cursistas',
+    keywords: 'comunidade comunidades trocar mudar alterar cursista cursistas',
+  },
+     {
+    question: 'Como cadastrar os tios e monitores em cada comunidade?',
+    answer: 'Abra Comunidades, vá até a comunidade desejada, logo abaixo do nome da comunidade existe as opções Buscar tios da comunidade e Buscar monitores da comunidade. Esses tios e monitores deverão estar cadastrados na equipe de trabalho e setados nesta funcção',
+    target: 'Comunidades',
+    keywords: 'comunidade comunidades tio tios monitores monitor definir',
   },
    {
     question: 'Como separarar os cursistas em comunidades?',
@@ -184,6 +196,18 @@ export const helpArticles = [
     answer: 'Abra Crachás, clique em imprimir. Tem a opção Impressão por setor e Impressão por comunidade. Obs.: o modelo do crachá já deve ter sido definido na tela Definir crachás por setor/comunidade .',
     target: 'Crachás',
     keywords: 'cracha crachá crachas crachás imprimir impressão ',
+  },
+   {
+    question: 'Como criar/personalizar crachás?',
+    answer: 'Abra Crachás, clique em Configurar crachás. Dentro deste opção será possivel criar/personalizar/excluir crachás ',
+    target: 'Crachás',
+    keywords: 'cracha crachá personalizar criar incluir escolher definir imprimir impressão ',
+  },
+   {
+    question: 'Como definir crachá por setor/comunidade?',
+    answer: 'Abra Crachás, clique em Definir crachás por setor/comunidade. dentro desta tela será possivel definir o modelo de crachá que foi personalizado para cada serto/comunidade.',
+    target: 'Crachás',
+    keywords: 'cracha crachá escolher definir imprimir impressão ',
   },
    {
     question: 'Como excluir ou incluir um setor no retiro/quadrante?',
