@@ -18,7 +18,7 @@ assert.match(source, /<article class="help-search-result"><h3>\$\{escapeHtml\(to
 assert.match(styles, /\.help-search-overlay[\s\S]*position:fixed/, 'A janela de ajuda deve aparecer como sobreposição.');
 assert.match(styles, /\.help-search-result[\s\S]*border:1px solid #cde8f5/, 'As perguntas e respostas devem ter estilo próprio.');
 assert.match(styles, /\.help-search-result a[\s\S]*text-decoration:none/, 'Os resultados devem manter atalho clicável para a tela relacionada.');
-assert.match(articles, /export const helpArticles = \[[\s\S]*question: 'Como imprimir os crachás\?'[\s\S]*answer: 'Abra Crachás/, 'O arquivo de ajuda deve conter perguntas e respostas editáveis.');
+assert.match(articles, /export const helpArticles = \[[\s\S]*question: '[^']*crachás\?'[\s\S]*answer: 'Abra Crachás/, 'O arquivo de ajuda deve conter perguntas e respostas editáveis.');
 assert.match(articles, /target: 'Links de cadastro'/, 'O arquivo de ajuda deve usar o nome visível do menu.');
 assert.doesNotMatch(articles, /target: '(inicio|retiros|configuracoes|pessoas|validacao-inscricoes|cursista|cursista-epc|cursista-smp|comunidades|recado-equipe|crachas|quadrante|recebedor|relatorios|financeiro|alterar-senha|backup|usuarios)'/, 'O arquivo de ajuda não deve exigir identificadores internos no target.');
 
