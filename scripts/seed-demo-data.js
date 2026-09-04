@@ -36,7 +36,7 @@ const lastNames = ['Almeida', 'Barbosa', 'Carvalho', 'Costa', 'Ferreira', 'Lima'
 const streets = ['Rua das Flores', 'Rua Sao Jose', 'Avenida Brasil', 'Rua Santa Rita', 'Rua do Rosario', 'Avenida Central', 'Rua Padre Cicero', 'Rua Nossa Senhora Aparecida'];
 const neighborhoods = ['Centro', 'Jardim America', 'Vila Nova', 'Santa Luzia', 'Sao Francisco', 'Boa Vista'];
 const cities = ['Sao Paulo', 'Campinas', 'Santo Andre', 'Guarulhos', 'Sorocaba'];
-const retreatsDone = ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
+const retreatsDone = ['Tachinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
 const shirtSizes = ['P', 'M', 'G', 'GG'];
 
 const pick = (items, index) => items[index % items.length];

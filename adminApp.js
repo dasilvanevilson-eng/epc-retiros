@@ -101,9 +101,13 @@ const studentPresenceCount = (studentFormType, individualStudents = [], coupleSt
 const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFormTypes
   .map(([value, label]) => `<option value="${value}" ${value === (selected || defaultStudentFormType) ? 'selected' : ''}>${escapeHtml(label)}</option>`)
   .join('');
-const retreatTypes = ['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI'];
+const retreatTypes = ['Tachinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
+const legacyRetreatTypeLabels = new Map([
+  ['Taschinha', 'Tachinha'],
+  ['EIS-ME AQUI', 'Eis-me aqui'],
+]);
 const retreatTypeOptions = (selected = '') => `<option value="" ${selected ? '' : 'selected'} disabled>Selecione o tipo do retiro</option>${retreatTypes
-  .map((type) => `<option value="${escapeHtml(type)}" ${type === selected ? 'selected' : ''}>${escapeHtml(type)}</option>`)
+  .map((type) => `<option value="${escapeHtml(type)}" ${type === selected || legacyRetreatTypeLabels.get(selected) === type ? 'selected' : ''}>${escapeHtml(type)}</option>`)
   .join('')}`;
 
 const canAccess = (permission) => !permission || currentUser?.role === 'admin' || currentUser?.perfilCodigo === 'admin' || (currentUser?.permissions || []).includes(permission);
@@ -441,7 +445,7 @@ const recordTime = (record = {}) => Date.parse(record.atualizadoEm || record.upd
 const participantIdentity = (record = {}) => normalizeCpf(record.cpf || record.dadosPessoais?.cpf || record.pessoaId || record.id) || String(record.pessoaId || record.id || record.nome || '').trim();
 const entryDays = (entry = {}) => (Array.isArray(entry.dias) ? entry.dias : [entry.dias]).map((day) => String(day || '').trim()).filter(Boolean);
 const entrySectors = (entry = {}) => (Array.isArray(entry.setores) ? entry.setores : [entry.setores || entry.setor]).map((sector) => String(sector || '').trim()).filter(Boolean);
-const participationGroupOrder = ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
+const participationGroupOrder = ['Tachinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
 const participationGroupOrderIndex = new Map(participationGroupOrder.map((group, index) => [normalizeText(group), index]));
 const entryPreviousRetreats = (entry = {}) => (Array.isArray(entry.retirosAnteriores) ? entry.retirosAnteriores : [entry.retirosAnteriores])
   .map((retreat) => String(retreat || '').trim())
@@ -7073,18 +7077,20 @@ async function openCompleteStudentSheetsReport() {
 
 const participationDeclarationTypes = retreatTypes.map((type) => ({
   type,
-  label: type === 'EIS-ME AQUI' ? 'Eis-me aqui' : type,
+  label: type,
   available: type === 'Girassol',
 }));
 
 const participationDeclarationModels = {
   Girassol: { available: true, buildDocument: girassolParticipationDeclarationDocument },
+  Tachinha: { available: false },
   Taschinha: { available: false },
   ONDA: { available: false },
   EJA: { available: false },
   EJU: { available: false },
   EPC: { available: false },
   SMP: { available: false },
+  'Eis-me aqui': { available: false },
   'EIS-ME AQUI': { available: false },
 };
 
@@ -7194,7 +7200,8 @@ async function openParticipationDeclarationReport({ audience = 'students' } = {}
   const personLabel = isTeam ? 'integrante da equipe' : 'cursista';
   const participants = (isTeam ? listTeamParticipationDeclarationParticipants(retreat) : await listParticipationDeclarationParticipants(retreat))
     .sort((first, second) => operationalReportCollator.compare(first.name || 'Sem nome', second.name || 'Sem nome'));
-  const suggestedType = participationDeclarationTypes.some((item) => item.type === retreat.tipoRetiro) ? retreat.tipoRetiro : '';
+  const declarationRetreatType = legacyRetreatTypeLabels.get(retreat.tipoRetiro) || retreat.tipoRetiro;
+  const suggestedType = participationDeclarationTypes.some((item) => item.type === declarationRetreatType) ? declarationRetreatType : '';
   const overlay = document.createElement('div');
   overlay.className = 'receiver-sector-overlay participation-declaration-overlay';
   overlay.innerHTML = `<section class="receiver-sector-dialog participation-declaration-dialog" role="dialog" aria-modal="true" aria-labelledby="participation-declaration-title"><div class="panel-heading"><div><p class="eyebrow">${audienceLabel} · ${escapeHtml(retreat.nome || 'Retiro em foco')}</p><h2 id="participation-declaration-title">Declaração de Participação</h2><p>Selecione o modelo e carregue os dados de uma pessoa cadastrada neste retiro.</p></div></div><form class="participation-declaration-form"><label class="field"><span>Tipo da declaração</span><select name="declarationType"><option value="" disabled ${suggestedType ? '' : 'selected'}>Selecione o tipo do retiro</option>${participationDeclarationTypes.map((item) => `<option value="${escapeHtml(item.type)}" ${item.type === suggestedType ? 'selected' : ''}>${escapeHtml(item.label)}${item.available ? '' : ' - modelo ainda não definido'}</option>`).join('')}</select></label><p class="participation-declaration-model-status" data-declaration-model-status role="status"></p><label class="field participation-declaration-search"><span>${isTeam ? 'Buscar equipe de trabalho' : 'Buscar cursista'}</span><input name="studentSearch" type="search" autocomplete="off" placeholder="${isTeam ? 'Digite nome, CPF ou setor' : 'Digite nome, CPF ou número da ficha'}" ${participants.length ? '' : 'disabled'}></label><div class="participation-declaration-results" data-declaration-results hidden></div><section class="participation-declaration-selected" data-declaration-selected hidden></section><p class="form-message" data-declaration-message aria-live="polite">${participants.length ? `Busque e selecione o ${personLabel}.` : `Não há ${isTeam ? 'integrantes da equipe de trabalho' : 'cursistas'} cadastrados neste retiro.`}</p><div class="student-photo-editor-actions"><button type="button" class="secondary-button" data-declaration-close>Cancelar</button><button type="submit" class="primary-button" disabled>Visualizar e imprimir</button></div></form></section>`;
@@ -7940,8 +7947,8 @@ async function renderPublicForm(id, embedded = false, sectorToken = '') {
   mount.innerHTML = `<main class="${publicShellClass}"><header class="hero"><div><p class="eyebrow">Equipe de trabalho</p><h1>${escapeHtml(retreat.nome)}</h1><p class="hero-copy">Preencha seus dados para organizarmos sua participação com carinho e antecedência.</p></div></header>${adminSearchPanel}<form id="public-form" novalidate autocomplete="${embedded ? 'on' : 'off'}">${stateDatalist()}
     <section class="form-section form-type-section common-section"><fieldset class="choice-block form-type-choice full"><legend>Esta ficha é: <b>*</b></legend>${binaryChoices('tipoFicha', ['Individual', 'Casal'])}</fieldset></section>
     <section class="form-section"><div class="section-heading student-personal-heading"><span>01</span><div><h2>Seus Dados</h2></div>${embedded ? '<div class="student-heading-actions registration-heading-actions" hidden><button type="button" id="edit-selected-registration">Editar</button><button type="button" id="delete-selected-registration">Excluir participação no retiro</button></div>' : ''}</div><div class="fields two-columns">${personalFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('genero', ['Masculino', 'Feminino'])}</fieldset></div></section>
-    <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Quais retiros fez como CURSISTA na Família EPC?</h2></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('dias', serviceDays)}</div></section>
-    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns">${spouseFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Taschinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('spouseDias', serviceDays)}</div></section>
+    <section class="form-section"><div class="section-heading"><span>02</span><div><h2>Quais retiros fez como CURSISTA na Família EPC?</h2></div></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('retiros', ['Tachinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('dias', serviceDays)}</div></section>
+    <section class="form-section couple-only" hidden><div class="section-heading"><span>03</span><div><h2>Segundo cônjuge</h2><p>Dados específicos da segunda pessoa do casal.</p></div></div><div class="fields two-columns">${spouseFields}<fieldset class="choice-block full"><legend>Gênero <b>*</b></legend>${binaryChoices('spouseGenero', ['Masculino', 'Feminino'])}</fieldset></div><div class="choice-block"><h3>Retiro(s) que fez <b>*</b></h3>${choices('spouseRetiros', ['Tachinha', 'Girassol', 'Onda', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'])}</div><div class="choice-block day-confirmation-block"><h3>Dias confirmados para trabalhar <b>*</b></h3>${dayConfirmations('spouseDias', serviceDays)}</div></section>
     <section class="form-section common-section"><div class="section-heading"><span>04</span><div><h2>Endereço</h2></div></div><div class="fields address-fields"><label class="field cep-field"><span>CEP <b>*</b></span><input name="cep" inputmode="numeric" placeholder="00000-000" required></label><label class="field street-field"><span>Rua / Avenida <b>*</b></span><input name="endereco" required></label><label class="field number-field"><span>Número <b>*</b></span><input name="numero" required></label><label class="field bairro-field"><span>Bairro <b>*</b></span><input name="bairro" required></label><label class="field city-field"><span>Cidade <b>*</b></span><input name="cidade" required></label><label class="field state-field"><span>Estado <b>*</b></span><input name="estado" maxlength="2" required></label></div></section>
     ${sectorRegistrationSection}
     <section class="form-section compact-section"><div class="section-heading"><span>06</span><div><h2>Itens e contribuição</h2><p>Escolhas necessárias para sua inscrição.</p></div></div><div class="fields choice-cards"><div class="choice-block quadrante-print-option"><h3>Quer quadrante impresso? <b>*</b></h3>${binaryChoices('quadrante', ['Sim', 'Não'])}<p class="hint">O quadrante (relação de todas a pessoas que serviram no retiro com os seus contatos) é disponibilizado em PDF após o retiro, mas se você quiser levar impresso no dia do retiro, selecione Sim.</p></div><div class="field choice-block contribution-field"><span data-contribution-label>Valor da inscrição</span><h3>Quer a foto oficial do retiro? <b>*</b></h3>${binaryChoices('foto', ['Sim', 'Não'])}<p class="hint">Valor da foto: ${currency(retreat.valorFoto ?? 10)}.</p><input name="contribuicao" value="${currency(retreat.valorInscricaoVoluntario)}" readonly><p class="hint payment-instructions"><strong><u>Fazer pix CNPJ 52.109.946/0001-94</u></strong> e encaminhar o comprovante no privado para o coordenador do setor que você vai servir.</p></div></div></section>

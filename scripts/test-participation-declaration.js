@@ -16,14 +16,15 @@ assert.match(app, /report\.id === 'student-participation-declaration'\) return o
 assert.match(catalogSource, /id: 'team-participation-declaration'[\s\S]*topic: 'Equipe de trabalho'[\s\S]*title: 'Declaração de Participação'[\s\S]*permission: 'pessoas\.ver'[\s\S]*direct: true/);
 assert.match(app, /report\.id === 'team-participation-declaration'\) return openParticipationDeclarationReport\(\{ audience: 'team' \}\)/);
 
-for (const type of ['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI']) {
+for (const type of ['Tachinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui']) {
   assert(reportSource.includes(type), `Tipo de declaração ausente: ${type}`);
 }
 assert.match(reportSource, /available: type === 'Girassol'/, 'Somente o modelo Girassol deve estar disponível inicialmente.');
 assert.match(reportSource, /Girassol: \{ available: true, buildDocument: girassolParticipationDeclarationDocument \}/);
-for (const type of ['Taschinha', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP']) {
+for (const type of ['Tachinha', 'Taschinha', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP']) {
   assert.match(reportSource, new RegExp(`${type}: \\{ available: false \\}`));
 }
+assert.match(reportSource, /'Eis-me aqui': \{ available: false \}/);
 assert.match(reportSource, /'EIS-ME AQUI': \{ available: false \}/);
 assert.match(reportSource, /retreat\.tipoRetiro[\s\S]*suggestedType/, 'O tipo do retiro em foco deve ser sugerido no seletor.');
 assert.match(reportSource, /modelo ainda não definido/, 'Modelos futuros devem permanecer visíveis com aviso.');

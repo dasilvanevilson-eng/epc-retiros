@@ -74,7 +74,7 @@ const adultFemale = ['Aline', 'Camila', 'Daniela', 'Eliane', 'Fernanda', 'Gabrie
 const childMale = ['Arthur', 'Bernardo', 'Davi', 'Enzo', 'Felipe', 'Gabriel', 'Heitor', 'Joao', 'Lorenzo', 'Miguel', 'Nicolas', 'Pedro', 'Rafael', 'Theo', 'Vitor'];
 const childFemale = ['Alice', 'Ana', 'Beatriz', 'Clara', 'Helena', 'Isabela', 'Julia', 'Laura', 'Livia', 'Luiza', 'Manuela', 'Maria', 'Sofia', 'Valentina', 'Yasmin'];
 const lastNames = ['Almeida', 'Bauer', 'Cardoso', 'Costa', 'Fischer', 'Freitas', 'Goncalves', 'Krause', 'Lima', 'Muller', 'Oliveira', 'Pereira', 'Ribeiro', 'Schmidt', 'Silva', 'Souza', 'Weber'];
-const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Taschinha', 'Eis-me aqui'];
+const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Tachinha', 'Eis-me aqui'];
 const shirtSizes = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG', 'G1', 'G2'];
 const paymentMethods = ['Pix', 'Dinheiro', 'Cartao', 'Transferencia'];
 

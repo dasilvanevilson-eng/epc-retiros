@@ -26,7 +26,7 @@ const {
 const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', 'usuario_permissoes', 'usuario_retiros'];
 const financeStoreSet = new Set(financeStores);
 const scopedFinanceStores = new Set(['financeiro_planilhas', 'financeiro_planilha_auditoria']);
-const allowedRetreatTypes = new Set(['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI']);
+const allowedRetreatTypes = new Set(['Tachinha', 'Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui', 'EIS-ME AQUI']);
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;

@@ -38,7 +38,7 @@ const femaleNames = ['Alice', 'Ana', 'Beatriz', 'Clara', 'Helena', 'Isabela', 'J
 const adultMale = ['Adriano', 'Bruno', 'Carlos', 'Daniel', 'Eduardo', 'Fabio', 'Gustavo', 'Henrique', 'Leandro', 'Marcelo', 'Paulo', 'Rafael', 'Rodrigo', 'Tiago', 'Vinicius'];
 const adultFemale = ['Aline', 'Camila', 'Daniela', 'Eliane', 'Fernanda', 'Gabriela', 'Juliana', 'Karina', 'Luciana', 'Mariana', 'Patricia', 'Renata', 'Simone', 'Tatiane', 'Vanessa'];
 const lastNames = ['Almeida', 'Bauer', 'Cardoso', 'Costa', 'Fischer', 'Freitas', 'Goncalves', 'Krause', 'Lima', 'Muller', 'Oliveira', 'Pereira', 'Ribeiro', 'Schmidt', 'Silva', 'Souza', 'Weber'];
-const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Taschinha', 'Eis-me aqui'];
+const retreatsDone = ['Girassol', 'Onda', 'EPC', 'EJA', 'EJU', 'Tachinha', 'Eis-me aqui'];
 const shirtSizes = ['8', '10', '12', '14', 'PP', 'P', 'M', 'G', 'GG'];
 const defaultSectors = ['Animacao/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenacao do retiro', 'Coordenacao geral', 'Cozinha', 'Data Show', 'Direcao Espiritual', 'Enfermaria', 'Espaco Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligacao', 'Participacoes especiais', 'Pegue e Pague', 'Recreacao', 'Refeitorio', 'Secretaria', 'Zeladoria'];
 

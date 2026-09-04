@@ -7,8 +7,9 @@ const app = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
 const api = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'databaseAdapter.js'), 'utf8');
 
-const types = ['Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'EIS-ME AQUI'];
+const types = ['Tachinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
 for (const type of types) assert(app.includes(`'${type}'`), `Tipo de retiro ausente: ${type}`);
+for (const legacyType of ['Taschinha', 'EIS-ME AQUI']) assert(api.includes(`'${legacyType}'`), `Tipo legado ausente na API: ${legacyType}`);
 assert.match(app, /<select name="tipoRetiro" required>\$\{retreatTypeOptions\(\)\}<\/select>/, 'A criação deve exigir o tipo do retiro.');
 assert.match(app, /<select name="tipoRetiro" required>\$\{retreatTypeOptions\(retreat\.tipoRetiro\)\}<\/select>/, 'A edição deve carregar o tipo salvo.');
 assert.match(app, /form\.elements\.tipoRetiro\.value = source\?\.tipoRetiro \|\| ''/, 'A cópia da estrutura deve copiar o tipo do retiro.');
