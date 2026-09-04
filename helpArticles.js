@@ -233,5 +233,11 @@ export const helpArticles = [
     target: 'Alterar senha',
     keywords: 'senha trocar alterar login acesso usuario usuário',
   },
+   {
+    question: 'O sistema parou...',
+    answer: 'O banco de dados tem uma proteção de segurança. Se o sistema ficar aberto e sem uso por várias horas seguidas, ele desconecta sozinho. Assim, se uma determinada opção não abrir, provavelmente o sistema desconectou. Vá até o menu geral, clique em Sair do sistema, em seguida entre novamente com login e senha.',
+    target: 'Início',
+    keywords: 'travado sistema parou acessar travou desconectar desconectou login senha executa executar',
+  },
 ];
 
