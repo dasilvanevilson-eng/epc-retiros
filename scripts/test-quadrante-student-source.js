@@ -8,7 +8,7 @@ const end = source.indexOf('\nfunction choices(', start);
 assert(start >= 0 && end > start, 'Renderização do Quadrante não encontrada.');
 const quadrante = source.slice(start, end);
 
-assert.match(quadrante, /studentFormType = retreat\.tipoFichaCursista \|\| defaultStudentFormType/, 'O Quadrante deve respeitar a ficha configurada no retiro em foco.');
+assert.match(quadrante, /studentFormType = studentFormTypeForRetreat\(retreat\)/, 'O Quadrante deve respeitar a ficha definida pelo tipo do retiro em foco.');
 assert.match(quadrante, /activeCoupleStudentSource = usesCoupleStudents \? coupleStudentSource\(studentFormType\) : null/, 'EPC e SMP devem usar a fonte correspondente à ficha configurada.');
 assert.match(quadrante, /memberField = usesCoupleStudents \? activeCoupleStudentSource\.memberField : 'membroIds'/, 'O campo de membros deve acompanhar a tabela de cursistas selecionada.');
 assert.match(quadrante, /activeCoupleStudentSource\.list\(retreat\.id\) : dataService\.listCursistas\(retreat\.id\)/, 'Toda consulta de cursistas deve receber o retiro em foco.');

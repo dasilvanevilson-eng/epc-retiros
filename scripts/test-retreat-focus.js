@@ -43,7 +43,7 @@ assert.match(homeSource, /allCommunities\.filter\(\(community\) => community\.re
 assert.match(homeSource, /enrolments\.filter\(\(item\) => item\.retiroId === active\.id\)/, 'Equipe do Início deve ser filtrada pelo foco.');
 assert.match(homeSource, /coupleStudentSource\(activeStudentFormType\)\.list\(active\.id\)/, 'SMP/EPC devem carregar somente a fonte do foco.');
 assert.match(homeSource, /retreatId: active\?\.id \|\| ''/, 'Indicadores infantis devem receber explicitamente o retiro em foco.');
-assert.match(source, /const activeStudentNavId = studentFormNavIds\[focusedRetreat\?\.tipoFichaCursista/, 'O menu deve atualizar o tipo de ficha conforme o foco.');
+assert.match(source, /const activeStudentNavId = studentFormNavIds\[studentFormTypeForRetreat\(focusedRetreat\)\]/, 'O menu deve atualizar a ficha conforme o tipo do retiro em foco.');
 assert.match(source, /\['retiros', 'Links de cadastro'\]/, 'O menu principal deve identificar a opção como Links de cadastro.');
 assert.match(source, /Links de cadastro da equipe de trabalho por setor/, 'A descrição deve identificar os links da equipe por setor.');
 assert.doesNotMatch(source, />Links por setor</, 'A descrição antiga não deve permanecer na interface.');

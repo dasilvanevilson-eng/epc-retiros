@@ -88,7 +88,7 @@ assert.match(adminSource, /data-student-link-option-student><b>Cursista<\/b> \$\
 assert.doesNotMatch(adminSource, /data-student-link-option-(?:student|recipient)[\s\S]{0,160}(?:Não cadastrado|Não informado)/, 'A lista em cascata não deve preencher dados ausentes com textos substitutos.');
 assert.match(adminSource, /selectStudentLink = \(numeroFicha\)[\s\S]*rows\.forEach\(\(row\) => \{ row\.hidden = row !== selectedRow; \}\)/, 'A busca deve exibir somente a ficha selecionada.');
 assert.match(adminSource, /student-registration-link-title[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>[\s\S]*student-registration-link-open[\s\S]*student-registration-link-closed/, 'Abrir deve ficar entre o número da ficha e o checkbox.');
-assert.match(adminSource, /const internalStudentSection = studentFormNavIds\[retreat\.tipoFichaCursista\] \|\| 'cursista'/, 'O destino interno deve respeitar o tipo de cursista do retiro.');
+assert.match(adminSource, /const internalStudentSection = studentFormNavIds\[studentFormTypeForRetreat\(retreat\)\] \|\| 'cursista'/, 'O destino interno deve respeitar o tipo de cursista derivado do retiro.');
 assert.match(adminSource, /student-registration-link-open" href="#\$\{internalStudentSection\}\?ficha=\$\{link\.numeroFicha\}"/, 'Abrir deve acessar a opção interna com o número da ficha.');
 assert.doesNotMatch(adminSource, /student-registration-link-open" href="\$\{escapeHtml\(publicUrl\)\}/, 'Abrir não deve mais acessar o formulário público.');
 assert.match(adminSource, /student-registration-link-number[\s\S]*<strong>Ficha \$\{link\.numeroFicha\}<\/strong>\$\{registered \? '' : `[\s\S]*student-registration-link-status-note/, 'O status deve aparecer junto ao número somente enquanto a ficha não estiver cadastrada.');

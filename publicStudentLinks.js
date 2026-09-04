@@ -9,6 +9,22 @@ const {
 } = require('./databaseAdapter');
 
 const supportedStudentTypes = new Set(['cursista-individual', 'cursista-smp', 'cursista-epc']);
+const studentFormTypeByRetreatType = new Map([
+  ['Tachinha', 'cursista-individual'],
+  ['Taschinha', 'cursista-individual'],
+  ['Girassol', 'cursista-individual'],
+  ['ONDA', 'cursista-individual'],
+  ['EJA', 'cursista-individual'],
+  ['EJU', 'cursista-individual'],
+  ['EPC', 'cursista-epc'],
+  ['SMP', 'cursista-smp'],
+  ['Eis-me aqui', 'cursista-individual'],
+  ['EIS-ME AQUI', 'cursista-individual'],
+]);
+const studentFormTypeForRetreat = (retreat = {}) => (
+  studentFormTypeByRetreatType.get(retreat?.tipoRetiro)
+  || (supportedStudentTypes.has(retreat?.tipoFichaCursista) ? retreat.tipoFichaCursista : 'cursista-individual')
+);
 const studentRegistrationLinkVersion = 2;
 const financialFields = new Set([
   'valorInscricao', 'valorPago', 'saldoPagar', 'formaPagamento', 'observacaoPagamento',
@@ -265,7 +281,7 @@ async function resolvePublicStudentLink(token = '') {
     if (!link) continue;
     const numeroFicha = normalizeFileNumber(link.numeroFicha);
     const expectedCount = normalizeCount(retreat.numeroPrevistoFichasCursista);
-    const type = supportedStudentTypes.has(retreat.tipoFichaCursista) ? retreat.tipoFichaCursista : 'cursista-individual';
+    const type = studentFormTypeForRetreat(retreat);
     const occupied = occupiedFileNumbers(await studentRecordsForRetreat(retreat.id));
     return {
       retreat,

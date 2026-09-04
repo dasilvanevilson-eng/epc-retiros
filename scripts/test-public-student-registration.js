@@ -274,7 +274,7 @@ const individualPayload = {
   const apiSource = fs.readFileSync(path.join(__dirname, '..', 'apiCore.js'), 'utf8');
   const teamInviteSource = fs.readFileSync(path.join(__dirname, '..', 'publicSectorInvitePage.js'), 'utf8');
   assert.match(adminSource, /const canModifyRetreat = \(retreat = \{\}\) => Boolean\(retreat\) && canAccessRetreat\(retreat\) && !isRetreatConcluded\(retreat\)/, 'A área logada deve continuar editável durante a preparação.');
-  assert.match(apiSource, /if \(!retreat \|\| retreat\.tipoFichaCursista !== expectedType\)/, 'A API logada SMP\/EPC deve validar o tipo sem exigir publicação.');
+  assert.match(apiSource, /if \(!retreat \|\| studentFormTypeForRetreat\(retreat\) !== expectedType\)/, 'A API logada SMP\/EPC deve validar a ficha automática sem exigir publicação.');
   assert.match(teamInviteSource, /result\.retreat\?\.status !== 'publicado'/, 'O convite público da equipe deve continuar exigindo retiro publicado.');
 
   database.cursistas.length = 0;

@@ -27,6 +27,22 @@ const accessStores = ['usuarios', 'perfis', 'permissoes', 'perfil_permissoes', '
 const financeStoreSet = new Set(financeStores);
 const scopedFinanceStores = new Set(['financeiro_planilhas', 'financeiro_planilha_auditoria']);
 const allowedRetreatTypes = new Set(['Tachinha', 'Taschinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui', 'EIS-ME AQUI']);
+const studentFormTypeByRetreatType = new Map([
+  ['Tachinha', 'cursista-individual'],
+  ['Taschinha', 'cursista-individual'],
+  ['Girassol', 'cursista-individual'],
+  ['ONDA', 'cursista-individual'],
+  ['EJA', 'cursista-individual'],
+  ['EJU', 'cursista-individual'],
+  ['EPC', 'cursista-epc'],
+  ['SMP', 'cursista-smp'],
+  ['Eis-me aqui', 'cursista-individual'],
+  ['EIS-ME AQUI', 'cursista-individual'],
+]);
+const studentFormTypeForRetreat = (retreat = {}) => (
+  studentFormTypeByRetreatType.get(retreat?.tipoRetiro)
+  || (['cursista-individual', 'cursista-smp', 'cursista-epc'].includes(retreat?.tipoFichaCursista) ? retreat.tipoFichaCursista : 'cursista-individual')
+);
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -158,7 +174,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
   const retreat = await publicReceiverRetreat(req);
   if (!retreat) return false;
   const retreatId = retreat.id;
-  const studentFormType = retreat.tipoFichaCursista || 'cursista-individual';
+  const studentFormType = studentFormTypeForRetreat(retreat);
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
   const allowedStores = ['retiros', 'adesoes', 'pessoas', 'cursistas', 'cursista-smp', 'cursista-epc'];
   if (!allowedStores.includes(resource)) return false;
@@ -913,14 +929,14 @@ async function handleApi(req, res, pathname) {
       if (denyIfMissingPermission(res, session, `${permissionPrefix}.ver`)) return;
       if (!hasGlobalRetreatAccess(session) && (!queryRetreatId || !canAccessRetreat(session, queryRetreatId))) return sendError(res, 403, noRetreatAccessMessage);
       const retreat = queryRetreatId ? await getRecord('retiros', queryRetreatId).catch(() => null) : null;
-      if (retreat && retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      if (retreat && studentFormTypeForRetreat(retreat) !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
       return sendJson(res, 200, await listCoupleStudents(queryRetreatId));
     }
     if (req.method === 'PUT' && id && action) {
       const record = { ...(await readBody(req)), retiroId: decodeURIComponent(id), id: decodeURIComponent(action) };
       if (!canAccessRetreat(session, record.retiroId)) return sendError(res, 403, noRetreatAccessMessage);
       const retreat = await getRecord('retiros', record.retiroId).catch(() => null);
-      if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      if (!retreat || studentFormTypeForRetreat(retreat) !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
       const existing = (await listCoupleStudents(record.retiroId)).some((item) => item.id === record.id || item.numeroFichaSmp === record.id);
       if (denyIfMissingPermission(res, session, existing ? `${permissionPrefix}.editar` : `${permissionPrefix}.criar`)) return;
       return sendJson(res, 200, await saveCoupleStudent(resource === 'cursista-smp'
@@ -932,7 +948,7 @@ async function handleApi(req, res, pathname) {
       if (denyIfMissingPermission(res, session, `${permissionPrefix}.excluir`)) return;
       if (!canAccessRetreat(session, retreatId)) return sendError(res, 403, noRetreatAccessMessage);
       const retreat = await getRecord('retiros', retreatId).catch(() => null);
-      if (!retreat || retreat.tipoFichaCursista !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
+      if (!retreat || studentFormTypeForRetreat(retreat) !== expectedType) return sendError(res, 409, `O retiro nao esta configurado como ${label}.`);
       if (retreat.status === 'concluido') return sendError(res, 409, 'Retiro encerrado: disponivel apenas para consulta.');
       const deletingId = decodeURIComponent(action);
       const existing = (await listCoupleStudents(retreatId)).find((item) => (

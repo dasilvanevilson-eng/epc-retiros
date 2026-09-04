@@ -70,15 +70,28 @@ const normalizeExpectedStudentFileCount = (value) => {
   const number = Number(value);
   return Number.isInteger(number) && number >= 0 ? number : 0;
 };
-const studentFormTypes = [
-  ['cursista-individual', 'Cursista Individual'],
-  ['cursista-smp', 'Cursista SMP'],
-  ['cursista-epc', 'Cursista EPC'],
-];
 const studentFormNavIds = {
   'cursista-individual': 'cursista',
   'cursista-smp': 'cursista-smp',
   'cursista-epc': 'cursista-epc',
+};
+const studentFormTypesByRetreatType = new Map([
+  ['Tachinha', 'cursista-individual'],
+  ['Taschinha', 'cursista-individual'],
+  ['Girassol', 'cursista-individual'],
+  ['ONDA', 'cursista-individual'],
+  ['EJA', 'cursista-individual'],
+  ['EJU', 'cursista-individual'],
+  ['EPC', 'cursista-epc'],
+  ['SMP', 'cursista-smp'],
+  ['Eis-me aqui', 'cursista-individual'],
+  ['EIS-ME AQUI', 'cursista-individual'],
+]);
+const studentFormTypeForRetreat = (retreat = {}) => {
+  const source = typeof retreat === 'string' ? { tipoRetiro: retreat } : retreat;
+  const mappedType = studentFormTypesByRetreatType.get(source?.tipoRetiro);
+  if (mappedType) return mappedType;
+  return studentFormNavIds[source?.tipoFichaCursista] ? source.tipoFichaCursista : defaultStudentFormType;
 };
 const coupleStudentSource = (studentFormType = 'cursista-smp') => {
   const isEpc = studentFormType === 'cursista-epc';
@@ -98,9 +111,6 @@ const studentPresenceCount = (studentFormType, individualStudents = [], coupleSt
     ? coupleStudents.length * 2
     : individualStudents.length
 );
-const studentFormTypeOptions = (selected = defaultStudentFormType) => studentFormTypes
-  .map(([value, label]) => `<option value="${value}" ${value === (selected || defaultStudentFormType) ? 'selected' : ''}>${escapeHtml(label)}</option>`)
-  .join('');
 const retreatTypes = ['Tachinha', 'Girassol', 'ONDA', 'EJA', 'EJU', 'EPC', 'SMP', 'Eis-me aqui'];
 const legacyRetreatTypeLabels = new Map([
   ['Taschinha', 'Tachinha'],
@@ -801,17 +811,17 @@ const invalidateOperationalDataCaches = () => {
   };
 });
 
-const homeDataKey = (retreat = null) => [retreat?.id || '', retreat?.tipoFichaCursista || defaultStudentFormType].join(':');
+const homeDataKey = (retreat = null) => [retreat?.id || '', studentFormTypeForRetreat(retreat)].join(':');
 
 async function loadHomeData(retreat = null, loadCoupleStudents = null) {
-  const activeStudentFormType = retreat?.tipoFichaCursista || defaultStudentFormType;
+  const activeStudentFormType = studentFormTypeForRetreat(retreat);
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
   const key = homeDataKey(retreat);
   if (homeDataCache.key !== key) invalidateHomeDataCache();
   homeDataCache.key = key;
   if (!homeDataCache.promise) {
     homeDataCache.promise = (retreat?.id ? Promise.all([
-      dataService.listCursistas(retreat.id),
+      usesCoupleStudentForm ? Promise.resolve([]) : dataService.listCursistas(retreat.id),
       dataService.listComunidades(retreat.id),
       usesCoupleStudentForm && typeof loadCoupleStudents === 'function' ? loadCoupleStudents().catch((error) => {
         console.error(error);
@@ -1006,7 +1016,7 @@ function layout(content, active = 'inicio') {
   }
   const isPublicReceiverView = Boolean(publicReceiverToken);
   const focusedRetreat = selectedRetreat();
-  const activeStudentNavId = studentFormNavIds[focusedRetreat?.tipoFichaCursista || defaultStudentFormType] || studentFormNavIds[defaultStudentFormType];
+  const activeStudentNavId = studentFormNavIds[studentFormTypeForRetreat(focusedRetreat)] || studentFormNavIds[defaultStudentFormType];
   const studentNavIds = new Set(Object.values(studentFormNavIds));
   const isVisibleStudentNav = (id) => !studentNavIds.has(id) || id === activeStudentNavId;
   const navItems = [
@@ -1597,7 +1607,7 @@ function wireHomeRetreatSelector(activeRetreat, focusRetreats = []) {
 
 async function renderHome({ focusChangedMessage = '' } = {}) {
   const active = selectedRetreat();
-  const activeStudentFormType = active?.tipoFichaCursista || defaultStudentFormType;
+  const activeStudentFormType = studentFormTypeForRetreat(active);
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(activeStudentFormType);
   const loadCoupleStudentsForHome = () => active?.id && usesCoupleStudentForm ? coupleStudentSource(activeStudentFormType).list(active.id) : Promise.resolve([]);
   const { allStudents, allCommunities, coupleStudents } = await loadHomeData(active, loadCoupleStudentsForHome);
@@ -1796,7 +1806,8 @@ async function renderHome({ focusChangedMessage = '' } = {}) {
     row[type] += 1;
     cityStats.set(key, row);
   };
-  activeStudents.forEach((student) => addCityCount(student.cidade, 'students'));
+  (usesCoupleStudentForm ? coupleStudents.flatMap((student) => [student, student]) : activeStudents)
+    .forEach((student) => addCityCount(student.cidade, 'students'));
   activeEnrolments.forEach((entry) => {
     const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
     addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
@@ -2115,7 +2126,7 @@ function setupQuadranteOrderEditor(root, initialOrder = [], sectorsProvider = nu
 
 async function renderNewRetreat(returnHash = '#configuracoes') {
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Novo evento</p><h1>Criar retiro</h1><p>Os voluntários começam sempre vazios. Você só pode reaproveitar a estrutura.</p></div><a class="text-link" href="${escapeHtml(returnHash)}">← Voltar</a></section>
-  <form id="retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required placeholder="Ex.: Retiro de Casais 2027"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="text" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="text" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field"><span>Local</span><input name="local" placeholder="Ex.: Casa de Retiros"></label><label class="field"><span>Tipo do retiro <b>*</b></span><select name="tipoRetiro" required>${retreatTypeOptions()}</select></label><label class="field full"><span>Ficha cursista para esse retiro.</span><select name="tipoFichaCursista">${studentFormTypeOptions()}</select></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 10"></label><label class="field"><span>Número previsto de fichas de cursista</span><input name="numeroPrevistoFichasCursista" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 80"></label></div></div>
+  <form id="retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required placeholder="Ex.: Retiro de Casais 2027"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="text" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field"><span>Data de término</span><input name="dataTermino" type="text" inputmode="numeric" placeholder="dd/mm/aaaa"></label><label class="field"><span>Local</span><input name="local" placeholder="Ex.: Casa de Retiros"></label><label class="field"><span>Tipo do retiro <b>*</b></span><select name="tipoRetiro" required>${retreatTypeOptions()}</select></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input placeholder="R$ 0,00"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 10"></label><label class="field"><span>Número previsto de fichas de cursista</span><input name="numeroPrevistoFichasCursista" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 80"></label></div></div>
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p><div class="sector-groups" id="sector-checks">${sectorGroups(knownSectors(), [], [])}</div></fieldset><div class="form-actions"><p>O retiro ficará salvo como <b>Em preparação</b>.</p><button type="submit">Criar retiro <span>→</span></button></div></form>`, 'configuracoes');
   const form = app.querySelector('#retreat-form');
   let sourceRetreatId = '';
@@ -2137,7 +2148,6 @@ async function renderNewRetreat(returnHash = '#configuracoes') {
     form.elements.valorCamisetaOficial.value = source ? currency(source.valorCamisetaOficial) : '';
     form.elements.idadeMaximaEspacoKids.value = source?.idadeMaximaEspacoKids ?? '';
     form.elements.numeroPrevistoFichasCursista.value = source?.numeroPrevistoFichasCursista ?? '';
-    form.elements.tipoFichaCursista.value = source?.tipoFichaCursista || defaultStudentFormType;
     app.querySelector('#sector-checks').innerHTML = source
       ? sectorGroups(knownSectors(source.setores), configuredSectors(source.setores), configuredSectors(source.setoresPublicos ?? source.setores), source.setoresInscricoesEncerradas || [])
       : sectorGroups(knownSectors(), [], []);
@@ -2203,7 +2213,7 @@ async function renderNewRetreat(returnHash = '#configuracoes') {
       const sortedSectors = sortSectors(selectedSectors);
       const closedKeys = new Set(values.getAll('setoresInscricoesEncerradas').map(normalizeText));
       const setoresInscricoesEncerradas = sortedSectors.filter((sector) => closedKeys.has(normalizeText(sector)));
-      const retreat = { id: createId(), nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: values.get('local').trim(), tipoFichaCursista: values.get('tipoFichaCursista') || defaultStudentFormType, valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), versaoFormatoLinksEquipe: teamSectorLinkFormatVersion, status: 'preparacao', createdAt: new Date().toISOString() };
+      const retreat = { id: createId(), nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: values.get('local').trim(), tipoFichaCursista: studentFormTypeForRetreat(values.get('tipoRetiro')), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : [...retreatDefaults.dias], contribuicoes: [...retreatDefaults.contribuicoes], linksSetores: syncSectorLinks({ linksSetores: setoresInscricoesEncerradas.map((setor) => ({ setor, inscricoesEncerradas: true })) }, knownSectors(sortedSectors)), versaoFormatoLinksEquipe: teamSectorLinkFormatVersion, status: 'preparacao', createdAt: new Date().toISOString() };
       await dataService.saveRetiro(retreat);
       if (sourceRetreatId) {
         await copyBadgeProfilesToRetreat(sourceRetreatId, retreat.id);
@@ -2228,10 +2238,10 @@ async function renderRetreat(id, selectedSector = '') {
   const retreat = retreats.find((item) => item.id === id);
   if (!retreat) return renderRetiros();
   if (!ensureRetreatAccess(retreat)) return;
-  const retreatStudentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const retreatStudentFormType = studentFormTypeForRetreat(retreat);
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(retreatStudentFormType);
   const [allStudents, allCommunities, studentLinkData, coupleStudents] = await Promise.all([
-    dataService.listCursistas(id),
+    usesCoupleStudentForm ? Promise.resolve([]) : dataService.listCursistas(id),
     dataService.listComunidades(id),
     dataService.syncStudentRegistrationLinks(id).catch((error) => ({ error: error.message || 'Não foi possível carregar os links.' })),
     usesCoupleStudentForm ? coupleStudentSource(retreatStudentFormType).list(id).catch((error) => {
@@ -2350,7 +2360,8 @@ async function renderRetreat(id, selectedSector = '') {
     row[type] += 1;
     cityStats.set(key, row);
   };
-  registeredStudents.forEach((student) => addCityCount(student.cidade, 'students'));
+  (usesCoupleStudentForm ? coupleStudents.flatMap((student) => [student, student]) : registeredStudents)
+    .forEach((student) => addCityCount(student.cidade, 'students'));
   retreatEnrolments.forEach((entry) => {
     const responsible = peopleById.get(entry.pessoaId) || entry.dadosPessoais || {};
     addCityCount(responsible.cidade || entry.dadosPessoais?.cidade || entry.cidade, 'team');
@@ -2475,7 +2486,7 @@ async function renderRetreat(id, selectedSector = '') {
   studentRegistrationLinksPanel.className = 'panel student-registration-links-panel';
   studentRegistrationLinksPanel.id = 'retreat-student-links';
   const studentLinks = Array.isArray(studentLinkData?.links) ? studentLinkData.links : [];
-  const internalStudentSection = studentFormNavIds[retreat.tipoFichaCursista] || 'cursista';
+  const internalStudentSection = studentFormNavIds[studentFormTypeForRetreat(retreat)] || 'cursista';
   const canEditStudentLinkRecipient = canAccess('links-cadastro.editar') && canModifyRetreat(retreat);
   const studentLinkSearchOptionLabel = (link) => {
     return `${link.nomeCadastrado || ''} ${link.enviadoPara || ''}`.trim();
@@ -2874,7 +2885,7 @@ async function renderEditRetreat(id, returnHash = '#configuracoes') {
   const dateLockAttr = isPublished ? 'readonly aria-readonly="true"' : '';
   const publishedDateHint = isPublished ? '<p class="hint full">Retiro publicado: as datas de início e término não podem mais ser alteradas.</p>' : '';
   layout(`<section class="page-heading compact"><div><p class="eyebrow">Configuração do evento</p><h1>Editar retiro</h1><p>Estas alterações afetam somente este retiro, nunca o histórico dos anteriores.</p></div><a class="text-link" href="${escapeHtml(returnHash)}">← Voltar</a></section>
-  <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" value="${escapeHtml(formatDateInput(retreat.dataInicio) || retreat.dataInicio || '')}" ${dateLockAttr}></label><label class="field"><span>Data de término</span><input name="dataTermino" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" value="${escapeHtml(formatDateInput(retreat.dataTermino) || retreat.dataTermino || '')}" ${dateLockAttr}></label>${publishedDateHint}<label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><label class="field"><span>Tipo do retiro <b>*</b></span><select name="tipoRetiro" required>${retreatTypeOptions(retreat.tipoRetiro)}</select></label><label class="field full"><span>Ficha cursista para esse retiro.</span><select name="tipoFichaCursista">${studentFormTypeOptions(retreat.tipoFichaCursista)}</select></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label><label class="field"><span>Número previsto de fichas de cursista</span><input name="numeroPrevistoFichasCursista" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.numeroPrevistoFichasCursista || '')}" placeholder="Ex.: 80"></label></div></div>
+  <form id="edit-retreat-form" class="panel editor-form"><div class="fields two-columns"><label class="field full"><span>Nome do retiro <b>*</b></span><input name="nome" required value="${escapeHtml(retreat.nome)}"></label><label class="field"><span>Data de início</span><input name="dataInicio" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" value="${escapeHtml(formatDateInput(retreat.dataInicio) || retreat.dataInicio || '')}" ${dateLockAttr}></label><label class="field"><span>Data de término</span><input name="dataTermino" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" value="${escapeHtml(formatDateInput(retreat.dataTermino) || retreat.dataTermino || '')}" ${dateLockAttr}></label>${publishedDateHint}<label class="field"><span>Local</span><input name="local" value="${escapeHtml(retreat.local || '')}"></label><label class="field"><span>Tipo do retiro <b>*</b></span><select name="tipoRetiro" required>${retreatTypeOptions(retreat.tipoRetiro)}</select></label><div class="fields three-columns retreat-value-fields full"><label class="field"><span>Inscrição do cursista</span><input name="valorInscricaoCursista" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoCursista)}"></label><label class="field"><span>Inscrição do voluntário</span><input name="valorInscricaoVoluntario" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorInscricaoVoluntario)}"></label><label class="field"><span>Valor da foto</span><input name="valorFoto" type="text" inputmode="decimal" data-currency-input value="${currency(retreat.valorFoto ?? 10)}"></label><label class="field"><span>Idade máxima para ficar no Espaço Kids</span><input name="idadeMaximaEspacoKids" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.idadeMaximaEspacoKids || '')}" placeholder="Ex.: 10"></label><label class="field"><span>Número previsto de fichas de cursista</span><input name="numeroPrevistoFichasCursista" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(retreat.numeroPrevistoFichasCursista || '')}" placeholder="Ex.: 80"></label></div></div>
   <fieldset><legend>Setores de trabalho</legend><p class="hint">Selecione os setores que ter&atilde;o link de inscri&ccedil;&atilde;o por setor neste retiro.</p>${sectorGroups(knownSectors(retreat.setores), configuredSectors(retreat.setores), configuredSectors(retreat.setoresPublicos ?? retreat.setores), retreat.setoresInscricoesEncerradas || [])}</fieldset><div class="form-actions"><p>As alterações são salvas neste retiro.</p><button type="submit">Salvar alterações <span>→</span></button></div></form>`, 'configuracoes');
   const form = app.querySelector('#edit-retreat-form');
   wireTypedDates(form, namedFieldSelector(['dataInicio', 'dataTermino']));
@@ -2932,7 +2943,7 @@ async function renderEditRetreat(id, returnHash = '#configuracoes') {
       ...link,
       inscricoesEncerradas: setoresInscricoesEncerradas.some((sector) => normalizeText(sector) === normalizeText(link.setor || link.sector)),
     }));
-    Object.assign(retreat, { nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: String(values.get('local') || '').trim(), tipoFichaCursista: values.get('tipoFichaCursista') || defaultStudentFormType, valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
+    Object.assign(retreat, { nome: values.get('nome').trim(), tipoRetiro: values.get('tipoRetiro'), dataInicio, dataTermino, local: String(values.get('local') || '').trim(), tipoFichaCursista: studentFormTypeForRetreat(values.get('tipoRetiro')), valorInscricaoCursista: parseCurrency(values.get('valorInscricaoCursista')), valorInscricaoVoluntario: parseCurrency(values.get('valorInscricaoVoluntario')), valorFoto: parseCurrency(values.get('valorFoto')), valorCamisetaOficial: parseCurrency(values.get('valorCamisetaOficial')), idadeMaximaEspacoKids: Number(values.get('idadeMaximaEspacoKids')) || 0, numeroPrevistoFichasCursista: normalizeExpectedStudentFileCount(values.get('numeroPrevistoFichasCursista')), setores: sortedSectors, setoresPublicos: sortedSectors, setoresInscricoesEncerradas, dias: serviceDays.length ? serviceDays : (retreat.dias?.length ? retreat.dias : [...retreatDefaults.dias]), linksSetores: syncSectorLinks({ ...retreat, linksSetores: existingLinks }, knownSectors(sortedSectors)), updatedAt: new Date().toISOString() });
     const message = form.querySelector('#edit-retreat-message');
     if (message) message.textContent = '';
     try {
@@ -3140,7 +3151,7 @@ async function renderRecebedor() {
     return ensureRetreatCanBeChanged(retreat, 'alterar pagamentos');
   };
   const canEditReceiver = canEditReceiverRetreat();
-  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const studentFormType = studentFormTypeForRetreat(retreat);
   const usesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
   const studentFinanceType = usesCoupleStudentForm ? studentFormType : 'cursista';
   const studentSectorLabel = studentFormType === 'cursista-epc' ? 'Cursista EPC' : (studentFormType === 'cursista-smp' ? 'Cursista SMP' : 'Cursista');
@@ -4419,7 +4430,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
   const setMessage = (text = '') => { if (message) message.textContent = text; };
   const canUseSmp = () => {
     if (!retreat) return `Selecione um retiro em foco antes de testar ${label}.`;
-    if (retreat.tipoFichaCursista !== expectedType) return `O retiro em foco nao esta configurado como ${label}.`;
+    if (studentFormTypeForRetreat(retreat) !== expectedType) return `O retiro em foco nao esta configurado como ${label}.`;
     if (!canModifyRetreat(retreat)) return `Retiro concluido: ${label} disponivel apenas para consulta.`;
     return '';
   };
@@ -5392,7 +5403,7 @@ async function renderCursistaDetalhe(id) {
 async function renderComunidades() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Grupos do retiro</p><h1>Comunidades</h1><p>Crie ou publique um retiro para montar as comunidades.</p></div></section>', 'comunidades'); return; }
-  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const studentFormType = studentFormTypeForRetreat(retreat);
   const usesSmpStudents = studentFormType === 'cursista-smp';
   const usesEpcStudents = studentFormType === 'cursista-epc';
   const usesCoupleStudents = usesSmpStudents || usesEpcStudents;
@@ -5964,7 +5975,7 @@ async function renderCrachas() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Identifica&ccedil;&atilde;o</p><h1>Crach&aacute;s</h1><p>Crie ou publique um retiro para gerar os crach&aacute;s.</p></div></section>', 'crachas'); return; }
   let settings = loadBadgeSettings();
-  const badgeStudentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const badgeStudentFormType = studentFormTypeForRetreat(retreat);
   const badgeUsesCoupleStudentForm = ['cursista-smp', 'cursista-epc'].includes(badgeStudentFormType);
   const badgeCoupleStudentSource = badgeUsesCoupleStudentForm ? coupleStudentSource(badgeStudentFormType) : null;
   const [allCommunities, allStudents] = await Promise.all([
@@ -6936,7 +6947,7 @@ const studentRegistrationReportFileNumber = (record, studentFormType) => {
 async function openCompleteStudentSheetsReport() {
   const retreat = selectedRetreat();
   if (!retreat) throw new Error('Selecione um retiro em foco antes de gerar as fichas.');
-  const configuredType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const configuredType = studentFormTypeForRetreat(retreat);
   const printType = configuredType === 'cursista-individual' ? 'cursista' : configuredType;
   const loadedRecords = configuredType === 'cursista-individual'
     ? await dataService.listCursistas(retreat.id)
@@ -7109,7 +7120,7 @@ const participationDeclarationParticipant = ({ record, side = '', studentFormTyp
 };
 
 async function listParticipationDeclarationParticipants(retreat) {
-  const studentFormType = retreat?.tipoFichaCursista || defaultStudentFormType;
+  const studentFormType = studentFormTypeForRetreat(retreat);
   if (studentFormType === 'cursista-individual') {
     return (await dataService.listCursistas(retreat.id))
       .map((record, index) => participationDeclarationParticipant({ record, studentFormType, index }));
@@ -7370,7 +7381,7 @@ const restoreOperationalReportPosition = async () => {
 };
 
 const operationalReportAvailable = (report, retreat) => {
-  const formType = retreat?.tipoFichaCursista || defaultStudentFormType;
+  const formType = studentFormTypeForRetreat(retreat);
   const permission = report.permissionsByFormType?.[formType] || report.permission;
   return canAccess(permission) && (!report.formTypes?.length || report.formTypes.includes(formType));
 };
@@ -7624,7 +7635,7 @@ async function renderBackup() {
 async function renderQuadrante() {
   const retreat = selectedRetreat();
   if (!retreat) { layout('<section class="page-heading"><div><p class="eyebrow">Relatório</p><h1>Quadrante</h1><p>Crie ou publique um retiro para gerar o relatório.</p></div></section>', 'quadrante'); return; }
-  const studentFormType = retreat.tipoFichaCursista || defaultStudentFormType;
+  const studentFormType = studentFormTypeForRetreat(retreat);
   const usesCoupleStudents = ['cursista-smp', 'cursista-epc'].includes(studentFormType);
   const activeCoupleStudentSource = usesCoupleStudents ? coupleStudentSource(studentFormType) : null;
   const memberField = usesCoupleStudents ? activeCoupleStudentSource.memberField : 'membroIds';
