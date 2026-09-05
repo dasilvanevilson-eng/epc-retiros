@@ -794,7 +794,7 @@ const invalidateOperationalDataCaches = () => {
 
 [
   'saveRetiro', 'deleteRetiro',
-  'saveAdesao', 'saveTeamCouple', 'deleteAdesao',
+  'saveAdesao', 'saveRecebedorAdesao', 'saveTeamCouple', 'deleteAdesao',
   'saveCursista', 'deleteCursista',
   'saveCursistaSmp', 'deleteCursistaSmp',
   'saveCursistaEpc', 'deleteCursistaEpc',
@@ -3242,7 +3242,7 @@ async function renderRecebedor() {
       });
       return;
     }
-    await dataService.saveAdesao(entry);
+    await dataService.saveRecebedorAdesao(entry);
   };
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const entryGender = (entry) => normalizeText(peopleById.get(entry.pessoaId)?.genero || entry.dadosPessoais?.genero || entry.genero);

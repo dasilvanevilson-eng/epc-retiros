@@ -245,6 +245,18 @@ async function saveStudentRegistration(record) {
   return saveProtectedRegistration('cursistas', nextRecord);
 }
 
+async function saveReceiverEnrolmentPayment(enrolment) {
+  const current = await get('adesoes', enrolment.id);
+  return saveWithTransientControl('adesoes', {
+    ...current,
+    valorPago: enrolment.valorPago,
+    taxaPaga: enrolment.taxaPaga,
+    formaPagamento: enrolment.formaPagamento,
+    recebedorObservacao: enrolment.recebedorObservacao,
+    atualizadoEm: new Date().toISOString(),
+  }, { [dataLossBypassField]: true });
+}
+
 export const retreatDefaults = {
   setores: ['Animação/Jovem de sala', 'Camareiros(as)', 'Casal Bem-estar', 'Coordenação do retiro', 'Coordenação geral', 'Cozinha', 'Data Show', 'Direção Espiritual', 'Enfermaria', 'Espaço Kids', 'Espiritual', 'Externo', 'Folclore', 'Ligação', 'Monitor(es)', 'Participações especiais', 'Pegue e Pague', 'Recebedor(es)', 'Recreação', 'Refeitório', 'Secretaria', 'Sineteira(s)', 'Zeladoria'],
   dias: ['Sexta-feira', 'Sábado', 'Domingo'],
@@ -278,6 +290,7 @@ export const dataService = {
   listAdesoes: (retiroId = '') => list('adesoes', { retiroId }),
   listAdesoesPorCpf: (retiroId = '', cpf = '') => list('adesoes', { retiroId, cpf }),
   saveAdesao: (enrolment) => saveProtectedRegistration('adesoes', enrolment),
+  saveRecebedorAdesao: (enrolment) => saveReceiverEnrolmentPayment(enrolment),
   saveTeamCouple: (payload) => api('/adesoes-casal', { method: 'POST', body: JSON.stringify(payload), timeoutMs: 120000 }),
   deleteAdesao: (id) => remove('adesoes', id),
   listPessoas: (retiroId = '') => list('pessoas', { retiroId }),

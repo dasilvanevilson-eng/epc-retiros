@@ -5,6 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const adminSource = fs.readFileSync(path.join(root, 'adminApp.js'), 'utf8');
 const apiSource = fs.readFileSync(path.join(root, 'apiCore.js'), 'utf8');
+const dataServiceSource = fs.readFileSync(path.join(root, 'dataService.js'), 'utf8');
 
 const receiverSaveSource = adminSource.slice(
   adminSource.indexOf('const saveFinancialEntry = async (entry) => {'),
@@ -21,6 +22,10 @@ const receiverCheckboxChangeSource = adminSource.slice(
 const coupleStudentNormalizeSource = adminSource.slice(
   adminSource.indexOf('record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);'),
   adminSource.indexOf('return record;', adminSource.indexOf('record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);')),
+);
+const receiverEnrolmentPaymentSource = dataServiceSource.slice(
+  dataServiceSource.indexOf('async function saveReceiverEnrolmentPayment(enrolment) {'),
+  dataServiceSource.indexOf('export const retreatDefaults', dataServiceSource.indexOf('async function saveReceiverEnrolmentPayment(enrolment) {')),
 );
 
 assert.match(
@@ -42,6 +47,16 @@ assert.match(
   receiverSaveSource,
   /recebedorValorPagoSmp:\s*entry\.recebedorValorPago[\s\S]*recebedorTaxaPagaSmp:\s*entry\.recebedorTaxaPaga/,
   'Recebedor logado deve salvar apenas os campos financeiros proprios do recebedor em SMP/EPC.',
+);
+assert.match(
+  receiverSaveSource,
+  /dataService\.saveRecebedorAdesao\(entry\)/,
+  'Recebedor logado deve salvar ficha de trabalho por um caminho financeiro especifico.',
+);
+assert.doesNotMatch(
+  receiverSaveSource,
+  /dataService\.saveAdesao\(entry\)/,
+  'Recebedor logado nao deve usar o salvamento protegido generico para excluir pagamento de ficha de trabalho.',
 );
 assert.match(
   receiverRenderSource,
@@ -77,6 +92,21 @@ assert.match(
   coupleStudentNormalizeSource,
   /record\.recebedorValorPagoSmp === undefined \|\| record\.recebedorValorPagoSmp === null \|\| record\.recebedorValorPagoSmp === ''/,
   'Normalizacao SMP/EPC deve usar fallback somente quando o campo do recebedor estiver ausente.',
+);
+assert.match(
+  receiverEnrolmentPaymentSource,
+  /const current = await get\('adesoes', enrolment\.id\)/,
+  'Salvamento financeiro da ficha de trabalho deve partir da adesao atual.',
+);
+assert.match(
+  receiverEnrolmentPaymentSource,
+  /valorPago: enrolment\.valorPago[\s\S]*taxaPaga: enrolment\.taxaPaga[\s\S]*formaPagamento: enrolment\.formaPagamento[\s\S]*recebedorObservacao: enrolment\.recebedorObservacao/,
+  'Salvamento financeiro da ficha de trabalho deve alterar somente campos financeiros do recebedor.',
+);
+assert.match(
+  receiverEnrolmentPaymentSource,
+  /saveWithTransientControl\('adesoes'[\s\S]*\[dataLossBypassField\]: true/,
+  'Exclusao de pagamento da ficha de trabalho deve ter autorizacao explicita e restrita ao fluxo financeiro.',
 );
 
 const publicCoupleReceiverSource = apiSource.slice(
