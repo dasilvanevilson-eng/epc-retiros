@@ -3175,7 +3175,7 @@ async function renderRecebedor() {
   const activeCoupleStudentSource = usesCoupleStudentForm ? coupleStudentSource(studentFormType) : null;
   const students = usesCoupleStudentForm
     ? (await activeCoupleStudentSource.list(retreat.id)).map(mapSmpReceiverStudent)
-    : uniqueByParticipant(await dataService.listCursistas(retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista' }));
+    : uniqueByParticipant(await dataService.listCursistas(retreat.id)).map((student) => ({ ...student, setores: ['Cursista'], tipoFinanceiro: 'cursista', __sourceRecord: student }));
   const isStudentFinanceEntry = (entry = {}) => ['cursista', 'cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const isCoupleStudentFinanceEntry = (entry = {}) => ['cursista-smp', 'cursista-epc'].includes(entry.tipoFinanceiro);
   const entries = [
@@ -3220,14 +3220,21 @@ async function renderRecebedor() {
   const saveFinancialEntry = async (entry) => {
     if (!ensureReceiverCanBeChanged()) return;
     if (entry.tipoFinanceiro === 'cursista') {
-      await dataService.saveCursista(entry);
+      const { __sourceRecord, ...studentRecord } = entry;
+      await dataService.saveCursista({
+        ...studentRecord,
+        valorPago: __sourceRecord?.valorPago ?? entry.valorPago,
+        saldoPagar: __sourceRecord?.saldoPagar ?? entry.saldoPagar,
+        recebedorValorPago: entry.recebedorValorPago,
+        recebedorTaxaPaga: entry.recebedorTaxaPaga,
+        recebedorFormaPagamento: entry.recebedorFormaPagamento,
+        recebedorObservacao: entry.recebedorObservacao,
+      });
       return;
     }
     if (isCoupleStudentFinanceEntry(entry)) {
       await coupleStudentSource(entry.tipoFinanceiro).save({
         ...entry.__sourceRecord,
-        valorPagoSmp: entry.valorPago,
-        saldoPagarSmp: Math.max(0, (parseCurrency(entry.valorInscricao) || Number(retreat.valorInscricaoCursista) || 0) - parseCurrency(entry.valorPago)),
         recebedorValorPagoSmp: entry.recebedorValorPago,
         recebedorTaxaPagaSmp: entry.recebedorTaxaPaga,
         recebedorFormaPagamentoSmp: entry.recebedorFormaPagamento,

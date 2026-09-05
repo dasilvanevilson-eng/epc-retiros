@@ -229,7 +229,7 @@ async function handlePublicReceiverRequest(req, res, resource, id, action) {
     const current = (await listCoupleStudents(retreatId)).find((record) => record.id === decodedId || record.numeroFichaSmp === decodedId);
     if (!current) return sendError(res, 403, 'Link do recebedor nao autorizado para este registro.'), true;
     const incoming = await readBody(req);
-    const allowedFields = ['valorPagoSmp', 'saldoPagarSmp', 'recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
+    const allowedFields = ['recebedorValorPagoSmp', 'recebedorTaxaPagaSmp', 'recebedorFormaPagamentoSmp', 'recebedorObservacaoSmp'];
     const record = { ...current, retiroId, id: decodedId };
     allowedFields.forEach((field) => {
       if (Object.prototype.hasOwnProperty.call(incoming, field)) record[field] = incoming[field];
