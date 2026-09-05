@@ -83,6 +83,11 @@ assert.match(
   /const paymentDetails = await askPaymentMethod/,
   'Forma de pagamento deve ser solicitada apenas depois do caminho de exclusao.',
 );
+assert.match(
+  receiverCheckboxChangeSource,
+  /const total = typedPaid > 0 \? typedPaid : \(currentPaid > 0 \? currentPaid : rowSuggested\(row\)\);[\s\S]*if \(paidInput && typedPaid <= 0\) paidInput\.value = currency\(total\);[\s\S]*const paymentDetails = await askPaymentMethod/,
+  'Ao marcar Pago sem valor digitado, o Recebedor deve preencher visualmente o saldo devedor antes da forma de pagamento.',
+);
 assert.doesNotMatch(
   coupleStudentNormalizeSource,
   /recebedorValorPagoSmp\s*=\s*parseCurrency\(record\.recebedorValorPagoSmp\s*\|\|\s*record\.valorPagoSmp\)/,

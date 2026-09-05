@@ -3564,6 +3564,7 @@ async function renderRecebedor() {
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
     const total = typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row));
+    if (paidInput && typedPaid <= 0) paidInput.value = currency(total);
     const paymentDetails = await askPaymentMethod({ nome: row.nome, total, currentMethod: rowPaymentMethod(row), currentObservation: rowPaymentObservation(row) });
     if (!paymentDetails?.method) {
       input.checked = false;
