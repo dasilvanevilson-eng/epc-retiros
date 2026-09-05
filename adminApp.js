@@ -4621,7 +4621,9 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);
     record.valorPagoSmp = parseCurrency(record.valorPagoSmp);
     record.saldoPagarSmp = Math.max(0, record.valorInscricaoSmp - record.valorPagoSmp);
-    record.recebedorValorPagoSmp = parseCurrency(record.recebedorValorPagoSmp || record.valorPagoSmp);
+    record.recebedorValorPagoSmp = record.recebedorValorPagoSmp === undefined || record.recebedorValorPagoSmp === null || record.recebedorValorPagoSmp === ''
+      ? parseCurrency(record.valorPagoSmp)
+      : parseCurrency(record.recebedorValorPagoSmp);
     record.recebedorTaxaPagaSmp = record.recebedorValorPagoSmp > 0;
     record.recebedorFormaPagamentoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorFormaPagamentoSmp || '').trim() : '';
     record.recebedorObservacaoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorObservacaoSmp || '').trim() : '';

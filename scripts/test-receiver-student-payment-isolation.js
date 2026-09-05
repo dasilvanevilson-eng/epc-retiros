@@ -18,6 +18,10 @@ const receiverCheckboxChangeSource = adminSource.slice(
   adminSource.indexOf("app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {"),
   adminSource.indexOf('async function renderPessoas', adminSource.indexOf("app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {")),
 );
+const coupleStudentNormalizeSource = adminSource.slice(
+  adminSource.indexOf('record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);'),
+  adminSource.indexOf('return record;', adminSource.indexOf('record.valorInscricaoSmp = parseCurrency(record.valorInscricaoSmp);')),
+);
 
 assert.match(
   receiverSaveSource,
@@ -63,6 +67,16 @@ assert.match(
   receiverCheckboxChangeSource,
   /const paymentDetails = await askPaymentMethod/,
   'Forma de pagamento deve ser solicitada apenas depois do caminho de exclusao.',
+);
+assert.doesNotMatch(
+  coupleStudentNormalizeSource,
+  /recebedorValorPagoSmp\s*=\s*parseCurrency\(record\.recebedorValorPagoSmp\s*\|\|\s*record\.valorPagoSmp\)/,
+  'Normalizacao SMP/EPC nao pode tratar recebedorValorPagoSmp zero como campo ausente.',
+);
+assert.match(
+  coupleStudentNormalizeSource,
+  /record\.recebedorValorPagoSmp === undefined \|\| record\.recebedorValorPagoSmp === null \|\| record\.recebedorValorPagoSmp === ''/,
+  'Normalizacao SMP/EPC deve usar fallback somente quando o campo do recebedor estiver ausente.',
 );
 
 const publicCoupleReceiverSource = apiSource.slice(
