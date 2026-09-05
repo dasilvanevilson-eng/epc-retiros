@@ -3544,21 +3544,33 @@ async function renderRecebedor() {
     if (!ensureReceiverCanBeChanged()) return;
     const row = receiverRows.find((item) => item.id === input.dataset.feeEntry);
     if (!row) return;
-    if (!input.checked && !(await askDeletePayment(row))) {
-      input.checked = true;
+    const paidInput = app.querySelector(`[data-paid-entry="${CSS.escape(input.dataset.feeEntry)}"]`);
+    if (!input.checked) {
+      if (!(await askDeletePayment(row))) {
+        input.checked = true;
+        input.indeterminate = rowHasReceiverContribution(row) && !rowPaidStatus(row);
+        return;
+      }
+      input.indeterminate = false;
+      if (paidInput) paidInput.value = currency(0);
+      await Promise.all(distributePaidValue(row, 0).map(({ entry }) => {
+        setEntryPayment(entry, 0, false, '', '');
+        return saveFinancialEntry(entry);
+      }));
+      await loadData();
+      renderRecebedor();
       return;
     }
-    const paidInput = app.querySelector(`[data-paid-entry="${CSS.escape(input.dataset.feeEntry)}"]`);
     const typedPaid = parseCurrency(paidInput?.value);
     const currentPaid = rowPaid(row);
-    const total = input.checked ? (typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row))) : 0;
-    const paymentDetails = input.checked ? await askPaymentMethod({ nome: row.nome, total, currentMethod: rowPaymentMethod(row), currentObservation: rowPaymentObservation(row) }) : null;
-    if (input.checked && !paymentDetails?.method) {
+    const total = typedPaid > 0 ? typedPaid : (currentPaid > 0 ? currentPaid : rowSuggested(row));
+    const paymentDetails = await askPaymentMethod({ nome: row.nome, total, currentMethod: rowPaymentMethod(row), currentObservation: rowPaymentObservation(row) });
+    if (!paymentDetails?.method) {
       input.checked = false;
       return;
     }
     await Promise.all(distributePaidValue(row, total).map(({ entry, value }) => {
-      setEntryPayment(entry, value, input.checked, paymentDetails?.method || '', paymentDetails?.observation || '');
+      setEntryPayment(entry, value, true, paymentDetails?.method || '', paymentDetails?.observation || '');
       return saveFinancialEntry(entry);
     }));
     await loadData();

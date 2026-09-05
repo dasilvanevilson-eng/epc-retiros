@@ -14,6 +14,10 @@ const receiverRenderSource = adminSource.slice(
   adminSource.indexOf('const receiverPaymentCheckboxAttributes = (row) => ['),
   adminSource.indexOf("app.querySelector('[data-copy-receiver-link]')", adminSource.indexOf('const receiverPaymentCheckboxAttributes = (row) => [')),
 );
+const receiverCheckboxChangeSource = adminSource.slice(
+  adminSource.indexOf("app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {"),
+  adminSource.indexOf('async function renderPessoas', adminSource.indexOf("app.querySelectorAll('[data-fee-entry]').forEach((input) => input.addEventListener('change', async () => {")),
+);
 
 assert.match(
   receiverSaveSource,
@@ -49,6 +53,16 @@ assert.doesNotMatch(
   receiverRenderSource,
   /&& !isStudentRow\(row\) \? 'data-partial-payment="true"'/,
   'Cursistas com pagamento parcial do recebedor tambem devem abrir confirmacao ao desmarcar.',
+);
+assert.match(
+  receiverCheckboxChangeSource,
+  /if \(!input\.checked\) \{[\s\S]*askDeletePayment\(row\)[\s\S]*paidInput\.value = currency\(0\)[\s\S]*setEntryPayment\(entry, 0, false, '', ''\)[\s\S]*return;/,
+  'Exclusao confirmada deve zerar a tela e salvar zero antes de qualquer fluxo de forma de pagamento.',
+);
+assert.match(
+  receiverCheckboxChangeSource,
+  /const paymentDetails = await askPaymentMethod/,
+  'Forma de pagamento deve ser solicitada apenas depois do caminho de exclusao.',
 );
 
 const publicCoupleReceiverSource = apiSource.slice(
