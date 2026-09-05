@@ -10,6 +10,10 @@ const receiverSaveSource = adminSource.slice(
   adminSource.indexOf('const saveFinancialEntry = async (entry) => {'),
   adminSource.indexOf('const peopleById = new Map', adminSource.indexOf('const saveFinancialEntry = async (entry) => {')),
 );
+const receiverRenderSource = adminSource.slice(
+  adminSource.indexOf('const receiverPaymentCheckboxAttributes = (row) => ['),
+  adminSource.indexOf("app.querySelector('[data-copy-receiver-link]')", adminSource.indexOf('const receiverPaymentCheckboxAttributes = (row) => [')),
+);
 
 assert.match(
   receiverSaveSource,
@@ -30,6 +34,21 @@ assert.match(
   receiverSaveSource,
   /recebedorValorPagoSmp:\s*entry\.recebedorValorPago[\s\S]*recebedorTaxaPagaSmp:\s*entry\.recebedorTaxaPaga/,
   'Recebedor logado deve salvar apenas os campos financeiros proprios do recebedor em SMP/EPC.',
+);
+assert.match(
+  receiverRenderSource,
+  /rowPaidStatus\(row\) \|\| rowHasReceiverContribution\(row\) \? 'checked' : ''/,
+  'Pagamento parcial do recebedor deve manter o checkbox marcado para permitir desmarcar e excluir.',
+);
+assert.match(
+  receiverRenderSource,
+  /rowHasReceiverContribution\(row\) && !rowPaidStatus\(row\) \? 'data-partial-payment="true"' : ''/,
+  'Pagamento parcial deve ser indeterminado com base no valor do recebedor, inclusive para cursistas.',
+);
+assert.doesNotMatch(
+  receiverRenderSource,
+  /&& !isStudentRow\(row\) \? 'data-partial-payment="true"'/,
+  'Cursistas com pagamento parcial do recebedor tambem devem abrir confirmacao ao desmarcar.',
 );
 
 const publicCoupleReceiverSource = apiSource.slice(
