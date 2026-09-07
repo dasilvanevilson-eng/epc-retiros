@@ -64,7 +64,7 @@ assert.match(app, /editButton\.addEventListener\('click'[\s\S]*printButton\.hidd
 assert.match(app, /loadStudent = \(student\)[\s\S]*selectedStudentRecord = student[\s\S]*printSelectedStudent\.hidden = !selectedStudentId/, 'A impressão Individual deve usar o registro persistido carregado.');
 assert.match(app, /editSelectedStudent\?\.addEventListener\('click'[\s\S]*printSelectedStudent\.hidden = true/, 'A impressão Individual deve ser ocultada durante edição.');
 assert.match(app, /if \(publicContext\)[\s\S]*student-heading-actions'\)\?\.remove\(\)/, 'O acesso público Individual deve remover as ações autenticadas.');
-assert.match(app, /prepareSharedPublicCoupleStudentForm[\s\S]*cursista-smp-tools/, 'O acesso público SMP/EPC deve remover a barra que contém a impressão.');
+assert.match(app, /prepareSharedPublicCoupleStudentForm[\s\S]*cursista-smp-search-panel'\)\?\.remove\(\)[\s\S]*cursista-smp-tool-actions'\)\?\.remove\(\)/, 'O acesso público SMP/EPC deve remover busca e ações autenticadas sem remover o número da ficha.');
 assert.match(app, /name="coupleNameSearch"[^>]*placeholder="Digite o nome dele ou dela"/, 'A impressão completa de casais deve permitir busca pelo nome dele ou dela.');
 assert.match(app, /<span>Buscar pelo nome<\/span><input name="coupleNameSearch"/);
 assert.match(app, /coupleNameSearchInput\?\.addEventListener\('focus', renderCoupleSearchResults\)/, 'A lista de casais deve abrir ao focar o campo de busca.');

@@ -5894,11 +5894,16 @@ body:has(.login-shell) {
   align-items:end;
 }
 
+.cursista-smp-search-panel {
+  position:relative;
+}
+
 .cursista-smp-search-shell {
   min-width:0;
 }
 
-.cursista-smp-tools .registration-search-field {
+.cursista-smp-tools .registration-search-field,
+.cursista-smp-search-panel .registration-search-field {
   margin-top:0;
 }
 
@@ -5918,6 +5923,10 @@ body:has(.login-shell) {
 
 .cursista-smp-file-number {
   margin-bottom:24px;
+}
+
+.cursista-smp-tools .cursista-smp-file-number {
+  margin-bottom:0;
 }
 
 .cursista-smp-file-number .field {

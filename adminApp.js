@@ -3941,7 +3941,8 @@ function prepareSharedPublicCoupleStudentForm(context) {
   const form = app.querySelector('#cursista-smp-form');
   if (!form) return;
   app.querySelector('#smp-financial-summary')?.remove();
-  app.querySelector('.cursista-smp-tools')?.remove();
+  app.querySelector('.cursista-smp-search-panel')?.remove();
+  app.querySelector('.cursista-smp-tool-actions')?.remove();
   const fileNumberInput = app.querySelector('[name="numeroFichaSmp"]');
   if (fileNumberInput) {
     fileNumberInput.value = String(context.numeroFicha);
@@ -4009,16 +4010,18 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
     return `<details class="smp-kid-panel" data-smp-kid-panel="${kidNumber}" ${index === 0 ? 'open' : ''}><summary><strong>Criança ${kidNumber}</strong><span class="smp-kid-summary-value">Não preenchida</span></summary>${row}</details>`;
   }).join('');
   layout(`<section class="page-heading cursista-smp-heading"><div><p class="eyebrow">Cadastro de cursista</p><h1>${escapeHtml(title)}</h1><p>Registre as informações necessárias para acolher e acompanhar o casal cursista.</p></div><button type="button" id="smp-financial-summary" class="primary-button">Resumo financeiro</button></section>
-  <section class="admin-registration-tools cursista-smp-tools panel">
+  <section class="panel cursista-smp-search-panel">
     <div class="cursista-smp-search-shell"><label class="field registration-search-field"><span>Busca</span><input id="cursista-smp-search" autocomplete="off" placeholder="Digite nome, CPF ou telefone"></label><div id="cursista-smp-search-results" class="registration-search-results" hidden></div></div>
+  </section>
+  <section class="admin-registration-tools cursista-smp-tools panel">
+    <div class="cursista-smp-file-number">
+      <label class="field"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
+    </div>
     <div class="cursista-smp-tool-actions">
       <button type="button" id="new-cursista-smp">Incluir novo</button>
       <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
       <button type="button" id="print-cursista-smp" class="secondary-button" hidden>Imprimir ficha</button>
     </div>
-  </section>
-  <section class="panel cursista-smp-file-number">
-    <label class="field"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
   </section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
     <section class="cursista-smp-section">
