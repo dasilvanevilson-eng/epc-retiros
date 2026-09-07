@@ -4068,10 +4068,10 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
       <div class="section-heading"><span>4.</span><div><h2>Filhos e casamento</h2></div></div>
       <div class="fields three-columns">
         <label class="field smp-pair-row-start"><span>Data do 1º casamento dele</span><input name="casamentoDele" ${dateInputAttributes}></label>
-        <label class="field"><span>Idade dos filhos do 1º casamento dele</span><input name="filhosDele" placeholder="Digite a idade"></label>
+        <label class="field"><span>IDADE dos filhos do 1º casamento dele (Ex 5, 8, e 10 anos)</span><input name="filhosDele" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDele')}</fieldset>
         <label class="field smp-pair-row-start"><span>Data do 1º casamento dela</span><input name="casamentoDela" ${dateInputAttributes}></label>
-        <label class="field"><span>Idade dos filhos do 1º casamento dela</span><input name="filhosDela" placeholder="Digite a idade"></label>
+        <label class="field"><span>IDADE dos filhos do 1º casamento dela (Ex 5, 8, e 10 anos)</span><input name="filhosDela" placeholder="Digite a idade"></label>
         <fieldset class="smp-wide"><legend>Houve outras uniões?</legend>${yesNo('outrasUnioesDela')}</fieldset>
         <label class="field"><span>Data desta união do casal</span><input name="uniaoCasal" ${dateInputAttributes}></label>
         <label class="field"><span>Idade dos filhos desta união</span><input name="filhosUniao" placeholder="Digite a idade"></label>
