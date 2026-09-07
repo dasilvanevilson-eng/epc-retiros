@@ -5889,9 +5889,7 @@ body:has(.login-shell) {
 
 .cursista-smp-tools {
   display:grid;
-  grid-template-columns:minmax(0, 1fr) auto;
-  gap:16px;
-  align-items:end;
+  gap:18px;
 }
 
 .cursista-smp-search-panel {
@@ -5910,7 +5908,7 @@ body:has(.login-shell) {
 .cursista-smp-tool-actions {
   display:flex;
   flex-wrap:wrap;
-  justify-content:flex-end;
+  justify-content:flex-start;
   gap:10px;
 }
 
@@ -5926,6 +5924,9 @@ body:has(.login-shell) {
 }
 
 .cursista-smp-tools .cursista-smp-file-number {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
   margin-bottom:0;
 }
 

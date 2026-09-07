@@ -4016,11 +4016,11 @@ function renderCursistaSmpScreen({ title = 'Cursista SMP', active = 'cursista-sm
   <section class="admin-registration-tools cursista-smp-tools panel">
     <div class="cursista-smp-file-number">
       <label class="field"><span>Número da ficha</span><input name="numeroFichaSmp" type="text" inputmode="numeric" placeholder="Ex.: 001"></label>
-    </div>
-    <div class="cursista-smp-tool-actions">
-      <button type="button" id="new-cursista-smp">Incluir novo</button>
-      <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
-      <button type="button" id="print-cursista-smp" class="secondary-button" hidden>Imprimir ficha</button>
+      <div class="cursista-smp-tool-actions">
+        <button type="button" id="new-cursista-smp">Incluir novo</button>
+        <button type="button" id="edit-cursista-smp" class="secondary-button">Editar</button>
+        <button type="button" id="print-cursista-smp" class="secondary-button" hidden>Imprimir ficha</button>
+      </div>
     </div>
   </section>
   <form id="cursista-smp-form" class="panel cursista-smp-form" autocomplete="off">
