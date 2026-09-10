@@ -3815,6 +3815,26 @@ const smpConditionalRequiredFields = [
   ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
   ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
 ];
+const smpHealthCareDetailFields = [
+  ['saudeDele', 'qualSaudeDele'],
+  ['saudeDela', 'qualSaudeDela'],
+  ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
+  ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
+];
+const syncSmpHealthCareDetailVisibility = (form, values = new FormData(form)) => {
+  smpHealthCareDetailFields.forEach(([choiceName, detailName]) => {
+    const detail = form.elements[detailName];
+    const visible = values.get(choiceName) === 'Sim';
+    const container = detail?.closest('.field');
+    if (container) container.hidden = !visible;
+  });
+};
+const normalizeNewSmpHealthCareDetails = (record) => {
+  smpHealthCareDetailFields.forEach(([choiceName, detailName]) => {
+    if (record[choiceName] === 'Não') record[detailName] = null;
+  });
+  return record;
+};
 const smpRequiredTextFields = [
   'nomeDele', 'nascimentoDele', 'cpfDele', 'profissaoDele', 'foneDele', 'religiaoDele', 'missaDele',
   'nomeDela', 'nascimentoDela', 'cpfDela', 'profissaoDela', 'foneDela', 'religiaoDela', 'missaDela',
@@ -3890,6 +3910,7 @@ function wirePublicSmpValidation(form) {
       setPublicRequiredMarker(controls[0], true);
     });
     const values = new FormData(form);
+    syncSmpHealthCareDetailVisibility(form, values);
     smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
       const required = values.get(choiceName) === 'Sim';
       if (form.elements[detailName]) form.elements[detailName].required = required;
@@ -4370,6 +4391,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       setSmpRequiredMarker(controls[0], true);
     });
     const values = new FormData(form);
+    syncSmpHealthCareDetailVisibility(form, values);
     smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
       const detail = form.elements[detailName];
       if (!detail) return;
@@ -4631,6 +4653,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     record.recebedorTaxaPagaSmp = record.recebedorValorPagoSmp > 0;
     record.recebedorFormaPagamentoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorFormaPagamentoSmp || '').trim() : '';
     record.recebedorObservacaoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorObservacaoSmp || '').trim() : '';
+    if (!selectedId && expectedType === 'cursista-smp') normalizeNewSmpHealthCareDetails(record);
     return record;
   };
   const focusIssue = (control) => {

@@ -228,6 +228,10 @@ const individualPayload = {
   assert.equal(savedSmp.valorPagoSmp, 0);
   assert.equal(savedSmp.outrasUnioesDele, 'Não');
   assert.equal(savedSmp.outrasUnioesDela, 'Sim');
+  assert.equal(savedSmp.qualSaudeDele, null);
+  assert.equal(savedSmp.qualSaudeDela, null);
+  assert.equal(savedSmp.qualIntoleranciaAlimentarDele, null);
+  assert.equal(savedSmp.qualIntoleranciaAlimentarDela, null);
   assert.equal(savedSmp.porqueQueremFazerRetiro, 'Fortalecer a vida em família');
   assert.equal(savedSmp.comoSouberamRetiro, 'Por um casal amigo');
   assert.equal(Object.prototype.hasOwnProperty.call(savedSmp, 'campoPublicoForjado'), false, 'O ajuste nao pode liberar campos publicos desconhecidos.');
