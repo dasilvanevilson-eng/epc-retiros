@@ -3821,10 +3821,11 @@ const smpHealthCareDetailFields = [
   ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
   ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
 ];
-const syncSmpHealthCareDetailVisibility = (form, values = new FormData(form)) => {
+const syncSmpHealthCareDetailVisibility = (form, values = new FormData(form), { preserveFilledDetails = false } = {}) => {
   smpHealthCareDetailFields.forEach(([choiceName, detailName]) => {
     const detail = form.elements[detailName];
-    const visible = values.get(choiceName) === 'Sim';
+    const hasDetail = Boolean(String(detail?.value || '').trim());
+    const visible = values.get(choiceName) === 'Sim' || (preserveFilledDetails && hasDetail);
     const container = detail?.closest('.field');
     if (container) container.hidden = !visible;
     if (!visible && detail) detail.value = '';
@@ -4378,7 +4379,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       label.append(document.createTextNode(' '), marker);
     } else if (!required) marker?.remove();
   };
-  const syncSmpRequiredRules = () => {
+  const syncSmpRequiredRules = (options = {}) => {
     if (expectedType !== 'cursista-smp') return;
     smpRequiredTextFields.forEach((name) => {
       const control = form.elements[name];
@@ -4392,7 +4393,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
       setSmpRequiredMarker(controls[0], true);
     });
     const values = new FormData(form);
-    syncSmpHealthCareDetailVisibility(form, values);
+    syncSmpHealthCareDetailVisibility(form, values, options);
     smpConditionalRequiredFields.forEach(([choiceName, detailName]) => {
       const detail = form.elements[detailName];
       if (!detail) return;
@@ -4582,7 +4583,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     syncChoiceStates(form);
     syncSmpKidPanels({ resetOpen: true });
     syncSmpKidsNeedVisibility();
-    syncSmpRequiredRules();
+    syncSmpRequiredRules({ preserveFilledDetails: true });
     deleteButton.hidden = !canDeleteSmp();
     printButton.hidden = false;
     setLocked(true);
