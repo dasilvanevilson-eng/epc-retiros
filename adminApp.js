@@ -3827,9 +3827,10 @@ const syncSmpHealthCareDetailVisibility = (form, values = new FormData(form)) =>
     const visible = values.get(choiceName) === 'Sim';
     const container = detail?.closest('.field');
     if (container) container.hidden = !visible;
+    if (!visible && detail) detail.value = '';
   });
 };
-const normalizeNewSmpHealthCareDetails = (record) => {
+const normalizeSmpHealthCareDetails = (record) => {
   smpHealthCareDetailFields.forEach(([choiceName, detailName]) => {
     if (record[choiceName] === 'Não') record[detailName] = null;
   });
@@ -4653,7 +4654,7 @@ async function setupCursistaSmpTestCrud({ expectedType = 'cursista-smp', permiss
     record.recebedorTaxaPagaSmp = record.recebedorValorPagoSmp > 0;
     record.recebedorFormaPagamentoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorFormaPagamentoSmp || '').trim() : '';
     record.recebedorObservacaoSmp = record.recebedorValorPagoSmp > 0 ? String(record.recebedorObservacaoSmp || '').trim() : '';
-    if (!selectedId && expectedType === 'cursista-smp') normalizeNewSmpHealthCareDetails(record);
+    if (expectedType === 'cursista-smp') normalizeSmpHealthCareDetails(record);
     return record;
   };
   const focusIssue = (control) => {

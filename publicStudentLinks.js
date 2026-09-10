@@ -97,7 +97,7 @@ const smpHealthCareDetailFields = [
   ['intoleranciaAlimentarDele', 'qualIntoleranciaAlimentarDele'],
   ['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'],
 ];
-function normalizeNewSmpHealthCareDetails(record) {
+function normalizeSmpHealthCareDetails(record) {
   smpHealthCareDetailFields.forEach(([choiceName, detailName]) => {
     if (record[choiceName] === 'Não') record[detailName] = null;
   });
@@ -461,7 +461,7 @@ async function savePublicStudentRegistration(token, incoming, expectedFileNumber
         .forEach((field) => { record[field] = ''; });
     }
   }
-  if (context.type === 'cursista-smp') normalizeNewSmpHealthCareDetails(record);
+  if (context.type === 'cursista-smp') normalizeSmpHealthCareDetails(record);
   normalizePublicRecordDates(record, context.type);
   if (context.type === 'cursista-individual') validateIndividual(record);
   else validateCouple(record, context.type);

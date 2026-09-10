@@ -159,8 +159,8 @@ async function main() {
   assert.match(admin, /legacyValue = \['outrasUnioesDele', 'outrasUnioesDela'\]\.includes\(name\) \? record\.outrasUnioes : ''/);
   assert.match(admin, /\['movimentoIgrejaDele', 'qualMovimentoDele'\][\s\S]*\['saudeDela', 'qualSaudeDela'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
   assert.match(admin, /const smpHealthCareDetailFields = \[[\s\S]*\['saudeDele', 'qualSaudeDele'\][\s\S]*\['intoleranciaAlimentarDela', 'qualIntoleranciaAlimentarDela'\]/);
-  assert.match(admin, /const syncSmpHealthCareDetailVisibility = \(form, values = new FormData\(form\)\) => \{[\s\S]*container\.hidden = !visible/);
-  assert.match(admin, /if \(!selectedId && expectedType === 'cursista-smp'\) normalizeNewSmpHealthCareDetails\(record\)/);
+  assert.match(admin, /const syncSmpHealthCareDetailVisibility = \(form, values = new FormData\(form\)\) => \{[\s\S]*container\.hidden = !visible[\s\S]*if \(!visible && detail\) detail\.value = ''/);
+  assert.match(admin, /if \(expectedType === 'cursista-smp'\) normalizeSmpHealthCareDetails\(record\)/);
   assert.match(admin, /const required = values\.get\(choiceName\) === 'Sim';[\s\S]*detail\.required = required/);
   assert.match(admin, /firstSmpKidsIssue[\s\S]*form\.checkValidity\(\)/);
   assert.match(admin, /if \(!usedPanels\.length\) return form\.elements\.smpKidsNotNeeded/);
